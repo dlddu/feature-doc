@@ -19,6 +19,8 @@
 docs/
 ├── values.md              # 가치 문서 (최상위)
 ├── doc-tracker.md         # 문서 체계 상태 추적
+├── glossary.md            # 용어집 — 용어 정의의 단일 출처
+├── glossary-tracker.md    # 용어집 상태 추적 (연결 매트릭스·위험 진단)
 ├── design-system.md       # UI 디자인 시스템 — 토큰·컴포넌트·원칙
 ├── prd/
 │   ├── 01-analysis-pipeline.md       # 코드베이스 분석 파이프라인
