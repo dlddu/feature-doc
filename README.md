@@ -17,21 +17,28 @@
 
 ```
 docs/
-├── values.md            # 가치 문서 (최상위)
-├── doc-tracker.md       # 문서 체계 상태 추적
+├── values.md              # 가치 문서 (최상위)
+├── doc-tracker.md         # 문서 체계 상태 추적
+├── design-system.md       # UI 디자인 시스템 — 토큰·컴포넌트·원칙
 ├── prd/
 │   ├── 01-analysis-pipeline.md       # 코드베이스 분석 파이프라인
 │   ├── 02-feature-representation.md  # Feature 표현 (인수 테스트 + 종단 의존성)
 │   ├── 03-doc-management.md          # Feature 단위 문서 관리 (LLM CRUD)
 │   └── 04-platform.md                # 플랫폼 (k8s · 자격증명 · 모바일 우선)
-└── test/
-    ├── 01-analysis-pipeline.md
-    ├── 02-feature-representation.md
-    ├── 03-doc-management.md
-    └── 04-platform.md
+├── test/
+│   ├── 01-analysis-pipeline.md
+│   ├── 02-feature-representation.md
+│   ├── 03-doc-management.md
+│   └── 04-platform.md
+└── wireframes/            # 10개 모바일 화면 정보 구조 (SVG)
+    ├── README.md
+    └── s01 ~ s10 *.svg
+
+tools/
+└── gen-wireframes.js      # wireframe SVG 일괄 생성 스크립트
 ```
 
-각 PRD에는 동일 번호의 테스트 문서가 1:1로 대응합니다.
+각 PRD에는 동일 번호의 테스트 문서가 1:1로 대응합니다. UX 디자인 산출물(`design-system.md`, `wireframes/`)은 PRD가 정의한 acceptance criteria를 어떻게 화면으로 전달할지 결정하며, PRD가 변경되면 wireframe을 먼저 갱신하고 디자인 시스템 토큰으로 mockup을 다시 그리는 순서를 따릅니다.
 
 ## PRD ↔ 다루는 문제
 
