@@ -30,6 +30,12 @@ docs/
 │   ├── 02-feature-representation.md
 │   ├── 03-doc-management.md
 │   └── 04-platform.md
+├── user-journey/         # 사용자 여정 — README + 플로우 4개
+│   ├── README.md
+│   ├── 01-onboarding-and-connect.md
+│   ├── 02-discovery.md
+│   ├── 03-feature-documents.md
+│   └── 04-continuous-maintenance.md
 └── wireframes/            # 10개 모바일 화면 정보 구조 (SVG)
     ├── README.md
     └── s01 ~ s10 *.svg
