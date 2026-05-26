@@ -53,7 +53,7 @@ tools/
 | [01 분석 파이프라인](docs/prd/01-analysis-pipeline.md) | 저장소 연결 → 횡단 관심사 추출 → feature 탐색 전략 → feature 후보 추출 |
 | [02 Feature 표현](docs/prd/02-feature-representation.md) | 확정된 feature를 인수 테스트로 표현하고 종단 의존성을 데이터로 보존 |
 | [03 문서 관리](docs/prd/03-doc-management.md) | 사용자가 LLM의 도움으로 feature 문서를 추가·수정·삭제 |
-| [04 플랫폼](docs/prd/04-platform.md) | k8s 운영, 사용자 자격증명(GitHub Token / LLM API Key), 모바일 우선 UX |
+| [04 플랫폼](docs/prd/04-platform.md) | k8s 운영, 사용자 자격증명(GitHub App 설치 / LLM API Key), 모바일 우선 UX |
 
 ## 문서 작성 원칙
 

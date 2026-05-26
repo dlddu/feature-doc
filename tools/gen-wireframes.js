@@ -131,7 +131,7 @@ const inputField = (x, y, w, label, value, opts = {}) => {
   out.push(text(x + 14, y + 18, label, { size: 9, fill: TEXT_MUTE, upper: true, tracking: 1.2, family: MONO }));
   out.push(text(x + 14, y + 38, value, { size: 11, family: valFamily, fill: TEXT_DARK }));
   if (statusLabel) {
-    const sw = 60;
+    const sw = Math.round(statusLabel.length * 5.8 + 22);
     out.push(rect(x + w - sw - 10, y + 10, sw, 16, { fill: 'none', stroke: STROKE_LIGHT, rx: 4 }));
     out.push(circle(x + w - sw - 10 + 7, y + 18, 2, { fill: TEXT_MUTE, stroke: 'none' }));
     out.push(text(x + w - sw - 10 + 14, y + 22, statusLabel, { size: 8, family: MONO, fill: TEXT_MUTE, upper: true, tracking: .8 }));
@@ -205,10 +205,10 @@ screens['s01-credentials-setup'] = wrap('S01', 'Credentials Setup', 'AC4.1 · AC
   // display heading
   displayHeading(PAD, 130, 'Bring your own keys', '모든 LLM 호출과 GitHub 접근은 당신의 자격증명으로 수행돼요.'),
 
-  // GitHub Token input
-  inputField(PAD, 200, W - 2 * PAD, 'GITHUB TOKEN', 'github_pat_•••••••••KMNT', { statusLabel: 'VERIFIED' }),
-  // scope tags
-  (() => { const { svg, w } = tag(PAD, 268, 'repo'); return svg + tag(PAD + w + 6, 268, 'read:org').svg; })(),
+  // GitHub App connection
+  inputField(PAD, 200, W - 2 * PAD, 'GITHUB APP', 'FeatureDoc · 3 repositories', { statusLabel: 'INSTALLED' }),
+  // app permission tags
+  (() => { const { svg, w } = tag(PAD, 268, 'contents:read'); return svg + tag(PAD + w + 6, 268, 'metadata:read').svg; })(),
 
   // LLM Provider selector
   rect(PAD, 295, W - 2 * PAD, 70, { fill: FILL_PLATE, stroke: STROKE_GHOST, rx: 10 }),
@@ -321,9 +321,9 @@ screens['s03-connect-repository'] = wrap('S03', 'Connect Repository', 'AC1.1 · 
   // URL input
   inputField(PAD, 200, W - 2 * PAD, 'REPOSITORY URL', 'github.com/dlddu/payments-api'),
 
-  // branch + token row
+  // branch + app access row
   inputField(PAD, 270, (W - 2 * PAD - 8) / 2, 'BRANCH', '⎇ main'),
-  inputField(PAD + (W - 2 * PAD - 8) / 2 + 8, 270, (W - 2 * PAD - 8) / 2, 'TOKEN', '✓ access ok'),
+  inputField(PAD + (W - 2 * PAD - 8) / 2 + 8, 270, (W - 2 * PAD - 8) / 2, 'GITHUB APP', '✓ has access'),
 
   // pre-flight estimate card
   rect(PAD, 350, W - 2 * PAD, 156, { fill: FILL_PLATE, stroke: STROKE_GHOST, rx: 10 }),

@@ -11,7 +11,7 @@
 ### 01 — Onboarding & Connect
 | ID  | Wireframe | AC                    | Purpose                                          |
 | --- | --------- | --------------------- | ------------------------------------------------ |
-| S01 | [s01-credentials-setup.svg](./s01-credentials-setup.svg) | AC4.1 · AC4.2 · AC4.3 | GitHub Token + LLM 자격증명 등록                |
+| S01 | [s01-credentials-setup.svg](./s01-credentials-setup.svg) | AC4.1 · AC4.2 · AC4.3 | GitHub App 연결 + LLM 자격증명 등록              |
 | S02 | [s02-home-repositories.svg](./s02-home-repositories.svg) | AC1.1 · AC1.5         | 연결된 저장소 목록과 분석 상태                  |
 | S03 | [s03-connect-repository.svg](./s03-connect-repository.svg) | AC1.1 · AC4.6         | 새 저장소 연결 + 분석 pre-flight 비용 안내     |
 
