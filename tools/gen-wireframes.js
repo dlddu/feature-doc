@@ -263,8 +263,11 @@ screens['s02-home-repositories'] = wrap('S02', 'Home · Repositories', 'AC1.1 ·
   text(PAD + 2 * (W - 2 * PAD) / 3 + 14, 145, 'SPEND', { size: 9, family: MONO, fill: TEXT_MUTE, upper: true, tracking: 1.2 }),
   text(PAD + 2 * (W - 2 * PAD) / 3 + 14, 174, '$2.14', { size: 16, family: MONO, weight: 500, fill: TEXT_DARK }),
 
-  // section title
-  sectionTitle(PAD, 218, 'Repositories', '3'),
+  // section title + "New" repository action
+  sectionTitle(PAD, 218, 'Repositories'),
+  rect(W - PAD - 54, 206, 54, 21, { fill: 'none', stroke: STROKE_LIGHT, rx: 5 }),
+  text(W - PAD - 27, 220, '+ New', { size: 9.5, family: SANS, fill: TEXT_DARK, weight: 500, anchor: 'middle' }),
+  text(W - PAD - 66, 218, '3', { size: 10, family: MONO, fill: TEXT_GHOST, anchor: 'end' }),
 
   // repo card 1
   card(PAD, 232, W - 2 * PAD, 84),

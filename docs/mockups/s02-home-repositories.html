@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S02 · Home · Repositories — FeatureDoc Mockup</title>
+<meta name="description" content="FeatureDoc mockup — S02 Home · Repositories — AC1.1 · AC1.5">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   FeatureDoc — mockup base stylesheet
+   ------------------------------------------------------------
+   docs/design-system.md (v0.1) 를 그대로 CSS 로 인코딩한 파일.
+   모든 sNN-*.html 목업이 <link> 로 이 파일 하나만 공유한다.
+   토큰·컴포넌트·원칙의 단일 진실 원천은 design-system.md 이며,
+   이 파일은 그 결정을 클래스로 옮긴 것일 뿐 — 새 값을 만들지 않는다.
+   ============================================================ */
+
+:root {
+  /* surfaces — 5단계, 그림자 없이 톤 차이로만 elevation */
+  --bg-base:        #0a0a0a;
+  --bg-elevated:    #0f0f0f;
+  --bg-card:        #141414;
+  --bg-input:       #181818;
+  --bg-hover:       #1c1c1c;
+
+  /* borders — 항상 1px, 색의 강약으로만 구분 */
+  --border-subtle:  #1d1d1d;
+  --border-default: #272727;
+  --border-strong:  #333333;
+
+  /* text — 4단계 위계 */
+  --text-primary:    #ededed;
+  --text-secondary:  #9a9a9a;
+  --text-tertiary:   #6a6a6a;
+  --text-quaternary: #454545;
+
+  /* status — 채도 낮춰 거의 무채색, 작은 dot 으로만 신호 */
+  --success:  #86b89a;
+  --warning:  #c9a868;
+  --danger:   #c98080;
+  --info:     #8aa4c4;
+
+  /* accent — 화면당 1~2회, 사실상 표식용 */
+  --accent:        #c8ff5e;
+  --accent-dim:    rgba(200, 255, 94, 0.06);
+  --accent-border: rgba(200, 255, 94, 0.18);
+
+  /* fonts */
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* code surface — design-system 4.8 */
+  --bg-code: #070707;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+/* ── device frame — 393×844 (iOS), 38px radius ─────────────── */
+.frame {
+  position: relative;
+  width: 393px;
+  height: 844px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 38px;
+  overflow: hidden;
+}
+
+/* status bar */
+.statusbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px 0 30px;
+  z-index: 8;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+.statusbar .ind { display: flex; gap: 5px; align-items: center; }
+.statusbar .ind i { display: block; background: var(--text-primary); border-radius: 1px; }
+.statusbar .ind .sig  { width: 16px; height: 9px; }
+.statusbar .ind .wifi { width: 14px; height: 9px; }
+.statusbar .ind .bat  {
+  width: 21px; height: 10px; background: none;
+  border: 1px solid var(--text-primary); border-radius: 2px;
+  position: relative;
+}
+.statusbar .ind .bat::after {
+  content: ""; position: absolute;
+  top: 2px; bottom: 2px; left: 2px; right: 6px;
+  background: var(--text-primary);
+}
+
+/* home indicator */
+.home-indicator {
+  position: absolute;
+  bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 134px; height: 5px;
+  border-radius: 3px;
+  background: #3a3a3a;
+  z-index: 8;
+}
+
+/* scroll area */
+.screen {
+  position: absolute;
+  top: 54px; bottom: 0; left: 0; right: 0;
+  overflow-y: auto;
+  padding: 0 22px 44px;
+}
+.screen.has-tabbar { bottom: 66px; }
+.screen::-webkit-scrollbar { width: 0; height: 0; }
+
+/* ── app bar — 3.x layout ──────────────────────────────────── */
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 6px;
+  gap: 12px;
+}
+.appbar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.appbar-title.caps {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.appbar-sub {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* icon button — 36px appbar slot (icon container 3-tier) */
+.icon-btn {
+  flex: none;
+  width: 36px; height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1;
+  cursor: pointer;
+}
+.icon-btn svg { display: block; }
+.icon-btn.ghost { border-color: transparent; background: transparent; }
+
+/* brand mark / step counter row */
+.toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 0;
+}
+.brand {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.brand .mk { color: var(--accent); }
+.stepcount {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── headings — 2.3 hierarchy: one display per screen ──────── */
+.h-display {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.h-display-sub {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.page-h1 {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+/* section title — 11px mono caps */
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.section-title .count { color: var(--text-quaternary); }
+.section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+/* caps label — 10px mono */
+.caps {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+
+/* body text */
+.body  { font-size: 14px; line-height: 1.55; color: var(--text-primary); }
+.body.sm { font-size: 13px; color: var(--text-secondary); }
+.meta  {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.metric {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ── button — primary 1개 원칙 ─────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 9px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: #ededed;
+  color: #0a0a0a;
+}
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-tertiary);
+}
+.btn.block { width: 100%; }
+.btn-row { display: flex; gap: 8px; }
+.btn-row .btn { flex: 1; }
+
+/* ── tag — 모두 동일 회색 outline, dot 색만 변함 ───────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.tag .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex: none;
+}
+.tag.accent  .dot { background: var(--accent); }
+.tag.success .dot { background: var(--success); }
+.tag.warn    .dot { background: var(--warning); }
+.tag.danger  .dot { background: var(--danger); }
+.tag.info    .dot { background: var(--info); }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── card — 모든 카드 동일 스타일 ──────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+/* ── input field — caps mono 라벨 + value ──────────────────── */
+.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  padding: 13px 15px;
+  position: relative;
+}
+.input .lbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.input .val {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.input .val.placeholder { color: var(--text-quaternary); }
+.input .field-action {
+  position: absolute;
+  top: 12px; right: 12px;
+}
+.input-row { display: flex; gap: 8px; }
+.input-row .input { flex: 1; min-width: 0; }
+
+/* status badge inside input / card corner */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.badge .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text-tertiary); flex: none;
+}
+.badge.success .dot { background: var(--success); }
+.badge.warn    .dot { background: var(--warning); }
+.badge.danger  .dot { background: var(--danger); }
+.badge.info    .dot { background: var(--info); }
+.badge.accent  .dot { background: var(--accent); }
+
+/* ── tabs — 활성 탭만 fill + ring ──────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+}
+.tabs .t {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.tabs .t.active {
+  background: var(--bg-base);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── bottom tab bar — 4 슬롯 고정 ──────────────────────────── */
+.tabbar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 66px;
+  display: flex;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  padding-bottom: 14px;
+  z-index: 6;
+}
+.tabbar .tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+  cursor: pointer;
+}
+.tabbar .tab .gl {
+  width: 18px; height: 14px;
+  border: 1.2px solid var(--text-quaternary);
+  border-radius: 3px;
+}
+.tabbar .tab.active { color: var(--text-primary); }
+.tabbar .tab.active .gl { border-color: var(--text-primary); }
+
+/* ── step — 파이프라인 진행 ────────────────────────────────── */
+.step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.step .ic {
+  flex: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.step.done .ic {
+  background: #ededed;
+  color: #0a0a0a;
+}
+.step.active .ic {
+  border: 1.5px solid var(--text-primary);
+}
+.step.active .ic::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px dashed var(--border-strong);
+  animation: spin 3.4s linear infinite;
+}
+.step.todo .ic {
+  border: 1.5px solid var(--border-default);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.step .body-col { flex: 1; min-width: 0; }
+.step .label { font-size: 13.5px; color: var(--text-primary); }
+.step.todo .label { color: var(--text-tertiary); }
+.step .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.step .time {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+/* ── code block — syntax 거의 무채색 ───────────────────────── */
+.code {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.code .ln {
+  display: flex;
+  gap: 12px;
+  white-space: pre;
+}
+.code .ln .n {
+  color: var(--text-quaternary);
+  text-align: right;
+  min-width: 16px;
+  user-select: none;
+}
+.code .kw  { color: var(--text-primary); }
+.code .str { color: var(--text-secondary); }
+.code .com { color: var(--text-quaternary); }
+.code .add { color: var(--success); }
+.code .del { color: var(--danger); }
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  padding: 9px 14px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+}
+.code-header + .code {
+  border-radius: 0 0 12px 12px;
+  border-top: none;
+}
+
+/* ── icon container — 동일 회색 ────────────────────────────── */
+.ico {
+  flex: none;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-tertiary);
+}
+.ico-24 { width: 24px; height: 24px; border-radius: 6px; }
+.ico-28 { width: 28px; height: 28px; border-radius: 7px; }
+.ico-36 { width: 36px; height: 36px; border-radius: 10px; }
+
+/* ── small primitives ──────────────────────────────────────── */
+.divider { height: 1px; background: var(--border-subtle); border: 0; }
+.dot-sep { color: var(--text-quaternary); }
+
+/* progress bar */
+.progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-secondary);
+}
+
+/* segmented selector (provider, etc.) */
+.segment {
+  display: flex;
+  gap: 6px;
+}
+.segment .seg {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-quaternary);
+  cursor: pointer;
+}
+.segment .seg.active {
+  background: var(--bg-input);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* metric grid (bordered, divider lines) */
+.metric-grid {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.metric-grid .cell {
+  flex: 1;
+  padding: 13px 14px;
+}
+.metric-grid .cell + .cell {
+  border-left: 1px solid var(--border-default);
+}
+.metric-grid .cell .k {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.metric-grid .cell .v {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 8px;
+}
+
+/* layout helpers — spacing is the hierarchy (principle 8) */
+.stack    > * + * { margin-top: 8px; }
+.stack-10 > * + * { margin-top: 10px; }
+.stack-14 > * + * { margin-top: 14px; }
+.stack-18 > * + * { margin-top: 18px; }
+.stack-28 > * + * { margin-top: 28px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row.between { justify-content: space-between; }
+.row.top { align-items: flex-start; }
+.grow { flex: 1; min-width: 0; }
+
+/* footer legend — the one accent use per screen */
+.legend {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+}
+.legend .mk { color: var(--accent); }
+
+/* subtle page-load reveal — no glow/gradient, opacity only */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen > * { animation: rise 0.4s ease both; }
+.screen > *:nth-child(2) { animation-delay: 0.04s; }
+.screen > *:nth-child(3) { animation-delay: 0.08s; }
+.screen > *:nth-child(4) { animation-delay: 0.12s; }
+.screen > *:nth-child(5) { animation-delay: 0.16s; }
+.screen > *:nth-child(n+6) { animation-delay: 0.2s; }
+@media (prefers-reduced-motion: reduce) {
+  .screen > *, .step.active .ic::after { animation: none; }
+}
+
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+  </div>
+
+  <div class="screen has-tabbar">
+    <div class="row between" style="padding-top:14px">
+      <div>
+        <span class="brand"><span class="mk">●</span> FeatureDoc</span>
+        <h1 class="h-display" style="margin-top:6px">Repositories</h1>
+      </div>
+      <button class="icon-btn" aria-label="settings">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <circle cx="7.5" cy="7.5" r="2.4" stroke="currentColor" stroke-width="1.1"/>
+          <path d="M7.5 1.4v2M7.5 11.6v2M1.4 7.5h2M11.6 7.5h2M3.2 3.2l1.4 1.4M10.4 10.4l1.4 1.4M11.8 3.2l-1.4 1.4M4.6 10.4l-1.4 1.4" stroke="currentColor" stroke-width="1.1"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="metric-grid" style="margin-top:18px">
+      <div class="cell"><div class="k">Repos</div><div class="v">3</div></div>
+      <div class="cell"><div class="k">Features</div><div class="v">47</div></div>
+      <div class="cell"><div class="k">Spend</div><div class="v">$2.14</div></div>
+    </div>
+
+    <div class="section-title" style="margin-top:28px;align-items:center">
+      <span>Repositories</span>
+      <span class="row" style="gap:12px">
+        <span class="count">3</span>
+        <button class="section-action">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+            <path d="M5.5 1.6v7.8M1.6 5.5h7.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          New
+        </button>
+      </span>
+    </div>
+
+    <div class="stack-10" style="margin-top:12px">
+
+      <div class="card">
+        <div class="row between top">
+          <div class="grow">
+            <div class="body" style="font-weight:600">payments-api</div>
+            <div class="meta" style="margin-top:3px">⎇ main · last analyzed 4m ago</div>
+          </div>
+          <span class="badge success"><span class="dot"></span>Synced</span>
+        </div>
+        <div class="meta" style="margin-top:12px">23 features <span class="dot-sep">·</span> 4 conflicts <span class="dot-sep">·</span> $0.84</div>
+      </div>
+
+      <div class="card">
+        <div class="row between top">
+          <div class="grow">
+            <div class="body" style="font-weight:600">checkout-web</div>
+            <div class="meta" style="margin-top:3px">⎇ release/v3.2 · running</div>
+          </div>
+          <span class="badge info"><span class="dot"></span>Analyzing</span>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="progress grow"><i style="width:62%"></i></div>
+          <span class="meta">62%</span>
+        </div>
+        <div class="meta" style="margin-top:8px">step 3 of 5 · feature extraction</div>
+      </div>
+
+      <div class="card">
+        <div class="row between top">
+          <div class="grow">
+            <div class="body" style="font-weight:600">notif-worker</div>
+            <div class="meta" style="margin-top:3px">⎇ main · 2 days ago</div>
+          </div>
+          <span class="badge warn"><span class="dot"></span>Outdated</span>
+        </div>
+        <div class="meta" style="margin-top:12px">11 features <span class="dot-sep">·</span> +4 commits since analysis</div>
+      </div>
+
+    </div>
+
+    <p class="legend" style="margin-top:24px"><span class="mk">02</span> — discovery · home view</p>
+  </div>
+
+  <nav class="tabbar">
+    <div class="tab active"><span class="gl"></span>Repos</div>
+    <div class="tab"><span class="gl"></span>Activity</div>
+    <div class="tab"><span class="gl"></span>Keys</div>
+    <div class="tab"><span class="gl"></span>Settings</div>
+  </nav>
+  <div class="home-indicator"></div>
+</div>
+</body>
+</html>

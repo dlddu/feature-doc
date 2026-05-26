@@ -36,15 +36,18 @@ docs/
 │   ├── 02-discovery.md
 │   ├── 03-feature-documents.md
 │   └── 04-continuous-maintenance.md
-└── wireframes/            # 10개 모바일 화면 정보 구조 (SVG)
+├── wireframes/            # 10개 모바일 화면 정보 구조 (SVG)
+│   ├── README.md
+│   └── s01 ~ s10 *.svg
+└── mockups/               # 10개 모바일 화면 목업 — 디자인 시스템 적용 HTML (단독 파일)
     ├── README.md
-    └── s01 ~ s10 *.svg
+    └── s01 ~ s10 *.html
 
 tools/
 └── gen-wireframes.js      # wireframe SVG 일괄 생성 스크립트
 ```
 
-각 PRD에는 동일 번호의 테스트 문서가 1:1로 대응합니다. UX 디자인 산출물(`design-system.md`, `wireframes/`)은 PRD가 정의한 acceptance criteria를 어떻게 화면으로 전달할지 결정하며, PRD가 변경되면 wireframe을 먼저 갱신하고 디자인 시스템 토큰으로 mockup을 다시 그리는 순서를 따릅니다.
+각 PRD에는 동일 번호의 테스트 문서가 1:1로 대응합니다. UX 디자인 산출물(`design-system.md`, `wireframes/`, `mockups/`)은 PRD가 정의한 acceptance criteria를 어떻게 화면으로 전달할지 결정하며, PRD가 변경되면 wireframe을 먼저 갱신하고 디자인 시스템 토큰으로 mockup을 다시 그리는 순서를 따릅니다.
 
 ## PRD ↔ 다루는 문제
 
