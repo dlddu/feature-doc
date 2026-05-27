@@ -19,16 +19,16 @@
 | ID  | Wireframe | AC                    | Purpose                                          |
 | --- | --------- | --------------------- | ------------------------------------------------ |
 | S04 | [s04-analysis-progress.svg](./s04-analysis-progress.svg) | AC1.5 · AC4.6         | 분석 파이프라인 진행 상황 (5단계)              |
-| S05 | [s05-cross-cutting-concerns.svg](./s05-cross-cutting-concerns.svg) | AC1.2 · V2            | 추출된 횡단 관심사 (인프라·아키텍처·프레임워크·미들웨어) |
-| S06 | [s06-discovery-strategy.svg](./s06-discovery-strategy.svg) | AC1.3 · V1·V2         | LLM이 만든 탐색 전략 검토 및 승인              |
-| S07 | [s07-feature-candidates.svg](./s07-feature-candidates.svg) | AC1.4 · V1            | feature 후보 목록 + 승인/거부/병합              |
+| S05 | [s05-cross-cutting-concerns.svg](./s05-cross-cutting-concerns.svg) | AC1.2                 | 추출된 횡단 관심사 (인프라·아키텍처·프레임워크·미들웨어) |
+| S06 | [s06-discovery-strategy.svg](./s06-discovery-strategy.svg) | AC1.3                 | LLM이 만든 탐색 전략 검토 및 승인              |
+| S07 | [s07-feature-candidates.svg](./s07-feature-candidates.svg) | AC1.4                 | feature 후보 목록 + 승인/거부/병합              |
 
 ### 03 — Feature Documents
 | ID  | Wireframe | AC                    | Purpose                                          |
 | --- | --------- | --------------------- | ------------------------------------------------ |
 | S08 | [s08-feature-acceptance.svg](./s08-feature-acceptance.svg) | AC2.1 · AC2.2 · AC2.3 | feature의 인수 시나리오 (Given-When-Then 4개)  |
-| S09 | [s09-feature-dependencies.svg](./s09-feature-dependencies.svg) | AC2.4 · AC2.5 · V5    | 종단 의존성 그래프 + 카테고리별 의존성 목록    |
-| S10 | [s10-llm-edit.svg](./s10-llm-edit.svg) | AC3.1 · V3·V4·V7      | LLM 보조 편집 — 자연어 지시 → diff → 승인     |
+| S09 | [s09-feature-dependencies.svg](./s09-feature-dependencies.svg) | AC2.4 · AC2.5         | 종단 의존성 그래프 + 카테고리별 의존성 목록    |
+| S10 | [s10-llm-edit.svg](./s10-llm-edit.svg) | AC3.1                 | LLM 보조 편집 — 자연어 지시 → diff → 승인     |
 
 ## Why wireframes (separate from mockups)
 

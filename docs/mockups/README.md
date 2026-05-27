@@ -40,22 +40,22 @@
 
 ## Mockup index — 디자인 시스템 사용 매핑
 
-각 목업이 [`design-system.md`](../design-system.md)의 어떤 컴포넌트를 쓰는지. 모든 화면은 인라인 CSS를 통해 §1 Foundations(토큰)와 §6 Principles(원칙)를 공통으로 따르므로, 아래는 §4 Components 중 화면별로 두드러지게 쓰인 항목만 적습니다.
+각 목업이 [`design-system.md`](../design-system.md)의 어떤 항목을 쓰는지. 모든 화면은 인라인 CSS를 통해 §1 Foundations(토큰)와 §6 Principles(원칙)를 공통으로 따르므로, 아래 **§4 컴포넌트** 열은 화면별로 두드러지게 쓰인 §4 Components 항목만 적습니다. §4 컴포넌트가 아닌 요소(§2 타이포 역할이나 화면 전용 일회성 요소)는 **§4 외 요소** 열에 따로 둡니다 — 이쪽은 디자인 시스템 §4 컴포넌트 커버리지 검증 대상이 아닙니다.
 
-| ID  | 사용 컴포넌트 (design-system §4) |
-| --- | -------------------------------- |
-| S01 | Input field · Button(primary·secondary) · Tag · Card · Icon container · 세그먼트 선택자 |
-| S02 | Card · Tag(status badge) · Bottom tab bar · 메트릭 그리드 · 진행 바 · Section title(+New 액션) |
-| S03 | Input field · Card · Button(primary·ghost) · Tag(status badge) |
-| S04 | Step(done·active·todo) · Card · Button(secondary) · 진행 링 · Section title |
-| S05 | Card · Section title(caps) |
-| S06 | Code block(kw·str·com) · Tag · Card · Button(primary·secondary) |
-| S07 | Card · Tag(필터 chip·status) · Icon container |
-| S08 | Tabs · Card · Tag · Section title(caps) |
-| S09 | Tabs · Card · Tag · 의존성 그래프(inline SVG) |
-| S10 | Code block(diff add·del) · Card · Tag · Button(primary·secondary) |
+| ID  | 사용 §4 컴포넌트 | §4 외 요소 |
+| --- | ---------------- | ---------- |
+| S01 | Input field · Button(primary·secondary) · Tag · Card · Icon container · Segment selector | — |
+| S02 | Card · Tag(status badge) · Bottom tab bar · Metric grid · Progress bar | Section title (§2.2 타이포 역할) |
+| S03 | Input field · Card · Button(primary·ghost) · Tag(status badge) | — |
+| S04 | Step(done·active·todo — active의 회전 ring 포함) · Card · Button(secondary) | Section title (§2.2 타이포 역할) |
+| S05 | Card | Section title (§2.2 타이포 역할) |
+| S06 | Code block(kw·str·com) · Tag · Card · Button(primary·secondary) | — |
+| S07 | Card · Tag(필터 chip·status) · Icon container | — |
+| S08 | Tabs · Card · Tag | Section title (§2.2 타이포 역할) |
+| S09 | Tabs · Card · Tag | 의존성 그래프 (화면 전용 inline SVG — 디자인 시스템 컴포넌트 아님) |
+| S10 | Code block(diff add·del) · Card · Tag · Button(primary·secondary) | — |
 
-> 이 표는 `doc-tracker.md` 검증의 입력입니다. 목업이 추가/변경되면 이 표와 위 Flows 표를 함께 갱신해야 연결 검증이 유효합니다.
+> 이 표는 `doc-tracker.md` 검증의 입력입니다. 목업이 추가/변경되면 이 표와 위 Flows 표를 함께 갱신해야 연결 검증이 유효합니다. **§4 외 요소** 열의 항목은 §4 컴포넌트 커버리지(사용처 없는 컴포넌트 / 미정의 항목 사용) 검증에서 제외됩니다.
 
 ## Mockup vs Wireframe
 
