@@ -21,6 +21,6 @@ async fn main() {
 
     let addr: SocketAddr = "0.0.0.0:8080".parse().unwrap();
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    println!("featuredoc-hello listening on http://{addr}");
+    println!("featuredoc listening on http://{addr}");
     axum::serve(listener, app).await.unwrap();
 }

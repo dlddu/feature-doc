@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: featuredoc-hello
+  name: featuredoc
   labels:
-    app: featuredoc-hello
+    app.kubernetes.io/name: featuredoc
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: featuredoc-hello
+      app.kubernetes.io/name: featuredoc
   template:
     metadata:
       labels:
-        app: featuredoc-hello
+        app.kubernetes.io/name: featuredoc
     spec:
       containers:
         - name: app
-          image: featuredoc-hello:dev
+          image: featuredoc:dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

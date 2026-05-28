@@ -11,9 +11,9 @@ RUN npm run build
 # ---- stage 2: backend ----
 FROM rust:1.94-slim-bookworm AS backend
 WORKDIR /app
-COPY backend/Cargo.toml ./
+COPY backend/Cargo.toml backend/Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs && \
-    cargo build --release && rm -rf src target/release/featuredoc-hello*
+    cargo build --release && rm -rf src target/release/featuredoc*
 COPY backend/src ./src
 RUN touch src/main.rs && cargo build --release
 
@@ -23,8 +23,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=backend /app/target/release/featuredoc-hello /usr/local/bin/featuredoc-hello
+COPY --from=backend /app/target/release/featuredoc /usr/local/bin/featuredoc
 COPY --from=frontend /app/dist ./dist
 ENV STATIC_DIR=/app/dist
 EXPOSE 8080
-CMD ["/usr/local/bin/featuredoc-hello"]
+CMD ["/usr/local/bin/featuredoc"]

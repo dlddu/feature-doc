@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLUSTER_NAME="${CLUSTER_NAME:-featuredoc}"
-IMAGE="${IMAGE:-featuredoc-hello:dev}"
+IMAGE="${IMAGE:-featuredoc:dev}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
 
@@ -33,7 +33,7 @@ require curl
 
 echo "[1/7] kind create cluster (${CLUSTER_NAME})"
 if ! kind get clusters 2>/dev/null | grep -qx "${CLUSTER_NAME}"; then
-  kind create cluster --name "${CLUSTER_NAME}" --config "${ROOT}/deploy/kind-cluster.yaml"
+  kind create cluster --name "${CLUSTER_NAME}" --config "${ROOT}/deploy/e2e/kind-cluster.yaml"
 fi
 
 echo "[2/7] docker build → ${IMAGE}"
@@ -43,14 +43,13 @@ echo "[3/7] kind load docker-image"
 kind load docker-image "${IMAGE}" --name "${CLUSTER_NAME}"
 
 echo "[4/7] kubectl apply"
-kubectl apply -f "${ROOT}/deploy/deployment.yaml"
-kubectl apply -f "${ROOT}/deploy/service.yaml"
+kubectl apply -f "${ROOT}/deploy/k8s/"
 
 echo "[5/7] wait for rollout"
-kubectl rollout status deployment/featuredoc-hello --timeout=180s
+kubectl rollout status deployment/featuredoc --timeout=180s
 
-echo "[6/7] port-forward svc/featuredoc-hello ${LOCAL_PORT}:8080"
-kubectl port-forward svc/featuredoc-hello "${LOCAL_PORT}:8080" >/tmp/featuredoc-pf.log 2>&1 &
+echo "[6/7] port-forward svc/featuredoc ${LOCAL_PORT}:8080"
+kubectl port-forward svc/featuredoc "${LOCAL_PORT}:8080" >/tmp/featuredoc-pf.log 2>&1 &
 PF_PID=$!
 for _ in $(seq 1 30); do
   if curl -fsS "http://localhost:${LOCAL_PORT}/hello" >/dev/null 2>&1; then
