@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
 
 permissions:
@@ -61,7 +61,7 @@ jobs:
         run: bash scripts/e2e.sh
 
       - name: Log in to GHCR
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -69,16 +69,16 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tag & push image
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           REPO="ghcr.io/${OWNER}/featuredoc"
-          SHA="${{ github.sha }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
 
-          docker tag featuredoc:dev "${REPO}:${SHA}"
-          docker push "${REPO}:${SHA}"
-
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag featuredoc:dev "${REPO}:latest"
-            docker push "${REPO}:latest"
-          fi
+          docker tag featuredoc:dev "${REPO}:pr-${PR_NUMBER}"
+          docker tag featuredoc:dev "${REPO}:${HEAD_SHA}"
+          docker tag featuredoc:dev "${REPO}:latest"
+          docker push "${REPO}:pr-${PR_NUMBER}"
+          docker push "${REPO}:${HEAD_SHA}"
+          docker push "${REPO}:latest"

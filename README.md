@@ -119,7 +119,7 @@ kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로
 
 ### CI (GitHub Actions)
 
-`.github/workflows/ci.yml` — 단일 워크플로, `ubuntu-24.04-arm` runner. 모든 push와 PR에서 `cargo test` → kind+kubectl 설치 → `scripts/e2e.sh`(docker build + 클러스터 e2e)까지 돌리고, push 이벤트에서는 이미지를 `ghcr.io/<owner>/featuredoc:<sha>`로 푸시(main 브랜치에만 추가로 `:latest`).
+`.github/workflows/ci.yml` — 단일 워크플로, `ubuntu-24.04-arm` runner. **main 푸시 + 모든 PR**에서 `cargo test` → kind+kubectl 설치 → `scripts/e2e.sh`(docker build + 클러스터 e2e)까지 그린 검증. 이미지 푸시는 **PR 이벤트에서만** `ghcr.io/<owner>/featuredoc`에 `pr-<번호>` · `<PR head SHA>` · `latest` 세 태그(main 푸시는 e2e만 통과시키고 푸시 없음).
 
 ## 문서 작성 원칙
 
