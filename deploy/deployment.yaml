@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: featuredoc-hello
+  labels:
+    app: featuredoc-hello
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: featuredoc-hello
+  template:
+    metadata:
+      labels:
+        app: featuredoc-hello
+    spec:
+      containers:
+        - name: app
+          image: featuredoc-hello:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /hello
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /hello
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"

@@ -1,0 +1,13 @@
+.git
+.gitignore
+docs
+tools
+e2e
+deploy
+scripts
+README.md
+**/node_modules
+**/dist
+**/target
+**/.vite
+**/*.log
