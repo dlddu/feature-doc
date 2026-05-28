@@ -63,7 +63,6 @@ jobs:
   push:
     name: build & push image (ghcr)
     needs: test
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
@@ -88,7 +87,8 @@ jobs:
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/featuredoc
           tags: |
-            type=raw,value=pr-${{ github.event.pull_request.number }}
+            type=raw,value=pr-${{ github.event.pull_request.number }},enable=${{ github.event_name == 'pull_request' }}
+            type=raw,value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
             type=raw,value=${{ github.sha }}
             type=raw,value=latest
 
