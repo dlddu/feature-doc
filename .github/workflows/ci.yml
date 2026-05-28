@@ -89,7 +89,7 @@ jobs:
           images: ghcr.io/${{ env.OWNER_LC }}/featuredoc
           tags: |
             type=raw,value=pr-${{ github.event.pull_request.number }}
-            type=raw,value=${{ github.event.pull_request.head.sha }}
+            type=raw,value=${{ github.sha }}
             type=raw,value=latest
 
       - name: Build & push image
