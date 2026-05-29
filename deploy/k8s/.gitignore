@@ -1,0 +1,3 @@
+# Real Secret values must never be committed. Copy secret.yaml.example to
+# secret.yaml for non-mock deployments; that copy stays local.
+secret.yaml

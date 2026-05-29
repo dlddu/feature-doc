@@ -43,6 +43,10 @@ echo "[3/7] kind load docker-image"
 kind load docker-image "${IMAGE}" --name "${CLUSTER_NAME}"
 
 echo "[4/7] kubectl apply"
+# The credentials Secret ships as an .example template (non-secret, mock-mode
+# placeholders) so it is not applied by the directory glob below — apply it
+# explicitly for kind/CI.
+kubectl apply -f "${ROOT}/deploy/k8s/secret.yaml.example"
 kubectl apply -f "${ROOT}/deploy/k8s/"
 
 echo "[5/7] wait for rollout"
