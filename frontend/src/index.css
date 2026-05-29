@@ -1,28 +1,44 @@
+/* ============================================================
+   FeatureDoc — application stylesheet
+   ------------------------------------------------------------
+   Tokens + components ported verbatim from docs/design-system.md
+   (v0.1), via the shared mockup stylesheet. The device-frame
+   chrome (.frame / .statusbar / .home-indicator) is intentionally
+   omitted — the real app is full-bleed mobile-first. No new
+   values are introduced here.
+   ============================================================ */
+
 :root {
+  /* surfaces */
   --bg-base:        #0a0a0a;
   --bg-elevated:    #0f0f0f;
   --bg-card:        #141414;
   --bg-input:       #181818;
   --bg-hover:       #1c1c1c;
 
+  /* borders */
   --border-subtle:  #1d1d1d;
   --border-default: #272727;
   --border-strong:  #333333;
 
+  /* text */
   --text-primary:    #ededed;
   --text-secondary:  #9a9a9a;
   --text-tertiary:   #6a6a6a;
   --text-quaternary: #454545;
 
+  /* status */
   --success: #86b89a;
   --warning: #c9a868;
   --danger:  #c98080;
   --info:    #8aa4c4;
 
+  /* accent */
   --accent:        #c8ff5e;
   --accent-dim:    rgba(200, 255, 94, 0.06);
   --accent-border: rgba(200, 255, 94, 0.18);
 
+  /* fonts */
   --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
 }
@@ -43,29 +59,278 @@ body {
   font-feature-settings: 'ss01', 'cv11';
 }
 
+/* ── screen — mobile-first column, centred on wider viewports ── */
 .screen {
+  width: 100%;
+  max-width: 393px;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 22px;
-  gap: 14px;
+  margin: 0 auto;
+  padding: 14px 22px 44px;
+  overflow-y: auto;
 }
 
+/* ── brand mark / step counter row ─────────────────────────── */
+.toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 0;
+}
+.brand {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.brand .mk { color: var(--accent); }
+.stepcount {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── headings ──────────────────────────────────────────────── */
 .h-display {
   font-family: var(--font-sans);
   font-size: 20px;
   font-weight: 500;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
   color: var(--text-primary);
 }
+.h-display-sub {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-top: 6px;
+}
 
+/* ── caps / body text ──────────────────────────────────────── */
+.caps {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+.body { font-size: 14px; line-height: 1.55; color: var(--text-primary); }
+.body.sm { font-size: 13px; color: var(--text-secondary); }
 .body-small {
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 400;
   line-height: 1.55;
   color: var(--text-secondary);
+}
+
+/* ── button ────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 9px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: #ededed; color: #0a0a0a; }
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+.btn-ghost { background: transparent; color: var(--text-tertiary); }
+.btn.block { width: 100%; }
+.btn-row { display: flex; gap: 8px; }
+.btn-row .btn { flex: 1; }
+
+/* ── tag ───────────────────────────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.tag .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex: none;
+}
+.tag.accent  .dot { background: var(--accent); }
+.tag.success .dot { background: var(--success); }
+.tag.warn    .dot { background: var(--warning); }
+.tag.danger  .dot { background: var(--danger); }
+.tag.info    .dot { background: var(--info); }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── card ──────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+/* ── input field ───────────────────────────────────────────── */
+.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  padding: 13px 15px;
+  position: relative;
+}
+.input .lbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.input .val {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.input .val.placeholder { color: var(--text-quaternary); }
+.input .field-action { position: absolute; top: 12px; right: 12px; }
+
+/* text entry that lives inside the .input shell */
+.input .entry {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  padding-right: 34px;
+}
+.input .entry::placeholder { color: var(--text-quaternary); }
+
+/* ── status badge ──────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.badge .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text-tertiary); flex: none;
+}
+.badge.success .dot { background: var(--success); }
+.badge.warn    .dot { background: var(--warning); }
+.badge.danger  .dot { background: var(--danger); }
+.badge.info    .dot { background: var(--info); }
+.badge.accent  .dot { background: var(--accent); }
+
+/* ── segmented selector ────────────────────────────────────── */
+.segment { display: flex; gap: 6px; }
+.segment .seg {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-quaternary);
+  cursor: pointer;
+  background: transparent;
+  font-family: var(--font-sans);
+}
+.segment .seg.active {
+  background: var(--bg-input);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── icon container ────────────────────────────────────────── */
+.ico {
+  flex: none;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-tertiary);
+}
+.ico-24 { width: 24px; height: 24px; border-radius: 6px; }
+.ico-28 { width: 28px; height: 28px; border-radius: 7px; }
+.ico-36 { width: 36px; height: 36px; border-radius: 10px; }
+.ico.btn-like { cursor: pointer; }
+
+/* ── small primitives ──────────────────────────────────────── */
+.divider { height: 1px; background: var(--border-subtle); border: 0; }
+
+/* ── layout helpers — spacing is the hierarchy ─────────────── */
+.stack    > * + * { margin-top: 8px; }
+.stack-10 > * + * { margin-top: 10px; }
+.stack-14 > * + * { margin-top: 14px; }
+.stack-18 > * + * { margin-top: 18px; }
+.stack-28 > * + * { margin-top: 28px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row.between { justify-content: space-between; }
+.row.top { align-items: flex-start; }
+.grow { flex: 1; min-width: 0; }
+
+/* ── footer legend — the one accent use per screen ─────────── */
+.legend {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+}
+.legend .mk { color: var(--accent); }
+
+/* ── error text — danger as foreground, sparingly ─────────── */
+.field-error {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--danger);
+}
+
+/* subtle page-load reveal — opacity only */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen > * { animation: rise 0.4s ease both; }
+.screen > *:nth-child(2) { animation-delay: 0.04s; }
+.screen > *:nth-child(3) { animation-delay: 0.08s; }
+.screen > *:nth-child(4) { animation-delay: 0.12s; }
+.screen > *:nth-child(5) { animation-delay: 0.16s; }
+.screen > *:nth-child(n+6) { animation-delay: 0.2s; }
+@media (prefers-reduced-motion: reduce) {
+  .screen > * { animation: none; }
 }
