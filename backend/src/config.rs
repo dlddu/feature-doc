@@ -28,9 +28,9 @@ impl Mode {
 #[derive(Clone)]
 pub struct GitHubConfig {
     pub mode: Mode,
-    /// GitHub App numeric id (for JWT `iss`).
-    pub app_id: String,
-    /// GitHub App user-authorization OAuth client id.
+    /// GitHub App user-authorization OAuth client id. Doubles as the JWT
+    /// issuer for app authentication (GitHub accepts the client_id in place of
+    /// the legacy numeric App ID, changelog 2024-05-01).
     pub client_id: String,
     pub client_secret: SecretString,
     /// PEM-encoded RSA private key used to sign the App JWT.
@@ -71,7 +71,6 @@ impl Config {
             ),
             github: GitHubConfig {
                 mode: Mode::from_env("GITHUB_MODE"),
-                app_id: env_or("GITHUB_APP_ID", "000000"),
                 client_id: env_or("GITHUB_CLIENT_ID", "Iv1.mockclientid"),
                 client_secret: SecretString::new(env_or("GITHUB_CLIENT_SECRET", "mock-secret")),
                 private_key_pem: SecretString::new(env_or("GITHUB_APP_PRIVATE_KEY", "")),
@@ -91,7 +90,6 @@ impl Config {
             cookie_secure: false,
             github: GitHubConfig {
                 mode: Mode::Mock,
-                app_id: "000000".into(),
                 client_id: "Iv1.mockclientid".into(),
                 client_secret: SecretString::new("mock-secret"),
                 private_key_pem: SecretString::new(""),

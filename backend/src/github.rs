@@ -147,7 +147,11 @@ impl RealGitHub {
         let claims = Claims {
             iat: now - 60,
             exp: now + 9 * 60,
-            iss: self.cfg.app_id.clone(),
+            // Issuer is the App's client_id. GitHub now accepts the client_id
+            // in place of the numeric App ID for JWT auth, and recommends it
+            // since future features rely on it (changelog 2024-05-01). This
+            // also means we carry one credential, not two.
+            iss: self.cfg.client_id.clone(),
         };
         let key = EncodingKey::from_rsa_pem(self.cfg.private_key_pem.expose().as_bytes())
             .map_err(|e| {
