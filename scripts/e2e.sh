@@ -67,4 +67,13 @@ BASE_URL="http://localhost:${LOCAL_PORT}" bash "${ROOT}/e2e/smoke.sh"
   BASE_URL="http://localhost:${LOCAL_PORT}" npm test
 )
 
+# AC4.3 / scenario 5: a plaintext key was registered during the smoke test;
+# it must not appear anywhere in the application logs.
+echo "[audit] assert credential plaintext absent from logs"
+if kubectl logs deployment/featuredoc --tail=-1 2>/dev/null | grep -q 'PLAINTEXTSENTINEL'; then
+  echo "  fail: plaintext key leaked into pod logs"
+  exit 1
+fi
+echo "  ok: no plaintext in logs"
+
 echo "all green."

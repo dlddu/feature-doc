@@ -1,0 +1,14 @@
+# Durable storage for the SQLite database (users, sessions, installations,
+# encrypted LLM keys, audit log). Survives pod restarts.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: featuredoc-data
+  labels:
+    app.kubernetes.io/name: featuredoc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

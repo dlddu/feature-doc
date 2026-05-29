@@ -6,6 +6,9 @@ metadata:
     app.kubernetes.io/name: featuredoc
 spec:
   replicas: 1
+  # SQLite on a single RWO volume: never run two writers at once.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: featuredoc
@@ -21,6 +24,27 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+          env:
+            - name: BASE_URL
+              value: "http://localhost:8080"
+            - name: DATABASE_URL
+              value: "sqlite:/data/featuredoc.db?mode=rwc"
+            # Mock mode in kind/CI: no outbound GitHub / LLM calls.
+            - name: GITHUB_MODE
+              value: "mock"
+            - name: LLM_MODE
+              value: "mock"
+            - name: COOKIE_SECURE
+              value: "0"
+            - name: RUST_LOG
+              value: "info,tower_http=info"
+          # Credentials (KEK, GitHub App secrets) come from the Secret.
+          envFrom:
+            - secretRef:
+                name: featuredoc-credentials
+          volumeMounts:
+            - name: data
+              mountPath: /data
           readinessProbe:
             httpGet:
               path: /hello
@@ -41,3 +65,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "128Mi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: featuredoc-data
