@@ -8,17 +8,14 @@ resources:
   - service.yaml
   - pvc.yaml
 
-# Credentials + config consumed via envFrom. The committed values are
-# PLACEHOLDERS: replace FEATUREDOC_KEK and the GITHUB_* values in a real
-# deployment (sealed secret, external secret, or a private overlay). The e2e
-# overlay replaces this whole secret with deterministic stub-mode values.
+# Secrets consumed via envFrom (non-secret config lives in the deployment env).
+# The committed values are PLACEHOLDERS: replace FEATUREDOC_KEK and the GITHUB_*
+# values in a real deployment (sealed secret, external secret, or a private
+# overlay). The e2e overlay replaces this secret with a deterministic test KEK.
 secretGenerator:
   - name: featuredoc-secrets
     literals:
-      - FEATUREDOC_MODE=real
       - FEATUREDOC_KEK=REPLACE_ME_WITH_A_RANDOM_32B_SECRET
-      - BASE_URL=https://featuredoc.example.com
-      - COOKIE_SECURE=true
       - GITHUB_APP_SLUG=featuredoc
       - GITHUB_CLIENT_ID=
       - GITHUB_CLIENT_SECRET=

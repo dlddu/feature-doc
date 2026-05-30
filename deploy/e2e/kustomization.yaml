@@ -14,16 +14,14 @@ images:
     newName: featuredoc
     newTag: dev
 
-# Replace the base secret with deterministic stub-mode values: no real GitHub or
-# LLM network calls, plain-http cookies, a throwaway KEK (plan: "테스트 더블로 모킹").
+# Replace the base secret with a deterministic e2e KEK (GitHub creds stay empty;
+# stub mode never calls GitHub). Run mode + base URL + cookie flag are non-secret
+# env, overridden on the deployment below.
 secretGenerator:
   - name: featuredoc-secrets
     behavior: replace
     literals:
-      - FEATUREDOC_MODE=stub
       - FEATUREDOC_KEK=e2e-stub-kek-not-a-real-secret
-      - BASE_URL=http://localhost:8080
-      - COOKIE_SECURE=false
       - GITHUB_APP_SLUG=featuredoc
       - GITHUB_CLIENT_ID=
       - GITHUB_CLIENT_SECRET=
@@ -47,3 +45,11 @@ patches:
             containers:
               - name: app
                 imagePullPolicy: IfNotPresent
+                # Stub mode, http cookies, local base URL (merged by env name).
+                env:
+                  - name: FEATUREDOC_MODE
+                    value: "stub"
+                  - name: BASE_URL
+                    value: "http://localhost:8080"
+                  - name: COOKIE_SECURE
+                    value: "false"

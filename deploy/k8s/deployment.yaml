@@ -30,8 +30,15 @@ spec:
             # SQLite lives on the mounted PVC; created + migrated on first boot.
             - name: DATABASE_URL
               value: "sqlite:///data/featuredoc.db?mode=rwc"
+            # Non-secret runtime config (the e2e overlay patches these).
+            - name: FEATUREDOC_MODE
+              value: "real"
+            - name: BASE_URL
+              value: "https://featuredoc.example.com"
+            - name: COOKIE_SECURE
+              value: "true"
           envFrom:
-            # KEK, GitHub App credentials, mode/base-url/cookie flags.
+            # Secrets only: KEK + GitHub App credentials.
             - secretRef:
                 name: featuredoc-secrets
           volumeMounts:
