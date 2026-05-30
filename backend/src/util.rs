@@ -16,3 +16,10 @@ pub fn random_token() -> String {
     rand::rngs::OsRng.fill_bytes(&mut bytes);
     hex::encode(bytes)
 }
+
+/// Parses an RFC 3339 timestamp (as GitHub returns for token expiry) to unix seconds.
+pub fn rfc3339_to_unix(s: &str) -> Option<i64> {
+    time::OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+        .ok()
+        .map(|dt| dt.unix_timestamp())
+}

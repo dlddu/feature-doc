@@ -6,14 +6,14 @@ use axum::http::StatusCode;
 use axum::response::Redirect;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use axum_extra::extract::cookie::CookieJar;
 use serde::{Deserialize, Serialize};
 
 use crate::config::Mode;
 use crate::error::AppError;
 use crate::models::User;
 use crate::state::AppState;
-use crate::{github_api, session, users, util};
+use crate::{cookies, github_api, session, users, util};
 
 const STATE_COOKIE: &str = "fd_oauth_state";
 
@@ -40,7 +40,7 @@ async fn login(
     Query(params): Query<LoginParams>,
 ) -> Result<(CookieJar, Redirect), AppError> {
     let nonce = util::random_token();
-    let jar = jar.add(make_cookie(&state, STATE_COOKIE, nonce.clone()));
+    let jar = jar.add(cookies::make(&state, STATE_COOKIE, nonce.clone()));
 
     let location = match state.config.mode {
         Mode::Stub => {
@@ -88,8 +88,8 @@ async fn callback(
     let token = session::create(&state.db, &user.id).await?;
 
     let jar = jar
-        .remove(removal_cookie(STATE_COOKIE))
-        .add(make_cookie(&state, session::SESSION_COOKIE, token));
+        .remove(cookies::removal(STATE_COOKIE))
+        .add(cookies::make(&state, session::SESSION_COOKIE, token));
 
     Ok((jar, Redirect::to("/")))
 }
@@ -102,7 +102,7 @@ async fn logout(
     if let Some(c) = jar.get(session::SESSION_COOKIE) {
         session::delete(&state.db, c.value()).await?;
     }
-    let jar = jar.remove(removal_cookie(session::SESSION_COOKIE));
+    let jar = jar.remove(cookies::removal(session::SESSION_COOKIE));
     Ok((jar, StatusCode::NO_CONTENT))
 }
 
@@ -152,21 +152,6 @@ impl FromRequestParts<AppState> for CurrentUser {
             None => Err(AppError::Unauthorized),
         }
     }
-}
-
-fn make_cookie(state: &AppState, name: &'static str, value: String) -> Cookie<'static> {
-    let mut c = Cookie::new(name, value);
-    c.set_http_only(true);
-    c.set_same_site(SameSite::Lax);
-    c.set_path("/");
-    c.set_secure(state.config.cookie_secure);
-    c
-}
-
-fn removal_cookie(name: &'static str) -> Cookie<'static> {
-    let mut c = Cookie::new(name, "");
-    c.set_path("/");
-    c
 }
 
 fn sanitize_handle(s: &str) -> String {
