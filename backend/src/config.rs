@@ -110,6 +110,37 @@ fn trim_trailing_slash(s: &str) -> String {
     s.trim_end_matches('/').to_string()
 }
 
+// Redacting Debug: secrets (KEK, App private key, client secret) render as
+// [REDACTED] so a `{:?}` of the config can never leak them (AC4.3). app_id and
+// client_id are public identifiers and are shown.
+impl std::fmt::Debug for GithubConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GithubConfig")
+            .field("app_id", &self.app_id)
+            .field("app_private_key", &"[REDACTED]")
+            .field("client_id", &self.client_id)
+            .field("client_secret", &"[REDACTED]")
+            .field("app_slug", &self.app_slug)
+            .field("api_base", &self.api_base)
+            .field("web_base", &self.web_base)
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("database_url", &self.database_url)
+            .field("base_url", &self.base_url)
+            .field("static_dir", &self.static_dir)
+            .field("kek", &"[REDACTED]")
+            .field("mode", &self.mode)
+            .field("github", &self.github)
+            .field("cookie_secure", &self.cookie_secure)
+            .finish()
+    }
+}
+
 /// Derives a stable 32-byte KEK from an arbitrary secret string via domain-separated SHA-256.
 fn derive_kek(secret: &str) -> [u8; 32] {
     let mut h = Sha256::new();

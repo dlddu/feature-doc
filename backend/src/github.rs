@@ -93,6 +93,13 @@ async fn setup(
         },
     )
     .await?;
+    crate::audit::record(
+        &state.db,
+        Some(&user.id),
+        "github.install",
+        info.account_login.as_deref(),
+    )
+    .await;
 
     let jar = jar.remove(cookies::removal(SETUP_STATE_COOKIE));
     Ok((jar, Redirect::to("/")))

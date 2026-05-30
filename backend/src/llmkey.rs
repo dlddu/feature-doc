@@ -133,6 +133,13 @@ async fn register(
     .bind(now)
     .execute(&state.db)
     .await?;
+    crate::audit::record(
+        &state.db,
+        Some(&user.id),
+        "llm_key.register",
+        Some(provider.as_str()),
+    )
+    .await;
 
     Ok((
         StatusCode::CREATED,
@@ -182,6 +189,7 @@ async fn revoke(
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
+    crate::audit::record(&state.db, Some(&user.id), "llm_key.revoke", Some(&id)).await;
     Ok(StatusCode::NO_CONTENT)
 }
 

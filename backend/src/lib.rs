@@ -3,6 +3,7 @@
 //! The binary (`main.rs`) is a thin wrapper that loads [`config::Config`],
 //! connects the database, and serves [`build_router`].
 
+pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod cookies;
@@ -43,6 +44,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(auth::routes())
         .merge(github::routes())
         .merge(llmkey::routes())
+        .merge(audit::routes())
         .fallback_service(static_service)
         .layer(TraceLayer::new_for_http())
         .with_state(state)

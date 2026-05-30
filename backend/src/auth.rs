@@ -86,6 +86,7 @@ async fn callback(
     let gh = github_api::exchange_code_for_user(&state, &params.code).await?;
     let user = users::upsert(&state.db, &gh).await?;
     let token = session::create(&state.db, &user.id).await?;
+    crate::audit::record(&state.db, Some(&user.id), "auth.login", None).await;
 
     let jar = jar
         .remove(cookies::removal(STATE_COOKIE))
