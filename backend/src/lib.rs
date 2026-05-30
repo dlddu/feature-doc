@@ -6,12 +6,14 @@
 pub mod auth;
 pub mod config;
 pub mod cookies;
+pub mod crypto;
 pub mod db;
 pub mod error;
 pub mod github;
 pub mod github_api;
 pub mod github_app;
 pub mod installations;
+pub mod llmkey;
 pub mod models;
 pub mod session;
 pub mod state;
@@ -40,6 +42,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/hello", get(hello))
         .merge(auth::routes())
         .merge(github::routes())
+        .merge(llmkey::routes())
         .fallback_service(static_service)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
