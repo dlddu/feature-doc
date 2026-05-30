@@ -16,8 +16,10 @@ spec:
     spec:
       containers:
         - name: app
-          image: featuredoc:dev
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/dlddu/featuredoc:latest
+          # imagePullPolicy intentionally omitted: with the :latest tag it
+          # defaults to Always, so every pod start pulls the newest image.
+          # (The e2e overlay in deploy/e2e/ patches this to IfNotPresent.)
           ports:
             - containerPort: 8080
               name: http

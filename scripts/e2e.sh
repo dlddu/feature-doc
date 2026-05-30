@@ -42,8 +42,8 @@ docker build -t "${IMAGE}" "${ROOT}"
 echo "[3/7] kind load docker-image"
 kind load docker-image "${IMAGE}" --name "${CLUSTER_NAME}"
 
-echo "[4/7] kubectl apply"
-kubectl apply -f "${ROOT}/deploy/k8s/"
+echo "[4/7] kubectl apply -k (e2e overlay)"
+kubectl apply -k "${ROOT}/deploy/e2e/"
 
 echo "[5/7] wait for rollout"
 kubectl rollout status deployment/featuredoc --timeout=180s
