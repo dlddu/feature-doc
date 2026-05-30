@@ -6,6 +6,9 @@ metadata:
     app.kubernetes.io/name: featuredoc
 spec:
   replicas: 1
+  strategy:
+    # SQLite on a ReadWriteOnce volume: never let two pods mount it at once.
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: featuredoc
@@ -23,7 +26,19 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+          env:
+            # SQLite lives on the mounted PVC; created + migrated on first boot.
+            - name: DATABASE_URL
+              value: "sqlite:///data/featuredoc.db?mode=rwc"
+          envFrom:
+            # KEK, GitHub App credentials, mode/base-url/cookie flags.
+            - secretRef:
+                name: featuredoc-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
           readinessProbe:
+            # /hello only answers after migrations apply at startup.
             httpGet:
               path: /hello
               port: http
@@ -43,3 +58,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "128Mi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: featuredoc-data

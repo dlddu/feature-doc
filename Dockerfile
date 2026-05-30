@@ -15,6 +15,9 @@ COPY backend/Cargo.toml backend/Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs && \
     cargo build --release && rm -rf src target/release/featuredoc*
 COPY backend/src ./src
+# migrations are embedded into the binary at compile time by sqlx::migrate!,
+# so they must be present for the real build (but not in the runtime image).
+COPY backend/migrations ./migrations
 RUN touch src/main.rs && cargo build --release
 
 # ---- stage 3: runtime ----

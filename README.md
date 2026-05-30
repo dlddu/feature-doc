@@ -46,27 +46,29 @@ docs/
 tools/
 └── gen-wireframes.js      # wireframe SVG 일괄 생성 스크립트
 
-backend/                   # axum 0.8 — GET /hello + dist 정적 서빙
+backend/                   # axum 0.8 — /hello + S01 자격증명 API(GitHub App·LLM Key, 봉투 암호화) + SQLite + dist 정적 서빙
 ├── Cargo.toml
-└── src/main.rs
+├── migrations/            # SQLite 스키마 (sqlx migrate — 바이너리에 임베드)
+└── src/                   # lib(config·db·auth·github·llmkey·crypto·audit…) + main
 
-frontend/                  # Vite 8 + React 19 — 디자인 시스템 토큰으로 인사말 렌더
+frontend/                  # Vite 8 + React 19 — S01 Credentials Setup 화면 (디자인 시스템 토큰)
 ├── package.json
 ├── index.html
-└── src/{App.tsx, main.tsx, index.css}
+└── src/{App.tsx, CredentialsSetup.tsx, api.ts, main.tsx, index.css}
 
 deploy/
-├── k8s/                   # 정식 매니페스트 = kustomize 베이스 (ghcr.io/dlddu/featuredoc:latest)
+├── k8s/                   # 정식 매니페스트 = kustomize 베이스 (deployment·service·pvc + featuredoc-secrets)
 │   ├── kustomization.yaml
 │   ├── deployment.yaml
-│   └── service.yaml
-└── e2e/                   # e2e 전용 오버레이 (이미지 featuredoc:dev + IfNotPresent로 패치)
+│   ├── service.yaml
+│   └── pvc.yaml
+└── e2e/                   # e2e 전용 오버레이 (featuredoc:dev + IfNotPresent + stub-mode secret)
     ├── kustomization.yaml
     └── kind-cluster.yaml
 
-e2e/                       # HTTP smoke + Playwright 1개
+e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 포함) + Playwright 1개
 ├── smoke.sh
-└── tests/hello.spec.ts
+└── tests/s01.spec.ts
 
 scripts/
 └── e2e.sh                 # kind 생성 → build → load → apply → port-forward → e2e
@@ -90,7 +92,7 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 
 ## Walking skeleton 실행
 
-문서 외에 동작 검증용 hello-world walking skeleton이 함께 있습니다. 단일 axum 서비스가 `/hello`(JSON) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 프론트는 디자인 시스템 토큰으로 인사말을 그립니다.
+문서 외에 동작하는 수직 슬라이스가 함께 있습니다. 단일 axum 서비스가 `/hello`(프로브) + 자격증명 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 프론트는 디자인 시스템 토큰으로 S01 Credentials Setup 화면을 그립니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
 
 ### 로컬 (k8s 없이)
 
@@ -98,8 +100,8 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 # 1) 프론트 빌드
 ( cd frontend && npm install && npm run build )
 
-# 2) 백엔드 실행 (frontend/dist 서빙)
-( cd backend && STATIC_DIR=../frontend/dist cargo run --release )
+# 2) 백엔드 실행 (frontend/dist 서빙) — S01 흐름을 외부 연동 없이 보려면 stub 모드
+( cd backend && STATIC_DIR=../frontend/dist FEATUREDOC_MODE=stub cargo run --release )
 
 # 3) 확인
 curl http://localhost:8080/hello

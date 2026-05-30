@@ -1,4 +1,8 @@
 //! Shared test scaffolding: a stub-mode AppState backed by a throwaway SQLite file.
+//!
+//! Each integration-test binary inlines this module but uses only the helpers it
+//! needs, so allow the unused ones here rather than per call site.
+#![allow(dead_code)]
 
 use std::path::PathBuf;
 use std::sync::Arc;
