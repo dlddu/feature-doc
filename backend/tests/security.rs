@@ -65,7 +65,6 @@ fn config_debug_redacts_secrets() {
         kek: [0xAB; 32],
         mode: Mode::Real,
         github: GithubConfig {
-            app_id: "12345".into(),
             app_private_key: "-----BEGIN RSA PRIVATE KEY-----secretpem".into(),
             client_id: "Iv1.public".into(),
             client_secret: "shhh-super-secret-value".into(),
@@ -80,8 +79,8 @@ fn config_debug_redacts_secrets() {
     assert!(!dump.contains("super-secret-value"), "client secret leaked: {dump}");
     assert!(!dump.contains("BEGIN RSA PRIVATE KEY"), "private key leaked");
     assert!(!dump.contains("ababab"), "kek bytes leaked");
-    // Public identifiers are still shown.
-    assert!(dump.contains("12345") && dump.contains("Iv1.public"));
+    // The public client id is still shown.
+    assert!(dump.contains("Iv1.public"));
 }
 
 #[tokio::test]

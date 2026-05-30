@@ -32,7 +32,6 @@ pub async fn stub_state() -> (AppState, PathBuf) {
         kek: [9u8; 32],
         mode: Mode::Stub,
         github: GithubConfig {
-            app_id: String::new(),
             app_private_key: String::new(),
             client_id: String::new(),
             client_secret: String::new(),

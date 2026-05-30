@@ -19,7 +19,6 @@ secretGenerator:
       - FEATUREDOC_KEK=REPLACE_ME_WITH_A_RANDOM_32B_SECRET
       - BASE_URL=https://featuredoc.example.com
       - COOKIE_SECURE=true
-      - GITHUB_APP_ID=
       - GITHUB_APP_SLUG=featuredoc
       - GITHUB_CLIENT_ID=
       - GITHUB_CLIENT_SECRET=

@@ -24,7 +24,6 @@ secretGenerator:
       - FEATUREDOC_KEK=e2e-stub-kek-not-a-real-secret
       - BASE_URL=http://localhost:8080
       - COOKIE_SECURE=false
-      - GITHUB_APP_ID=
       - GITHUB_APP_SLUG=featuredoc
       - GITHUB_CLIENT_ID=
       - GITHUB_CLIENT_SECRET=

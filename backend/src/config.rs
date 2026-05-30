@@ -23,9 +23,9 @@ pub enum Mode {
 /// (repository access). See plan: "로그인·설치를 단일 GitHub App으로 통합".
 #[derive(Clone)]
 pub struct GithubConfig {
-    pub app_id: String,
     /// PEM-encoded RSA private key used to mint short-lived App JWTs. Secret.
     pub app_private_key: String,
+    /// Public client ID — the OAuth authorize client_id and the App JWT `iss`.
     pub client_id: String,
     /// OAuth client secret for the user-authorization code exchange. Secret.
     pub client_secret: String,
@@ -67,7 +67,6 @@ impl Config {
         let kek = derive_kek(kek_secret.as_deref().unwrap_or("insecure-development-kek"));
 
         let github = GithubConfig {
-            app_id: env_or("GITHUB_APP_ID", ""),
             app_private_key: read_secret("GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_PRIVATE_KEY_FILE"),
             client_id: env_or("GITHUB_CLIENT_ID", ""),
             client_secret: env_or("GITHUB_CLIENT_SECRET", ""),
@@ -111,12 +110,11 @@ fn trim_trailing_slash(s: &str) -> String {
 }
 
 // Redacting Debug: secrets (KEK, App private key, client secret) render as
-// [REDACTED] so a `{:?}` of the config can never leak them (AC4.3). app_id and
-// client_id are public identifiers and are shown.
+// [REDACTED] so a `{:?}` of the config can never leak them (AC4.3). client_id is
+// a public identifier and is shown.
 impl std::fmt::Debug for GithubConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GithubConfig")
-            .field("app_id", &self.app_id)
             .field("app_private_key", &"[REDACTED]")
             .field("client_id", &self.client_id)
             .field("client_secret", &"[REDACTED]")

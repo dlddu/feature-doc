@@ -159,7 +159,10 @@ pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<
     }
 }
 
-/// Signs a short-lived (≈9 min) RS256 App JWT with the App private key.
+/// Signs a short-lived (≈9 min) RS256 App JWT with the App private key, using the
+/// client ID as the `iss` claim — GitHub's recommended identifier as of 2024-05
+/// (the numeric App ID also works, but compatibility with future features relies
+/// on the client ID).
 fn app_jwt(state: &AppState) -> Result<String, AppError> {
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 
@@ -174,7 +177,7 @@ fn app_jwt(state: &AppState) -> Result<String, AppError> {
     let claims = Claims {
         iat: now - 60,
         exp: now + 540,
-        iss: state.config.github.app_id.clone(),
+        iss: state.config.github.client_id.clone(),
     };
     let key = EncodingKey::from_rsa_pem(state.config.github.app_private_key.as_bytes())
         .map_err(|_| AppError::internal("invalid GitHub App private key"))?;
