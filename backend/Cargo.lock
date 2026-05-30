@@ -413,6 +413,7 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-extra",
+ "hex",
  "http-body-util",
  "jsonwebtoken",
  "rand 0.8.6",
@@ -426,6 +427,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "url",
  "uuid",
 ]
 

@@ -3,10 +3,16 @@
 //! The binary (`main.rs`) is a thin wrapper that loads [`config::Config`],
 //! connects the database, and serves [`build_router`].
 
+pub mod auth;
 pub mod config;
 pub mod db;
 pub mod error;
+pub mod github_api;
+pub mod models;
+pub mod session;
 pub mod state;
+pub mod users;
+pub mod util;
 
 use axum::{routing::get, Json, Router};
 use serde_json::{json, Value};
@@ -28,6 +34,7 @@ pub fn build_router(state: AppState) -> Router {
 
     Router::new()
         .route("/hello", get(hello))
+        .merge(auth::routes())
         .fallback_service(static_service)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
