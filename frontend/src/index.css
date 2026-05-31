@@ -1,24 +1,40 @@
+/* ============================================================
+   FeatureDoc — app stylesheet
+   ------------------------------------------------------------
+   Ported from docs/mockups/s01-credentials-setup.html, whose inline
+   CSS encodes docs/design-system.md (v0.1). Device-frame chrome
+   (frame/statusbar/home-indicator/tabbar) is intentionally dropped —
+   the real app is the screen itself. Mockup raw hex is mapped onto the
+   design-system tokens below (e.g. btn-primary #ededed/#0a0a0a ->
+   --text-primary/--bg-base); no new values are introduced.
+   ============================================================ */
+
 :root {
+  /* surfaces — 5 levels, elevation by tone only (no shadow) */
   --bg-base:        #0a0a0a;
   --bg-elevated:    #0f0f0f;
   --bg-card:        #141414;
   --bg-input:       #181818;
   --bg-hover:       #1c1c1c;
 
+  /* borders — always 1px, differentiated by tone */
   --border-subtle:  #1d1d1d;
   --border-default: #272727;
   --border-strong:  #333333;
 
+  /* text — 4 levels */
   --text-primary:    #ededed;
   --text-secondary:  #9a9a9a;
   --text-tertiary:   #6a6a6a;
   --text-quaternary: #454545;
 
+  /* status — desaturated, used as small dot only */
   --success: #86b89a;
   --warning: #c9a868;
   --danger:  #c98080;
   --info:    #8aa4c4;
 
+  /* accent — used very sparingly (brand mark only) */
   --accent:        #c8ff5e;
   --accent-dim:    rgba(200, 255, 94, 0.06);
   --accent-border: rgba(200, 255, 94, 0.18);
@@ -43,29 +59,280 @@ body {
   font-feature-settings: 'ss01', 'cv11';
 }
 
+/* ── screen — mobile-first column (design-system 3.1: 22px gutters) ── */
 .screen {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 22px;
-  gap: 14px;
+  padding: 14px 22px 44px;
 }
 
+/* brand mark / step counter row */
+.toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 0;
+}
+.brand {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.brand .mk { color: var(--accent); }
+.stepcount {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── headings — one display per screen (design-system 2.3) ── */
 .h-display {
-  font-family: var(--font-sans);
   font-size: 20px;
   font-weight: 500;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
+  letter-spacing: -0.012em;
   color: var(--text-primary);
+  line-height: 1.25;
+}
+.h-display-sub {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-top: 6px;
 }
 
-.body-small {
+/* caps label — 10px mono */
+.caps {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+
+/* body text */
+.body  { font-size: 14px; line-height: 1.55; color: var(--text-primary); }
+.body.sm { font-size: 13px; color: var(--text-secondary); }
+.meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ── button — one primary per screen (design-system 4.1) ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 9px;
   font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--text-primary);
+  color: var(--bg-base);
+}
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-tertiary);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.btn.block { width: 100%; }
+.btn-row { display: flex; gap: 8px; }
+
+/* ── tag — uniform grey outline, dot colour signals status ── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.tag .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex: none;
+}
+.tag.accent  .dot { background: var(--accent); }
+.tag.success .dot { background: var(--success); }
+.tag.warn    .dot { background: var(--warning); }
+.tag.danger  .dot { background: var(--danger); }
+.tag.info    .dot { background: var(--info); }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── card — all cards identical (design-system 4.4) ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+/* ── input field — caps mono label + value ── */
+.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  padding: 13px 15px;
+  position: relative;
+}
+.input:focus-within { border-color: var(--border-strong); }
+.input .lbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.input .val {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--font-mono);
   font-size: 13px;
-  font-weight: 400;
-  line-height: 1.55;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.input .val.placeholder { color: var(--text-quaternary); }
+/* editable value — real <input>, styled to match .val (state extension) */
+.input .field-input {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 0 28px 0 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.input .field-input::placeholder { color: var(--text-quaternary); }
+.input .field-input:focus { outline: none; }
+.input .field-action {
+  position: absolute;
+  top: 12px; right: 12px;
+}
+
+/* status badge inside an input / card corner */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.badge .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text-tertiary); flex: none;
+}
+.badge.success .dot { background: var(--success); }
+.badge.warn    .dot { background: var(--warning); }
+.badge.danger  .dot { background: var(--danger); }
+.badge.info    .dot { background: var(--info); }
+.badge.accent  .dot { background: var(--accent); }
+
+/* ── segment selector — active distinguished by fill, not colour ── */
+.segment {
+  display: flex;
+  gap: 6px;
+}
+.segment .seg {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-quaternary);
+  cursor: pointer;
+  background: transparent;
+  font-family: var(--font-sans);
+}
+.segment .seg.active {
+  background: var(--bg-input);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── icon container — uniform grey ── */
+.ico {
+  flex: none;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-tertiary);
+}
+.ico-24 { width: 24px; height: 24px; border-radius: 6px; }
+.ico-28 { width: 28px; height: 28px; border-radius: 7px; }
+button.ico { cursor: pointer; }
+.ico svg { display: block; }
+
+/* ── small primitives + layout helpers (spacing is the hierarchy) ── */
+.divider { height: 1px; background: var(--border-subtle); border: 0; }
+.stack    > * + * { margin-top: 8px; }
+.stack-10 > * + * { margin-top: 10px; }
+.stack-14 > * + * { margin-top: 14px; }
+.stack-18 > * + * { margin-top: 18px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row.between { justify-content: space-between; }
+.row.top { align-items: flex-start; }
+.grow { flex: 1; min-width: 0; }
+
+/* footer legend — the one accent use per screen */
+.legend {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+}
+.legend .mk { color: var(--accent); }
+
+/* subtle page-load reveal — opacity only, no glow/gradient */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen > * { animation: rise 0.4s ease both; }
+.screen > *:nth-child(2) { animation-delay: 0.04s; }
+.screen > *:nth-child(3) { animation-delay: 0.08s; }
+.screen > *:nth-child(4) { animation-delay: 0.12s; }
+.screen > *:nth-child(5) { animation-delay: 0.16s; }
+.screen > *:nth-child(n+6) { animation-delay: 0.2s; }
+@media (prefers-reduced-motion: reduce) {
+  .screen > * { animation: none; }
 }

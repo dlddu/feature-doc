@@ -14,6 +14,21 @@ images:
     newName: featuredoc
     newTag: dev
 
+# Generate the stub-mode secret (the base provides none — see secret.yaml.example):
+# a deterministic e2e KEK; GitHub creds stay empty since stub mode never calls
+# GitHub. Run mode + base URL + cookie flag are non-secret env, overridden below.
+secretGenerator:
+  - name: featuredoc-secrets
+    literals:
+      - FEATUREDOC_KEK=e2e-stub-kek-not-a-real-secret
+      - GITHUB_APP_SLUG=featuredoc
+      - GITHUB_CLIENT_ID=
+      - GITHUB_CLIENT_SECRET=
+      - GITHUB_APP_PRIVATE_KEY=
+
+generatorOptions:
+  disableNameSuffixHash: true
+
 patches:
   - target:
       kind: Deployment
@@ -29,3 +44,11 @@ patches:
             containers:
               - name: app
                 imagePullPolicy: IfNotPresent
+                # Stub mode, http cookies, local base URL (merged by env name).
+                env:
+                  - name: FEATUREDOC_MODE
+                    value: "stub"
+                  - name: BASE_URL
+                    value: "http://localhost:8080"
+                  - name: COOKIE_SECURE
+                    value: "false"

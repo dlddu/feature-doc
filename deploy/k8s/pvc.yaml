@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: featuredoc-data
+  labels:
+    app.kubernetes.io/name: featuredoc
+spec:
+  # SQLite is single-writer; one RWO volume backs the single app replica.
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

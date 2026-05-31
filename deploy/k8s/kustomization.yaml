@@ -3,6 +3,12 @@ kind: Kustomization
 
 # Production base. Points at the image CI publishes (ghcr.io/dlddu/featuredoc)
 # with no imagePullPolicy, so the :latest tag defaults to Always.
+#
+# The Deployment consumes `featuredoc-secrets` via envFrom. That Secret is
+# provisioned out-of-band (copy secret.yaml.example -> secret.yaml, fill in, and
+# apply it) and is intentionally NOT generated here, so no credentials — not even
+# placeholders — are committed.
 resources:
   - deployment.yaml
   - service.yaml
+  - pvc.yaml
