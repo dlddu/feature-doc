@@ -57,12 +57,13 @@ frontend/                  # Vite 8 + React 19 — S01 Credentials Setup 화면 
 └── src/{App.tsx, CredentialsSetup.tsx, api.ts, main.tsx, index.css}
 
 deploy/
-├── k8s/                   # 정식 매니페스트 = kustomize 베이스 (deployment·service·pvc + featuredoc-secrets)
+├── k8s/                   # 정식 매니페스트 = kustomize 베이스 (deployment·service·pvc; secret은 외부 제공)
 │   ├── kustomization.yaml
 │   ├── deployment.yaml
 │   ├── service.yaml
-│   └── pvc.yaml
-└── e2e/                   # e2e 전용 오버레이 (featuredoc:dev + IfNotPresent + stub-mode secret)
+│   ├── pvc.yaml
+│   └── secret.yaml.example  # featuredoc-secrets 템플릿 — 복사·기입 후 적용 (secret.yaml은 gitignore)
+└── e2e/                   # e2e 전용 오버레이 (featuredoc:dev + IfNotPresent + stub-mode secret 생성)
     ├── kustomization.yaml
     └── kind-cluster.yaml
 

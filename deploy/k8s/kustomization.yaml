@@ -3,25 +3,12 @@ kind: Kustomization
 
 # Production base. Points at the image CI publishes (ghcr.io/dlddu/featuredoc)
 # with no imagePullPolicy, so the :latest tag defaults to Always.
+#
+# The Deployment consumes `featuredoc-secrets` via envFrom. That Secret is
+# provisioned out-of-band (copy secret.yaml.example -> secret.yaml, fill in, and
+# apply it) and is intentionally NOT generated here, so no credentials — not even
+# placeholders — are committed.
 resources:
   - deployment.yaml
   - service.yaml
   - pvc.yaml
-
-# Secrets consumed via envFrom (non-secret config lives in the deployment env).
-# The committed values are PLACEHOLDERS: replace FEATUREDOC_KEK and the GITHUB_*
-# values in a real deployment (sealed secret, external secret, or a private
-# overlay). The e2e overlay replaces this secret with a deterministic test KEK.
-secretGenerator:
-  - name: featuredoc-secrets
-    literals:
-      - FEATUREDOC_KEK=REPLACE_ME_WITH_A_RANDOM_32B_SECRET
-      - GITHUB_APP_SLUG=featuredoc
-      - GITHUB_CLIENT_ID=
-      - GITHUB_CLIENT_SECRET=
-      - GITHUB_APP_PRIVATE_KEY=
-
-generatorOptions:
-  # Keep the name stable (featuredoc-secrets) so envFrom and the e2e overlay's
-  # replace can both reference it.
-  disableNameSuffixHash: true

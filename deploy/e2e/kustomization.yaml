@@ -14,12 +14,11 @@ images:
     newName: featuredoc
     newTag: dev
 
-# Replace the base secret with a deterministic e2e KEK (GitHub creds stay empty;
-# stub mode never calls GitHub). Run mode + base URL + cookie flag are non-secret
-# env, overridden on the deployment below.
+# Generate the stub-mode secret (the base provides none — see secret.yaml.example):
+# a deterministic e2e KEK; GitHub creds stay empty since stub mode never calls
+# GitHub. Run mode + base URL + cookie flag are non-secret env, overridden below.
 secretGenerator:
   - name: featuredoc-secrets
-    behavior: replace
     literals:
       - FEATUREDOC_KEK=e2e-stub-kek-not-a-real-secret
       - GITHUB_APP_SLUG=featuredoc
