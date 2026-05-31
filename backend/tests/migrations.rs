@@ -24,7 +24,7 @@ async fn migrations_create_expected_tables() {
             .expect("query tables");
     let names: Vec<String> = rows.into_iter().map(|r| r.0).collect();
 
-    for expected in ["users", "sessions", "installations", "llm_keys", "audit_log", "github_tokens", "repositories"] {
+    for expected in ["users", "sessions", "installations", "llm_keys", "audit_log", "github_tokens", "repositories", "installation_repositories"] {
         assert!(
             names.contains(&expected.to_string()),
             "expected table `{expected}` to exist, got {names:?}"

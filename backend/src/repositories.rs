@@ -132,8 +132,9 @@ async fn connect(
 
 /// Links (or refreshes the branch of) a repository under `user_id`. Unique per
 /// (user, owner, name). Analysis-derived columns are left at their reserved
-/// defaults (NULL / 'not_analyzed').
-async fn upsert(
+/// defaults (NULL / 'not_analyzed'). Public so the `seed` binary can connect repos
+/// directly without going through the HTTP handler.
+pub async fn upsert(
     db: &sqlx::SqlitePool,
     user_id: &str,
     owner: &str,

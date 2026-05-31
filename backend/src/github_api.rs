@@ -116,8 +116,10 @@ async fn fetch_user(state: &AppState, token: &str) -> Result<GithubUser, AppErro
 }
 
 /// Deterministic stub identity derived from the OAuth `code`. Distinct codes yield
-/// distinct users, which lets the isolation tests log in as A and B at will.
-fn stub_user_from_code(code: &str) -> GithubUser {
+/// distinct users, which lets the isolation tests log in as A and B at will. Also
+/// used by the `seed` binary so seeded data lands under the same identity that
+/// logging in with the same handle resolves to.
+pub fn stub_user_from_code(code: &str) -> GithubUser {
     GithubUser {
         id: stable_id(code),
         login: code.to_string(),

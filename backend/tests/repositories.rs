@@ -11,6 +11,7 @@ use tower::ServiceExt;
 
 use common::stub_state;
 use featuredoc::github_api::GithubUser;
+use featuredoc::github_app::{self, RepoRef};
 use featuredoc::state::AppState;
 use featuredoc::{build_router, installations, session, users};
 
@@ -30,6 +31,8 @@ async fn login_user(state: &AppState, login: &str, id: i64) -> (String, String) 
     (user.id, token)
 }
 
+/// Links an installation and seeds its accessible repositories (the candidate set
+/// stub-mode `connect` verifies against — no fixtures live in application code).
 async fn link_installation(state: &AppState, user_id: &str, installation_id: i64) {
     installations::upsert(
         &state.db,
@@ -43,6 +46,21 @@ async fn link_installation(state: &AppState, user_id: &str, installation_id: i64
     )
     .await
     .unwrap();
+    let candidates = [
+        RepoRef {
+            owner: "stub-account".to_string(),
+            name: "payments-api".to_string(),
+            default_branch: "main".to_string(),
+        },
+        RepoRef {
+            owner: "stub-account".to_string(),
+            name: "checkout-web".to_string(),
+            default_branch: "main".to_string(),
+        },
+    ];
+    github_app::set_installation_repositories(&state.db, installation_id, &candidates)
+        .await
+        .unwrap();
 }
 
 fn get(cookie: &str) -> Request<Body> {

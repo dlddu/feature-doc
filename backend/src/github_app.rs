@@ -167,30 +167,31 @@ pub struct RepoRef {
 }
 
 /// Lists the repositories the installation can access (the candidates a user may
-/// connect — S02/S03). Stub mode returns a deterministic set whose size matches
-/// [`repository_count`]'s stub (3). Real mode lists them with an installation token.
+/// connect — S02/S03). Real mode lists them with an installation token. Stub mode
+/// reads the seeded candidate set from `installation_repositories` (populated by
+/// the `seed` binary) — no fixtures live in application code.
 pub async fn list_repositories(
     state: &AppState,
     installation_id: i64,
 ) -> Result<Vec<RepoRef>, AppError> {
     match state.config.mode {
-        Mode::Stub => Ok(vec![
-            RepoRef {
-                owner: "stub-account".to_string(),
-                name: "payments-api".to_string(),
-                default_branch: "main".to_string(),
-            },
-            RepoRef {
-                owner: "stub-account".to_string(),
-                name: "checkout-web".to_string(),
-                default_branch: "main".to_string(),
-            },
-            RepoRef {
-                owner: "stub-account".to_string(),
-                name: "notif-worker".to_string(),
-                default_branch: "main".to_string(),
-            },
-        ]),
+        Mode::Stub => {
+            let rows = sqlx::query_as::<_, (String, String, String)>(
+                "SELECT owner, name, default_branch FROM installation_repositories \
+                 WHERE installation_id = ? ORDER BY owner, name",
+            )
+            .bind(installation_id)
+            .fetch_all(&state.db)
+            .await?;
+            Ok(rows
+                .into_iter()
+                .map(|(owner, name, default_branch)| RepoRef {
+                    owner,
+                    name,
+                    default_branch,
+                })
+                .collect())
+        }
         Mode::Real => {
             let token = mint_installation_token(state, installation_id).await?;
             let url = format!(
@@ -239,6 +240,30 @@ pub async fn list_repositories(
                 .collect())
         }
     }
+}
+
+/// Seeds (idempotently) the repositories an installation can access, for stub
+/// mode. This is the injection point used by the `seed` binary and the integration
+/// tests so no repository fixtures live in application code.
+pub async fn set_installation_repositories(
+    db: &sqlx::SqlitePool,
+    installation_id: i64,
+    repos: &[RepoRef],
+) -> Result<(), AppError> {
+    for repo in repos {
+        sqlx::query(
+            "INSERT INTO installation_repositories (installation_id, owner, name, default_branch) \
+             VALUES (?, ?, ?, ?) \
+             ON CONFLICT(installation_id, owner, name) DO UPDATE SET default_branch = excluded.default_branch",
+        )
+        .bind(installation_id)
+        .bind(&repo.owner)
+        .bind(&repo.name)
+        .bind(&repo.default_branch)
+        .execute(db)
+        .await?;
+    }
+    Ok(())
 }
 
 /// Verifies the signed-in user actually has access to `installation_id` before we

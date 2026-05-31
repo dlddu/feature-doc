@@ -49,7 +49,7 @@ tools/
 backend/                   # axum 0.8 — /hello + S01 자격증명 API + S02 Repositories API(connect·list) + SQLite + dist 정적 서빙
 ├── Cargo.toml
 ├── migrations/            # SQLite 스키마 (sqlx migrate — 바이너리에 임베드)
-└── src/                   # lib(config·db·auth·github·llmkey·repositories·crypto·audit…) + main
+└── src/                   # lib(config·db·auth·github·llmkey·repositories·crypto·audit…) + main·seed bins
 
 frontend/                  # Vite 8 + React 19 + react-router — S01 Credentials Setup / S02 Repositories 홈 (디자인 시스템 토큰)
 ├── package.json
@@ -93,7 +93,7 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 
 ## Walking skeleton 실행
 
-문서 외에 동작하는 수직 슬라이스가 함께 있습니다. 단일 axum 서비스가 `/hello`(프로브) + 자격증명·저장소 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 프론트는 디자인 시스템 토큰으로 화면을 그립니다. react-router로 두 화면을 두되 셋업 게이트가 진입점을 가릅니다 — 자격증명(GitHub App 설치 + 활성 LLM Key)이 준비되기 전이면 `/`가 `/setup`(S01 Credentials Setup)으로 보내고, 준비되면 `/`가 S02 Repositories 홈을 보여줍니다. S02는 연결된 저장소 목록을 보여주며, connect는 GitHub App 접근 범위 안의 저장소만 연결합니다(AC1.1). 분석 파생 값(feature·conflict·spend·진행·상태)은 아직 파이프라인이 만들지 않아 `null`로 예약되어 "Not analyzed" 빈 상태로 렌더됩니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
+문서 외에 동작하는 수직 슬라이스가 함께 있습니다. 단일 axum 서비스가 `/hello`(프로브) + 자격증명·저장소 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 프론트는 디자인 시스템 토큰으로 화면을 그립니다. react-router로 두 화면을 두되 셋업 게이트가 진입점을 가릅니다 — 자격증명(GitHub App 설치 + 활성 LLM Key)이 준비되기 전이면 `/`가 `/setup`(S01 Credentials Setup)으로 보내고, 준비되면 `/`가 S02 Repositories 홈을 보여줍니다. S02는 연결된 저장소 목록을 보여주며, connect는 GitHub App 접근 범위 안의 저장소만 연결합니다(AC1.1). 분석 파생 값(feature·conflict·spend·진행·상태)은 아직 파이프라인이 만들지 않아 `null`로 예약되어 "Not analyzed" 빈 상태로 렌더됩니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다. stub 모드의 저장소 데이터는 애플리케이션 코드에 박지 않고 `seed` 바이너리(`cargo run --bin seed`)로 DB에 주입합니다 — 시드는 stub 사용자·설치·접근 후보·연결된 저장소를 함께 채워 S02 홈을 바로 채웁니다.
 
 ### 로컬 (k8s 없이)
 
@@ -101,13 +101,16 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 # 1) 프론트 빌드
 ( cd frontend && npm install && npm run build )
 
-# 2) 백엔드 실행 (frontend/dist 서빙) — S01 흐름을 외부 연동 없이 보려면 stub 모드
+# 2) (선택) S02 홈에 보여줄 stub 저장소 데이터 시딩 — 서버와 같은 DATABASE_URL 사용
+( cd backend && DATABASE_URL="sqlite://featuredoc.db?mode=rwc" cargo run --bin seed )
+
+# 3) 백엔드 실행 (frontend/dist 서빙) — S01·S02 흐름을 외부 연동 없이 보려면 stub 모드
 ( cd backend && STATIC_DIR=../frontend/dist FEATUREDOC_MODE=stub cargo run --release )
 
-# 3) 확인
+# 4) 확인
 curl http://localhost:8080/hello
 # → {"message":"Hello from FeatureDoc backend"}
-open http://localhost:8080
+open http://localhost:8080   # /api/auth/login 으로 stub 사용자 로그인 시 시드한 저장소가 보임
 ```
 
 dev 모드(`cd frontend && npm run dev`)는 `/hello`를 `localhost:8080`으로 프록시합니다.
