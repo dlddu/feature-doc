@@ -13,6 +13,7 @@ pub mod error;
 pub mod github;
 pub mod github_api;
 pub mod github_app;
+pub mod github_tokens;
 pub mod installations;
 pub mod llmkey;
 pub mod models;

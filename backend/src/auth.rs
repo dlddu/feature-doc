@@ -13,7 +13,7 @@ use crate::config::Mode;
 use crate::error::AppError;
 use crate::models::User;
 use crate::state::AppState;
-use crate::{cookies, github_api, session, users, util};
+use crate::{cookies, github_api, github_tokens, session, users, util};
 
 const STATE_COOKIE: &str = "fd_oauth_state";
 
@@ -83,8 +83,12 @@ async fn callback(
         return Err(AppError::BadRequest("invalid oauth state".into()));
     }
 
-    let gh = github_api::exchange_code_for_user(&state, &params.code).await?;
-    let user = users::upsert(&state.db, &gh).await?;
+    let outcome = github_api::exchange_code_for_user(&state, &params.code).await?;
+    let user = users::upsert(&state.db, &outcome.user).await?;
+    // Keep the OAuth token (real mode) so setup can verify installation ownership.
+    if let Some(gh_token) = outcome.token {
+        github_tokens::store(&state.db, &state.config.kek, &user.id, &gh_token).await?;
+    }
     let token = session::create(&state.db, &user.id).await?;
     crate::audit::record(&state.db, Some(&user.id), "auth.login", None).await;
 

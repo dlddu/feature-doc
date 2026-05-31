@@ -164,3 +164,44 @@ async fn installation_token_is_short_lived_and_not_persisted() {
     assert_eq!(before.0, after.0, "minting a token must not write any rows");
     let _ = std::fs::remove_file(&path);
 }
+
+#[tokio::test]
+async fn github_token_store_load_roundtrips_encrypted() {
+    let (state, path) = stub_state().await;
+    let user = users::upsert(
+        &state.db,
+        &GithubUser {
+            id: 1,
+            login: "alice".into(),
+            name: None,
+            avatar_url: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    featuredoc::github_tokens::store(&state.db, &state.config.kek, &user.id, "gho_secret_token_value")
+        .await
+        .unwrap();
+
+    let loaded = featuredoc::github_tokens::load(&state.db, &state.config.kek, &user.id)
+        .await
+        .unwrap();
+    assert_eq!(loaded.as_deref(), Some("gho_secret_token_value"));
+
+    // Unknown user -> None.
+    assert!(featuredoc::github_tokens::load(&state.db, &state.config.kek, "nobody")
+        .await
+        .unwrap()
+        .is_none());
+
+    // The token must be encrypted at rest, not stored as plaintext.
+    let row: (Vec<u8>,) = sqlx::query_as("SELECT ciphertext FROM github_tokens WHERE user_id = ?")
+        .bind(&user.id)
+        .fetch_one(&state.db)
+        .await
+        .unwrap();
+    assert!(!row.0.windows(9).any(|w| w == b"gho_secre"));
+
+    let _ = std::fs::remove_file(&path);
+}

@@ -159,6 +159,61 @@ pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<
     }
 }
 
+/// Verifies the signed-in user actually has access to `installation_id` before we
+/// link it. The Setup URL's installation_id is spoofable (GitHub docs), so in real
+/// mode we list the user's installations with their OAuth token and require a
+/// match. Stub mode trusts the synthetic id.
+pub async fn verify_user_owns_installation(
+    state: &AppState,
+    user_id: &str,
+    installation_id: i64,
+) -> Result<(), AppError> {
+    if state.config.mode == Mode::Stub {
+        return Ok(());
+    }
+
+    let token = crate::github_tokens::load(&state.db, &state.config.kek, user_id)
+        .await?
+        .ok_or_else(|| AppError::BadRequest("GitHub 재인증이 필요합니다".into()))?;
+
+    let url = format!(
+        "{}/user/installations?per_page=100",
+        state.config.github.api_base
+    );
+    let resp = state
+        .http
+        .get(&url)
+        .header("Authorization", format!("Bearer {token}"))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "featuredoc/0.1")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await
+        .map_err(|_| AppError::internal("github installations lookup failed"))?;
+    if !resp.status().is_success() {
+        return Err(AppError::BadRequest("GitHub 재인증이 필요합니다".into()));
+    }
+
+    #[derive(Deserialize)]
+    struct Inst {
+        id: i64,
+    }
+    #[derive(Deserialize)]
+    struct R {
+        installations: Vec<Inst>,
+    }
+    let body: R = resp
+        .json()
+        .await
+        .map_err(|_| AppError::internal("github installations: malformed response"))?;
+
+    if body.installations.iter().any(|i| i.id == installation_id) {
+        Ok(())
+    } else {
+        Err(AppError::Forbidden)
+    }
+}
+
 /// Signs a short-lived (≈9 min) RS256 App JWT with the App private key, using the
 /// client ID as the `iss` claim — GitHub's recommended identifier as of 2024-05
 /// (the numeric App ID also works, but compatibility with future features relies

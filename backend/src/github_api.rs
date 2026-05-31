@@ -20,16 +20,30 @@ pub struct GithubUser {
     pub avatar_url: Option<String>,
 }
 
+/// Result of resolving a login: the user plus, in real mode, their OAuth token
+/// (kept to verify installation ownership later; `None` in stub mode).
+pub struct AuthOutcome {
+    pub user: GithubUser,
+    pub token: Option<String>,
+}
+
 /// Exchanges an authorization `code` for the authenticated GitHub user.
 pub async fn exchange_code_for_user(
     state: &AppState,
     code: &str,
-) -> Result<GithubUser, AppError> {
+) -> Result<AuthOutcome, AppError> {
     match state.config.mode {
-        Mode::Stub => Ok(stub_user_from_code(code)),
+        Mode::Stub => Ok(AuthOutcome {
+            user: stub_user_from_code(code),
+            token: None,
+        }),
         Mode::Real => {
             let token = exchange_code(state, code).await?;
-            fetch_user(state, &token).await
+            let user = fetch_user(state, &token).await?;
+            Ok(AuthOutcome {
+                user,
+                token: Some(token),
+            })
         }
     }
 }

@@ -74,12 +74,20 @@ async fn setup(
     CurrentUser(user): CurrentUser,
     Query(params): Query<SetupParams>,
 ) -> Result<(CookieJar, Redirect), AppError> {
-    // If we issued a setup-state cookie, require the echoed value to match.
-    if let Some(expected) = jar.get(SETUP_STATE_COOKIE).map(|c| c.value().to_string()) {
-        if params.state.as_deref() != Some(expected.as_str()) {
+    // Best-effort CSRF: GitHub does not forward state to the Setup URL, so only
+    // enforce a match when a state was actually echoed (our stub flow echoes one).
+    if let (Some(expected), Some(got)) = (
+        jar.get(SETUP_STATE_COOKIE).map(|c| c.value().to_string()),
+        params.state.as_deref(),
+    ) {
+        if expected != got {
             return Err(AppError::BadRequest("invalid setup state".into()));
         }
     }
+
+    // The Setup URL's installation_id is spoofable; confirm the signed-in user has
+    // access to it before linking (AC4.7).
+    github_app::verify_user_owns_installation(&state, &user.id, params.installation_id).await?;
 
     let info = github_app::fetch_installation(&state, params.installation_id).await?;
     installations::upsert(
