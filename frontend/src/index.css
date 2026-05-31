@@ -301,8 +301,128 @@ body {
 button.ico { cursor: pointer; }
 .ico svg { display: block; }
 
+/* ── icon button — 36px appbar slot (design-system 4.9 icon container) ── */
+.icon-btn {
+  flex: none;
+  width: 36px; height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+  cursor: pointer;
+}
+.icon-btn svg { display: block; }
+.icon-btn:disabled { cursor: not-allowed; }
+
+/* ── section title — 11px mono caps + inline action (ported from S02 mockup) ── */
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.section-title .count { color: var(--text-quaternary); }
+.section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: 9px;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.section-action:disabled { cursor: not-allowed; opacity: 0.45; }
+
+/* ── metric grid — split card, divider lines only (design-system 4.11) ── */
+.metric-grid {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.metric-grid .cell { flex: 1; padding: 13px 14px; }
+.metric-grid .cell + .cell { border-left: 1px solid var(--border-default); }
+.metric-grid .cell .k {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.metric-grid .cell .v {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 8px;
+}
+
+/* ── progress bar — single continuous ratio (design-system 4.12) ── */
+.progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-secondary);
+}
+
+/* ── bottom tab bar — 4 fixed slots, active by tone (design-system 4.7) ── */
+.tabbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 66px;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  padding-bottom: 14px;
+}
+.tabbar .tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+  cursor: pointer;
+  text-decoration: none;
+}
+.tabbar .tab .gl {
+  width: 18px; height: 14px;
+  border: 1.2px solid var(--text-quaternary);
+  border-radius: 4px;
+}
+.tabbar .tab.active { color: var(--text-primary); }
+.tabbar .tab.active .gl { border-color: var(--text-primary); }
+.tabbar .tab.disabled { cursor: not-allowed; }
+
 /* ── small primitives + layout helpers (spacing is the hierarchy) ── */
 .divider { height: 1px; background: var(--border-subtle); border: 0; }
+.dot-sep { color: var(--text-quaternary); }
 .stack    > * + * { margin-top: 8px; }
 .stack-10 > * + * { margin-top: 10px; }
 .stack-14 > * + * { margin-top: 14px; }
@@ -311,6 +431,9 @@ button.ico { cursor: pointer; }
 .row.between { justify-content: space-between; }
 .row.top { align-items: flex-start; }
 .grow { flex: 1; min-width: 0; }
+
+/* clears the fixed tab bar so the last content isn't hidden behind it */
+.screen.has-tabbar { padding-bottom: 84px; }
 
 /* footer legend — the one accent use per screen */
 .legend {

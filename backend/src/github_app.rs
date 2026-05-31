@@ -159,6 +159,88 @@ pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<
     }
 }
 
+/// A repository an installation can access — owner, name, and default branch.
+pub struct RepoRef {
+    pub owner: String,
+    pub name: String,
+    pub default_branch: String,
+}
+
+/// Lists the repositories the installation can access (the candidates a user may
+/// connect — S02/S03). Stub mode returns a deterministic set whose size matches
+/// [`repository_count`]'s stub (3). Real mode lists them with an installation token.
+pub async fn list_repositories(
+    state: &AppState,
+    installation_id: i64,
+) -> Result<Vec<RepoRef>, AppError> {
+    match state.config.mode {
+        Mode::Stub => Ok(vec![
+            RepoRef {
+                owner: "stub-account".to_string(),
+                name: "payments-api".to_string(),
+                default_branch: "main".to_string(),
+            },
+            RepoRef {
+                owner: "stub-account".to_string(),
+                name: "checkout-web".to_string(),
+                default_branch: "main".to_string(),
+            },
+            RepoRef {
+                owner: "stub-account".to_string(),
+                name: "notif-worker".to_string(),
+                default_branch: "main".to_string(),
+            },
+        ]),
+        Mode::Real => {
+            let token = mint_installation_token(state, installation_id).await?;
+            let url = format!(
+                "{}/installation/repositories?per_page=100",
+                state.config.github.api_base
+            );
+            let resp = state
+                .http
+                .get(&url)
+                .header("Authorization", format!("Bearer {}", token.token))
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", "featuredoc/0.1")
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .send()
+                .await
+                .map_err(|_| AppError::internal("github repositories lookup failed"))?;
+            if !resp.status().is_success() {
+                return Err(AppError::internal("github repositories lookup rejected"));
+            }
+            #[derive(Deserialize)]
+            struct Owner {
+                login: String,
+            }
+            #[derive(Deserialize)]
+            struct Repo {
+                name: String,
+                owner: Owner,
+                default_branch: Option<String>,
+            }
+            #[derive(Deserialize)]
+            struct R {
+                repositories: Vec<Repo>,
+            }
+            let r: R = resp
+                .json()
+                .await
+                .map_err(|_| AppError::internal("github repositories: malformed response"))?;
+            Ok(r
+                .repositories
+                .into_iter()
+                .map(|repo| RepoRef {
+                    owner: repo.owner.login,
+                    name: repo.name,
+                    default_branch: repo.default_branch.unwrap_or_else(|| "main".to_string()),
+                })
+                .collect())
+        }
+    }
+}
+
 /// Verifies the signed-in user actually has access to `installation_id` before we
 /// link it. The Setup URL's installation_id is spoofable (GitHub docs), so in real
 /// mode we list the user's installations with their OAuth token and require a

@@ -32,6 +32,23 @@ export type LlmKey = {
 
 export type ProviderId = 'anthropic' | 'openai' | 'google';
 
+/** A connected repository (S02). Analysis-derived fields are reserved and stay
+ * `null` until the analysis pipeline produces them. */
+export type Repository = {
+  id: string;
+  owner: string;
+  name: string;
+  branch: string;
+  status: string;
+  featureCount: number | null;
+  conflictCount: number | null;
+  spendCents: number | null;
+  progress: number | null;
+  step: string | null;
+  lastAnalyzedAt: number | null;
+  createdAt: number;
+};
+
 /** Where the "Sign in with GitHub" button navigates (full-page, to follow redirects). */
 export const LOGIN_URL = '/api/auth/login';
 
@@ -71,6 +88,12 @@ export async function listKeys(): Promise<LlmKey[]> {
   const res = await fetch('/api/llm-keys', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as LlmKey[];
+}
+
+export async function listRepositories(): Promise<Repository[]> {
+  const res = await fetch('/api/repositories', { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as Repository[];
 }
 
 export async function registerKey(provider: ProviderId, key: string): Promise<LlmKey> {

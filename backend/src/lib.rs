@@ -17,6 +17,7 @@ pub mod github_tokens;
 pub mod installations;
 pub mod llmkey;
 pub mod models;
+pub mod repositories;
 pub mod session;
 pub mod state;
 pub mod users;
@@ -45,6 +46,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(auth::routes())
         .merge(github::routes())
         .merge(llmkey::routes())
+        .merge(repositories::routes())
         .merge(audit::routes())
         .fallback_service(static_service)
         .layer(TraceLayer::new_for_http())

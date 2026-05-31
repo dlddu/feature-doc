@@ -46,15 +46,15 @@ docs/
 tools/
 └── gen-wireframes.js      # wireframe SVG 일괄 생성 스크립트
 
-backend/                   # axum 0.8 — /hello + S01 자격증명 API(GitHub App·LLM Key, 봉투 암호화) + SQLite + dist 정적 서빙
+backend/                   # axum 0.8 — /hello + S01 자격증명 API + S02 Repositories API(connect·list) + SQLite + dist 정적 서빙
 ├── Cargo.toml
 ├── migrations/            # SQLite 스키마 (sqlx migrate — 바이너리에 임베드)
-└── src/                   # lib(config·db·auth·github·llmkey·crypto·audit…) + main
+└── src/                   # lib(config·db·auth·github·llmkey·repositories·crypto·audit…) + main
 
-frontend/                  # Vite 8 + React 19 — S01 Credentials Setup 화면 (디자인 시스템 토큰)
+frontend/                  # Vite 8 + React 19 + react-router — S01 Credentials Setup / S02 Repositories 홈 (디자인 시스템 토큰)
 ├── package.json
 ├── index.html
-└── src/{App.tsx, CredentialsSetup.tsx, api.ts, main.tsx, index.css}
+└── src/{App.tsx, CredentialsSetup.tsx, HomeRepositories.tsx, api.ts, main.tsx, index.css}
 
 deploy/
 ├── k8s/                   # 정식 매니페스트 = kustomize 베이스 (deployment·service·pvc; secret은 외부 제공)
@@ -67,9 +67,9 @@ deploy/
     ├── kustomization.yaml
     └── kind-cluster.yaml
 
-e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 포함) + Playwright 1개
+e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 포함) + Playwright 2개
 ├── smoke.sh
-└── tests/s01.spec.ts
+└── tests/{s01.spec.ts, s02.spec.ts}
 
 scripts/
 └── e2e.sh                 # kind 생성 → build → load → apply → port-forward → e2e
@@ -93,7 +93,7 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 
 ## Walking skeleton 실행
 
-문서 외에 동작하는 수직 슬라이스가 함께 있습니다. 단일 axum 서비스가 `/hello`(프로브) + 자격증명 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 프론트는 디자인 시스템 토큰으로 S01 Credentials Setup 화면을 그립니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
+문서 외에 동작하는 수직 슬라이스가 함께 있습니다. 단일 axum 서비스가 `/hello`(프로브) + 자격증명·저장소 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 프론트는 디자인 시스템 토큰으로 화면을 그립니다. react-router로 두 화면을 두되 셋업 게이트가 진입점을 가릅니다 — 자격증명(GitHub App 설치 + 활성 LLM Key)이 준비되기 전이면 `/`가 `/setup`(S01 Credentials Setup)으로 보내고, 준비되면 `/`가 S02 Repositories 홈을 보여줍니다. S02는 연결된 저장소 목록을 보여주며, connect는 GitHub App 접근 범위 안의 저장소만 연결합니다(AC1.1). 분석 파생 값(feature·conflict·spend·진행·상태)은 아직 파이프라인이 만들지 않아 `null`로 예약되어 "Not analyzed" 빈 상태로 렌더됩니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
 
 ### 로컬 (k8s 없이)
 
