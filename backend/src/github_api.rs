@@ -1,14 +1,12 @@
 //! Thin GitHub client for the user-authorization (login) flow.
 //!
-//! In `Mode::Stub` every call is answered by a deterministic in-process double so
-//! tests and the kind e2e never touch the network (plan: "테스트 더블로 모킹").
-//! Error messages here are deliberately generic — tokens and secrets never appear
-//! in them (AC4.3).
+//! Always talks to whatever `GITHUB_OAUTH_BASE` / `GITHUB_API_BASE` point at — real
+//! GitHub in production, or the mock server ([`crate::mock_github`]) in tests and
+//! the kind e2e. Error messages here are deliberately generic — tokens and secrets
+//! never appear in them (AC4.3).
 
 use serde::Deserialize;
-use sha2::{Digest, Sha256};
 
-use crate::config::Mode;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -20,8 +18,8 @@ pub struct GithubUser {
     pub avatar_url: Option<String>,
 }
 
-/// Result of resolving a login: the user plus, in real mode, their OAuth token
-/// (kept to verify installation ownership later; `None` in stub mode).
+/// Result of resolving a login: the user plus their OAuth token, kept to verify
+/// installation ownership later.
 pub struct AuthOutcome {
     pub user: GithubUser,
     pub token: Option<String>,
@@ -32,24 +30,16 @@ pub async fn exchange_code_for_user(
     state: &AppState,
     code: &str,
 ) -> Result<AuthOutcome, AppError> {
-    match state.config.mode {
-        Mode::Stub => Ok(AuthOutcome {
-            user: stub_user_from_code(code),
-            token: None,
-        }),
-        Mode::Real => {
-            let token = exchange_code(state, code).await?;
-            let user = fetch_user(state, &token).await?;
-            Ok(AuthOutcome {
-                user,
-                token: Some(token),
-            })
-        }
-    }
+    let token = exchange_code(state, code).await?;
+    let user = fetch_user(state, &token).await?;
+    Ok(AuthOutcome {
+        user,
+        token: Some(token),
+    })
 }
 
 async fn exchange_code(state: &AppState, code: &str) -> Result<String, AppError> {
-    let url = format!("{}/login/oauth/access_token", state.config.github.web_base);
+    let url = format!("{}/login/oauth/access_token", state.config.github.oauth_base);
     let redirect_uri = format!("{}/api/auth/callback", state.config.base_url);
 
     let resp = state
@@ -113,23 +103,4 @@ async fn fetch_user(state: &AppState, token: &str) -> Result<GithubUser, AppErro
         name: u.name,
         avatar_url: u.avatar_url,
     })
-}
-
-/// Deterministic stub identity derived from the OAuth `code`. Distinct codes yield
-/// distinct users, which lets the isolation tests log in as A and B at will.
-fn stub_user_from_code(code: &str) -> GithubUser {
-    GithubUser {
-        id: stable_id(code),
-        login: code.to_string(),
-        name: Some(format!("Stub {code}")),
-        avatar_url: None,
-    }
-}
-
-fn stable_id(code: &str) -> i64 {
-    let digest = Sha256::digest(code.as_bytes());
-    let mut head = [0u8; 8];
-    head.copy_from_slice(&digest[..8]);
-    // Shift to guarantee a positive, SQLite-friendly i64.
-    (u64::from_be_bytes(head) >> 1) as i64
 }

@@ -9,7 +9,6 @@ use axum_extra::extract::cookie::CookieJar;
 use serde::{Deserialize, Serialize};
 
 use crate::auth::CurrentUser;
-use crate::config::Mode;
 use crate::error::AppError;
 use crate::state::AppState;
 use crate::{cookies, github_app, installations, util};
@@ -29,32 +28,25 @@ struct InstallUrlView {
     url: String,
 }
 
-/// Returns where to send the user to install the App. Real mode points at GitHub's
-/// installation page; stub mode points back at our own setup callback so the
-/// browser e2e completes the loop without GitHub.
+/// Returns where to send the user to install the App: GitHub's installation page.
+/// In tests and the kind e2e, `web_base` points at the mock server
+/// ([`crate::mock_github`]), which redirects the browser back to our setup callback
+/// so the loop completes without GitHub.
 async fn install_url(
     State(state): State<AppState>,
     jar: CookieJar,
-    CurrentUser(user): CurrentUser,
+    CurrentUser(_user): CurrentUser,
 ) -> Result<(CookieJar, Json<InstallUrlView>), AppError> {
     let nonce = util::random_token();
     let jar = jar.add(cookies::make(&state, SETUP_STATE_COOKIE, nonce.clone()));
 
-    let url = match state.config.mode {
-        Mode::Stub => {
-            let iid = stub_installation_id(user.github_id);
-            format!("/api/github/setup?installation_id={iid}&setup_action=install&state={nonce}")
-        }
-        Mode::Real => {
-            let mut u = url::Url::parse(&format!(
-                "{}/apps/{}/installations/new",
-                state.config.github.web_base, state.config.github.app_slug
-            ))
-            .map_err(|_| AppError::internal("invalid web_base"))?;
-            u.query_pairs_mut().append_pair("state", &nonce);
-            u.to_string()
-        }
-    };
+    let mut u = url::Url::parse(&format!(
+        "{}/apps/{}/installations/new",
+        state.config.github.web_base, state.config.github.app_slug
+    ))
+    .map_err(|_| AppError::internal("invalid web_base"))?;
+    u.query_pairs_mut().append_pair("state", &nonce);
+    let url = u.to_string();
 
     Ok((jar, Json(InstallUrlView { url })))
 }
@@ -74,8 +66,9 @@ async fn setup(
     CurrentUser(user): CurrentUser,
     Query(params): Query<SetupParams>,
 ) -> Result<(CookieJar, Redirect), AppError> {
-    // Best-effort CSRF: GitHub does not forward state to the Setup URL, so only
-    // enforce a match when a state was actually echoed (our stub flow echoes one).
+    // Best-effort CSRF: real GitHub does not forward state to the Setup URL, so
+    // only enforce a match when a state was actually echoed (the mock server, and
+    // thus our own install-url loop, echoes one).
     if let (Some(expected), Some(got)) = (
         jar.get(SETUP_STATE_COOKIE).map(|c| c.value().to_string()),
         params.state.as_deref(),
@@ -165,9 +158,4 @@ async fn connection(
             }))
         }
     }
-}
-
-/// Deterministic per-user stub installation id (distinct users → distinct ids).
-fn stub_installation_id(github_id: i64) -> i64 {
-    10_000 + github_id.rem_euclid(90_000)
 }

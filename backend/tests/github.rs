@@ -1,5 +1,6 @@
-//! GitHub App installation surface: connection state, full stub setup round-trip,
-//! and short-lived installation tokens that are never persisted.
+//! GitHub App installation surface: connection state, a full setup round-trip
+//! against the mock GitHub server, and short-lived installation tokens that are
+//! never persisted.
 
 mod common;
 
@@ -8,9 +9,9 @@ use axum::http::{header, Request, StatusCode};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
-use common::{cookie_value, stub_state};
+use common::{cookie_value, real_state};
 use featuredoc::github_api::GithubUser;
-use featuredoc::{build_router, github_app, session, users};
+use featuredoc::{build_router, github_app, github_tokens, mock_github, session, users};
 
 async fn login_user(state: &featuredoc::state::AppState, login: &str, id: i64) -> String {
     let gh = GithubUser {
@@ -30,7 +31,7 @@ async fn json_body(resp: axum::response::Response) -> serde_json::Value {
 
 #[tokio::test]
 async fn connection_when_not_installed_still_lists_requested_permissions() {
-    let (state, path) = stub_state().await;
+    let (state, _mock, path) = real_state().await;
     let token = login_user(&state, "alice", 1).await;
 
     let resp = build_router(state)
@@ -52,9 +53,10 @@ async fn connection_when_not_installed_still_lists_requested_permissions() {
 }
 
 #[tokio::test]
-async fn install_url_returns_stub_target_and_sets_setup_cookie() {
-    let (state, path) = stub_state().await;
+async fn install_url_points_at_github_install_page_and_sets_setup_cookie() {
+    let (state, mock, path) = real_state().await;
     let token = login_user(&state, "alice", 1).await;
+    let expected_prefix = format!("{}/apps/featuredoc/installations/new", mock.base_url);
 
     let resp = build_router(state)
         .oneshot(
@@ -77,14 +79,33 @@ async fn install_url_returns_stub_target_and_sets_setup_cookie() {
     assert!(set_cookie.contains("fd_setup_state="));
     let body = json_body(resp).await;
     let url = body["url"].as_str().unwrap();
-    assert!(url.starts_with("/api/github/setup?installation_id="), "got {url}");
+    assert!(url.starts_with(&expected_prefix), "got {url}");
+    assert!(url.contains("state="), "got {url}");
     let _ = std::fs::remove_file(&path);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn setup_round_trip_marks_connection_installed() {
-    let (state, path) = stub_state().await;
-    let token = login_user(&state, "alice", 1).await;
+    let (state, _mock, path) = real_state().await;
+    let login = "alice";
+    let token = login_user(&state, login, 1).await;
+
+    // The user's stored OAuth token lets setup verify they own the installation:
+    // the mock vouches for `installation_id_for(login)` under `access_token_for(login)`.
+    let user: (String,) = sqlx::query_as("SELECT id FROM users WHERE login = ?")
+        .bind(login)
+        .fetch_one(&state.db)
+        .await
+        .unwrap();
+    github_tokens::store(
+        &state.db,
+        &state.config.kek,
+        &user.0,
+        &mock_github::access_token_for(login),
+    )
+    .await
+    .unwrap();
+    let iid = mock_github::installation_id_for(login);
 
     // 1) ask for the install URL + capture the setup-state cookie.
     let resp = build_router(state.clone())
@@ -105,13 +126,14 @@ async fn setup_round_trip_marks_connection_installed() {
         .unwrap()
         .to_string();
     let setup_state = cookie_value(&set_cookie, "fd_setup_state").unwrap();
-    let url = json_body(resp).await["url"].as_str().unwrap().to_string();
 
-    // 2) follow the setup callback with both cookies.
+    // 2) follow the setup callback the mock would have redirected the browser to.
+    let setup_uri =
+        format!("/api/github/setup?installation_id={iid}&setup_action=install&state={setup_state}");
     let resp = build_router(state.clone())
         .oneshot(
             Request::builder()
-                .uri(&url)
+                .uri(&setup_uri)
                 .header(
                     header::COOKIE,
                     format!("fd_session={token}; fd_setup_state={setup_state}"),
@@ -123,7 +145,7 @@ async fn setup_round_trip_marks_connection_installed() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
-    // 3) connection now reports installed + the mockup's repo count / account.
+    // 3) connection now reports installed + the mock's repo count / account.
     let resp = build_router(state)
         .oneshot(
             Request::builder()
@@ -141,9 +163,9 @@ async fn setup_round_trip_marks_connection_installed() {
     let _ = std::fs::remove_file(&path);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn installation_token_is_short_lived_and_not_persisted() {
-    let (state, path) = stub_state().await;
+    let (state, _mock, path) = real_state().await;
 
     let before: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM installations")
         .fetch_one(&state.db)
@@ -167,7 +189,7 @@ async fn installation_token_is_short_lived_and_not_persisted() {
 
 #[tokio::test]
 async fn github_token_store_load_roundtrips_encrypted() {
-    let (state, path) = stub_state().await;
+    let (state, _mock, path) = real_state().await;
     let user = users::upsert(
         &state.db,
         &GithubUser {
@@ -180,17 +202,17 @@ async fn github_token_store_load_roundtrips_encrypted() {
     .await
     .unwrap();
 
-    featuredoc::github_tokens::store(&state.db, &state.config.kek, &user.id, "gho_secret_token_value")
+    github_tokens::store(&state.db, &state.config.kek, &user.id, "gho_secret_token_value")
         .await
         .unwrap();
 
-    let loaded = featuredoc::github_tokens::load(&state.db, &state.config.kek, &user.id)
+    let loaded = github_tokens::load(&state.db, &state.config.kek, &user.id)
         .await
         .unwrap();
     assert_eq!(loaded.as_deref(), Some("gho_secret_token_value"));
 
     // Unknown user -> None.
-    assert!(featuredoc::github_tokens::load(&state.db, &state.config.kek, "nobody")
+    assert!(github_tokens::load(&state.db, &state.config.kek, "nobody")
         .await
         .unwrap()
         .is_none());

@@ -16,6 +16,7 @@ pub mod github_app;
 pub mod github_tokens;
 pub mod installations;
 pub mod llmkey;
+pub mod mock_github;
 pub mod models;
 pub mod session;
 pub mod state;

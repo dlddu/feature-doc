@@ -9,7 +9,6 @@ use axum::{Json, Router};
 use axum_extra::extract::cookie::CookieJar;
 use serde::{Deserialize, Serialize};
 
-use crate::config::Mode;
 use crate::error::AppError;
 use crate::models::User;
 use crate::state::AppState;
@@ -25,44 +24,28 @@ pub fn routes() -> Router<AppState> {
         .route("/api/me", get(me))
 }
 
-#[derive(Deserialize, Default)]
-struct LoginParams {
-    /// Stub-mode only: pick which synthetic identity to log in as.
-    #[serde(rename = "as")]
-    as_user: Option<String>,
-}
-
-/// Begins login. Real mode redirects to GitHub's App user-authorization page;
-/// stub mode bounces straight back to our callback with a synthetic code.
+/// Begins login by redirecting to GitHub's App user-authorization page. In tests
+/// and the kind e2e, `web_base` points at the mock server ([`crate::mock_github`]),
+/// which stands in for GitHub.
 async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
-    Query(params): Query<LoginParams>,
 ) -> Result<(CookieJar, Redirect), AppError> {
     let nonce = util::random_token();
     let jar = jar.add(cookies::make(&state, STATE_COOKIE, nonce.clone()));
 
-    let location = match state.config.mode {
-        Mode::Stub => {
-            let code = sanitize_handle(params.as_user.as_deref().unwrap_or("stub"));
-            format!("/api/auth/callback?code={code}&state={nonce}")
-        }
-        Mode::Real => {
-            let redirect_uri = format!("{}/api/auth/callback", state.config.base_url);
-            let mut url = url::Url::parse(&format!(
-                "{}/login/oauth/authorize",
-                state.config.github.web_base
-            ))
-            .map_err(|_| AppError::internal("invalid web_base"))?;
-            url.query_pairs_mut()
-                .append_pair("client_id", &state.config.github.client_id)
-                .append_pair("redirect_uri", &redirect_uri)
-                .append_pair("state", &nonce);
-            url.to_string()
-        }
-    };
+    let redirect_uri = format!("{}/api/auth/callback", state.config.base_url);
+    let mut url = url::Url::parse(&format!(
+        "{}/login/oauth/authorize",
+        state.config.github.web_base
+    ))
+    .map_err(|_| AppError::internal("invalid web_base"))?;
+    url.query_pairs_mut()
+        .append_pair("client_id", &state.config.github.client_id)
+        .append_pair("redirect_uri", &redirect_uri)
+        .append_pair("state", &nonce);
 
-    Ok((jar, Redirect::to(&location)))
+    Ok((jar, Redirect::to(url.as_str())))
 }
 
 #[derive(Deserialize)]
@@ -156,18 +139,5 @@ impl FromRequestParts<AppState> for CurrentUser {
             Some(user) => Ok(CurrentUser(user)),
             None => Err(AppError::Unauthorized),
         }
-    }
-}
-
-fn sanitize_handle(s: &str) -> String {
-    let cleaned: String = s
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
-        .take(39)
-        .collect();
-    if cleaned.is_empty() {
-        "stub".to_string()
-    } else {
-        cleaned.to_ascii_lowercase()
     }
 }

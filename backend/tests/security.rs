@@ -70,6 +70,7 @@ fn config_debug_redacts_secrets() {
             client_secret: "shhh-super-secret-value".into(),
             app_slug: "featuredoc".into(),
             api_base: "https://api.github.com".into(),
+            oauth_base: "https://github.com".into(),
             web_base: "https://github.com".into(),
         },
         cookie_secure: true,

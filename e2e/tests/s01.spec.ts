@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), so the GitHub
-// OAuth/App and LLM boundaries are answered by in-process test doubles — no
-// network. Drives the whole S01 journey in a real browser.
+// GitHub is answered by a standalone mock GitHub server (deployed as `mock-github`),
+// so the app runs its real OAuth/App HTTP path while staying offline. The LLM-key
+// boundary is still a deterministic shape check (FEATUREDOC_MODE=stub). Drives the
+// whole S01 journey in a real browser.
 test('S01: sign in → connect GitHub App → register key → continue', async ({ page }) => {
   await page.goto('/');
 

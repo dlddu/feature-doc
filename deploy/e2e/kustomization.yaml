@@ -1,30 +1,37 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# e2e overlay. The base (deploy/k8s) targets ghcr.io/dlddu/featuredoc:latest
-# with an Always pull policy — correct for production. For kind-based e2e we
-# instead want the image scripts/e2e.sh builds locally and `kind load`s into
-# the node, so we retag to featuredoc:dev and force IfNotPresent (otherwise the
-# node would ignore the loaded image and try to pull from GHCR).
+# e2e overlay. The base (deploy/k8s) targets ghcr.io/dlddu/featuredoc:latest with an
+# Always pull policy — correct for production. For kind-based e2e we instead use the
+# image scripts/e2e.sh builds locally and `kind load`s into the node, so we retag to
+# featuredoc:dev and force IfNotPresent.
+#
+# GitHub is no longer stubbed in-process: the app runs the real HTTP path against a
+# mock GitHub server (deployed alongside as `mock-github`, same image, different
+# command — see mock-github.yaml). FEATUREDOC_MODE stays "stub" only so the LLM-key
+# shape check still passes for the e2e test key (LLM has no base-URL indirection yet).
 resources:
   - ../k8s
+  - mock-github.yaml
 
 images:
   - name: ghcr.io/dlddu/featuredoc
     newName: featuredoc
     newTag: dev
 
-# Generate the stub-mode secret (the base provides none — see secret.yaml.example):
-# a deterministic e2e KEK; GitHub creds stay empty since stub mode never calls
-# GitHub. Run mode + base URL + cookie flag are non-secret env, overridden below.
+# e2e secret: a deterministic KEK, a throwaway App private key (the mock does not
+# verify its signature — the app only needs signing to succeed), and placeholder
+# OAuth client credentials (the mock ignores them). The PEM is read from a file so
+# it stays readable.
 secretGenerator:
   - name: featuredoc-secrets
     literals:
-      - FEATUREDOC_KEK=e2e-stub-kek-not-a-real-secret
+      - FEATUREDOC_KEK=e2e-mock-kek-not-a-real-secret
       - GITHUB_APP_SLUG=featuredoc
-      - GITHUB_CLIENT_ID=
-      - GITHUB_CLIENT_SECRET=
-      - GITHUB_APP_PRIVATE_KEY=
+      - GITHUB_CLIENT_ID=test-client-id
+      - GITHUB_CLIENT_SECRET=test-client-secret
+    files:
+      - GITHUB_APP_PRIVATE_KEY=test_app_key.pem
 
 generatorOptions:
   disableNameSuffixHash: true
@@ -44,7 +51,10 @@ patches:
             containers:
               - name: app
                 imagePullPolicy: IfNotPresent
-                # Stub mode, http cookies, local base URL (merged by env name).
+                # http cookies + local base URL. GitHub points at the mock server:
+                # server-side calls use the cluster Service (mock-github); the
+                # browser-facing OAuth/install redirects use the port-forwarded
+                # address (scripts/e2e.sh maps localhost:8081 -> svc/mock-github).
                 env:
                   - name: FEATUREDOC_MODE
                     value: "stub"
@@ -52,3 +62,9 @@ patches:
                     value: "http://localhost:8080"
                   - name: COOKIE_SECURE
                     value: "false"
+                  - name: GITHUB_API_BASE
+                    value: "http://mock-github"
+                  - name: GITHUB_OAUTH_BASE
+                    value: "http://mock-github"
+                  - name: GITHUB_WEB_BASE
+                    value: "http://localhost:8081"

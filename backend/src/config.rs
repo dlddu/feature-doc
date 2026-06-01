@@ -8,11 +8,14 @@ use std::sync::Arc;
 
 use sha2::{Digest, Sha256};
 
-/// Selects real external integrations vs. deterministic in-process test doubles.
+/// Selects whether LLM-provider API keys are validated against the real providers.
 ///
-/// `real` (default) talks to GitHub and the LLM providers over the network.
-/// `stub` short-circuits those boundaries with canned, deterministic behaviour so
-/// the kind-based e2e and unit tests stay hermetic (plan: "테스트 더블로 모킹").
+/// GitHub is no longer gated by this: the app always talks to whatever
+/// `GITHUB_API_BASE` / `GITHUB_OAUTH_BASE` / `GITHUB_WEB_BASE` point at, so hermetic
+/// runs simply aim those at the mock server (see [`crate::mock_github`]). LLM keys
+/// have no equivalent base-URL indirection yet, so `stub` keeps the deterministic
+/// shape check used by the unit tests and the kind e2e; `real` (default) calls the
+/// provider over the network.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Mode {
     Real,
@@ -32,7 +35,13 @@ pub struct GithubConfig {
     pub app_slug: String,
     /// API origin, e.g. `https://api.github.com`. Overridable for tests.
     pub api_base: String,
-    /// Web origin, e.g. `https://github.com`. Overridable for tests.
+    /// Server-side OAuth token-exchange origin (`POST /login/oauth/access_token`).
+    /// For real GitHub this is the same as [`Self::web_base`] (`https://github.com`);
+    /// it is split out so the kind e2e can reach the mock at a cluster-internal
+    /// address while the browser uses a different one. Defaults to `web_base`.
+    pub oauth_base: String,
+    /// Browser-facing origin for the OAuth authorize page and the App installation
+    /// page, e.g. `https://github.com`. Overridable for tests/e2e.
     pub web_base: String,
 }
 
@@ -66,13 +75,16 @@ impl Config {
         }
         let kek = derive_kek(kek_secret.as_deref().unwrap_or("insecure-development-kek"));
 
+        let web_base = trim_trailing_slash(&env_or("GITHUB_WEB_BASE", "https://github.com"));
+        let oauth_base = trim_trailing_slash(&env_or("GITHUB_OAUTH_BASE", &web_base));
         let github = GithubConfig {
             app_private_key: read_secret("GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_PRIVATE_KEY_FILE"),
             client_id: env_or("GITHUB_CLIENT_ID", ""),
             client_secret: env_or("GITHUB_CLIENT_SECRET", ""),
             app_slug: env_or("GITHUB_APP_SLUG", "featuredoc"),
             api_base: trim_trailing_slash(&env_or("GITHUB_API_BASE", "https://api.github.com")),
-            web_base: trim_trailing_slash(&env_or("GITHUB_WEB_BASE", "https://github.com")),
+            oauth_base,
+            web_base,
         };
 
         Ok(Arc::new(Self {
@@ -120,6 +132,7 @@ impl std::fmt::Debug for GithubConfig {
             .field("client_secret", &"[REDACTED]")
             .field("app_slug", &self.app_slug)
             .field("api_base", &self.api_base)
+            .field("oauth_base", &self.oauth_base)
             .field("web_base", &self.web_base)
             .finish()
     }

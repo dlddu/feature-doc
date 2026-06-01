@@ -7,15 +7,19 @@ CLUSTER_NAME="${CLUSTER_NAME:-featuredoc}"
 IMAGE="${IMAGE:-featuredoc:dev}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
+MOCK_PORT="${MOCK_PORT:-8081}"
 
 PF_PID=""
+MOCK_PF_PID=""
 
 cleanup() {
-  if [ -n "${PF_PID}" ] && kill -0 "${PF_PID}" 2>/dev/null; then
-    echo "[cleanup] stop port-forward (pid ${PF_PID})"
-    kill "${PF_PID}" 2>/dev/null || true
-    wait "${PF_PID}" 2>/dev/null || true
-  fi
+  for pid in "${PF_PID}" "${MOCK_PF_PID}"; do
+    if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+      echo "[cleanup] stop port-forward (pid ${pid})"
+      kill "${pid}" 2>/dev/null || true
+      wait "${pid}" 2>/dev/null || true
+    fi
+  done
   if [ "${KEEP_CLUSTER}" != "1" ]; then
     echo "[cleanup] kind delete cluster --name ${CLUSTER_NAME}"
     kind delete cluster --name "${CLUSTER_NAME}" >/dev/null 2>&1 || true
@@ -46,11 +50,14 @@ echo "[4/7] kubectl apply -k (e2e overlay)"
 kubectl apply -k "${ROOT}/deploy/e2e/"
 
 echo "[5/7] wait for rollout"
+kubectl rollout status deployment/mock-github --timeout=180s
 kubectl rollout status deployment/featuredoc --timeout=180s
 
-echo "[6/7] port-forward svc/featuredoc ${LOCAL_PORT}:8080"
+echo "[6/7] port-forward svc/featuredoc ${LOCAL_PORT}:8080 + svc/mock-github ${MOCK_PORT}:80"
 kubectl port-forward svc/featuredoc "${LOCAL_PORT}:8080" >/tmp/featuredoc-pf.log 2>&1 &
 PF_PID=$!
+kubectl port-forward svc/mock-github "${MOCK_PORT}:80" >/tmp/mock-github-pf.log 2>&1 &
+MOCK_PF_PID=$!
 for _ in $(seq 1 30); do
   if curl -fsS "http://localhost:${LOCAL_PORT}/hello" >/dev/null 2>&1; then
     break

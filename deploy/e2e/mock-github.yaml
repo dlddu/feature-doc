@@ -1,0 +1,75 @@
+# Mock GitHub server for the kind e2e. Same image as the app, different command.
+# The app talks to it over the real HTTP path (no in-process stub):
+#   - server-side REST + OAuth token exchange use the cluster Service (mock-github)
+#   - browser-facing OAuth/install redirects use the port-forwarded address that
+#     scripts/e2e.sh exposes (localhost:8081 -> svc/mock-github)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-github
+  labels:
+    app.kubernetes.io/name: mock-github
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mock-github
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mock-github
+    spec:
+      containers:
+        - name: mock
+          # Retagged to featuredoc:dev by the e2e kustomization images transformer.
+          image: ghcr.io/dlddu/featuredoc:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/local/bin/mock_github"]
+          ports:
+            - containerPort: 8090
+              name: http
+          env:
+            - name: MOCK_GITHUB_PORT
+              value: "8090"
+            # Browser-reachable origin of the FeatureDoc app (the e2e port-forward),
+            # used to build the post-authorize / post-install redirect targets.
+            - name: MOCK_GITHUB_APP_BASE_URL
+              value: "http://localhost:8080"
+            - name: MOCK_GITHUB_DEFAULT_LOGIN
+              value: "stub"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "16Mi"
+            limits:
+              cpu: "250m"
+              memory: "64Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-github
+  labels:
+    app.kubernetes.io/name: mock-github
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mock-github
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
