@@ -27,7 +27,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=backend /app/target/release/featuredoc /usr/local/bin/featuredoc
-COPY --from=backend /app/target/release/mock_github /usr/local/bin/mock_github
 COPY --from=frontend /app/dist ./dist
 ENV STATIC_DIR=/app/dist
 EXPOSE 8080

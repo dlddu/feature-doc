@@ -1,5 +1,7 @@
-# Mock GitHub server for the kind e2e. Same image as the app, different command.
-# The app talks to it over the real HTTP path (no in-process stub):
+# Mock GitHub server for the kind e2e. Built from deploy/e2e/mock-github.Dockerfile
+# into its own image (featuredoc-mock:dev) and `kind load`ed by scripts/e2e.sh — it
+# is deliberately NOT the app/production image, so the test double never ships to
+# prod. The app talks to it over the real HTTP path (no in-process stub):
 #   - server-side REST + OAuth token exchange use the cluster Service (mock-github)
 #   - browser-facing OAuth/install redirects use the port-forwarded address that
 #     scripts/e2e.sh exposes (localhost:8081 -> svc/mock-github)
@@ -21,8 +23,8 @@ spec:
     spec:
       containers:
         - name: mock
-          # Retagged to featuredoc:dev by the e2e kustomization images transformer.
-          image: ghcr.io/dlddu/featuredoc:latest
+          # Dedicated mock image (loaded into kind), never pushed.
+          image: featuredoc-mock:dev
           imagePullPolicy: IfNotPresent
           command: ["/usr/local/bin/mock_github"]
           ports:

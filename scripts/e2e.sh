@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLUSTER_NAME="${CLUSTER_NAME:-featuredoc}"
 IMAGE="${IMAGE:-featuredoc:dev}"
+MOCK_IMAGE="${MOCK_IMAGE:-featuredoc-mock:dev}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
 MOCK_PORT="${MOCK_PORT:-8081}"
@@ -40,11 +41,13 @@ if ! kind get clusters 2>/dev/null | grep -qx "${CLUSTER_NAME}"; then
   kind create cluster --name "${CLUSTER_NAME}" --config "${ROOT}/deploy/e2e/kind-cluster.yaml"
 fi
 
-echo "[2/7] docker build → ${IMAGE}"
+echo "[2/7] docker build → ${IMAGE} (+ mock ${MOCK_IMAGE})"
 docker build -t "${IMAGE}" "${ROOT}"
+docker build -t "${MOCK_IMAGE}" -f "${ROOT}/deploy/e2e/mock-github.Dockerfile" "${ROOT}"
 
-echo "[3/7] kind load docker-image"
+echo "[3/7] kind load docker-image (app + mock)"
 kind load docker-image "${IMAGE}" --name "${CLUSTER_NAME}"
+kind load docker-image "${MOCK_IMAGE}" --name "${CLUSTER_NAME}"
 
 echo "[4/7] kubectl apply -k (e2e overlay)"
 kubectl apply -k "${ROOT}/deploy/e2e/"

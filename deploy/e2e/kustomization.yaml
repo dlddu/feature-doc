@@ -7,9 +7,10 @@ kind: Kustomization
 # featuredoc:dev and force IfNotPresent.
 #
 # GitHub is no longer stubbed in-process: the app runs the real HTTP path against a
-# mock GitHub server (deployed alongside as `mock-github`, same image, different
-# command — see mock-github.yaml). FEATUREDOC_MODE stays "stub" only so the LLM-key
-# shape check still passes for the e2e test key (LLM has no base-URL indirection yet).
+# mock GitHub server (deployed alongside as `mock-github`, built from its own image
+# featuredoc-mock:dev — see mock-github.yaml; the test binary is kept out of the app
+# image). FEATUREDOC_MODE stays "stub" only so the LLM-key shape check still passes
+# for the e2e test key (LLM has no base-URL indirection yet).
 resources:
   - ../k8s
   - mock-github.yaml
