@@ -129,6 +129,109 @@ pub async fn fetch_installation(
     }
 }
 
+/// A repository the installation can access — the subset the user granted at install
+/// time. `size_kb` is GitHub's reported size, used only for pre-flight estimates,
+/// never for access decisions.
+pub struct RepoRef {
+    pub owner: String,
+    pub name: String,
+    pub full_name: String,
+    pub default_branch: String,
+    pub size_kb: i64,
+}
+
+/// Lists the repositories the installation can access. Stub returns a deterministic
+/// set whose count matches [`repository_count`]; real mode pages
+/// `/installation/repositories`.
+pub async fn list_repositories(
+    state: &AppState,
+    installation_id: i64,
+) -> Result<Vec<RepoRef>, AppError> {
+    match state.config.mode {
+        Mode::Stub => Ok(stub_repositories()),
+        Mode::Real => {
+            let token = mint_installation_token(state, installation_id).await?;
+            let mut out: Vec<RepoRef> = Vec::new();
+            let mut page = 1;
+            loop {
+                let url = format!(
+                    "{}/installation/repositories?per_page=100&page={page}",
+                    state.config.github.api_base
+                );
+                let resp = state
+                    .http
+                    .get(&url)
+                    .header("Authorization", format!("Bearer {}", token.token))
+                    .header("Accept", "application/vnd.github+json")
+                    .header("User-Agent", "featuredoc/0.1")
+                    .header("X-GitHub-Api-Version", "2022-11-28")
+                    .send()
+                    .await
+                    .map_err(|_| AppError::internal("github repositories request failed"))?;
+                if !resp.status().is_success() {
+                    return Err(AppError::internal("github repositories rejected"));
+                }
+                #[derive(Deserialize)]
+                struct Owner {
+                    login: String,
+                }
+                #[derive(Deserialize)]
+                struct Repo {
+                    name: String,
+                    owner: Owner,
+                    default_branch: Option<String>,
+                    #[serde(default)]
+                    size: i64,
+                }
+                #[derive(Deserialize)]
+                struct R {
+                    total_count: i64,
+                    repositories: Vec<Repo>,
+                }
+                let r: R = resp
+                    .json()
+                    .await
+                    .map_err(|_| AppError::internal("github repositories: malformed response"))?;
+                let got = r.repositories.len();
+                for repo in r.repositories {
+                    let owner = repo.owner.login;
+                    let full_name = format!("{owner}/{}", repo.name);
+                    out.push(RepoRef {
+                        default_branch: repo.default_branch.unwrap_or_else(|| "main".into()),
+                        size_kb: repo.size,
+                        owner,
+                        name: repo.name,
+                        full_name,
+                    });
+                }
+                if got == 0 || out.len() as i64 >= r.total_count {
+                    break;
+                }
+                page += 1;
+            }
+            Ok(out)
+        }
+    }
+}
+
+/// Deterministic stub repository set (3 repos → matches the stub `repository_count`).
+fn stub_repositories() -> Vec<RepoRef> {
+    [
+        ("payments-api", "main", 2300),
+        ("checkout-web", "main", 5100),
+        ("notif-worker", "main", 800),
+    ]
+    .into_iter()
+    .map(|(name, branch, size_kb)| RepoRef {
+        owner: "stub-account".to_string(),
+        name: name.to_string(),
+        full_name: format!("stub-account/{name}"),
+        default_branch: branch.to_string(),
+        size_kb,
+    })
+    .collect()
+}
+
 /// Best-effort count of repositories the installation can access (for display).
 pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<i64> {
     match state.config.mode {
