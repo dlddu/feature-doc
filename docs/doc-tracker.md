@@ -6,6 +6,7 @@
 - PRD: **4개** (analysis-pipeline, feature-representation, doc-management, platform)
 - Acceptance Criteria: **24개** (가치 연결됨: 24 / 미연결: 0)
 - 테스트 문서: **4개** (AC 커버됨: 24 / 미커버: 0)
+- e2e spec (`e2e/tests/`): **5개** — AC 전용 1:1 매핑 5건 · 예외 0건 · 공백 19건 (아래 "e2e 매핑")
 - 사용자 여정 문서: **5개** (README + 플로우 4개) — 가치/AC/와이어프레임을 사용자 행동 시간 축으로 재구성
 - 와이어프레임: **10개** (S01 ~ S10, 정보 구조 SVG)
 - 목업: **10개** (S01 ~ S10, 디자인 시스템 적용 HTML) — 와이어프레임과 1:1 대응, 가치 연결됨: 10 / 미연결: 0
@@ -63,6 +64,63 @@ UX 산출물의 연결. 10개 화면(S01~S10)이 각각 와이어프레임(정�
 | S10 LLM-assisted Edit | 3 Feature 문서 | V3·V4·V7 | ✅ | ✅ | ✅ 완전 |
 
 목업은 디자인 시스템([`design-system.md`](design-system.md))의 토큰·컴포넌트를 각 HTML 파일에 인라인 CSS로 적용합니다 (와이어프레임 SVG처럼 화면별 단독 파일). 디자인 시스템 §4의 12개 컴포넌트(Button·Tag·Input·Card·Step·Tabs·Bottom tab bar·Code block·Icon container·Segment selector·Metric grid·Progress bar)는 모두 1개 이상의 목업에서 사용됩니다. 화면별 §4 컴포넌트 사용 매핑과 §4 외 요소(Section title 타이포 역할, 화면 전용 의존성 그래프)의 단일 소스는 [`mockups/README.md`](mockups/README.md)의 "Mockup index"입니다.
+
+## e2e 매핑
+
+AC(`docs/prd`) ↔ e2e spec(`e2e/tests/` 최상위 `*.spec.ts`)의 1:1 매핑과 그 예외·공백의 단일 소스.
+reconciler 모델 `tbm_feature-doc-ac-e2e`가 이 절을 실제 파일 상태와 대조한다.
+
+**규약**
+
+- **매칭 단위**는 `e2e/tests/` 최상위 `*.spec.ts`다. `e2e/smoke.sh`(HTTP 스모크)·`playwright.config.ts`·`package.json`은 매칭 단위가 아니다.
+- 각 spec은 첫 줄에 `// 검증 AC: ACx.y`를 **정확히 1개** 선언한다. 이 선언이 매핑의 확인 지점이다.
+- 파일명은 `ac<major>-<minor>-<slug>.spec.ts` — 파일명과 헤더 선언이 서로를 교차 확인한다.
+- spec은 각자 자기 stub 사용자로 로그인한다(`/api/auth/login?as=<handle>`). 설치·키는 사용자 단위 상태이고 spec 파일은 병렬 워커에서 한 배포를 공유하므로, 신원을 공유하면 한 spec이 다른 spec의 상태를 무너뜨린다. `ac4-8`만 UI의 "Sign in with GitHub" 버튼(기본 `stub` 사용자)을 소유한다.
+- 셋업을 위해 다른 AC의 화면을 경유하는 것은 검증으로 세지 않는다 — 헤더에 선언된 AC만 그 파일의 검증 대상이다.
+
+**매핑 (5건)**
+
+| AC | 전용 spec | 이 spec이 검증하는 것 | 자동화 밖 잔여 |
+|----|-----------|----------------------|----------------|
+| AC1.1 저장소 연결·분석 트리거 | `ac1-1-repository-connect-and-trigger.spec.ts` | 홈 저장소·분석 목록 → 접근 범위 밖 타깃 거부(미큐잉·복구 경로) → pre-flight 추정 → 트리거 후 `Queued` | 실제 GitHub 저장소 fetch·브랜치 해석 |
+| AC4.1 GitHub App 설치를 통한 접근 연결 | `ac4-1-github-app-connection.spec.ts` | 설치 전 최소 권한(`contents:read`·`metadata:read`) 안내 → 연결 → 설치 상태·계정·접근 가능 저장소 수 | 실제 GitHub에서의 설치·저장소 범위 변경·설치 해제 라운드트립, 설치 토큰의 단기 만료 |
+| AC4.2 LLM API Key 등록·교체·폐기 | `ac4-2-llm-key-lifecycle.spec.ts` | 검증 실패 키 거부 → 등록 → 다른 제공자로 교체 → 폐기 후 신규 호출 차단(`/api/llm-keys/preflight`) | 실제 제공자 호출 위임과 누적 호출/실측 비용 표시(분석 파이프라인 선행) |
+| AC4.3 자격증명의 안전한 사용 정책 | `ac4-3-credential-safety.spec.ts` | 마스킹 식별자만 표시 · 렌더된 문서·자격증명 응답에 평문 부재 · 감사 이력(`llm_key.register`) 사용자 조회 | 운영 로그·오류 메시지의 평문 점검(클러스터 로그 수집 필요). 응답 본문 수준 평문 검사는 `e2e/smoke.sh`가 별도로 지킨다 |
+| AC4.8 GitHub OAuth 인증·세션 | `ac4-8-signin-and-session.spec.ts` | 미인증 시 보호 API 401 → 로그인 → `/api/me` 동일 사용자 · 재로그인 시 계정 미중복 → 로그아웃 시 세션 즉시 무효화 | 실제 GitHub OAuth 동의 화면 왕복 |
+
+> "자동화 밖 잔여"는 **예외 등재가 아니다**. 해당 AC는 이미 전용 파일을 가지므로 1:1 매핑을 충족하며, 이 칸은 stub 모드 e2e가 닿지 못하는 부분을 숨기지 않고 남겨 둔 기록이다.
+
+**예외 목록 (0건)**
+
+현재 등재된 예외는 없다. 예외는 *e2e로 자동 검증하는 것이 곤란한* AC를 위한 것이며(실제 외부 계정 상태 왕복, 운영 로그 점검, 워커 강제 종료·수평 확장, LLM 산출물의 비결정적 품질 등), **"아직 구현되지 않았다"는 예외 사유가 아니다** — 미구현 AC는 아래 공백 목록에 남아 계속 gap으로 계수된다. 예외를 등재할 때는 AC별로 사유와 대체 검증 수단(수동 QA, `cargo test`, `e2e/smoke.sh` 등)을 함께 적는다.
+
+**공백 (19건) — 구현 미착수, 위 "구현 수렴 로드맵"이 닫는다**
+
+전용 spec을 쓸 화면·라우트가 아직 없어 비어 있는 AC. 자매 모델 `tbm_feature-doc-docs-impl`이 추적하는 미구현 19건과 정확히 같은 집합이며, 각 슬라이스가 구현을 얹을 때 그 슬라이스가 spec도 함께 만든다.
+
+| 공백 AC | 닫을 슬라이스 |
+|---------|---------------|
+| AC1.5 분석 작업의 비동기 실행·진행 가시성 · AC4.5 k8s 워크로드 분리 | 3 |
+| AC1.2 횡단 관심사 · AC1.3 탐색 전략 · AC1.4 feature 후보 · AC4.6 관측·비용 | 4 (AC4.6은 7에서 마감) |
+| AC2.1~AC2.6 feature 표현·의존성 | 5 |
+| AC3.1~AC3.5 문서 CRUD·이력·충돌 | 6 |
+| AC4.4 모바일 우선 · AC4.7 분석 작업 격리 | 7 |
+
+> 구현 시 예외 등재 후보(모델 정의가 예시로 든 것): AC4.5의 워커 강제 종료·수평 확장, AC4.6의 비용·관측 수치, AC4.7의 격리 검증, AC1.2~AC1.4의 LLM 산출물 품질. 판단은 각 슬라이스의 계획 단계에서 하고, 그 전에는 미리 등재하지 않는다.
+
+**집계**
+
+- AC: **24** · 예외: **0** · 매핑된 AC(전용 spec 보유): **5** · 공백: **19**
+- 매칭 단위 파일: **5** — 전부 정확히 1개 AC 선언(중복 선언 0, 고아 파일 0)
+- 항등식 `(AC 24 − 예외 0) = 매핑 파일 5 + 공백 19` ✅
+
+기계 확인:
+
+```bash
+ls e2e/tests/*.spec.ts | wc -l                               # 매칭 단위 파일 수
+grep -h '^// 검증 AC:' e2e/tests/*.spec.ts | sort            # 파일별 선언 (중복·누락 확인)
+grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
+```
 
 ## 위험 진단
 
@@ -128,6 +186,7 @@ UX 산출물의 연결. 10개 화면(S01~S10)이 각각 와이어프레임(정�
 | 2026-07-12 OAuth 인증 문서 편입 | 구현(#5·#6)으로 존재하던 GitHub OAuth 로그인·세션·계정을 PRD-4 범위·AC4.8로 편입, `test/04` 시나리오 11·12 추가, 여정 플로우 1(S01)에 로그인 단계 반영, README §5 매트릭스·카운트 갱신. "사용자 본인 인증 방식 미정의" 의사결정 해소(결정: GitHub OAuth, PRD-4 확장). 구현 수렴 로드맵(슬라이스 2~7) 신설. S01 로그인(미인증) 상태 미시각화는 수용된 위험으로 등재 (reconciler `rct_20260712-0001`) | AC 23 · 인증 비범위(문서↔구현 모순) | AC 24 · 인증 범위 편입(모순 해소) |
 | 2026-08-02 슬라이스 2a(AC1.1 백엔드) 착수 기록 | AC1.1 저장소 연결·분석 트리거의 백엔드 enqueue 계약(`/api/repositories` · `POST /api/analyses/preflight` · `POST`·`GET /api/analyses`; `queued` 행 적재 · 범위 밖 타깃은 명확한 오류로 거부하며 미큐잉)이 PR #8(`dd5e6ee`, 2026-07-22 머지, reconciler `rct_20260715-0001`, `cargo test` + kind e2e 게이트)로 구현됨을 로드맵에 반영. 슬라이스 2를 2a(백엔드·완료)/2b(S02·S03 프론트·다음)로 분할. to-be(24개 AC)는 불변 — 메타 추적을 구현 현실에 일치시킨 갱신일 뿐 목표를 낮추지 않음 (reconciler `rct_20260802-0001`) | 로드맵 슬라이스 2 미착수 표기 (2a 구현 후 ~11일 미반영) | 2a 완료 · 2b 다음, AC1.1 백엔드 완료·프론트 잔여 |
 | 2026-08-07 슬라이스 2b(AC1.1 프론트) 완료 | AC1.1의 프론트엔드 절반(S02 Home·Repositories, S03 Connect Repository)을 2a 백엔드 API 위에 구현. 여정 플로우 1(S01 → S02 → S03) 라우팅, pre-flight 추정을 트리거 전 필수 단계로 배치, 접근 범위 밖 저장소의 오류·복구 경로·미큐잉을 stub 모드 Playwright 스펙(`e2e/tests/s02-s03.spec.ts`)으로 검증. 목업이 전제하나 파이프라인 데이터가 없어 표현하지 못한 4건을 "알려진 목업↔구현 편차"로 등재. to-be(24개 AC) 불변 (PR #11, reconciler `rct_20260807-0001`) | AC1.1 백엔드 완료 · 프론트 잔여, 미구현 AC 20건 | AC1.1 완료, 미구현 AC 19건 · 다음 슬라이스 3 |
+| 2026-08-07 e2e 매핑 규약 도입 | AC ↔ e2e spec의 1:1 매핑을 문서·파일 양쪽에 확립. spec 헤더 `// 검증 AC: ACx.y` 선언 규약과 `ac<major>-<minor>-<slug>.spec.ts` 파일명 규약을 도입하고, AC4.8·AC4.1·AC4.2·AC4.3을 한 파일에 묶고 있던 `e2e/tests/s01.spec.ts`를 AC별 전용 spec 4개로 분리, `s02-s03.spec.ts`를 `ac1-1-repository-connect-and-trigger.spec.ts`로 리네임·선언. 본 문서에 "e2e 매핑" 절(매핑 표·예외 정책·공백 목록·집계·기계 확인 recipe)을 신설. 예외는 0건으로 두고 "미구현은 예외 사유가 아니다"를 명문화해 미구현 19건이 계속 gap으로 계수되게 했다. to-be(24개 AC) 불변 — e2e 테스트만 재배치하고 구현·PRD는 건드리지 않음 (reconciler `rct_20260807-0001`, 모델 `tbm_feature-doc-ac-e2e`) | spec 2개(AC 선언 0, 4-AC 묶음 1) · 매핑 문서 없음 | spec 5개(각 1 AC 선언) · 매핑 5 · 예외 0 · 공백 19 |
 | 2026-05-27 design-doc 정합성 검증 | 4종 문서(가치/여정/디자인 시스템/목업) 정합성 검증. 위험 2건 발견 후 처리: ① 🟡 시각화 누락 단계(S11 변경 이력 화면) → "수용된 위험"으로 기록 ② 🟢 미정의 항목 사용 6건 → 실 컴포넌트 3개를 `design-system.md` §4.10~4.12로 추가하고 §4 헤더를 "12개"로 정정, 나머지 3개는 `mockups/README.md` 인덱스에서 "§4 외 요소"로 재분류. 부수 정정: `featuredoc-values.md`→`values.md` 오기, `user-journey/README.md §5` AC 커버리지(22→21개, 예외 AC4.5·AC4.7→AC3.2·AC4.4), `wireframes/README.md` AC 칸의 가치 표기 제거. `.claude/skills/`에 주입형 스킬 2개(ui-with-design-system, screen-with-mockup-and-design-system) 추가 | §4 컴포넌트 9 표기·미정의 참조 6건·검증 위험 미기록 | §4 컴포넌트 12 정합·미정의 참조 0·수용된 위험 1건 기록 |
 
 ## 다음 단계 권장

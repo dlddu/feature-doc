@@ -1,5 +1,7 @@
-import { test, expect } from '@playwright/test';
-
+// 검증 AC: AC1.1
+//
+// AC1.1 (저장소 연결 및 분석 트리거) 전용 spec.
+//
 // Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), whose GitHub App
 // installation can reach exactly three deterministic repositories
 // (stub-account/{payments-api,checkout-web,notif-worker}).
@@ -11,11 +13,14 @@ import { test, expect } from '@playwright/test';
 //
 // Spec files run in parallel workers against one shared deployment, and App
 // installation / key state is per *user* — so this spec signs in as its own stub
-// user (`?as=`, the same handle switch smoke.sh uses). s01.spec.ts owns the default
-// `stub` user; sharing it would let one spec install the App out from under the
-// other. The sign-in button itself is s01.spec.ts's assertion, not this one's.
-test('S02·S03: home → connect repository → trigger analysis (queued)', async ({ page }) => {
-  await page.goto('/api/auth/login?as=s02journey');
+// user (`?as=ac11`, the same handle switch smoke.sh uses). Sharing an identity would
+// let one spec install the App out from under another. The credential screen it walks
+// through on the way in is setup, not this file's verification target:
+// ac4-8/ac4-1/ac4-2/ac4-3 own those declarations.
+import { expect, test } from '@playwright/test';
+
+test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ page }) => {
+  await page.goto('/api/auth/login?as=ac11');
 
   // ── S01: install the App and register a key (the S02 pre-condition) ──
   await page.getByTestId('connect-app').click();
