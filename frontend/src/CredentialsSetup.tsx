@@ -1,5 +1,8 @@
 // S01 · Credentials Setup — the real, stateful screen behind
 // docs/mockups/s01-credentials-setup.html (AC4.1 · AC4.2 · AC4.3).
+//
+// Once pre-flight confirms the credentials are usable, the primary action becomes
+// the hand-off into S02 (journey flow 1: S01 → S02 → S03).
 
 import { useEffect, useState } from 'react';
 import {
@@ -27,7 +30,12 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-export function CredentialsSetup() {
+type Props = {
+  /** Continue into S02 once the credentials are confirmed ready. */
+  onReady?: () => void;
+};
+
+export function CredentialsSetup({ onReady }: Props = {}) {
   // undefined = still loading the session
   const [me, setMe] = useState<User | null | undefined>(undefined);
   const [connection, setConnection] = useState<Connection | null>(null);
@@ -114,6 +122,11 @@ export function CredentialsSetup() {
   }
 
   async function onContinue() {
+    // Already confirmed: the same button now carries the user into S02.
+    if (continueState === 'done') {
+      onReady?.();
+      return;
+    }
     setContinueState('checking');
     setContinueError(null);
     try {
@@ -351,7 +364,9 @@ export function CredentialsSetup() {
                 {continueState === 'checking'
                   ? '확인 중…'
                   : continueState === 'done'
-                    ? '준비 완료 ✓'
+                    ? onReady
+                      ? 'Repositories →'
+                      : '준비 완료 ✓'
                     : 'Continue'}
               </button>
             </div>
