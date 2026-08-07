@@ -18,10 +18,13 @@ pub mod github_tokens;
 pub mod installations;
 pub mod llmkey;
 pub mod models;
+pub mod pipeline;
+pub mod repo_scan;
 pub mod session;
 pub mod state;
 pub mod users;
 pub mod util;
+pub mod worker_api;
 
 use axum::{routing::get, Json, Router};
 use serde_json::{json, Value};
@@ -48,6 +51,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(llmkey::routes())
         .merge(audit::routes())
         .merge(analysis::routes())
+        .merge(worker_api::routes())
         .fallback_service(static_service)
         .layer(TraceLayer::new_for_http())
         .with_state(state)

@@ -4,11 +4,16 @@ kind: Kustomization
 # Production base. Points at the image CI publishes (ghcr.io/dlddu/featuredoc)
 # with no imagePullPolicy, so the :latest tag defaults to Always.
 #
+# Two workloads out of that one image (AC4.5): `featuredoc` serves the API and
+# owns the SQLite volume; `featuredoc-worker` drains the analysis queue over the
+# API's /internal routes and mounts nothing.
+#
 # The Deployment consumes `featuredoc-secrets` via envFrom. That Secret is
 # provisioned out-of-band (copy secret.yaml.example -> secret.yaml, fill in, and
 # apply it) and is intentionally NOT generated here, so no credentials — not even
 # placeholders — are committed.
 resources:
   - deployment.yaml
+  - worker-deployment.yaml
   - service.yaml
   - pvc.yaml

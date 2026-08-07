@@ -16,6 +16,9 @@ import { formatAgo, formatCost } from './format';
 const STATUS_BADGE: Record<string, { tone: string; label: string }> = {
   queued: { tone: 'info', label: 'Queued' },
   running: { tone: 'info', label: 'Analyzing' },
+  // The worker drained the queue and ran every stage that exists today; the LLM
+  // stages are still unimplemented, so this is deliberately not 'Synced'.
+  awaiting_pipeline: { tone: 'info', label: 'Fetched' },
   succeeded: { tone: 'success', label: 'Synced' },
   failed: { tone: 'danger', label: 'Failed' },
 };
