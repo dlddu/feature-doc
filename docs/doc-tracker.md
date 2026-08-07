@@ -77,6 +77,7 @@ reconciler 모델 `tbm_feature-doc-ac-e2e`가 이 절을 실제 파일 상태와
 - 파일명은 `ac<major>-<minor>-<slug>.spec.ts` — 파일명과 헤더 선언이 서로를 교차 확인한다.
 - spec은 각자 자기 stub 사용자로 로그인한다(`/api/auth/login?as=<handle>`). 설치·키는 사용자 단위 상태이고 spec 파일은 병렬 워커에서 한 배포를 공유하므로, 신원을 공유하면 한 spec이 다른 spec의 상태를 무너뜨린다. `ac4-8`만 UI의 "Sign in with GitHub" 버튼(기본 `stub` 사용자)을 소유한다.
 - 셋업을 위해 다른 AC의 화면을 경유하는 것은 검증으로 세지 않는다 — 헤더에 선언된 AC만 그 파일의 검증 대상이다.
+- **배포 전역 상태를 건드리는 spec은 그 상태를 단독으로 소유한다.** 사용자 단위 상태(App 설치·LLM 키)는 spec마다 자기 stub 신원으로 격리하지만, 분석 워커의 replica 수처럼 배포 전체에 걸린 것은 신원으로 나눌 수 없다. 그런 자원은 ① `deploy/e2e/`에서 **비활성(0)** 을 기본값으로 두고, ② 소유 spec이 필요할 때만 켠 뒤 `finally`에서 되돌리며, ③ `playwright.config.ts`가 `workers: 1`로 spec 파일 간 동시 실행을 막는다. (도입: `rct_20260807-0002` — 워커가 켜져 있으면 큐를 수 초 안에 비워 `ac1-1`의 `Queued` 단정과 경합한다.)
 
 **매핑 (6건)**
 

@@ -64,6 +64,12 @@ patches:
       metadata:
         name: featuredoc-worker
       spec:
+        # Off at rest. A running worker drains the queue within a couple of
+        # seconds, which would race any spec that asserts a job is still `Queued`
+        # (ac1-1 does). The worker is deployment-wide state — unlike App
+        # installs and LLM keys, no per-user handle can isolate it — so exactly
+        # one spec owns it: ac4-5 scales it up, asserts, and puts it back to 0.
+        replicas: 0
         template:
           spec:
             containers:

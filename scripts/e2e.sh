@@ -47,8 +47,9 @@ kubectl apply -k "${ROOT}/deploy/e2e/"
 
 echo "[5/7] wait for rollout (API + worker)"
 kubectl rollout status deployment/featuredoc --timeout=180s
-# The worker is a separate workload (AC4.5); ac4-5-*.spec.ts scales it during the
-# run and restores it to 1 replica at the end.
+# The worker is a separate workload (AC4.5) and the overlay starts it at 0
+# replicas — ac4-5-*.spec.ts owns its lifecycle (scales up, asserts, scales back).
+# This still confirms the Deployment applied cleanly.
 kubectl rollout status deployment/featuredoc-worker --timeout=180s
 
 echo "[6/7] port-forward svc/featuredoc ${LOCAL_PORT}:8080"

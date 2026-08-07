@@ -14,10 +14,14 @@
 // asserting the topology through anything *other* than actually removing the
 // workers would only restate the manifest back to itself.
 //
-// Isolation: playwright.config.ts sets `fullyParallel: false`, so no sibling spec
-// is mid-flight while the worker count changes — and the API, which is what every
-// other spec talks to, is never touched here. This spec restores `replicas=1`
-// in `finally` so a failure cannot leave the cluster drained for later runs.
+// Isolation: the analysis worker is *deployment-wide* state — unlike App installs
+// and LLM keys, no per-user handle can isolate it, and a running worker drains the
+// queue within seconds, which would race ac1-1's `Queued` assertion. Two things
+// make that safe: `deploy/e2e/` starts the worker at **0 replicas**, and
+// playwright.config.ts pins `workers: 1` so no sibling spec file is in flight
+// while this one scales. This spec puts the count back to 0 in `finally`, so a
+// failure here cannot leave a worker running for later specs. The API — what
+// every other spec talks to — is never touched.
 //
 // Like every spec it signs in as its own stub user (`?as=ac45`); App installation
 // is per-user state and sharing an identity would let specs clobber each other.
@@ -30,11 +34,43 @@ function kubectl(...args: string[]): string {
   return execFileSync('kubectl', args, { encoding: 'utf8', timeout: 120_000 });
 }
 
-function scaleWorkers(replicas: number): void {
+/** Pod names currently existing for the worker Deployment, in any phase. */
+function workerPods(): string[] {
+  const out = kubectl(
+    'get',
+    'pods',
+    '-l',
+    'app.kubernetes.io/name=featuredoc-worker',
+    '-o',
+    'jsonpath={.items[*].metadata.name}',
+  ).trim();
+  return out ? out.split(/\s+/) : [];
+}
+
+/**
+ * Scales the worker Deployment and waits until the change has actually taken
+ * effect at the *pod* level.
+ *
+ * `kubectl scale` + `rollout status` is not enough on the way down: both return
+ * as soon as the Deployment reports the new desired state, while the old pod is
+ * still being told to stop. A worker in that window keeps polling and will drain
+ * the very queue the next assertion is about to inspect — which is exactly how
+ * the first run of this spec failed (a job read back `awaiting_pipeline` five
+ * seconds after the workers were supposedly gone). So wait for the pod list
+ * itself.
+ */
+async function scaleWorkers(replicas: number): Promise<void> {
   kubectl('scale', WORKER_DEPLOY, `--replicas=${replicas}`);
-  // `rollout status` returns as soon as the desired state is observed, including
-  // scale-to-zero, so the assertions below never race the scale.
-  kubectl('rollout', 'status', WORKER_DEPLOY, '--timeout=120s');
+  if (replicas > 0) {
+    kubectl('rollout', 'status', WORKER_DEPLOY, '--timeout=120s');
+  }
+  for (let i = 0; i < 120; i++) {
+    if (workerPods().length === replicas) return;
+    await new Promise((r) => setTimeout(r, 1_000));
+  }
+  throw new Error(
+    `worker pods did not settle at ${replicas}; still see ${workerPods().join(', ') || '(none)'}`,
+  );
 }
 
 /**
@@ -80,7 +116,9 @@ test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리',
   }) => {
     try {
       // ── 시나리오 7: 워커를 전부 내린다 ──────────────────────────────────
-      scaleWorkers(0);
+      // The overlay already starts the worker at 0; this makes the precondition
+      // explicit (and re-establishes it if the deployment was left running).
+      await scaleWorkers(0);
       await signInWithApp(request);
 
       const queuedIds = [
@@ -109,7 +147,7 @@ test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리',
       ];
       const allIds = [...queuedIds, ...alsoQueued];
 
-      scaleWorkers(2);
+      await scaleWorkers(2);
 
       // Every job the queue held — including the ones enqueued while no worker
       // existed — drains once workers exist again.
@@ -168,8 +206,9 @@ test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리',
       const completed = logs.split('\n').filter((l) => l.includes('fetch stage complete'));
       expect(completed.length).toBe(allIds.length);
     } finally {
-      // Leave the cluster as scripts/e2e.sh set it up, whatever happened above.
-      scaleWorkers(1);
+      // Back to the overlay's resting state (0), whatever happened above, so a
+      // later spec never finds a worker quietly draining its queue.
+      await scaleWorkers(0);
     }
   });
 });
