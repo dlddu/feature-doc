@@ -8,11 +8,16 @@ import { test, expect } from '@playwright/test';
 // 분석 시작 → 분석 작업이 큐에 등록됨, and the negative half — a repository outside
 // the App's granted access is refused with a clear message and a recovery path, and
 // nothing is queued (docs/test/01-analysis-pipeline.md 시나리오 2).
+//
+// Spec files run in parallel workers against one shared deployment, and App
+// installation / key state is per *user* — so this spec signs in as its own stub
+// user (`?as=`, the same handle switch smoke.sh uses). s01.spec.ts owns the default
+// `stub` user; sharing it would let one spec install the App out from under the
+// other. The sign-in button itself is s01.spec.ts's assertion, not this one's.
 test('S02·S03: home → connect repository → trigger analysis (queued)', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/api/auth/login?as=s02journey');
 
-  // ── S01: sign in, install the App, register a key (the S02 pre-condition) ──
-  await page.getByTestId('signin').click();
+  // ── S01: install the App and register a key (the S02 pre-condition) ──
   await page.getByTestId('connect-app').click();
   await expect(page.getByTestId('connection')).toBeVisible();
 
