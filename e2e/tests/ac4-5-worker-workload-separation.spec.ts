@@ -195,16 +195,23 @@ test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리',
       // legitimately drains the whole burst before its sibling finishes booting;
       // the disjointness of concurrent claims is gated by
       // backend/tests/worker.rs::many_workers_racing_never_claim_the_same_job_twice.)
-      const claimLines = logs.split('\n').filter((l) => l.includes('claimed analysis'));
+      // Note both checks match on the analysis id rather than counting lines. The
+      // queue is global — a job another spec left `queued` (ac1-1 does) is drained
+      // by these same workers, so a bare line count is not this spec's to assert.
+      const lines = logs.split('\n');
       for (const id of allIds) {
-        const claims = claimLines.filter((l) => l.includes(id));
-        expect(claims.length, `analysis ${id} must be claimed exactly once`).toBe(1);
-      }
+        expect(
+          lines.filter((l) => l.includes('claimed analysis') && l.includes(id)).length,
+          `analysis ${id} must be claimed exactly once`,
+        ).toBe(1);
 
-      // The queue drained by *doing work*, not by being marked done: the one
-      // implemented stage ran on every job. (Rendering it is S04 / AC1.5.)
-      const completed = logs.split('\n').filter((l) => l.includes('fetch stage complete'));
-      expect(completed.length).toBe(allIds.length);
+        // And it drained by *doing work*, not by being marked done: the one
+        // implemented stage ran. (Rendering it is S04 / AC1.5.)
+        expect(
+          lines.filter((l) => l.includes('fetch stage complete') && l.includes(id)).length,
+          `analysis ${id} must have run its fetch stage exactly once`,
+        ).toBe(1);
+      }
     } finally {
       // Back to the overlay's resting state (0), whatever happened above, so a
       // later spec never finds a worker quietly draining its queue.
