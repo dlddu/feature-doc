@@ -1,11 +1,13 @@
 /* ============================================================
    FeatureDoc — app stylesheet
    ------------------------------------------------------------
-   Ported from docs/mockups/s01-credentials-setup.html, whose inline
-   CSS encodes docs/design-system.md (v0.1). Device-frame chrome
-   (frame/statusbar/home-indicator/tabbar) is intentionally dropped —
-   the real app is the screen itself. Mockup raw hex is mapped onto the
-   design-system tokens below (e.g. btn-primary #ededed/#0a0a0a ->
+   Ported from the docs/mockups/*.html inline CSS, which encodes
+   docs/design-system.md (v0.1). Device-frame chrome (frame/statusbar/
+   home-indicator) is intentionally dropped — the real app is the screen
+   itself. The bottom tab bar is *not* frame chrome: it is design-system
+   §4 navigation, so it is ported (S02 onwards) as a fixed bar pinned to
+   the same 420px column. Mockup raw hex is mapped onto the design-system
+   tokens below (e.g. btn-primary #ededed/#0a0a0a ->
    --text-primary/--bg-base); no new values are introduced.
    ============================================================ */
 
@@ -336,3 +338,173 @@ button.ico { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .screen > * { animation: none; }
 }
+
+/* ============================================================
+   S02 · S03 components (ported from docs/mockups/s02-home-repositories.html
+   and s03-connect-repository.html — design-system §4.6 app bar, §4.7 bottom
+   tab bar, §4.10 segment/§4.11 metric grid/§4.12 progress bar, and the
+   §2.2 "section title" typographic role).
+   ============================================================ */
+
+/* ── app bar — back / title / trailing slot ── */
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 6px;
+  gap: 12px;
+}
+.appbar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* icon button — 36px app-bar slot */
+.icon-btn {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.icon-btn svg { display: block; }
+.icon-btn.ghost { border-color: transparent; background: transparent; }
+.icon-btn:disabled { cursor: not-allowed; opacity: 0.45; }
+
+/* ── section title — 11px mono caps with a trailing count/action ── */
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.section-title .count { color: var(--text-quaternary); }
+.section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+/* ── metric grid — bordered cells split by 1px dividers (§4.11) ── */
+.metric-grid {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.metric-grid .cell { flex: 1; padding: 13px 14px; min-width: 0; }
+.metric-grid .cell + .cell { border-left: 1px solid var(--border-default); }
+.metric-grid .cell .k {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.metric-grid .cell .v {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 8px;
+}
+
+/* standalone metric readout (S03 estimate card) */
+.metric {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ── progress bar (§4.12) ── */
+.progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-secondary);
+}
+
+/* side-by-side inputs (S03 branch + access) */
+.input-row { display: flex; gap: 8px; }
+.input-row .input { flex: 1; min-width: 0; }
+
+/* mono separator between inline meta facts */
+.dot-sep { color: var(--text-quaternary); }
+
+/* ── bottom tab bar — 4 fixed slots (§4.7) ── */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 420px;
+  height: 66px;
+  display: flex;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  padding-bottom: 14px;
+  z-index: 6;
+}
+.tabbar .tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+  cursor: pointer;
+}
+.tabbar .tab .gl {
+  width: 18px;
+  height: 14px;
+  border: 1.2px solid var(--text-quaternary);
+  border-radius: 3px;
+}
+.tabbar .tab.active { color: var(--text-primary); }
+.tabbar .tab.active .gl { border-color: var(--text-primary); }
+.tabbar .tab:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* leave room for the fixed tab bar */
+.screen.has-tabbar { padding-bottom: 90px; }

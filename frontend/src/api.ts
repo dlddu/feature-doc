@@ -98,3 +98,80 @@ export async function preflight(): Promise<{ provider: string; fingerprint: stri
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as { provider: string; fingerprint: string };
 }
+
+// ── analyses (AC1.1) ─────────────────────────────────────────────────────────
+
+/** A repository the installation can access — a candidate to analyze (S02 · S03). */
+export type Repository = {
+  owner: string;
+  name: string;
+  fullName: string;
+  defaultBranch: string;
+};
+
+/** An analysis job as the home list shows it (S02). */
+export type Analysis = {
+  id: string;
+  repoOwner: string;
+  repoName: string;
+  branch: string;
+  status: string;
+  estLlmCalls: number;
+  estCostCents: number;
+  createdAt: number;
+};
+
+/**
+ * Pre-flight estimate for a typed target (S03). `hasAccess: false` is not an error —
+ * the screen renders the "add this repo to the App" recovery path instead.
+ */
+export type Preflight = {
+  hasAccess: boolean;
+  owner: string;
+  name: string;
+  fullName: string;
+  branch: string;
+  filesToScan: number;
+  sizeBytes: number;
+  estLlmCalls: number;
+  estCostCents: number;
+  estDurationMin: number;
+};
+
+/** Repositories the App can reach. Empty when the App is not installed yet. */
+export async function listRepositories(): Promise<Repository[]> {
+  const res = await fetch('/api/repositories', { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as Repository[];
+}
+
+/** The user's analysis jobs, newest first. */
+export async function listAnalyses(): Promise<Analysis[]> {
+  const res = await fetch('/api/analyses', { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as Analysis[];
+}
+
+/** Resolves a typed target and estimates the analysis scale before triggering. */
+export async function preflightAnalysis(repoUrl: string, branch: string): Promise<Preflight> {
+  const res = await fetch('/api/analyses/preflight', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: json,
+    body: JSON.stringify({ repoUrl, branch: branch.trim() || null }),
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as Preflight;
+}
+
+/** Explicitly enqueues an analysis. Rejects out-of-scope targets without queueing. */
+export async function createAnalysis(repoUrl: string, branch: string): Promise<Analysis> {
+  const res = await fetch('/api/analyses', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: json,
+    body: JSON.stringify({ repoUrl, branch: branch.trim() || null }),
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as Analysis;
+}
