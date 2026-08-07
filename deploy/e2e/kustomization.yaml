@@ -1,7 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# e2e overlay. The base (deploy/k8s) targets ghcr.io/dlddu/featuredoc:latest
+# e2e overlay. Covers both workloads (API + worker). The base (deploy/k8s)
+# targets ghcr.io/dlddu/featuredoc:latest
 # with an Always pull policy — correct for production. For kind-based e2e we
 # instead want the image scripts/e2e.sh builds locally and `kind load`s into
 # the node, so we retag to featuredoc:dev and force IfNotPresent (otherwise the
@@ -25,6 +26,8 @@ secretGenerator:
       - GITHUB_CLIENT_ID=
       - GITHUB_CLIENT_SECRET=
       - GITHUB_APP_PRIVATE_KEY=
+      # Shared by the API (to authenticate /internal) and the worker (to call it).
+      - FEATUREDOC_WORKER_TOKEN=e2e-worker-token-not-a-real-secret
 
 generatorOptions:
   disableNameSuffixHash: true
@@ -52,3 +55,22 @@ patches:
                     value: "http://localhost:8080"
                   - name: COOKIE_SECURE
                     value: "false"
+  - target:
+      kind: Deployment
+      name: featuredoc-worker
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: featuredoc-worker
+      spec:
+        template:
+          spec:
+            containers:
+              - name: worker
+                imagePullPolicy: IfNotPresent
+                # Stub mode: repo_scan answers from the deterministic stub set, so
+                # the worker never reaches GitHub from kind.
+                env:
+                  - name: FEATUREDOC_MODE
+                    value: "stub"

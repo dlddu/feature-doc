@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: featuredoc-worker
+  labels:
+    app.kubernetes.io/name: featuredoc-worker
+spec:
+  # Horizontally scalable (AC4.5): the queue claim is atomic, so raising this
+  # number raises throughput without any coordination between workers. Scaling it
+  # to 0 stops analyses from draining but leaves the API completely unaffected.
+  replicas: 1
+  strategy:
+    # Unlike the API, the worker holds no volume and no exclusive resource, so it
+    # can roll without a gap. A worker killed mid-job simply lets its lease lapse
+    # and the job returns to the queue.
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: featuredoc-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: featuredoc-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/dlddu/featuredoc:latest
+          # Same image as the API — only the command differs. (The e2e overlay in
+          # deploy/e2e/ patches the pull policy, as it does for the API.)
+          command: ["/usr/local/bin/featuredoc-worker"]
+          env:
+            # NOTE: no DATABASE_URL and no volume mount. The worker never opens
+            # the SQLite file — it claims and reports over the API's /internal
+            # routes, which is what lets it scale past one replica while the
+            # database keeps exactly one writer (see backend/src/db.rs).
+            - name: FEATUREDOC_API_BASE
+              value: "http://featuredoc:8080"
+            - name: FEATUREDOC_MODE
+              value: "real"
+            # Recorded on each claimed job so an operator can tell which worker
+            # holds it.
+            - name: WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          envFrom:
+            # Supplies FEATUREDOC_WORKER_TOKEN (and is shared with the API, which
+            # must see the same value to authenticate the worker).
+            - secretRef:
+                name: featuredoc-secrets
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"

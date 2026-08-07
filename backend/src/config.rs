@@ -48,6 +48,10 @@ pub struct Config {
     pub github: GithubConfig,
     /// Emit the session cookie with `Secure` (true behind HTTPS). Off for local/e2e http.
     pub cookie_secure: bool,
+    /// Shared secret the analysis worker presents on `/internal/*` (AC4.5). Secret.
+    /// Empty means "this deployment has no worker" — the internal routes then
+    /// reject every caller rather than falling open.
+    pub worker_token: String,
 }
 
 impl Config {
@@ -83,6 +87,7 @@ impl Config {
             mode,
             github,
             cookie_secure: env_or("COOKIE_SECURE", "").eq_ignore_ascii_case("true"),
+            worker_token: env_or("FEATUREDOC_WORKER_TOKEN", ""),
         }))
     }
 }
@@ -135,6 +140,7 @@ impl std::fmt::Debug for Config {
             .field("mode", &self.mode)
             .field("github", &self.github)
             .field("cookie_secure", &self.cookie_secure)
+            .field("worker_token", &"[REDACTED]")
             .finish()
     }
 }

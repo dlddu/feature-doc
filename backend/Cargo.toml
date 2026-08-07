@@ -3,6 +3,16 @@ name = "featuredoc"
 version = "0.1.0"
 edition = "2021"
 
+# Two binaries out of one crate: the API server and the analysis worker (AC4.5).
+# They ship in the same image; the worker Deployment only overrides the command.
+[[bin]]
+name = "featuredoc"
+path = "src/main.rs"
+
+[[bin]]
+name = "featuredoc-worker"
+path = "src/bin/worker.rs"
+
 [dependencies]
 axum = "0.8"
 axum-extra = { version = "0.10", features = ["cookie"] }

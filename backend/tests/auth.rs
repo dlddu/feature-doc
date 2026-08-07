@@ -38,6 +38,8 @@ async fn stub_state() -> (AppState, PathBuf) {
             web_base: "https://github.com".into(),
         },
         cookie_secure: false,
+        // These suites never call /internal; an empty token keeps it closed.
+        worker_token: String::new(),
     });
     (
         AppState {
