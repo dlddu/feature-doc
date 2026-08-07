@@ -67,9 +67,14 @@ deploy/
     ├── kustomization.yaml
     └── kind-cluster.yaml
 
-e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 포함) + Playwright 1개
+e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 포함) + Playwright spec (AC 1개당 1파일)
 ├── smoke.sh
-└── tests/s01.spec.ts
+└── tests/                 # 각 spec 첫 줄에 `// 검증 AC: ACx.y` 를 정확히 1개 선언 (docs/doc-tracker.md "e2e 매핑")
+    ├── ac1-1-repository-connect-and-trigger.spec.ts
+    ├── ac4-1-github-app-connection.spec.ts
+    ├── ac4-2-llm-key-lifecycle.spec.ts
+    ├── ac4-3-credential-safety.spec.ts
+    └── ac4-8-signin-and-session.spec.ts
 
 scripts/
 └── e2e.sh                 # kind 생성 → build → load → apply → port-forward → e2e
