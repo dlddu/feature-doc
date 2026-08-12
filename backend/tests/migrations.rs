@@ -24,10 +24,33 @@ async fn migrations_create_expected_tables() {
             .expect("query tables");
     let names: Vec<String> = rows.into_iter().map(|r| r.0).collect();
 
-    for expected in ["users", "sessions", "installations", "llm_keys", "audit_log", "github_tokens"] {
+    for expected in [
+        "users",
+        "sessions",
+        "installations",
+        "llm_keys",
+        "audit_log",
+        "github_tokens",
+        "analyses",
+        "analysis_stages",
+    ] {
         assert!(
             names.contains(&expected.to_string()),
             "expected table `{expected}` to exist, got {names:?}"
+        );
+    }
+
+    // The worker's lease columns are what make a claim reclaimable (AC4.5); an
+    // `ALTER TABLE` that silently went missing would only surface at runtime.
+    let columns: Vec<(String,)> = sqlx::query_as("SELECT name FROM pragma_table_info('analyses')")
+        .fetch_all(&pool)
+        .await
+        .expect("query analyses columns");
+    let columns: Vec<String> = columns.into_iter().map(|r| r.0).collect();
+    for expected in ["claimed_by", "claimed_at", "lease_expires_at", "started_at", "finished_at"] {
+        assert!(
+            columns.contains(&expected.to_string()),
+            "expected `analyses.{expected}` to exist, got {columns:?}"
         );
     }
 

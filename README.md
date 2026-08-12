@@ -47,9 +47,10 @@ tools/
 └── gen-wireframes.js      # wireframe SVG 일괄 생성 스크립트
 
 backend/                   # axum 0.8 — /hello + S01 자격증명 API(GitHub App·LLM Key, 봉투 암호화) + SQLite + dist 정적 서빙
-├── Cargo.toml
+├── Cargo.toml             # [[bin]] 2개: featuredoc(API) · featuredoc-worker(분석 워커)
 ├── migrations/            # SQLite 스키마 (sqlx migrate — 바이너리에 임베드)
-└── src/                   # lib(config·db·auth·github·llmkey·crypto·audit…) + main
+└── src/                   # lib(config·db·auth·github·llmkey·crypto·audit·pipeline·worker_api…) + main
+    └── bin/worker.rs      # 분석 워커 — DB를 열지 않고 API의 /internal 큐로 claim·보고 (AC4.5)
 
 frontend/                  # Vite 8 + React 19 — S01 Credentials Setup 화면 (디자인 시스템 토큰)
 ├── package.json
@@ -57,9 +58,10 @@ frontend/                  # Vite 8 + React 19 — S01 Credentials Setup 화면 
 └── src/{App.tsx, CredentialsSetup.tsx, api.ts, main.tsx, index.css}
 
 deploy/
-├── k8s/                   # 정식 매니페스트 = kustomize 베이스 (deployment·service·pvc; secret은 외부 제공)
+├── k8s/                   # 정식 매니페스트 = kustomize 베이스 (API·워커 deployment·service·pvc; secret은 외부 제공)
 │   ├── kustomization.yaml
 │   ├── deployment.yaml
+│   ├── worker-deployment.yaml  # 분석 워커 워크로드 — 같은 이미지, 커맨드만 다름, 볼륨 없음 (AC4.5)
 │   ├── service.yaml
 │   ├── pvc.yaml
 │   └── secret.yaml.example  # featuredoc-secrets 템플릿 — 복사·기입 후 적용 (secret.yaml은 gitignore)
@@ -74,6 +76,7 @@ e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 �
     ├── ac4-1-github-app-connection.spec.ts
     ├── ac4-2-llm-key-lifecycle.spec.ts
     ├── ac4-3-credential-safety.spec.ts
+    ├── ac4-5-worker-workload-separation.spec.ts  # kubectl로 워커를 0·2로 스케일해 API 가용성·드레인 확인
     └── ac4-8-signin-and-session.spec.ts
 
 scripts/
@@ -98,7 +101,7 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 
 ## Walking skeleton 실행
 
-문서 외에 동작하는 수직 슬라이스가 함께 있습니다. 단일 axum 서비스가 `/hello`(프로브) + 자격증명 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 프론트는 디자인 시스템 토큰으로 S01 Credentials Setup 화면을 그립니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
+문서 외에 동작하는 수직 슬라이스가 함께 있습니다. axum API가 `/hello`(프로브) + 자격증명 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 그 옆에서 **별도 워크로드인 분석 워커**가 큐를 비웁니다(AC4.5 — 워커는 데이터베이스를 열지 않고 API의 `/internal` 라우트로 작업을 claim 하므로, SQLite는 계속 writer가 하나입니다). 프론트는 디자인 시스템 토큰으로 S01 Credentials Setup 화면을 그립니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
 
 ### 로컬 (k8s 없이)
 
@@ -117,6 +120,21 @@ open http://localhost:8080
 
 dev 모드(`cd frontend && npm run dev`)는 `/hello`를 `localhost:8080`으로 프록시합니다.
 
+분석 큐가 실제로 비워지는 것까지 보려면 워커를 두 번째 프로세스로 띄웁니다. **두 프로세스가 같은 `FEATUREDOC_WORKER_TOKEN`을 보아야** 합니다 — API는 그 값으로 `/internal`을 열고, 워커는 그 값으로 인증합니다.
+
+```bash
+# 터미널 1 — API (위 2번 명령에 워커 토큰을 더한 것)
+( cd backend && STATIC_DIR=../frontend/dist FEATUREDOC_MODE=stub \
+    FEATUREDOC_WORKER_TOKEN=dev-token cargo run --release )
+
+# 터미널 2 — 분석 워커
+( cd backend && FEATUREDOC_MODE=stub FEATUREDOC_WORKER_TOKEN=dev-token \
+    FEATUREDOC_API_BASE=http://127.0.0.1:8080 WORKER_ID=dev-worker \
+    cargo run --release --bin featuredoc-worker )
+```
+
+토큰을 주지 않으면 API는 `/internal` 전체를 401로 닫고 워커는 아예 기동을 거부합니다 — 기본값이 "열림"이 아니라 "닫힘"입니다.
+
 ### kind 기반 e2e (docker · kind · kubectl 필요)
 
 ```bash
@@ -133,6 +151,8 @@ kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로
 
 - **`test`** — `cargo test` → kind+kubectl 설치 → `scripts/e2e.sh`(docker build + 클러스터 e2e). main 푸시·모든 PR에서 실행.
 - **`push`** — `needs: test`로 test 그린 후에만. `docker/setup-buildx-action` + `docker/login-action` + `docker/metadata-action` + `docker/build-push-action@v6`(GHA 캐시) 조합으로 `ghcr.io/<owner>/featuredoc`에 푸시. 태그는 `<github.sha>` + `latest` 두 개.
+
+> ⚠️ **`push` job에는 브랜치 조건이 없습니다.** `on:`이 `pull_request`를 포함하므로 **PR의 CI가 그린이 되는 순간 그 PR의 코드가 `:latest`로 푸시**되고, `deploy/k8s`가 `:latest` + (기본값)`Always`를 쓰므로 다음 파드 재시작부터 운영에 반영됩니다 — 머지 여부와 무관합니다. 워크로드가 둘로 늘어난 지금은 API·워커가 함께 갱신됩니다(같은 이미지라 둘이 어긋날 일은 없습니다). 이 동작을 의도한 것이 아니라면 `push` job에 `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`을 다는 것이 최소 수정입니다.
 
 ## 문서 작성 원칙
 

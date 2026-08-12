@@ -73,6 +73,8 @@ fn config_debug_redacts_secrets() {
             web_base: "https://github.com".into(),
         },
         cookie_secure: true,
+        // These suites never call /internal; an empty token keeps it closed.
+        worker_token: String::new(),
     };
     let dump = format!("{config:?}");
     assert!(dump.contains("[REDACTED]"));

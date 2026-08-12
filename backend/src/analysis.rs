@@ -8,8 +8,10 @@
 //!    confirmed within the App's granted access. An out-of-scope target is rejected
 //!    with a clear, actionable message and nothing is queued (test scenario #2).
 //!
-//! Draining the queue (the async worker) and per-stage progress arrive with the
-//! analysis pipeline (AC1.5 / AC4.5); real per-call cost accounting with AC4.6.
+//! Draining the queue is now a separate workload (AC4.5): enqueue seeds one
+//! `analysis_stages` row per [`crate::pipeline`] stage and the worker claims the
+//! job through `/internal/*` (see [`crate::worker_api`]). Rendering that progress
+//! to the user (S04) arrives with AC1.5; real per-call cost accounting with AC4.6.
 
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -21,6 +23,7 @@ use crate::auth::CurrentUser;
 use crate::error::AppError;
 use crate::github_app::{self, RepoRef};
 use crate::installations;
+use crate::pipeline;
 use crate::state::AppState;
 use crate::util::now_unix;
 
@@ -202,10 +205,14 @@ async fn create(
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = now_unix();
+
+    // The job and its stage rows land together: a worker that claims between the
+    // two would otherwise find a job with no stages to report against.
+    let mut tx = state.db.begin().await?;
     sqlx::query(
         "INSERT INTO analyses \
          (id, user_id, installation_id, repo_owner, repo_name, branch, status, est_llm_calls, est_cost_cents, created_at) \
-         VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&user.id)
@@ -213,11 +220,27 @@ async fn create(
     .bind(&repo.owner)
     .bind(&repo.name)
     .bind(&branch)
+    .bind(pipeline::status::QUEUED)
     .bind(est.llm_calls)
     .bind(est.cost_cents)
     .bind(now)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
+    for stage in pipeline::STAGES.iter() {
+        sqlx::query(
+            "INSERT INTO analysis_stages (id, analysis_id, seq, key, title, status) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(&id)
+        .bind(stage.seq)
+        .bind(stage.key)
+        .bind(stage.title)
+        .bind(pipeline::stage_status::PENDING)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
     crate::audit::record(
         &state.db,
         Some(&user.id),
@@ -233,7 +256,7 @@ async fn create(
             repo_owner: repo.owner.clone(),
             repo_name: repo.name.clone(),
             branch,
-            status: "queued".to_string(),
+            status: pipeline::status::QUEUED.to_string(),
             est_llm_calls: est.llm_calls,
             est_cost_cents: est.cost_cents,
             created_at: now,
