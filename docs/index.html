@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="FeatureDoc 모바일 목업 10개를 흐름별로 둘러보는 갤러리">
+  <title>FeatureDoc · Mockups</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0a0a;
+      --surface: #0f0f0f;
+      --card: #141414;
+      --hover: #1c1c1c;
+      --border: #272727;
+      --border-strong: #333333;
+      --text: #ededed;
+      --muted: #9a9a9a;
+      --quiet: #6a6a6a;
+      --accent: #c8ff5e;
+      --accent-dim: rgba(200, 255, 94, 0.06);
+      --sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-feature-settings: "ss01", "cv11";
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 64px 32px 96px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 48px;
+      align-items: end;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow,
+    .flow-number,
+    .screen-id,
+    .meta-label,
+    .count {
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 20px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .eyebrow::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      content: "";
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 800px;
+      font-size: clamp(42px, 7vw, 84px);
+      font-weight: 500;
+      line-height: 0.98;
+      letter-spacing: -0.055em;
+    }
+
+    .intro {
+      max-width: 680px;
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.65;
+      word-break: keep-all;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, auto);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .summary-item {
+      min-width: 104px;
+      padding: 18px 20px;
+      background: var(--surface);
+    }
+
+    .summary-item + .summary-item {
+      border-left: 1px solid var(--border);
+    }
+
+    .summary-value {
+      display: block;
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .meta-label {
+      display: block;
+      margin-top: 7px;
+      color: var(--quiet);
+      font-size: 9px;
+    }
+
+    main {
+      display: grid;
+      gap: 88px;
+      padding-top: 72px;
+    }
+
+    .flow-heading {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .flow-number {
+      color: var(--accent);
+      font-size: 11px;
+    }
+
+    h2 {
+      font-size: clamp(25px, 4vw, 36px);
+      font-weight: 500;
+      letter-spacing: -0.035em;
+    }
+
+    .count {
+      margin-left: auto;
+      color: var(--quiet);
+      font-size: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 18px;
+    }
+
+    .mockup-card {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--card);
+      transition: border-color 160ms ease, background 160ms ease;
+    }
+
+    .mockup-card:hover,
+    .mockup-card:focus-within {
+      border-color: var(--border-strong);
+      background: var(--hover);
+    }
+
+    .card-copy {
+      min-height: 148px;
+      padding: 22px 22px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .screen-id {
+      color: var(--accent);
+      font-size: 10px;
+    }
+
+    h3 {
+      margin-top: 10px;
+      font-size: 21px;
+      font-weight: 500;
+      letter-spacing: -0.025em;
+    }
+
+    .purpose {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+      word-break: keep-all;
+    }
+
+    .preview-stage {
+      display: grid;
+      min-height: 590px;
+      place-items: center;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .preview-window {
+      position: relative;
+      width: 255px;
+      height: 555px;
+      overflow: hidden;
+    }
+
+    .preview-window iframe {
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 425px;
+      height: 924px;
+      border: 0;
+      pointer-events: none;
+      transform: scale(0.6);
+      transform-origin: top left;
+    }
+
+    .open-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 17px 22px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      text-decoration: none;
+      transition: color 160ms ease, background 160ms ease;
+    }
+
+    .open-link::after {
+      color: var(--accent);
+      content: "↗";
+      font-size: 15px;
+    }
+
+    .open-link:hover,
+    .open-link:focus-visible {
+      outline: none;
+      color: var(--text);
+      background: var(--accent-dim);
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 96px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--quiet);
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    footer a:hover {
+      color: var(--text);
+    }
+
+    @media (max-width: 840px) {
+      .shell {
+        padding: 40px 20px 72px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .summary {
+        width: 100%;
+      }
+
+      .summary-item {
+        min-width: 0;
+        width: 33.333%;
+      }
+
+      main {
+        gap: 64px;
+        padding-top: 56px;
+      }
+
+      footer {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .shell {
+        padding-inline: 14px;
+      }
+
+      .summary-item {
+        padding-inline: 12px;
+      }
+
+      .grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .preview-stage {
+        min-height: 570px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">FeatureDoc · Product UI</div>
+        <h1>Mobile mockups,<br>one clear flow.</h1>
+        <p class="intro">저장소 연결부터 feature 문서 편집까지, FeatureDoc의 핵심 사용자 흐름을 10개의 모바일 화면으로 살펴보세요.</p>
+      </div>
+      <div class="summary" role="group" aria-label="목업 요약">
+        <div class="summary-item">
+          <span class="summary-value">10</span>
+          <span class="meta-label">Screens</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-value">03</span>
+          <span class="meta-label">Flows</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-value">393</span>
+          <span class="meta-label">Viewport</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section aria-labelledby="flow-01">
+        <div class="flow-heading">
+          <span class="flow-number">Flow 01</span>
+          <h2 id="flow-01">Onboarding &amp; Connect</h2>
+          <span class="count">3 screens</span>
+        </div>
+        <div class="grid">
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S01 · AC4.1 · AC4.2 · AC4.3</span>
+              <h3>Credentials Setup</h3>
+              <p class="purpose">GitHub App 연결과 LLM 자격증명 등록</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s01-credentials-setup.html" title="S01 Credentials Setup 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s01-credentials-setup.html">Open full mockup</a>
+          </article>
+
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S02 · AC1.1 · AC1.5</span>
+              <h3>Home · Repositories</h3>
+              <p class="purpose">연결된 저장소 목록과 분석 상태</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s02-home-repositories.html" title="S02 Home Repositories 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s02-home-repositories.html">Open full mockup</a>
+          </article>
+
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S03 · AC1.1 · AC4.6</span>
+              <h3>Connect Repository</h3>
+              <p class="purpose">새 저장소 연결과 분석 pre-flight 비용 안내</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s03-connect-repository.html" title="S03 Connect Repository 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s03-connect-repository.html">Open full mockup</a>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="flow-02">
+        <div class="flow-heading">
+          <span class="flow-number">Flow 02</span>
+          <h2 id="flow-02">Discovery</h2>
+          <span class="count">4 screens</span>
+        </div>
+        <div class="grid">
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S04 · AC1.5 · AC4.6</span>
+              <h3>Analysis in Progress</h3>
+              <p class="purpose">분석 파이프라인의 5단계 진행 상황</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s04-analysis-progress.html" title="S04 Analysis Progress 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s04-analysis-progress.html">Open full mockup</a>
+          </article>
+
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S05 · AC1.2</span>
+              <h3>Cross-cutting Concerns</h3>
+              <p class="purpose">추출된 인프라·아키텍처·프레임워크·미들웨어</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s05-cross-cutting-concerns.html" title="S05 Cross-cutting Concerns 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s05-cross-cutting-concerns.html">Open full mockup</a>
+          </article>
+
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S06 · AC1.3</span>
+              <h3>Discovery Strategy</h3>
+              <p class="purpose">LLM이 만든 탐색 전략 검토와 승인</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s06-discovery-strategy.html" title="S06 Discovery Strategy 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s06-discovery-strategy.html">Open full mockup</a>
+          </article>
+
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S07 · AC1.4</span>
+              <h3>Feature Candidates</h3>
+              <p class="purpose">Feature 후보 목록과 승인·거부·병합</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s07-feature-candidates.html" title="S07 Feature Candidates 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s07-feature-candidates.html">Open full mockup</a>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="flow-03">
+        <div class="flow-heading">
+          <span class="flow-number">Flow 03</span>
+          <h2 id="flow-03">Feature Documents</h2>
+          <span class="count">3 screens</span>
+        </div>
+        <div class="grid">
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S08 · AC2.1 · AC2.2 · AC2.3</span>
+              <h3>Feature · Acceptance</h3>
+              <p class="purpose">Feature의 Given–When–Then 인수 시나리오</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s08-feature-acceptance.html" title="S08 Feature Acceptance 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s08-feature-acceptance.html">Open full mockup</a>
+          </article>
+
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S09 · AC2.4 · AC2.5</span>
+              <h3>Feature · Dependencies</h3>
+              <p class="purpose">종단 의존성 그래프와 카테고리별 의존성</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s09-feature-dependencies.html" title="S09 Feature Dependencies 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s09-feature-dependencies.html">Open full mockup</a>
+          </article>
+
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">S10 · AC3.1</span>
+              <h3>LLM-assisted Edit</h3>
+              <p class="purpose">자연어 지시에서 diff 검토와 승인까지</p>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/s10-llm-edit.html" title="S10 LLM-assisted Edit 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/s10-llm-edit.html">Open full mockup</a>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>FeatureDoc · Mobile-first product documentation</span>
+      <a href="https://github.com/dlddu/feature-doc/tree/main/docs/mockups">Mockup documentation ↗</a>
+    </footer>
+  </div>
+</body>
+</html>
