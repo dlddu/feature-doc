@@ -3,9 +3,10 @@
 //
 // Reads the slice-2a enqueue contract: the repositories the GitHub App can reach
 // (`GET /api/repositories`) and the analysis jobs the user has triggered
-// (`GET /api/analyses`). Per-stage progress and the pipeline outputs that the
-// mockup's "features / conflicts / spend" figures imply arrive with later slices
-// (AC1.5 · AC1.2~1.4 · AC4.6) — this screen only shows what the API really knows.
+// (`GET /api/analyses`), which now carries each job's pipeline fraction so a card
+// can say "step 1 of 5" and open S04 (AC1.5). The pipeline *outputs* the mockup's
+// "features / conflicts / spend" figures imply still arrive with later slices
+// (AC1.2~1.4 · AC4.6) — this screen only shows what the API really knows.
 
 import { useEffect, useState } from 'react';
 import { listAnalyses, listRepositories } from './api';
@@ -85,9 +86,15 @@ type Props = {
   onConnectRepository: () => void;
   /** S02 → S01 (settings / Keys tab). */
   onOpenCredentials: () => void;
+  /** S02 → S04, for a repository that has been analyzed at least once. */
+  onOpenAnalysis: (analysisId: string) => void;
 };
 
-export function HomeRepositories({ onConnectRepository, onOpenCredentials }: Props) {
+export function HomeRepositories({
+  onConnectRepository,
+  onOpenCredentials,
+  onOpenAnalysis,
+}: Props) {
   const [repos, setRepos] = useState<Repository[] | null>(null);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -224,9 +231,20 @@ export function HomeRepositories({ onConnectRepository, onOpenCredentials }: Pro
                 )}
               </div>
               {row.latest && (
-                <div className="meta" style={{ marginTop: 12 }}>
-                  ~{row.latest.estLlmCalls} LLM calls <span className="dot-sep">·</span> est{' '}
-                  {formatCost(row.latest.estCostCents)}
+                <div className="row between" style={{ marginTop: 12 }}>
+                  <span className="meta">
+                    step {row.latest.stagesDone} of {row.latest.stagesTotal}{' '}
+                    <span className="dot-sep">·</span> ~{row.latest.estLlmCalls} LLM calls{' '}
+                    <span className="dot-sep">·</span> est {formatCost(row.latest.estCostCents)}
+                  </span>
+                  <button
+                    className="section-action"
+                    type="button"
+                    onClick={() => onOpenAnalysis(row.latest!.id)}
+                    data-testid="open-progress"
+                  >
+                    진행 상황
+                  </button>
                 </div>
               )}
               {!row.accessible && (

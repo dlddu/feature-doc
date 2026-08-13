@@ -53,26 +53,39 @@ pub async fn scan(
     token: Option<&str>,
 ) -> Result<ScanResult, String> {
     match mode {
-        Mode::Stub => Ok(stub_scan(name)),
+        Mode::Stub => stub_scan(name, branch),
         Mode::Real => real_scan(http, api_base, owner, name, branch, token).await,
     }
 }
+
+/// The branch every `github_app::stub_repositories` entry reports as its default —
+/// and, since the stub set has no other refs, the only one that resolves.
+const STUB_BRANCH: &str = "main";
 
 /// Deterministic stand-in derived from the stub repository sizes in `github_app`
 /// (payments-api 2300 KiB, checkout-web 5100 KiB, notif-worker 800 KiB). Keeping
 /// the ~3 KiB-per-file ratio of the pre-flight heuristic makes the measured value
 /// and the estimate tell a coherent story in tests.
-pub fn stub_scan(name: &str) -> ScanResult {
+///
+/// A branch the stub repositories do not have fails the same way the real tree
+/// request does — GitHub answers `404` for an unknown ref, and [`real_scan`] turns
+/// that into `github tree rejected (404)`. Returning a measurement for a ref that
+/// does not exist would make the double *more* forgiving than the API it stands in
+/// for, and a fetch failure would then be unreachable outside production.
+pub fn stub_scan(name: &str, branch: &str) -> Result<ScanResult, String> {
+    if branch != STUB_BRANCH {
+        return Err("github tree rejected (404)".to_string());
+    }
     let size_kb: i64 = match name {
         "payments-api" => 2300,
         "checkout-web" => 5100,
         "notif-worker" => 800,
         _ => 1024,
     };
-    ScanResult {
+    Ok(ScanResult {
         files: (size_kb / 3).max(1),
         bytes: size_kb * 1024,
-    }
+    })
 }
 
 async fn real_scan(
@@ -146,11 +159,22 @@ mod tests {
 
     #[test]
     fn stub_scan_is_deterministic_and_positive() {
-        let a = stub_scan("payments-api");
-        let b = stub_scan("payments-api");
+        let a = stub_scan("payments-api", "main").unwrap();
+        let b = stub_scan("payments-api", "main").unwrap();
         assert_eq!(a, b);
         assert!(a.files > 0 && a.bytes > 0);
-        assert_ne!(stub_scan("checkout-web"), a);
+        assert_ne!(stub_scan("checkout-web", "main").unwrap(), a);
+    }
+
+    /// The double must not resolve a ref the stub repositories do not have: the
+    /// real tree request 404s, and a stage failure has to be reachable in stub mode
+    /// for AC1.5's partial retry to be verifiable at all.
+    #[test]
+    fn stub_scan_rejects_an_unknown_branch_like_the_real_tree_request() {
+        assert_eq!(
+            stub_scan("payments-api", "no-such-branch"),
+            Err("github tree rejected (404)".to_string())
+        );
     }
 
     #[test]

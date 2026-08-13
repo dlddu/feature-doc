@@ -119,6 +119,30 @@ export type Analysis = {
   estLlmCalls: number;
   estCostCents: number;
   createdAt: number;
+  /** Pipeline progress, so a card can read "step 1 of 5" without a second fetch. */
+  stagesDone: number;
+  stagesTotal: number;
+};
+
+/** One pipeline step of an analysis (S04). `pending` until a worker runs it. */
+export type Stage = {
+  seq: number;
+  key: string;
+  title: string;
+  status: 'pending' | 'running' | 'succeeded' | 'failed';
+  /** What the stage measured, e.g. `766 files · 2.2 MB`. */
+  detail: string | null;
+  error: string | null;
+  startedAt: number | null;
+  finishedAt: number | null;
+};
+
+/** Everything S04 draws — all of it persisted server-side (AC1.5). */
+export type AnalysisDetail = Analysis & {
+  error: string | null;
+  startedAt: number | null;
+  finishedAt: number | null;
+  stages: Stage[];
 };
 
 /**
@@ -162,6 +186,28 @@ export async function preflightAnalysis(repoUrl: string, branch: string): Promis
   });
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as Preflight;
+}
+
+/** One analysis with its pipeline stages — the S04 read (AC1.5). */
+export async function getAnalysis(id: string): Promise<AnalysisDetail> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}`, {
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as AnalysisDetail;
+}
+
+/**
+ * Re-runs one failed stage and nothing else (AC1.5). The job returns to the queue,
+ * so the answer already carries the reset progress the screen should render.
+ */
+export async function retryStage(id: string, stageKey: string): Promise<AnalysisDetail> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/stages/${encodeURIComponent(stageKey)}/retry`,
+    { method: 'POST', credentials: 'same-origin' },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as AnalysisDetail;
 }
 
 /** Explicitly enqueues an analysis. Rejects out-of-scope targets without queueing. */

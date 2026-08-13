@@ -13,6 +13,15 @@ export function formatSize(bytes: number): string {
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
+/** A span in seconds → `12s` / `3m 24s`, as the S04 step rows read. */
+export function formatDuration(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  if (s < 60) return `${s}s`;
+  const minutes = Math.floor(s / 60);
+  const rest = s % 60;
+  return `${minutes}m ${String(rest).padStart(2, '0')}s`;
+}
+
 /** Unix seconds → `4m ago` / `2 days ago`, as the S02 repo cards read. */
 export function formatAgo(unixSeconds: number, now = Date.now()): string {
   const seconds = Math.max(0, Math.floor(now / 1000) - unixSeconds);

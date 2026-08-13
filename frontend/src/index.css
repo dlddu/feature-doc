@@ -362,6 +362,14 @@ button.ico { cursor: pointer; }
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
+.appbar-sub {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
 
 /* icon button — 36px app-bar slot */
 .icon-btn {
@@ -508,3 +516,77 @@ button.ico { cursor: pointer; }
 
 /* leave room for the fixed tab bar */
 .screen.has-tabbar { padding-bottom: 90px; }
+
+/* ── step — pipeline progress (§4.5), ported from s04-analysis-progress.html ── */
+.step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.step .ic {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.step.done .ic {
+  background: var(--text-primary);
+  color: var(--bg-base);
+}
+.step.active .ic { border: 1.5px solid var(--text-primary); }
+.step.active .ic::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px dashed var(--border-strong);
+  animation: spin 3.4s linear infinite;
+}
+.step.todo .ic { border: 1.5px solid var(--border-default); }
+/* a failed step keeps the todo outline but takes the danger tone — the mockup has
+   no failure state, and §4.2's danger dot is the design system's way to say it */
+.step.failed .ic { border: 1.5px solid var(--danger); }
+.step .body-col { flex: 1; min-width: 0; }
+.step .label { font-size: 13.5px; color: var(--text-primary); }
+.step.todo .label { color: var(--text-tertiary); }
+.step .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.step.failed .sub { color: var(--danger); }
+.step .time {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* progress ring — S04's headline figure (mockups/README: §4 외 요소) */
+.ring {
+  position: relative;
+  width: 148px;
+  height: 148px;
+}
+.ring .readout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ring .pct {
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}

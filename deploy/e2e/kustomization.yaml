@@ -67,8 +67,10 @@ patches:
         # Off at rest. A running worker drains the queue within a couple of
         # seconds, which would race any spec that asserts a job is still `Queued`
         # (ac1-1 does). The worker is deployment-wide state — unlike App
-        # installs and LLM keys, no per-user handle can isolate it — so exactly
-        # one spec owns it: ac4-5 scales it up, asserts, and puts it back to 0.
+        # installs and LLM keys, no per-user handle can isolate it — so it is
+        # *leased*: a spec that needs it (ac4-5, ac1-5) scales it up inside its
+        # own block and returns it to 0 in `finally`, and `workers: 1` keeps
+        # spec files from overlapping. See docs/doc-tracker.md "e2e 매핑".
         replicas: 0
         template:
           spec:
