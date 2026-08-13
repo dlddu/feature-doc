@@ -145,11 +145,11 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
 
       await failedStage.getByTestId('retry').click();
 
-      // The stage is immediately back to waiting — the screen renders the reset the
-      // API performed, not an optimistic local guess.
-      await expect(failedStage).toContainText('대기 중');
+      // The reset is observed through the API rather than the DOM on purpose: a
+      // worker is running, so the "waiting" render lasts only until it re-claims
+      // (~2s) — asserting on that frame would be a race. What matters is below.
 
-      // …and the job really re-runs: a *new* attempt, with the same deterministic
+      // The job really re-runs: a *new* attempt, with the same deterministic
       // cause (the branch still does not exist), not the old record left in place.
       await expect
         .poll(async () => (await stageOf(page, failing, 'fetch')).startedAt, {
