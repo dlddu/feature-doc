@@ -149,17 +149,27 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
       // worker is running, so the "waiting" render lasts only until it re-claims
       // (~2s) — asserting on that frame would be a race. What matters is below.
 
-      // The job really re-runs: a *new* attempt, with the same deterministic
-      // cause (the branch still does not exist), not the old record left in place.
+      // The job really re-runs: a *new* attempt, with the same deterministic cause
+      // (the branch still does not exist), not the old record left in place.
+      //
+      // Both halves are polled together on purpose. `startedAt` alone is not the
+      // signal: the retry *clears* it, so "changed from the old value" is satisfied
+      // by the reset itself, a second before a worker has touched the job.
       await expect
-        .poll(async () => (await stageOf(page, failing, 'fetch')).startedAt, {
-          message: 'the retried stage should run again, with a fresh start time',
-          timeout: 120_000,
-          intervals: [1_000],
-        })
-        .not.toBe(beforeRetry.startedAt);
+        .poll(
+          async () => {
+            const s = await stageOf(page, failing, 'fetch');
+            const reran = s.startedAt !== null && s.startedAt !== beforeRetry.startedAt;
+            return `${s.status}${reran ? ' (reran)' : ''}`;
+          },
+          {
+            message: 'the retried stage should run again and fail on the same cause',
+            timeout: 120_000,
+            intervals: [1_000],
+          },
+        )
+        .toBe('failed (reran)');
       const afterRetry = await stageOf(page, failing, 'fetch');
-      expect(afterRetry.status).toBe('failed');
       expect(afterRetry.error).toContain('404');
 
       // Only that stage moved: the four that never ran are still waiting…
