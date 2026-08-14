@@ -221,3 +221,52 @@ export async function createAnalysis(repoUrl: string, branch: string): Promise<A
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as Analysis;
 }
+
+// ── pipeline documents (AC1.2) ───────────────────────────────────────────────
+
+/** One extracted concern, with the file paths it was inferred from. */
+export type CrossCuttingItem = {
+  name: string;
+  /** Repository paths that support this item — AC1.2's "근거가 된 파일 경로". */
+  evidence: string[];
+};
+
+/** One of AC1.2's five axes and what was found on it. */
+export type CrossCuttingCategory = {
+  axis: string;
+  items: CrossCuttingItem[];
+};
+
+/**
+ * Whether this document reproduced the previous analysis of the same target.
+ * `first` — nothing earlier to compare against.
+ */
+export type Reproducibility = {
+  verdict: 'first' | 'unchanged' | 'changed';
+  comparedTo: string | null;
+};
+
+/** Everything S05 draws (AC1.2). */
+export type CrossCuttingDocument = {
+  kind: string;
+  content: { categories: CrossCuttingCategory[] };
+  model: string;
+  createdAt: number;
+  reproducibility: Reproducibility;
+};
+
+/**
+ * The cross-cutting concerns document one analysis produced.
+ *
+ * A 404 means the stage has not produced it yet — that is a distinct state from
+ * "ran and found nothing", so it is surfaced rather than flattened to an empty
+ * document.
+ */
+export async function getCrossCutting(id: string): Promise<CrossCuttingDocument> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/documents/cross-cutting`, {
+    credentials: 'same-origin',
+  });
+  if (res.status === 404) throw new Error('아직 생성되지 않았어요');
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as CrossCuttingDocument;
+}

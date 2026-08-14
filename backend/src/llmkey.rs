@@ -239,6 +239,46 @@ async fn preflight(
     }))
 }
 
+/// The user's active key, decrypted for a single use.
+///
+/// Used by the queue when it hands a claimed job to the worker (`worker_api`): the
+/// worker owns no database and cannot decrypt anything itself, so the API unseals
+/// the key just-in-time and passes it over the already-authenticated `/internal`
+/// channel. The plaintext is never stored, never logged, and never returned on a
+/// user-facing route — the same handling as the installation token beside it (AC4.1/AC4.3).
+///
+/// `Ok(None)` means the user has no active key: that is a stage failure with a clear
+/// reason, not an error here.
+pub async fn active_key_for_user(
+    state: &AppState,
+    user_id: &str,
+) -> Result<Option<(String, String)>, AppError> {
+    let sealed = sqlx::query_as::<_, SealedKey>(
+        "SELECT provider, fingerprint, ciphertext, nonce, wrapped_dek, dek_nonce \
+         FROM llm_keys WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let Some(sealed) = sealed else {
+        return Ok(None);
+    };
+    let provider = sealed.provider.clone();
+    let plaintext = crypto::open(
+        &state.config.kek,
+        &Envelope {
+            ciphertext: sealed.ciphertext,
+            nonce: sealed.nonce,
+            wrapped_dek: sealed.wrapped_dek,
+            dek_nonce: sealed.dek_nonce,
+        },
+    )?;
+    let key = String::from_utf8(plaintext)
+        .map_err(|_| AppError::BadRequest("저장된 키를 읽을 수 없습니다".into()))?;
+    Ok(Some((provider, key)))
+}
+
 // ── validation + display helpers ─────────────────────────────────────────────
 
 /// Live-validates a key with its provider. Stub mode applies a deterministic shape
