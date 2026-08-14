@@ -20,6 +20,13 @@
 //!  - `POST /api/analyses/{id}/stages/{key}/retry` — re-run one *failed* stage and
 //!    only that one (시나리오 6).
 //!
+//! And the documents the pipeline produces (AC1.2~AC1.4):
+//!  - `GET /api/analyses/{id}/documents/{kind}` — one stage's output, plus whether
+//!    it reproduced the previous analysis of the same target. AC1.2 requires that a
+//!    re-analysis either reproduce deterministically *or* state the difference;
+//!    comparing the stored content hash is what turns that into something the
+//!    screen can show rather than something the reader has to take on trust.
+//!
 //! Real per-call cost accounting is still AC4.6: what these views report is the
 //! pre-flight estimate, never a measured spend.
 
@@ -44,6 +51,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/analyses/preflight", post(preflight))
         .route("/api/analyses/{id}", get(detail))
         .route("/api/analyses/{id}/stages/{key}/retry", post(retry_stage))
+        .route("/api/analyses/{id}/documents/{kind}", get(document))
 }
 
 // ── views / rows ──────────────────────────────────────────────────────────────
@@ -248,6 +256,118 @@ async fn retry_stage(
     crate::audit::record(&state.db, Some(&user.id), "analysis.stage_retry", Some(&key)).await;
 
     Ok(Json(load_detail(&state, &user.id, &id).await?))
+}
+
+/// Whether this document reproduced the previous analysis of the same target.
+///
+/// `first` — no earlier analysis of this repository+branch produced this document,
+/// so there is nothing to compare against. `unchanged` / `changed` — there was one,
+/// and the content hash did or did not match.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReproducibilityView {
+    verdict: &'static str,
+    /// The analysis this was compared against, when there was one.
+    compared_to: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DocumentView {
+    kind: String,
+    content: serde_json::Value,
+    model: String,
+    created_at: i64,
+    reproducibility: ReproducibilityView,
+}
+
+#[derive(sqlx::FromRow)]
+struct DocumentRow {
+    content: String,
+    content_hash: String,
+    model: String,
+    created_at: i64,
+}
+
+/// One pipeline document for an analysis the caller owns.
+///
+/// Scoped through `analyses.user_id` rather than trusting the analysis id, so
+/// another user's document id is a 404 like every other read here (AC4.7).
+async fn document(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, kind)): Path<(String, String)>,
+) -> Result<Json<DocumentView>, AppError> {
+    // The wire form is hyphenated (`cross-cutting`); the stage key is not.
+    let key = kind.replace('-', "_");
+    if pipeline::stage(&key).is_none() {
+        return Err(AppError::BadRequest("unknown pipeline stage".into()));
+    }
+
+    let row = sqlx::query_as::<_, DocumentRow>(
+        "SELECT d.content, d.content_hash, d.model, d.created_at \
+           FROM analysis_documents d JOIN analyses a ON a.id = d.analysis_id \
+          WHERE d.analysis_id = ? AND d.kind = ? AND a.user_id = ?",
+    )
+    .bind(&id)
+    .bind(&key)
+    .bind(&user.id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let content: serde_json::Value = serde_json::from_str(&row.content)
+        .map_err(|_| AppError::BadRequest("stored document is unreadable".into()))?;
+
+    // The most recent *earlier* analysis of the same repository and branch that
+    // produced this document. Same target, so a differing hash is a real difference
+    // in the result rather than a difference in what was analyzed.
+    //
+    // "Earlier" is `(created_at, rowid)`, not `created_at` alone. Timestamps here
+    // are unix *seconds*, so two analyses triggered in the same second compare
+    // equal — ordering on the timestamp alone dropped the real predecessor and
+    // reported a re-run as if it were a first run. `rowid` is SQLite's insertion
+    // order and breaks the tie the way the user experienced it.
+    let previous: Option<(String, String)> = sqlx::query_as(
+        "SELECT prev.id, d.content_hash \
+           FROM analyses cur \
+           JOIN analyses prev \
+             ON prev.user_id = cur.user_id AND prev.repo_owner = cur.repo_owner \
+            AND prev.repo_name = cur.repo_name AND prev.branch = cur.branch \
+            AND (prev.created_at < cur.created_at \
+                 OR (prev.created_at = cur.created_at AND prev.rowid < cur.rowid)) \
+           JOIN analysis_documents d ON d.analysis_id = prev.id AND d.kind = ? \
+          WHERE cur.id = ? AND cur.user_id = ? \
+          ORDER BY prev.created_at DESC, prev.rowid DESC LIMIT 1",
+    )
+    .bind(&key)
+    .bind(&id)
+    .bind(&user.id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let reproducibility = match previous {
+        None => ReproducibilityView {
+            verdict: "first",
+            compared_to: None,
+        },
+        Some((prev_id, prev_hash)) => ReproducibilityView {
+            verdict: if prev_hash == row.content_hash {
+                "unchanged"
+            } else {
+                "changed"
+            },
+            compared_to: Some(prev_id),
+        },
+    };
+
+    Ok(Json(DocumentView {
+        kind: key,
+        content,
+        model: row.model,
+        created_at: row.created_at,
+        reproducibility,
+    }))
 }
 
 #[derive(Deserialize)]

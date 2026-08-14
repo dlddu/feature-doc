@@ -267,7 +267,12 @@ async fn claim_hands_over_the_target_and_the_executable_stage() {
     assert_eq!(body["repoOwner"], "stub-account");
     assert_eq!(body["repoName"], "payments-api");
     assert_eq!(body["branch"], "main");
-    assert_eq!(body["executableStages"], serde_json::json!(["fetch"]));
+    // Widened by slice 4a: stage 2 (`cross_cutting`, AC1.2) is now implemented, so
+    // the queue offers it alongside `fetch`. Stages 3-5 stay unoffered.
+    assert_eq!(
+        body["executableStages"],
+        serde_json::json!(["fetch", "cross_cutting"])
+    );
     // Stub mode still mints a (synthetic) short-lived installation token — the
     // worker needs one shaped like the real thing.
     assert!(body["installationToken"].is_string());

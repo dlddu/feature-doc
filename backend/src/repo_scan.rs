@@ -13,10 +13,16 @@ use serde::Deserialize;
 use crate::config::Mode;
 
 /// What stage 1 measured.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// `paths` is the blob path list the tree request already returns. Stage 1 only
+/// needs the count and the byte total, but stage 2 (`cross_cutting`, AC1.2) needs
+/// the paths themselves as its evidence source — so they are carried forward
+/// rather than re-fetched.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScanResult {
     pub files: i64,
     pub bytes: i64,
+    pub paths: Vec<String>,
 }
 
 impl ScanResult {
@@ -82,10 +88,42 @@ pub fn stub_scan(name: &str, branch: &str) -> Result<ScanResult, String> {
         "notif-worker" => 800,
         _ => 1024,
     };
+    let files = (size_kb / 3).max(1);
     Ok(ScanResult {
-        files: (size_kb / 3).max(1),
+        files,
         bytes: size_kb * 1024,
+        paths: stub_paths(name, files),
     })
+}
+
+/// A deterministic stand-in tree for the stub repositories.
+///
+/// It is shaped like a real project rather than `file_0..file_N` so the stage-2
+/// document reads plausibly, and it is derived from the name so two stub repos
+/// never look identical. The list is capped well below `files` — the measured
+/// count is what stage 1 reports, and enumerating thousands of synthetic paths
+/// would only bloat the prompt.
+fn stub_paths(name: &str, files: i64) -> Vec<String> {
+    const SHAPE: [&str; 12] = [
+        "README.md",
+        "Cargo.toml",
+        "deploy/base/deployment.yaml",
+        "deploy/base/kustomization.yaml",
+        "src/main.rs",
+        "src/lib.rs",
+        "src/api/routes.rs",
+        "src/domain/model.rs",
+        "src/middleware/auth.rs",
+        "src/middleware/logging.rs",
+        "tests/integration.rs",
+        ".github/workflows/ci.yml",
+    ];
+    let take = SHAPE.len().min(files.max(1) as usize);
+    SHAPE
+        .iter()
+        .take(take)
+        .map(|p| format!("{name}/{p}"))
+        .collect()
 }
 
 async fn real_scan(
@@ -120,6 +158,8 @@ async fn real_scan(
         kind: Option<String>,
         #[serde(default)]
         size: i64,
+        #[serde(default)]
+        path: Option<String>,
     }
     #[derive(Deserialize)]
     struct Tree {
@@ -146,11 +186,19 @@ async fn real_scan(
         .filter(|e| e.kind.as_deref() == Some("blob"));
     let mut files = 0i64;
     let mut bytes = 0i64;
+    let mut paths = Vec::new();
     for b in blobs {
         files += 1;
         bytes += b.size;
+        if let Some(p) = &b.path {
+            paths.push(p.clone());
+        }
     }
-    Ok(ScanResult { files, bytes })
+    Ok(ScanResult {
+        files,
+        bytes,
+        paths,
+    })
 }
 
 #[cfg(test)]
@@ -182,8 +230,21 @@ mod tests {
         let r = ScanResult {
             files: 847,
             bytes: 2_411_724,
+            paths: Vec::new(),
         };
         assert_eq!(r.detail(), "847 files · 2.3 MB");
+    }
+
+    /// Stage 2 (AC1.2) reads these paths, so they must be stable across runs and
+    /// must actually name files rather than being an empty placeholder.
+    #[test]
+    fn stub_scan_returns_a_stable_non_empty_path_list() {
+        let a = stub_scan("payments-api", "main").unwrap();
+        let b = stub_scan("payments-api", "main").unwrap();
+        assert_eq!(a.paths, b.paths);
+        assert!(!a.paths.is_empty());
+        assert!(a.paths.iter().all(|p| p.starts_with("payments-api/")));
+        assert_ne!(stub_scan("checkout-web", "main").unwrap().paths, a.paths);
     }
 
     #[test]

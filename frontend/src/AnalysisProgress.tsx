@@ -58,9 +58,11 @@ type Props = {
   id: string;
   /** S04 → S02 (back, close, or "Run in background" — the job keeps running). */
   onBack: () => void;
+  /** S04 → S05, offered once the cross-cutting stage has produced its document. */
+  onOpenCrossCutting: () => void;
 };
 
-export function AnalysisProgress({ id, onBack }: Props) {
+export function AnalysisProgress({ id, onBack, onOpenCrossCutting }: Props) {
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -164,6 +166,19 @@ export function AnalysisProgress({ id, onBack }: Props) {
               </div>
               <span className="time">{elapsedOf(stage, now)}</span>
             </div>
+            {/* A stage that produced a document gets a way into it. Gated on the
+                stage having succeeded, so the link never leads to a 404. */}
+            {stage.key === 'cross_cutting' && stage.status === 'succeeded' && (
+              <button
+                className="btn btn-secondary block"
+                type="button"
+                style={{ marginTop: 12 }}
+                onClick={onOpenCrossCutting}
+                data-testid="open-cross-cutting"
+              >
+                횡단 관심사 문서 보기
+              </button>
+            )}
             {stage.status === 'failed' && (
               <button
                 className="btn btn-secondary block"

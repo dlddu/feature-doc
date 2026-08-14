@@ -4,9 +4,9 @@
 //! ("Pipeline · 3 of 5"), so the screen and the persisted rows cannot drift apart.
 //! Every analysis is seeded with one `analysis_stages` row per entry at enqueue.
 //!
-//! Only [`FETCH`] runs today: it needs no LLM. Stages 2-5 stay `pending` until the
-//! analysis pipeline lands (AC1.2~AC1.4) — the worker never fabricates a result for
-//! work that is not implemented.
+//! [`FETCH`] and [`CROSS_CUTTING`] run today. Stages 3-5 stay `pending` until the
+//! rest of the pipeline lands (AC1.3~AC1.4) — the worker never fabricates a result
+//! for work that is not implemented.
 
 /// One step of the pipeline as the user sees it on S04.
 pub struct Stage {
@@ -21,9 +21,12 @@ pub struct Stage {
 /// The one stage that is executable without an LLM (repository fetch + measure).
 pub const FETCH: &str = "fetch";
 
+/// Stage 2 (AC1.2): cross-cutting concerns, the first LLM-backed stage.
+pub const CROSS_CUTTING: &str = "cross_cutting";
+
 pub const STAGES: [Stage; 5] = [
     Stage { seq: 1, key: FETCH, title: "Fetch repository" },
-    Stage { seq: 2, key: "cross_cutting", title: "Cross-cutting concerns" },
+    Stage { seq: 2, key: CROSS_CUTTING, title: "Cross-cutting concerns" },
     Stage { seq: 3, key: "discovery_strategy", title: "Discovery strategy" },
     Stage { seq: 4, key: "feature_candidates", title: "Extract feature candidates" },
     Stage { seq: 5, key: "acceptance_dependencies", title: "Acceptance & dependencies" },
