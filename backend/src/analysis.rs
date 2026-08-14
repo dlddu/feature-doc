@@ -1,6 +1,7 @@
-//! Analysis jobs (AC1.1): connect a repository and explicitly trigger an analysis.
+//! Analysis jobs: connect a repository, trigger an analysis (AC1.1), and follow it
+//! while it runs (AC1.5).
 //!
-//! This slice implements the *enqueue* contract only:
+//! The enqueue half (AC1.1):
 //!  - list the repositories the App can access (candidates to analyze),
 //!  - pre-flight an estimated call count / cost so the user sees the scale before
 //!    triggering (S03, journey F2), and
@@ -8,12 +9,21 @@
 //!    confirmed within the App's granted access. An out-of-scope target is rejected
 //!    with a clear, actionable message and nothing is queued (test scenario #2).
 //!
-//! Draining the queue is now a separate workload (AC4.5): enqueue seeds one
+//! Draining the queue is a separate workload (AC4.5): enqueue seeds one
 //! `analysis_stages` row per [`crate::pipeline`] stage and the worker claims the
-//! job through `/internal/*` (see [`crate::worker_api`]). Rendering that progress
-//! to the user (S04) arrives with AC1.5; real per-call cost accounting with AC4.6.
+//! job through `/internal/*` (see [`crate::worker_api`]).
+//!
+//! The progress half (AC1.5) reads that same persisted state back:
+//!  - `GET /api/analyses/{id}` — the job and its stages, which is everything S04
+//!    draws. Nothing about the run lives in the client, so closing the app and
+//!    coming back shows the same progress (test/01 시나리오 5).
+//!  - `POST /api/analyses/{id}/stages/{key}/retry` — re-run one *failed* stage and
+//!    only that one (시나리오 6).
+//!
+//! Real per-call cost accounting is still AC4.6: what these views report is the
+//! pre-flight estimate, never a measured spend.
 
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -32,6 +42,8 @@ pub fn routes() -> Router<AppState> {
         .route("/api/repositories", get(list_repositories))
         .route("/api/analyses", post(create).get(list))
         .route("/api/analyses/preflight", post(preflight))
+        .route("/api/analyses/{id}", get(detail))
+        .route("/api/analyses/{id}/stages/{key}/retry", post(retry_stage))
 }
 
 // ── views / rows ──────────────────────────────────────────────────────────────
@@ -68,6 +80,67 @@ struct AnalysisView {
     est_llm_calls: i64,
     est_cost_cents: i64,
     created_at: i64,
+    /// Pipeline progress as a fraction, so the S02 card can read "step 2 of 5"
+    /// without one request per row (AC1.5). The stages themselves belong to S04 —
+    /// see [`detail`].
+    stages_total: i64,
+    stages_done: i64,
+}
+
+/// One pipeline step as S04 renders it, straight off `analysis_stages`.
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct StageView {
+    seq: i64,
+    key: String,
+    title: String,
+    status: String,
+    /// The user-facing one-liner the worker measured ("766 files · 2.2 MB").
+    detail: Option<String>,
+    /// Why the stage failed, when it did. Retryable on its own (AC1.5).
+    error: Option<String>,
+    started_at: Option<i64>,
+    finished_at: Option<i64>,
+}
+
+/// S04's whole payload: the job, its stages, and the run's own timestamps.
+///
+/// Everything on this view is *persisted* state — the screen keeps no progress of
+/// its own, which is what makes "종료 후 복귀 시 동일한 진행률" (test/01 시나리오 5)
+/// true by construction rather than by client-side bookkeeping.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnalysisDetailView {
+    #[serde(flatten)]
+    analysis: AnalysisView,
+    error: Option<String>,
+    started_at: Option<i64>,
+    finished_at: Option<i64>,
+    stages: Vec<StageView>,
+}
+
+/// The analysis-level columns S04 adds on top of [`AnalysisView`].
+#[derive(sqlx::FromRow)]
+struct RunRow {
+    error: Option<String>,
+    started_at: Option<i64>,
+    finished_at: Option<i64>,
+}
+
+/// `SELECT` list shared by the home list and the detail read. The two progress
+/// counts are subqueries rather than a join so a job with no stage rows (none
+/// exist today — enqueue seeds them in the same transaction) still returns a row.
+/// Built rather than `const` so the "done" predicate keeps reading its value from
+/// [`pipeline::stage_status`] instead of a second copy of the string.
+fn analysis_columns() -> String {
+    format!(
+        "a.id, a.repo_owner, a.repo_name, a.branch, a.status, \
+         a.est_llm_calls, a.est_cost_cents, a.created_at, \
+         (SELECT COUNT(*) FROM analysis_stages s WHERE s.analysis_id = a.id) AS stages_total, \
+         (SELECT COUNT(*) FROM analysis_stages s \
+           WHERE s.analysis_id = a.id AND s.status = '{done}') AS stages_done",
+        done = pipeline::stage_status::SUCCEEDED
+    )
 }
 
 // ── handlers ──────────────────────────────────────────────────────────────────
@@ -87,14 +160,94 @@ async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
 ) -> Result<Json<Vec<AnalysisView>>, AppError> {
-    let rows = sqlx::query_as::<_, AnalysisView>(
-        "SELECT id, repo_owner, repo_name, branch, status, est_llm_calls, est_cost_cents, created_at \
-         FROM analyses WHERE user_id = ? ORDER BY created_at DESC, id DESC",
-    )
+    let rows = sqlx::query_as::<_, AnalysisView>(&format!(
+        "SELECT {} FROM analyses a WHERE a.user_id = ? ORDER BY a.created_at DESC, a.id DESC",
+        analysis_columns()
+    ))
     .bind(&user.id)
     .fetch_all(&state.db)
     .await?;
     Ok(Json(rows))
+}
+
+/// One analysis with its pipeline stages — the S04 screen's read (AC1.5).
+///
+/// Scoped to the owner (AC4.7): another user's id is `404`, not `403`, so the API
+/// does not confirm that the id exists.
+async fn detail(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<AnalysisDetailView>, AppError> {
+    Ok(Json(load_detail(&state, &user.id, &id).await?))
+}
+
+/// Re-runs one failed stage and nothing else (AC1.5: "실패한 단계는 그 단계만
+/// 재시도할 수 있다", test/01 시나리오 6).
+///
+/// The retry is expressed as a *queue* operation rather than a second worker
+/// protocol: the failed stage row goes back to `pending` and the job goes back to
+/// `queued`, so the existing claim/lease path in [`crate::worker_api`] performs the
+/// re-run. Sibling stage rows are not touched, which is what keeps already-finished
+/// work (and its measured detail) intact.
+async fn retry_stage(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, key)): Path<(String, String)>,
+) -> Result<Json<AnalysisDetailView>, AppError> {
+    if pipeline::stage(&key).is_none() {
+        return Err(AppError::BadRequest("unknown pipeline stage".into()));
+    }
+
+    let current: Option<(String,)> =
+        sqlx::query_as("SELECT status FROM analyses WHERE id = ? AND user_id = ?")
+            .bind(&id)
+            .bind(&user.id)
+            .fetch_optional(&state.db)
+            .await?;
+    let (analysis_status,) = current.ok_or(AppError::NotFound)?;
+
+    // A job still inside a worker's lease must not be re-queued underneath it: the
+    // holder would keep reporting into the run we just reset.
+    if analysis_status == pipeline::status::RUNNING {
+        return Err(AppError::Conflict(
+            "이 분석은 아직 실행 중입니다. 끝난 뒤 다시 시도해 주세요.".into(),
+        ));
+    }
+
+    let mut tx = state.db.begin().await?;
+    let reset = sqlx::query(
+        "UPDATE analysis_stages \
+            SET status = ?, detail = NULL, error = NULL, started_at = NULL, finished_at = NULL \
+          WHERE analysis_id = ? AND key = ? AND status = ?",
+    )
+    .bind(pipeline::stage_status::PENDING)
+    .bind(&id)
+    .bind(&key)
+    .bind(pipeline::stage_status::FAILED)
+    .execute(&mut *tx)
+    .await?;
+    if reset.rows_affected() == 0 {
+        return Err(AppError::Conflict(
+            "실패한 단계만 다시 시도할 수 있습니다.".into(),
+        ));
+    }
+
+    sqlx::query(
+        "UPDATE analyses \
+            SET status = ?, error = NULL, claimed_by = NULL, claimed_at = NULL, \
+                lease_expires_at = NULL, finished_at = NULL \
+          WHERE id = ?",
+    )
+    .bind(pipeline::status::QUEUED)
+    .bind(&id)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+
+    crate::audit::record(&state.db, Some(&user.id), "analysis.stage_retry", Some(&key)).await;
+
+    Ok(Json(load_detail(&state, &user.id, &id).await?))
 }
 
 #[derive(Deserialize)]
@@ -260,11 +413,53 @@ async fn create(
             est_llm_calls: est.llm_calls,
             est_cost_cents: est.cost_cents,
             created_at: now,
+            stages_total: pipeline::STAGES.len() as i64,
+            stages_done: 0,
         }),
     ))
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+/// Reads one analysis and its stages under the owner's scope, or `404`.
+async fn load_detail(
+    state: &AppState,
+    user_id: &str,
+    id: &str,
+) -> Result<AnalysisDetailView, AppError> {
+    let analysis = sqlx::query_as::<_, AnalysisView>(&format!(
+        "SELECT {} FROM analyses a WHERE a.id = ? AND a.user_id = ?",
+        analysis_columns()
+    ))
+    .bind(id)
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let run = sqlx::query_as::<_, RunRow>(
+        "SELECT error, started_at, finished_at FROM analyses WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_one(&state.db)
+    .await?;
+
+    let stages = sqlx::query_as::<_, StageView>(
+        "SELECT seq, key, title, status, detail, error, started_at, finished_at \
+           FROM analysis_stages WHERE analysis_id = ? ORDER BY seq",
+    )
+    .bind(id)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(AnalysisDetailView {
+        analysis,
+        error: run.error,
+        started_at: run.started_at,
+        finished_at: run.finished_at,
+        stages,
+    })
+}
 
 /// The repositories the user's installation can access, or empty when not installed.
 async fn accessible_repos(state: &AppState, user_id: &str) -> Result<Vec<RepoRef>, AppError> {

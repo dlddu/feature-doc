@@ -16,62 +16,18 @@
 //
 // Isolation: the analysis worker is *deployment-wide* state — unlike App installs
 // and LLM keys, no per-user handle can isolate it, and a running worker drains the
-// queue within seconds, which would race ac1-1's `Queued` assertion. Two things
-// make that safe: `deploy/e2e/` starts the worker at **0 replicas**, and
-// playwright.config.ts pins `workers: 1` so no sibling spec file is in flight
-// while this one scales. This spec puts the count back to 0 in `finally`, so a
-// failure here cannot leave a worker running for later specs. The API — what
-// every other spec talks to — is never touched.
+// queue within seconds, which would race ac1-1's `Queued` assertion. It is leased,
+// not owned: `deploy/e2e/` starts the worker at **0 replicas**, this spec scales it
+// up inside its own block and puts the count back to 0 in `finally`, and
+// playwright.config.ts pins `workers: 1` so no sibling spec file is in flight while
+// it is up. The scale/settle handles live in `e2e/support/cluster.ts`, shared with
+// the other lessee (ac1-5). The API — what every other spec talks to — is never
+// touched.
 //
 // Like every spec it signs in as its own stub user (`?as=ac45`); App installation
 // is per-user state and sharing an identity would let specs clobber each other.
-import { execFileSync } from 'node:child_process';
 import { expect, test, type APIRequestContext } from '@playwright/test';
-
-const WORKER_DEPLOY = 'deployment/featuredoc-worker';
-
-function kubectl(...args: string[]): string {
-  return execFileSync('kubectl', args, { encoding: 'utf8', timeout: 120_000 });
-}
-
-/** Pod names currently existing for the worker Deployment, in any phase. */
-function workerPods(): string[] {
-  const out = kubectl(
-    'get',
-    'pods',
-    '-l',
-    'app.kubernetes.io/name=featuredoc-worker',
-    '-o',
-    'jsonpath={.items[*].metadata.name}',
-  ).trim();
-  return out ? out.split(/\s+/) : [];
-}
-
-/**
- * Scales the worker Deployment and waits until the change has actually taken
- * effect at the *pod* level.
- *
- * `kubectl scale` + `rollout status` is not enough on the way down: both return
- * as soon as the Deployment reports the new desired state, while the old pod is
- * still being told to stop. A worker in that window keeps polling and will drain
- * the very queue the next assertion is about to inspect — which is exactly how
- * the first run of this spec failed (a job read back `awaiting_pipeline` five
- * seconds after the workers were supposedly gone). So wait for the pod list
- * itself.
- */
-async function scaleWorkers(replicas: number): Promise<void> {
-  kubectl('scale', WORKER_DEPLOY, `--replicas=${replicas}`);
-  if (replicas > 0) {
-    kubectl('rollout', 'status', WORKER_DEPLOY, '--timeout=120s');
-  }
-  for (let i = 0; i < 120; i++) {
-    if (workerPods().length === replicas) return;
-    await new Promise((r) => setTimeout(r, 1_000));
-  }
-  throw new Error(
-    `worker pods did not settle at ${replicas}; still see ${workerPods().join(', ') || '(none)'}`,
-  );
-}
+import { desiredWorkerReplicas, scaleWorkers, workerLogs } from '../support/cluster';
 
 /**
  * Signs in as this spec's stub user and links a (stub) App installation — the
@@ -169,16 +125,10 @@ test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리',
       // the same queue. There is no leader election or exclusive resource that
       // would make the second one a no-op — which is what "API/워커 간 결합 없이
       // 확장된다" asks for.
-      expect(kubectl('get', WORKER_DEPLOY, '-o', 'jsonpath={.spec.replicas}').trim()).toBe('2');
+      expect(desiredWorkerReplicas()).toBe('2');
 
-      const logs = kubectl(
-        'logs',
-        '-l',
-        'app.kubernetes.io/name=featuredoc-worker',
-        '--prefix',
-        // `-l` defaults to --tail=10; we need every line to count claims.
-        '--tail=-1',
-      );
+      // Every line, not the default --tail=10: the claims are counted below.
+      const logs = workerLogs();
       const podNames = new Set(
         logs
           .split('\n')
