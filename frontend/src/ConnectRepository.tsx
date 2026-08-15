@@ -1,5 +1,5 @@
 // S03 · Connect Repository — the real, stateful screen behind
-// docs/mockups/s03-connect-repository.html (AC1.1 · AC4.6 pre-flight).
+// docs/journeys/flow-01-onboarding-and-connect.html#STP-connect-repository (AC1.1 · AC4.6 pre-flight).
 //
 // The single primary action is deliberately two-phase: a target must pass
 // pre-flight (`POST /api/analyses/preflight`) before it can be triggered, so the

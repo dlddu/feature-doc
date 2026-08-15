@@ -1,5 +1,5 @@
 // S02 · Home — Repositories — the real, stateful screen behind
-// docs/mockups/s02-home-repositories.html (AC1.1).
+// docs/journeys/flow-01-onboarding-and-connect.html#STP-home-repositories (AC1.1).
 //
 // Reads the slice-2a enqueue contract: the repositories the GitHub App can reach
 // (`GET /api/repositories`) and the analysis jobs the user has triggered
