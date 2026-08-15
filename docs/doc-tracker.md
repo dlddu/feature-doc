@@ -9,7 +9,7 @@
 - e2e spec (`e2e/tests/`): **7개** — AC 전용 1:1 매핑 7건 · 예외 0건 · 공백 17건 (아래 "e2e 매핑")
 - 사용자 여정 문서: **5개** (README + 플로우 4개) — 가치/AC/와이어프레임을 사용자 행동 시간 축으로 재구성
 - 와이어프레임: **10개** (S01 ~ S10, 정보 구조 SVG)
-- 목업: **10개** (S01 ~ S10, 디자인 시스템 적용 HTML) — 와이어프레임과 1:1 대응, 가치 연결됨: 10 / 미연결: 0
+- 목업: **화면 10개분** (S01 ~ S10, 디자인 시스템 적용 HTML) — 파일로는 **여정 페이지 1개**(`journeys/flow-01-*.html`, S01~S03 담음) + **화면 단위 7개**(`mockups/s04`~`s10`). 와이어프레임과 1:1 대응, 가치 연결됨: 10 / 미연결: 0. 여정 단위 이관 진행 상황은 아래 "여정 단위 목업 마이그레이션" 참조
 - 디자인 시스템 §4 컴포넌트: **12개** (사용됨: 12 / 미사용: 0)
 - **건강 상태**: ⚠️ **위험 있음 — 제품 소유자(Product Owner) 미지정** · 수용된 위험 2건(S11 변경 이력 화면 미시각화 · S01 로그인 상태 미시각화)
 
@@ -52,9 +52,9 @@ UX 산출물의 연결. 10개 화면(S01~S10)이 각각 와이어프레임(정�
 
 | 화면 | 플로우 | 가치 | 와이어프레임 | 목업 | 상태 |
 |------|--------|------|--------------|------|------|
-| S01 Credentials Setup | 1 진입과 연결 | V6 | ✅ | ✅ | ✅ 완전 |
-| S02 Home · Repositories | 1 진입과 연결 | V1·V8 | ✅ | ✅ | ✅ 완전 |
-| S03 Connect Repository | 1 진입과 연결 | V6·V8 | ✅ | ✅ | ✅ 완전 |
+| S01 Credentials Setup | 1 진입과 연결 | V6 | ✅ | ✅ [flow-01 `#STP-credentials-setup`](journeys/flow-01-onboarding-and-connect.html#STP-credentials-setup) | ✅ 완전 |
+| S02 Home · Repositories | 1 진입과 연결 | V1·V8 | ✅ | ✅ [flow-01 `#STP-home-repositories`](journeys/flow-01-onboarding-and-connect.html#STP-home-repositories) | ✅ 완전 |
+| S03 Connect Repository | 1 진입과 연결 | V6·V8 | ✅ | ✅ [flow-01 `#STP-connect-repository`](journeys/flow-01-onboarding-and-connect.html#STP-connect-repository) | ✅ 완전 |
 | S04 Analysis in Progress | 2 자동 발견 | V7·V8 | ✅ | ✅ | ✅ 완전 |
 | S05 Cross-cutting Concerns | 2 자동 발견 | V2·V4 | ✅ | ✅ | ✅ 완전 |
 | S06 Discovery Strategy | 2 자동 발견 | V1·V2 | ✅ | ✅ | ✅ 완전 |
@@ -63,7 +63,20 @@ UX 산출물의 연결. 10개 화면(S01~S10)이 각각 와이어프레임(정�
 | S09 Feature · Dependencies | 3 Feature 문서 | V5 | ✅ | ✅ | ✅ 완전 |
 | S10 LLM-assisted Edit | 3 Feature 문서 | V3·V4·V7 | ✅ | ✅ | ✅ 완전 |
 
-목업은 디자인 시스템([`design-system.md`](design-system.md))의 토큰·컴포넌트를 각 HTML 파일에 인라인 CSS로 적용합니다 (와이어프레임 SVG처럼 화면별 단독 파일). 디자인 시스템 §4의 12개 컴포넌트(Button·Tag·Input·Card·Step·Tabs·Bottom tab bar·Code block·Icon container·Segment selector·Metric grid·Progress bar)는 모두 1개 이상의 목업에서 사용됩니다. 화면별 §4 컴포넌트 사용 매핑과 §4 외 요소(Section title 타이포 역할, 화면 전용 의존성 그래프)의 단일 소스는 [`mockups/README.md`](mockups/README.md)의 "Mockup index"입니다.
+## 여정 단위 목업 마이그레이션
+
+목업의 매칭 단위를 **화면 1개 = 파일 1개**에서 **여정 1개 = 페이지 1개**로 옮기는 작업의 진행 원장. 규약(경로·`data-journey`/`data-step` 속성·`STP-*` 식별자 레지스트리)의 단일 소스는 [`mockups/README.md`](mockups/README.md)의 "여정 페이지 규약"이고, 이 표는 **어디까지 옮겼는지**만 기록합니다. reconciler 모델 `tbm_feature-doc-journey-mockup`이 이 축을 추적합니다.
+
+| 플로우 | 여정 식별자 | 목업 현황 | 상태 |
+|--------|-------------|-----------|------|
+| 1 진입과 연결 | `JRN-onboarding-and-connect` | 여정 페이지 1개 — [`journeys/flow-01-onboarding-and-connect.html`](journeys/flow-01-onboarding-and-connect.html) (S01~S03 흡수, 화면 단위 파일 3개 삭제) | ✅ 이관 완료 |
+| 2 자동 발견 | `JRN-discovery` | 화면 단위 4개 (`mockups/s04`~`s07`) — 여정당 페이지 1개 규칙 미충족 | ⬜ 대기 |
+| 3 Feature 문서 | `JRN-feature-documents` | 화면 단위 3개 (`mockups/s08`~`s10`) — 여정당 페이지 1개 규칙 미충족 | ⬜ 대기 |
+| 4 지속적 유지 | `JRN-continuous-maintenance` | 전용 목업 없음 — 재진입 시나리오 A~D | ⬜ 대기 (전용 페이지로 만들기로 결정) |
+
+**결정 — 플로우 4는 예외 등재가 아니라 전용 여정 페이지를 갖는다** (2026-08-15, reconciler `rct_20260815-0001`). 플로우 4는 고유 화면이 없어 "목업 0개 = 미시각화"로 잡히지만, 그 이유로 예외 등재하지 않습니다. 같은 화면이라도 여정마다 데이터와 다음 행동이 다르므로 그 여정의 맥락으로 각각 존재하는 것이 정상이고, 플로우 4 문서 자체가 재진입 화면마다 다른 내용을 명시하고 있기 때문입니다 — S07의 "이전에 거부된 항목 + 거부 사유" 표시(시나리오 C), S08의 충돌 배너와 3개 결정 옵션(B), S10 형태의 병합 diff(B), S08 안의 변경 이력 진입점(D). 이것들은 현재 어떤 목업에도 없으므로 화면 단위 파일을 재사용하는 것으로는 표현되지 않습니다. 따라서 플로우 4의 페이지는 재진입 시나리오 4개를 단계로 갖습니다(`STP-reanalysis-diff` · `STP-edit-conflict` · `STP-rediscovered-feature` · `STP-change-history`). 시나리오 D의 변경 이력 화면(S11 후보)은 **기존 수용된 위험을 그대로 유지**하고 페이지에서는 진입점만 표현합니다 — 이 결정으로 수용된 위험이 늘거나 줄지 않습니다.
+
+목업은 디자인 시스템([`design-system.md`](design-system.md))의 토큰·컴포넌트를 각 HTML 파일에 인라인 CSS로 적용합니다 (와이어프레임 SVG처럼 의존성 없는 단독 파일 — 이관된 플로우는 여정 페이지 1개가, 미이관 플로우는 화면 단위 파일이 그 단위입니다). 디자인 시스템 §4의 12개 컴포넌트(Button·Tag·Input·Card·Step·Tabs·Bottom tab bar·Code block·Icon container·Segment selector·Metric grid·Progress bar)는 모두 1개 이상의 목업에서 사용됩니다. 화면별 §4 컴포넌트 사용 매핑과 §4 외 요소(Section title 타이포 역할, 화면 전용 의존성 그래프)의 단일 소스는 [`mockups/README.md`](mockups/README.md)의 "Mockup index"입니다.
 
 ## e2e 매핑
 
@@ -143,11 +156,11 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 - 미검증 AC: **없음** ✅
 - 고아 테스트: **없음** ✅
 - 고아 여정 (가치 미참조): **없음** ✅ — 플로우 1~4 모두 유효한 가치 식별자 참조
-- 고아 목업 (가치/여정 미연결): **없음** ✅ — 10개 목업 모두 화면·플로우·가치에 매핑됨
-- 시각화 누락 화면 (목업 없는 와이어프레임): **없음** ✅ — 10개 와이어프레임 모두 목업 보유
+- 고아 목업 (가치/여정 미연결): **없음** ✅ — 목업 파일 8개(여정 페이지 1 + 화면 단위 7) 모두 `data-journey`를 정확히 1개 선언하고 화면·플로우·가치에 매핑됨
+- 시각화 누락 화면 (목업 없는 와이어프레임): **없음** ✅ — 10개 와이어프레임 모두 목업 보유 (S01~S03은 여정 페이지의 `#STP-*` 앵커가 공개 경로)
 - 시각화 누락 단계 (mockup 없는 여정 단계): **2건** — 플로우 4 시나리오 D(변경 이력 회고)의 변경 이력 화면(S11 후보)이 와이어프레임·목업 모두 없음 · 플로우 1 S01의 로그인(미인증) 상태가 와이어프레임·목업에 미표현. → 아래 "수용된 위험" 참조
 - 시각화 없는 가치 (목업 없는 가치): **없음** ✅ — V1~V8 모두 1개 이상 목업이 시각화
-- 임의 스타일 목업 (디자인 시스템 미사용): **없음** ✅ — 전 목업이 인라인 CSS로 디자인 시스템 적용
+- 임의 스타일 목업 (디자인 시스템 미사용): **없음** ✅ — 전 목업이 인라인 CSS로 디자인 시스템 적용 (여정 페이지도 같은 스타일 블록을 그대로 인라인하고, 여정 크롬은 기존 토큰만 사용)
 - 사용처 없는 컴포넌트: **없음** ✅ — 디자인 시스템 §4의 12개 컴포넌트 모두 사용됨
 - 미정의 항목 사용 (§4에 없는 컴포넌트 참조): **없음** ✅ — 2026-05-27 검증에서 발견된 6건을 해소함. 실 컴포넌트 3개(Segment selector·Metric grid·Progress bar)는 §4.10~4.12로 정식 추가, Section title(§2.2 타이포 역할)·진행 링(§4.5 Step의 일부)·의존성 그래프(화면 전용 inline SVG)는 `mockups/README.md` 인덱스에서 "§4 외 요소"로 재분류
 
@@ -195,6 +208,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 | 2026-08-13 슬라이스 3b(AC1.5 S04 진행 화면) 완료 | 3a가 적재해 둔 단계 데이터를 사용자에게 표현하고 실패 단계의 부분 재시도를 붙여 **AC1.5를 구현 완료**했다. 백엔드는 읽기 면(`GET /api/analyses/{id}` — 분석 + 단계 행, 소유자 스코프)과 재시도(`POST /api/analyses/{id}/stages/{key}/retry`)를 더했고, 재시도는 **큐 연산**으로 표현했다 — 실패한 단계 행만 `pending`으로 되돌리고 분석을 `queued`로 되돌리면 기존 claim/lease 경로가 재실행을 수행하므로 형제 단계의 측정값이 그대로 보존된다(실행 중인 lease 아래에서는 409로 거부). 프론트는 S04(`AnalysisProgress.tsx`, 진행 링·5단계·추정 비용)와 `#/analyses/{id}` 해시 라우트를 추가해 화면을 **주소 지정 가능**하게 만들었다 — 진행을 클라이언트에 두지 않으므로 새로고침이 곧 "앱 종료 후 복귀"(test/01 시나리오 5)의 관측이다. 부수: stub의 `repo_scan`이 브랜치를 무시하고 항상 성공하던 충실도 결함을 고쳐(없는 ref는 real 경로와 같은 `github tree rejected (404)`) 실패 경로가 사용자 입력만으로 도달 가능해졌고, 워커 replica 규약을 **단독 소유 → 임대**로 일반화했다(`e2e/support/cluster.ts`). 목업이 전제하나 데이터가 없는 3건(실측 비용·회차 번호·단계별 예상 소요)은 지어내지 않고 편차로 등재. to-be(24개 AC) 불변 (reconciler `rct_20260813-0001`) | AC1.1·AC4.5 완료, 미구현 18건 · 매핑 6 · 공백 18 | AC1.1·AC1.5·AC4.5 완료, 미구현 17건 · 매핑 7 · 공백 17 · 다음 슬라이스 4 |
 | 2026-08-07 e2e 매핑 규약 도입 | AC ↔ e2e spec의 1:1 매핑을 문서·파일 양쪽에 확립. spec 헤더 `// 검증 AC: ACx.y` 선언 규약과 `ac<major>-<minor>-<slug>.spec.ts` 파일명 규약을 도입하고, AC4.8·AC4.1·AC4.2·AC4.3을 한 파일에 묶고 있던 `e2e/tests/s01.spec.ts`를 AC별 전용 spec 4개로 분리, `s02-s03.spec.ts`를 `ac1-1-repository-connect-and-trigger.spec.ts`로 리네임·선언. 본 문서에 "e2e 매핑" 절(매핑 표·예외 정책·공백 목록·집계·기계 확인 recipe)을 신설. 예외는 0건으로 두고 "미구현은 예외 사유가 아니다"를 명문화해 미구현 19건이 계속 gap으로 계수되게 했다. to-be(24개 AC) 불변 — e2e 테스트만 재배치하고 구현·PRD는 건드리지 않음 (reconciler `rct_20260807-0001`, 모델 `tbm_feature-doc-ac-e2e`) | spec 2개(AC 선언 0, 4-AC 묶음 1) · 매핑 문서 없음 | spec 5개(각 1 AC 선언) · 매핑 5 · 예외 0 · 공백 19 |
 | 2026-05-27 design-doc 정합성 검증 | 4종 문서(가치/여정/디자인 시스템/목업) 정합성 검증. 위험 2건 발견 후 처리: ① 🟡 시각화 누락 단계(S11 변경 이력 화면) → "수용된 위험"으로 기록 ② 🟢 미정의 항목 사용 6건 → 실 컴포넌트 3개를 `design-system.md` §4.10~4.12로 추가하고 §4 헤더를 "12개"로 정정, 나머지 3개는 `mockups/README.md` 인덱스에서 "§4 외 요소"로 재분류. 부수 정정: `featuredoc-values.md`→`values.md` 오기, `user-journey/README.md §5` AC 커버리지(22→21개, 예외 AC4.5·AC4.7→AC3.2·AC4.4), `wireframes/README.md` AC 칸의 가치 표기 제거. `.claude/skills/`에 주입형 스킬 2개(ui-with-design-system, screen-with-mockup-and-design-system) 추가 | §4 컴포넌트 9 표기·미정의 참조 6건·검증 위험 미기록 | §4 컴포넌트 12 정합·미정의 참조 0·수용된 위험 1건 기록 |
+| 2026-08-15 여정 단위 목업 규약 + 플로우 1 이관 | 목업의 매칭 단위를 화면 1개=파일 1개에서 **여정 1개=페이지 1개**로 옮기기 시작. (1) `mockups/README.md`에 여정 페이지 규약(경로 `journeys/flow-0N-<슬러그>.html` · `data-journey`/`data-step` 선언 · `JRN-*`/`STP-*` 식별자 레지스트리 11단계 전체 · 페이지가 만족해야 할 (a)~(g))을 신설. (2) 플로우 1을 파일럿으로 이관 — `journeys/flow-01-onboarding-and-connect.html` 신설(S01~S03 본문을 스크립트로 그대로 옮기고 스텝퍼·현재 위치·분기(첫 방문/재방문)·`#STP-*` 딥링크·주요 행동 클릭 전진·갈래의 끝 표현을 덧붙임)하고 흡수된 `mockups/s01~s03.html` 3개 삭제. (3) 미이관 화면 7개(`s04`~`s10`)에 `data-journey`/`data-step` 주입 — 단계 집합 대조가 레포 전체에서 기계적으로 가능해짐. (4) **플로우 4는 예외 등재가 아니라 전용 여정 페이지를 갖는다**고 결정하고 위 마이그레이션 원장에 기록. 허브 `index.html`·본 문서 매트릭스·여정 문서 플로우 1을 함께 갱신. 신규 화면/AC/가치 추가 없음, 수용된 위험 2건 불변 (reconciler `rct_20260815-0001`, 모델 `tbm_feature-doc-journey-mockup`) | 목업 파일 10개(화면 단위) · 여정↔목업 페이지 1:1 미충족(플로우 1·2·3 중복, 4 미시각화) · `data-journey`/`data-step` 0건 | 목업 파일 8개(여정 페이지 1 + 화면 단위 7) · 플로우 1 1:1 충족 · 플로우 2·3·4 잔여 · `data-journey` 선언 8/8 |
 
 ## 다음 단계 권장
 

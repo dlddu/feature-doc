@@ -3,6 +3,8 @@
 > 사용자가 FeatureDoc에 처음 들어와 자격증명을 등록하고, 자기 저장소를 안전하게 연결한 뒤 분석을 트리거하기까지.
 >
 > 페르소나·전체 개요는 [`README.md`](./README.md)를 보세요. 이 문서는 **이 플로우 안의 화면 단위 흐름**만 다룹니다.
+>
+> 이 플로우의 여정 목업(걸어볼 수 있는 시각화): [`journeys/flow-01-onboarding-and-connect.html`](../journeys/flow-01-onboarding-and-connect.html) — 여정 식별자 `JRN-onboarding-and-connect`. 흐름의 SSOT는 이 문서이고 목업은 그 시각화입니다.
 
 ## 의도와 맥락
 
@@ -20,15 +22,17 @@
 (첫 진입)              (재방문 시 시작점)          (URL/브랜치/비용 안내)
 ```
 
-화면 흐름은 분기 가능: 첫 사용자는 S01 → S03 직행, 재방문 사용자는 S02에서 시작하여 새 저장소를 추가하거나 기존 분석으로 이동합니다.
+화면 흐름은 분기 가능: 첫 사용자는 S01 → S03 직행, 재방문 사용자는 S02에서 시작하여 새 저장소를 추가하거나 기존 분석으로 이동합니다. 여정 목업의 **첫 방문 / 재방문** 분기가 이 두 갈래이고, 각 갈래의 끝(분석 큐 등록 → 플로우 2 인계 / 기존 분석 진입)을 페이지가 함께 표현합니다.
+
+단계 식별자는 슬러그 체계를 씁니다 — `STP-credentials-setup`(S01) · `STP-home-repositories`(S02) · `STP-connect-repository`(S03). 순번 `S01`~`S03`은 와이어프레임·추적 문서와의 대조를 위한 별칭이며, 정식 레지스트리는 [`mockups/README.md`의 여정 페이지 규약](../mockups/README.md#여정-페이지-규약)입니다.
 
 ---
 
 ## 화면별 상세
 
-### S01 — 자격증명 등록
+### S01 `STP-credentials-setup` — 자격증명 등록
 
-[`s01-credentials-setup.svg`](../wireframes/s01-credentials-setup.svg)
+[`s01-credentials-setup.svg`](../wireframes/s01-credentials-setup.svg) · 여정 목업 [`#STP-credentials-setup`](../journeys/flow-01-onboarding-and-connect.html#STP-credentials-setup)
 
 | 항목 | 내용 |
 |------|------|
@@ -51,9 +55,9 @@
 
 ---
 
-### S02 — 저장소 목록 (홈)
+### S02 `STP-home-repositories` — 저장소 목록 (홈)
 
-[`s02-home-repositories.svg`](../wireframes/s02-home-repositories.svg)
+[`s02-home-repositories.svg`](../wireframes/s02-home-repositories.svg) · 여정 목업 [`#STP-home-repositories`](../journeys/flow-01-onboarding-and-connect.html#STP-home-repositories)
 
 | 항목 | 내용 |
 |------|------|
@@ -74,9 +78,9 @@
 
 ---
 
-### S03 — 저장소 연결 + 분석 시작
+### S03 `STP-connect-repository` — 저장소 연결 + 분석 시작
 
-[`s03-connect-repository.svg`](../wireframes/s03-connect-repository.svg)
+[`s03-connect-repository.svg`](../wireframes/s03-connect-repository.svg) · 여정 목업 [`#STP-connect-repository`](../journeys/flow-01-onboarding-and-connect.html#STP-connect-repository)
 
 | 항목 | 내용 |
 |------|------|
@@ -132,5 +136,6 @@
 - **달성 가치**: V6 (자격증명·비용 통제), V7 (모바일 우선), V8 (안정 운영)
 - **연결 AC**: AC4.1, AC4.2, AC4.3, AC1.1, AC4.6
 - **사용 와이어프레임**: [S01](../wireframes/s01-credentials-setup.svg), [S02](../wireframes/s02-home-repositories.svg), [S03](../wireframes/s03-connect-repository.svg)
+- **여정 목업**: [`flow-01-onboarding-and-connect.html`](../journeys/flow-01-onboarding-and-connect.html) — 단계 3개(`STP-credentials-setup` · `STP-home-repositories` · `STP-connect-repository`)를 한 페이지에서 걸어볼 수 있음
 - **연결 PRD**: [04-platform.md](../prd/04-platform.md), [01-analysis-pipeline.md](../prd/01-analysis-pipeline.md)
 - **이 플로우 마찰점**: F1, F2 (자세한 표는 [README §4](./README.md#4-마찰점-종합))
