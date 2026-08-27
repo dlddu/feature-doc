@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="FeatureDoc 모바일 목업 10개를 흐름별로 둘러보는 갤러리">
-  <title>FeatureDoc · Mockups</title>
+  <meta name="description" content="FeatureDoc의 제품 가치·PRD·사용자 여정 문서와 모바일 목업 10개를 한곳에서 보는 문서 포털">
+  <title>FeatureDoc · Docs &amp; Mockups</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -173,6 +173,115 @@
       margin-left: auto;
       color: var(--quiet);
       font-size: 10px;
+    }
+
+
+    /* ── 문서 구획 ─────────────────────────────────────────── */
+    .doc-group {
+      margin-bottom: 40px;
+    }
+
+    .doc-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .doc-group-label {
+      display: block;
+      margin-bottom: 14px;
+      color: var(--quiet);
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .doc-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 10px;
+    }
+
+    .doc-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      transition: border-color 160ms ease, background 160ms ease;
+    }
+
+    .doc-row:hover {
+      border-color: var(--border-strong);
+      background: var(--hover);
+    }
+
+    .doc-row .doc-id {
+      flex: 0 0 auto;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .doc-row .doc-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      color: var(--text);
+      font-size: 14px;
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .doc-row .doc-name::after {
+      position: absolute;
+      inset: 0;
+      content: "";
+    }
+
+    .doc-row {
+      position: relative;
+    }
+
+    .doc-row .doc-open {
+      flex: 0 0 auto;
+      color: var(--quiet);
+      font-family: var(--mono);
+      font-size: 15px;
+    }
+
+    .doc-row:hover .doc-open {
+      color: var(--accent);
+    }
+
+    /* 플로우 제목 옆 여정 문서 링크 — 읽는 경로와 눌러보는 경로를 같은 줄에 둔다 */
+    .flow-doc-link {
+      position: relative;
+      z-index: 1;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      border-bottom: 1px solid var(--border-strong);
+      padding-bottom: 2px;
+      transition: color 160ms ease, border-color 160ms ease;
+    }
+
+    .flow-doc-link:hover,
+    .flow-doc-link:focus-visible {
+      outline: none;
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .count {
+      margin-left: auto;
     }
 
     .grid {
@@ -352,8 +461,8 @@
     <header class="hero">
       <div>
         <div class="eyebrow">FeatureDoc · Product UI</div>
-        <h1>Mobile mockups,<br>one clear flow.</h1>
-        <p class="intro">저장소 연결부터 feature 문서 편집까지, FeatureDoc의 핵심 사용자 흐름을 10개의 모바일 화면으로 살펴보세요.</p>
+        <h1>Read the why,<br>tap the flow.</h1>
+        <p class="intro">제품 가치와 PRD, 사용자 여정 문서, 그리고 10개의 모바일 화면을 한곳에서 봅니다. 각 플로우는 문서로 읽고 화면으로 눌러볼 수 있어요.</p>
       </div>
       <div class="summary" role="group" aria-label="목업 요약">
         <div class="summary-item">
@@ -361,21 +470,153 @@
           <span class="meta-label">Screens</span>
         </div>
         <div class="summary-item">
-          <span class="summary-value">03</span>
+          <span class="summary-value">04</span>
           <span class="meta-label">Flows</span>
         </div>
         <div class="summary-item">
-          <span class="summary-value">393</span>
-          <span class="meta-label">Viewport</span>
+          <span class="summary-value">18</span>
+          <span class="meta-label">Documents</span>
         </div>
       </div>
     </header>
 
     <main>
+      <section aria-labelledby="documents">
+        <div class="flow-heading">
+          <span class="flow-number">Docs</span>
+          <h2 id="documents">Product &amp; journey documents</h2>
+          <span class="count">18 documents</span>
+        </div>
+
+        <div class="doc-group">
+          <span class="doc-group-label">제품 문서 — 왜 만드는가 / 무엇을 만드는가</span>
+          <div class="doc-list">
+          <div class="doc-row">
+            <span class="doc-id">Values</span>
+            <a class="doc-name" href="reader.html?doc=values.md">제품 가치 (V1~V8)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">PRD 01</span>
+            <a class="doc-name" href="reader.html?doc=prd/01-analysis-pipeline.md">코드베이스 분석 파이프라인</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">PRD 02</span>
+            <a class="doc-name" href="reader.html?doc=prd/02-feature-representation.md">Feature 표현 (인수 테스트 · 종단 의존성)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">PRD 03</span>
+            <a class="doc-name" href="reader.html?doc=prd/03-doc-management.md">Feature 단위 문서 관리 (LLM CRUD)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">PRD 04</span>
+            <a class="doc-name" href="reader.html?doc=prd/04-platform.md">플랫폼 (k8s · 자격증명 · 모바일 우선)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Test 01</span>
+            <a class="doc-name" href="reader.html?doc=test/01-analysis-pipeline.md">테스트: 분석 파이프라인</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Test 02</span>
+            <a class="doc-name" href="reader.html?doc=test/02-feature-representation.md">테스트: Feature 표현</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Test 03</span>
+            <a class="doc-name" href="reader.html?doc=test/03-doc-management.md">테스트: 문서 관리</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Test 04</span>
+            <a class="doc-name" href="reader.html?doc=test/04-platform.md">테스트: 플랫폼</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+          </div>
+        </div>
+
+        <div class="doc-group">
+          <span class="doc-group-label">사용자 여정 — 언제, 어떤 순서로</span>
+          <div class="doc-list">
+          <div class="doc-row">
+            <span class="doc-id">Overview</span>
+            <a class="doc-name" href="reader.html?doc=user-journey/README.md">페르소나 · 4플로우 개요 · 연결 매트릭스</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Flow 01</span>
+            <a class="doc-name" href="reader.html?doc=user-journey/01-onboarding-and-connect.md">진입과 연결 (Onboarding & Connect)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Flow 02</span>
+            <a class="doc-name" href="reader.html?doc=user-journey/02-discovery.md">자동 발견 (Discovery)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Flow 03</span>
+            <a class="doc-name" href="reader.html?doc=user-journey/03-feature-documents.md">Feature 문서 검토와 활용</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Flow 04</span>
+            <a class="doc-name" href="reader.html?doc=user-journey/04-continuous-maintenance.md">지속적 유지 (Continuous Maintenance)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+          </div>
+        </div>
+
+        <div class="doc-group">
+          <span class="doc-group-label">디자인 시스템과 인덱스 — 어떻게 보여줄지</span>
+          <div class="doc-list">
+          <div class="doc-row">
+            <span class="doc-id">Tokens</span>
+            <a class="doc-name" href="reader.html?doc=design-system.md">Design System — 토큰 · 컴포넌트 · 원칙</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Wireframes</span>
+            <a class="doc-name" href="reader.html?doc=wireframes/README.md">와이어프레임 인덱스 (S01~S10)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Mockups</span>
+            <a class="doc-name" href="reader.html?doc=mockups/README.md">목업 인덱스 (S01~S10)</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+
+          <div class="doc-row">
+            <span class="doc-id">Tracker</span>
+            <a class="doc-name" href="reader.html?doc=doc-tracker.md">문서 체계 상태 추적 · 위험 진단</a>
+            <span class="doc-open" aria-hidden="true">→</span>
+          </div>
+          </div>
+        </div>
+      </section>
+
       <section aria-labelledby="flow-01">
         <div class="flow-heading">
           <span class="flow-number">Flow 01</span>
           <h2 id="flow-01">Onboarding &amp; Connect</h2>
+          <a class="flow-doc-link" href="reader.html?doc=user-journey/01-onboarding-and-connect.md">플로우 1 문서 읽기</a>
           <span class="count">3 screens</span>
         </div>
         <div class="grid">
@@ -421,6 +662,7 @@
         <div class="flow-heading">
           <span class="flow-number">Flow 02</span>
           <h2 id="flow-02">Discovery</h2>
+          <a class="flow-doc-link" href="reader.html?doc=user-journey/02-discovery.md">플로우 2 문서 읽기</a>
           <span class="count">4 screens</span>
         </div>
         <div class="grid">
@@ -478,6 +720,7 @@
         <div class="flow-heading">
           <span class="flow-number">Flow 03</span>
           <h2 id="flow-03">Feature Documents</h2>
+          <a class="flow-doc-link" href="reader.html?doc=user-journey/03-feature-documents.md">플로우 3 문서 읽기</a>
           <span class="count">3 screens</span>
         </div>
         <div class="grid">
@@ -522,6 +765,7 @@
 
     <footer>
       <span>FeatureDoc · Mobile-first product documentation</span>
+      <a href="reader.html?doc=doc-tracker.md">문서 체계 상태 추적 →</a>
       <a href="https://github.com/dlddu/feature-doc/tree/main/docs/mockups">Mockup documentation ↗</a>
     </footer>
   </div>
