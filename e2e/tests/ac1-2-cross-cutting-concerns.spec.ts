@@ -78,7 +78,7 @@ test.describe('AC1.2: 횡단 관심사 자동 추출 및 문서화', () => {
       await page.goto('/api/auth/login?as=ac12');
       expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
       const key = await page.request.post('/api/llm-keys', {
-        data: { provider: 'anthropic', key: 'sk-ant-api03-aaaaaaaaaaaaaaaaaaaa' },
+        data: { provider: 'openai', key: 'sk-proj-bbbbbbbbbbbbbbbbbbbbbb' },
       });
       expect(key.ok(), 'an active LLM key is 분석의 진입 조건').toBeTruthy();
 

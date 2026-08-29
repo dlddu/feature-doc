@@ -223,7 +223,7 @@ impl Worker {
             // Stub mode never reaches a provider, so an absent key is not a failure.
             (Mode::Stub, other) => other
                 .and_then(llm::Provider::parse)
-                .unwrap_or(llm::Provider::Anthropic),
+                .unwrap_or(llm::DEFAULT_PROVIDER),
             (Mode::Real, Some(p)) => llm::Provider::parse(p)
                 .ok_or_else(|| format!("unsupported LLM provider registered: {p}"))?,
             (Mode::Real, None) => {

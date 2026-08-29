@@ -193,6 +193,20 @@ async fn revoke(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Which of a user's active keys a call uses.
+///
+/// A user may hold one key per provider, so "the active key" needs a rule. It is
+/// **OpenAI first, then most recently registered** — the same default the worker
+/// falls back to and the registration screen starts on ([`crate::llm::DEFAULT_PROVIDER`]),
+/// so all three agree on which provider a user who never chose is billed for.
+/// Users with a single active key are unaffected.
+///
+/// Shared by [`preflight`] and [`active_key_for_user`] on purpose: preflight tells
+/// the user which key an analysis will use, so it has to resolve the same one.
+const ACTIVE_KEY_SQL: &str = "SELECT provider, fingerprint, ciphertext, nonce, wrapped_dek, dek_nonce \
+     FROM llm_keys WHERE user_id = ? AND status = 'active' \
+     ORDER BY (provider = 'openai') DESC, created_at DESC LIMIT 1";
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PreflightView {
@@ -209,11 +223,8 @@ async fn preflight(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
 ) -> Result<Json<PreflightView>, AppError> {
-    let sealed = sqlx::query_as::<_, SealedKey>(
-        "SELECT provider, fingerprint, ciphertext, nonce, wrapped_dek, dek_nonce \
-         FROM llm_keys WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
-    )
-    .bind(&user.id)
+    let sealed = sqlx::query_as::<_, SealedKey>(ACTIVE_KEY_SQL)
+        .bind(&user.id)
     .fetch_optional(&state.db)
     .await?
     .ok_or_else(|| AppError::BadRequest("키가 없거나 폐기되었습니다".into()))?;
@@ -253,11 +264,8 @@ pub async fn active_key_for_user(
     state: &AppState,
     user_id: &str,
 ) -> Result<Option<(String, String)>, AppError> {
-    let sealed = sqlx::query_as::<_, SealedKey>(
-        "SELECT provider, fingerprint, ciphertext, nonce, wrapped_dek, dek_nonce \
-         FROM llm_keys WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
-    )
-    .bind(user_id)
+    let sealed = sqlx::query_as::<_, SealedKey>(ACTIVE_KEY_SQL)
+        .bind(user_id)
     .fetch_optional(&state.db)
     .await?;
 

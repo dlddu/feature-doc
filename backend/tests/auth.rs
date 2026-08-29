@@ -1,8 +1,9 @@
 //! Auth surface: 401 without a session, 200 with one, idempotent upsert, stub login redirect.
 
+mod common;
+
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::body::Body;
 use axum::http::{header, Request, StatusCode};
@@ -14,11 +15,13 @@ use featuredoc::github_api::GithubUser;
 use featuredoc::state::AppState;
 use featuredoc::{build_router, db, session, users};
 
-fn temp_db_url() -> (String, PathBuf) {
-    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-    let path = std::env::temp_dir().join(format!("featuredoc-auth-{}-{}.db", std::process::id(), nanos));
-    (format!("sqlite://{}?mode=rwc", path.display()), path)
-}
+// Path allocation is shared with the other suites rather than copied: this file
+// held a second copy that keyed only on (pid, nanos), and on a host whose clock
+// advances in coarser steps than a nanosecond two tests in this binary draw the
+// same path and race each other's migrations ("table users already exists").
+// `common::temp_db_url` carries the per-process counter that makes the path
+// unique by construction.
+use common::temp_db_url;
 
 async fn stub_state() -> (AppState, PathBuf) {
     let (url, path) = temp_db_url();
