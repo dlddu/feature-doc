@@ -17,9 +17,13 @@ import {
 } from './api';
 import type { Connection, LlmKey, ProviderId, User } from './api';
 
+// OpenAI first because it is the default the rest of the system assumes: the
+// worker falls back to it and an analysis picks an OpenAI key over the others
+// (`llm::DEFAULT_PROVIDER`, `llmkey::ACTIVE_KEY_SQL`). The order is the signal —
+// a user who does not choose gets the cheapest supported engine.
 const PROVIDERS: { id: ProviderId; label: string; placeholder: string }[] = [
-  { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-…' },
   { id: 'openai', label: 'OpenAI', placeholder: 'sk-…' },
+  { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-…' },
   { id: 'google', label: 'Google', placeholder: 'AIza…' },
 ];
 
@@ -42,7 +46,7 @@ export function CredentialsSetup({ onReady }: Props = {}) {
   const [keys, setKeys] = useState<LlmKey[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [provider, setProvider] = useState<ProviderId>('anthropic');
+  const [provider, setProvider] = useState<ProviderId>('openai');
   const [keyInput, setKeyInput] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [keyState, setKeyState] = useState<KeyState>('idle');

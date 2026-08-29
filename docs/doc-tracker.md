@@ -156,6 +156,33 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
   플로우 문서를 허브의 `#flow-NN` 구획으로 보낸다. 여정 단위 목업으로 전환하면
   이 둘을 `journeys/<id>/` 로 바꾼다.
 
+## LLM 프로바이더 지원 범위
+
+AC4.2는 "사용자가 자신의 LLM 제공자 API Key를 등록하고, 시스템은 모든 LLM 호출을 해당 키로
+수행한다"까지만 규정하고 **어떤 제공자를 지원하는지는 말하지 않는다.** 그래서 등록 화면이 받는
+제공자와 분석 파이프라인이 실제로 호출할 수 있는 제공자가 갈릴 수 있고, 그 상태를 여기 적어 둔다.
+
+| 제공자 | 키 등록 | 분석 호출 | 기본 모델 |
+|--------|---------|-----------|-----------|
+| **OpenAI** | ✅ | ✅ Responses API (`POST /v1/responses`) | **`gpt-5.6-luna`** ← 제품 기본값 |
+| Anthropic | ✅ | ✅ Messages API (`POST /v1/messages`) | `claude-opus-5` |
+| Google | ✅ | ❌ 미구현 — 단계가 "아직 지원하지 않는다"는 사유로 실패한다 | — |
+
+**기본값은 OpenAI GPT-5.6 Luna다.** 기본값이라고 부를 수 있는 지점이 셋 있고, 셋이 같은 답을
+가리키도록 맞춰 두었다 — ① 등록 화면의 초기 선택 제공자(`CredentialsSetup.tsx`의 `PROVIDERS`
+순서와 초기 상태) ② 활성 키가 여럿일 때의 선택 규칙(`llmkey::ACTIVE_KEY_SQL` — OpenAI 우선,
+그다음 최신순) ③ 작업에 제공자 정보가 없을 때의 폴백(`llm::DEFAULT_PROVIDER`). 고르지 않은
+사용자가 지원 티어 중 가장 싼 쪽으로 과금되게 하려는 선택이다.
+
+**제공자를 고른 사용자는 그 제공자로 호출된다.** 기본값은 뒤집기가 아니라 선택의 출발점이며,
+Anthropic 키를 등록한 사용자는 그대로 Anthropic으로 호출된다. 두 경로 모두 sampling parameter를
+보내지 않고(현행 모델이 400으로 거부한다) structured outputs로 응답 모양을 강제한다.
+
+> **문서 공백(미해소)**: AC4.2가 지원 제공자 범위와 **미지원 제공자 키의 동작**을 규정하지
+> 않는다. 지금은 "등록은 되지만 분석 단계에서 실패"인데, 이것이 의도인지 등록 자체를 막아야
+> 하는지는 PRD가 답하지 않는다. 이 표는 구현 현실의 기록이지 목표가 아니다 — 해소하려면
+> PRD-4를 고쳐야 한다.
+
 ## 위험 진단
 
 ### 🔴 고아 가치 (소유자 없는 가치)
@@ -248,7 +275,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 | 2026-08-07 슬라이스 3a(AC4.5 워크로드 분리) 완료 | 분석 큐를 리스 기반 클레임으로 만들고 `featuredoc-worker`를 **별도 k8s Deployment**로 분리(같은 이미지, 커맨드만 다름). 워커는 데이터베이스를 열지 않고 API의 `/internal` 라우트로 claim·heartbeat·단계 보고·finish 한다 — SQLite가 요구하는 단일 writer(`replicas:1` + `Recreate`)를 깨지 않으면서 워커만 수평 확장할 수 있게 하기 위한 선택이다. enqueue가 S04 목업의 5단계를 `analysis_stages`에 시드하고, 워커는 LLM이 필요 없는 1단계 `fetch`(저장소 트리 실측 → `766 files · 2.2 MB`)만 실행한 뒤 작업을 `awaiting_pipeline`으로 닫는다 — 2~5단계는 `pending`으로 남아 슬라이스 4~5가 채운다(미구현 단계를 완료로 표기하지 않음). test/04 시나리오 7·8을 `ac4-5-worker-workload-separation.spec.ts`가 kind에서 자동 검증(워커 0 → API 200·큐 보존 / 워커 2 → 전량 드레인·건당 정확히 1회 클레임). 트래커가 예외 후보로 적어 둔 "워커 강제 종료·수평 확장"은 자동화됐으므로 **예외로 등재하지 않았다**. 부수: 병렬 테스트가 같은 임시 DB 경로를 뽑아 간헐 실패하던 `tests/common` 결함 수정(`cargo test` 27건 → 44건). to-be(24개 AC) 불변 (reconciler `rct_20260807-0002`) | AC1.1 완료, 미구현 19건 · 매핑 5 · 공백 19 | AC1.1·AC4.5 완료, 미구현 18건 · 매핑 6 · 공백 18 · 다음 슬라이스 3b |
 | 2026-08-13 슬라이스 3b(AC1.5 S04 진행 화면) 완료 | 3a가 적재해 둔 단계 데이터를 사용자에게 표현하고 실패 단계의 부분 재시도를 붙여 **AC1.5를 구현 완료**했다. 백엔드는 읽기 면(`GET /api/analyses/{id}` — 분석 + 단계 행, 소유자 스코프)과 재시도(`POST /api/analyses/{id}/stages/{key}/retry`)를 더했고, 재시도는 **큐 연산**으로 표현했다 — 실패한 단계 행만 `pending`으로 되돌리고 분석을 `queued`로 되돌리면 기존 claim/lease 경로가 재실행을 수행하므로 형제 단계의 측정값이 그대로 보존된다(실행 중인 lease 아래에서는 409로 거부). 프론트는 S04(`AnalysisProgress.tsx`, 진행 링·5단계·추정 비용)와 `#/analyses/{id}` 해시 라우트를 추가해 화면을 **주소 지정 가능**하게 만들었다 — 진행을 클라이언트에 두지 않으므로 새로고침이 곧 "앱 종료 후 복귀"(test/01 시나리오 5)의 관측이다. 부수: stub의 `repo_scan`이 브랜치를 무시하고 항상 성공하던 충실도 결함을 고쳐(없는 ref는 real 경로와 같은 `github tree rejected (404)`) 실패 경로가 사용자 입력만으로 도달 가능해졌고, 워커 replica 규약을 **단독 소유 → 임대**로 일반화했다(`e2e/support/cluster.ts`). 목업이 전제하나 데이터가 없는 3건(실측 비용·회차 번호·단계별 예상 소요)은 지어내지 않고 편차로 등재. to-be(24개 AC) 불변 (reconciler `rct_20260813-0001`) | AC1.1·AC4.5 완료, 미구현 18건 · 매핑 6 · 공백 18 | AC1.1·AC1.5·AC4.5 완료, 미구현 17건 · 매핑 7 · 공백 17 · 다음 슬라이스 4 |
 | 2026-08-07 e2e 매핑 규약 도입 | AC ↔ e2e spec의 1:1 매핑을 문서·파일 양쪽에 확립. spec 헤더 `// 검증 AC: ACx.y` 선언 규약과 `ac<major>-<minor>-<slug>.spec.ts` 파일명 규약을 도입하고, AC4.8·AC4.1·AC4.2·AC4.3을 한 파일에 묶고 있던 `e2e/tests/s01.spec.ts`를 AC별 전용 spec 4개로 분리, `s02-s03.spec.ts`를 `ac1-1-repository-connect-and-trigger.spec.ts`로 리네임·선언. 본 문서에 "e2e 매핑" 절(매핑 표·예외 정책·공백 목록·집계·기계 확인 recipe)을 신설. 예외는 0건으로 두고 "미구현은 예외 사유가 아니다"를 명문화해 미구현 19건이 계속 gap으로 계수되게 했다. to-be(24개 AC) 불변 — e2e 테스트만 재배치하고 구현·PRD는 건드리지 않음 (reconciler `rct_20260807-0001`, 모델 `tbm_feature-doc-ac-e2e`) | spec 2개(AC 선언 0, 4-AC 묶음 1) · 매핑 문서 없음 | spec 5개(각 1 AC 선언) · 매핑 5 · 예외 0 · 공백 19 |
-| 2026-08-14 슬라이스 4a(AC1.2 횡단 관심사 추출) 완료 | 3a가 시드하고 3b가 표현만 해 두었던 파이프라인 **2단계 `cross_cutting`을 실제로 실행**시켜 **AC1.2를 구현 완료**했다. 핵심은 **LLM 호출 경계 신설**(`backend/src/llm.rs`) — 나머지 코드베이스가 이미 쓰는 `Mode::Stub`/`Mode::Real` 이분법을 그대로 따르며, 4b의 AC1.3·AC1.4가 재사용할 자산이다. 실 경로는 Anthropic Messages API를 쓰되 **프리필 대신 structured outputs**(`output_config.format`)로 응답 모양을 강제하고 **sampling parameter를 보내지 않는다** — 현행 모델은 `temperature`를 400으로 거부하므로 "temperature 0으로 결정성 확보"는 성립하지 않는다. 결정성은 대신 **관측**한다: 정렬·절단된 경로 목록이라는 고정 입력 + 산출물의 `content_hash`를 직전 동일 대상 분석과 대조해 `first`/`unchanged`/`changed`를 명시한다(AC1.2의 "결정적으로 재현되거나 차이가 명시된다"). 1단계가 이미 읽고도 버리던 **파일 경로 목록을 산출물로 승격**해 2단계의 근거 원천으로 삼았고(블롭 본문을 받지 않는다), 산출물은 `analysis_documents`에 (분석,종류)당 1행으로 영속화된다 — 단계 재시도는 자기 행을 덮어쓴다. LLM 키는 `installation_token` 선례대로 claim 응답에 단명으로 실려 워커에 전달되며 저장·로깅되지 않는다(AC4.1·AC4.3). 프론트는 S05(`CrossCuttingConcerns.tsx`)와 `#/analyses/{id}/cross-cutting` 해시 라우트를 더해 문서를 **주소 지정 가능**하게 만들었다. **목업은 4범주지만 AC는 5축**이라 AC를 따랐고(PRD가 SSOT), 그 차이를 편차로 등재했다 — 편차 표에서 **구현이 아니라 목업이 뒤처진 첫 항목**이다. 부수: 재현성 비교가 `created_at`(초 단위)만으로 정렬해 **같은 초에 트리거된 재분석을 첫 분석으로 오판**하던 결함을 `rowid` 타이브레이커로 수정(`backend/tests/documents.rs`가 잡았다). 기존 단정 변경은 2건뿐이며 둘 다 이 슬라이스가 단계 수를 늘린 직접 귀결이다(`executableStages`, `1 of 5`→`2 of 5`). `cargo test` 53건 → 71건. to-be(24개 AC) 불변 (reconciler `rct_20260814-0001`) | AC1.1·AC1.5·AC4.5 완료, 미구현 17건 · 매핑 7 · 공백 17 | AC1.1·AC1.2·AC1.5·AC4.5 완료, 미구현 16건 · 매핑 8 · 공백 16 · 다음 슬라이스 4b |
+| 2026-08-14 슬라이스 4a(AC1.2 횡단 관심사 추출) 완료 | 3a가 시드하고 3b가 표현만 해 두었던 파이프라인 **2단계 `cross_cutting`을 실제로 실행**시켜 **AC1.2를 구현 완료**했다. 핵심은 **LLM 호출 경계 신설**(`backend/src/llm.rs`) — 나머지 코드베이스가 이미 쓰는 `Mode::Stub`/`Mode::Real` 이분법을 그대로 따르며, 4b의 AC1.3·AC1.4가 재사용할 자산이다. 실 경로는 Anthropic Messages API를 쓰되 **프리필 대신 structured outputs**(`output_config.format`)로 응답 모양을 강제하고 **sampling parameter를 보내지 않는다** — 현행 모델은 `temperature`를 400으로 거부하므로 "temperature 0으로 결정성 확보"는 성립하지 않는다. 결정성은 대신 **관측**한다: 정렬·절단된 경로 목록이라는 고정 입력 + 산출물의 `content_hash`를 직전 동일 대상 분석과 대조해 `first`/`unchanged`/`changed`를 명시한다(AC1.2의 "결정적으로 재현되거나 차이가 명시된다"). 1단계가 이미 읽고도 버리던 **파일 경로 목록을 산출물로 승격**해 2단계의 근거 원천으로 삼았고(블롭 본문을 받지 않는다), 산출물은 `analysis_documents`에 (분석,종류)당 1행으로 영속화된다 — 단계 재시도는 자기 행을 덮어쓴다. LLM 키는 `installation_token` 선례대로 claim 응답에 단명으로 실려 워커에 전달되며 저장·로깅되지 않는다(AC4.1·AC4.3). 프론트는 S05(`CrossCuttingConcerns.tsx`)와 `#/analyses/{id}/cross-cutting` 해시 라우트를 더해 문서를 **주소 지정 가능**하게 만들었다. **목업은 4범주지만 AC는 5축**이라 AC를 따랐고(PRD가 SSOT), 그 차이를 편차로 등재했다 — 편차 표에서 **구현이 아니라 목업이 뒤처진 첫 항목**이다. 부수: 재현성 비교가 `created_at`(초 단위)만으로 정렬해 **같은 초에 트리거된 재분석을 첫 분석으로 오판**하던 결함을 `rowid` 타이브레이커로 수정(`backend/tests/documents.rs`가 잡았다). 기존 단정 변경은 2건뿐이며 둘 다 이 슬라이스가 단계 수를 늘린 직접 귀결이다(`executableStages`, `1 of 5`→`2 of 5`). **사용자 검토에서 한 차례 반려된 뒤("openai luna로 기본값 변경 필요") 재계획해, OpenAI Responses API 호출 경로를 더하고 제품 기본값을 `gpt-5.6-luna`로 옮겼다** — 기본값을 자처하던 세 지점(등록 화면 초기 선택 · 활성 키 선택 규칙 · 워커 폴백)을 함께 옮겼고, Anthropic 경로는 **뒤집지 않고 그대로 남겼다**(그러지 않으면 Anthropic 키 사용자가 OpenAI 사용자가 겪던 "등록은 되나 분석에서 실패"를 대칭으로 겪는다). 부수로 stub 응답을 JSON Schema 안(`stub_answer` 키)에서 `Ask::stub`으로 꺼냈다 — OpenAI는 `strict:true`로 스키마를 검증하므로 모르는 키워드가 있으면 400이고, Anthropic 쪽에도 의미 없는 키를 보내고 있었다. `cargo test` 53건 → 71건 → **83건**. 「LLM 프로바이더 지원 범위」 절 신설. to-be(24개 AC) 불변 (reconciler `rct_20260814-0001`) | AC1.1·AC1.5·AC4.5 완료, 미구현 17건 · 매핑 7 · 공백 17 | AC1.1·AC1.2·AC1.5·AC4.5 완료, 미구현 16건 · 매핑 8 · 공백 16 · 다음 슬라이스 4b |
 | 2026-08-27 문서 포털 공개 | `docs/` 를 목업 갤러리에서 **문서 포털**로 확장. `.nojekyll` 이 있으면 Pages 가 `.md` 를 렌더링하지 않고 그대로 내보내므로, 지금까지 18개 문서는 링크를 눌러도 파일이 내려받아질 뿐 읽히지 않았다 — 이걸 해소하는 게 이번 변경의 전부다. ① `docs/reader.html` 추가(단일 파일 마크다운 뷰어, `design-system.md` v0.1 토큰으로 테마 적용, 문서 안의 `.md` 상대 링크를 리더 경유로 재작성, 플로우 문서에서 허브의 `#flow-NN` 구획으로 가는 링크 제공) ② `docs/.nojekyll` 추가 ③ 허브에 문서 3구획(제품 문서 9 · 사용자 여정 5 · 디자인 시스템/인덱스 4) 신설, 각 플로우 제목 옆에 여정 문서 링크를 붙여 읽는 경로와 눌러보는 경로를 같은 줄에 배치, hero 카피·요약 수치 갱신. **문서를 옮기지 않았고 새로 공개된 문서도 없다** — 전부 이미 `docs/` 아래 public 이었다. 목업의 여정 단위 전환과 목업→문서 복귀 링크는 범위에서 제외하고 위험으로 등재 | md 18개 공개되나 렌더링 불가 · 허브에서 도달 가능 0개 | md 18개 렌더링 가능 · 허브에서 도달 가능 18개 |
 | 2026-05-27 design-doc 정합성 검증 | 4종 문서(가치/여정/디자인 시스템/목업) 정합성 검증. 위험 2건 발견 후 처리: ① 🟡 시각화 누락 단계(S11 변경 이력 화면) → "수용된 위험"으로 기록 ② 🟢 미정의 항목 사용 6건 → 실 컴포넌트 3개를 `design-system.md` §4.10~4.12로 추가하고 §4 헤더를 "12개"로 정정, 나머지 3개는 `mockups/README.md` 인덱스에서 "§4 외 요소"로 재분류. 부수 정정: `featuredoc-values.md`→`values.md` 오기, `user-journey/README.md §5` AC 커버리지(22→21개, 예외 AC4.5·AC4.7→AC3.2·AC4.4), `wireframes/README.md` AC 칸의 가치 표기 제거. `.claude/skills/`에 주입형 스킬 2개(ui-with-design-system, screen-with-mockup-and-design-system) 추가 | §4 컴포넌트 9 표기·미정의 참조 6건·검증 위험 미기록 | §4 컴포넌트 12 정합·미정의 참조 0·수용된 위험 1건 기록 |
 

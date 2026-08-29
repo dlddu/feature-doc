@@ -37,9 +37,9 @@ Every item must cite at least one path from the list as its evidence.
 If an axis has no supporting evidence in the tree, return an empty item list for it
 rather than guessing.";
 
-/// The JSON shape the answer is constrained to, with the stub-mode answer carried
-/// alongside it (see [`crate::llm::ask`]).
-fn schema(paths: &[String]) -> Value {
+/// The JSON shape the answer is constrained to. Nothing but JSON Schema goes in
+/// here — it is sent to the provider verbatim (see [`crate::llm::Ask`]).
+fn schema() -> Value {
     let axis_keys: Vec<&str> = AXES.iter().map(|(key, _)| *key).collect();
     json!({
         "type": "object",
@@ -73,7 +73,6 @@ fn schema(paths: &[String]) -> Value {
                 },
             },
         },
-        "stub_answer": stub_answer(paths),
     })
 }
 
@@ -152,7 +151,8 @@ pub async fn extract(
         Ask {
             system: SYSTEM,
             user: prompt(owner, name, branch, &paths),
-            schema: schema(&paths),
+            schema: schema(),
+            stub: stub_answer(&paths),
         },
     )
     .await
@@ -271,6 +271,16 @@ mod tests {
         .await
         .unwrap_err();
         assert!(err.contains("empty"), "{err}");
+    }
+
+    /// The schema travels to the provider verbatim, so the stub answer must not
+    /// be inside it — OpenAI rejects unknown keywords under `strict`.
+    #[test]
+    fn the_schema_is_only_a_schema() {
+        let s = schema();
+        assert!(s.get("stub_answer").is_none());
+        assert_eq!(s["additionalProperties"], false);
+        assert_eq!(s["required"][0], "categories");
     }
 
     #[test]
