@@ -400,6 +400,15 @@ for p in sorted(DOCS.rglob("*")):
         q = re.match(r"doc=([^&]+)$", query)
         if q and not (DOCS / q.group(1)).exists():
             fail("R8", "%s → reader 문서 `%s` 가 실재하지 않는다" % (p.relative_to(ROOT), q.group(1)))
+            continue
+        # 다른 HTML 파일의 앵커로 들어가는 링크는 그 앵커가 실재하는지까지 본다.
+        # R5 는 페이지 *안*의 앵커만 보므로, 허브가 여정 페이지의 단계로 거는 링크
+        # (index.html → mockups/JRN-*.html#STP-*)는 아무도 검사하지 않는 사각이었다.
+        # reader 경유(?doc=)는 프래그먼트가 마크다운 헤딩이라 대상이 다르므로 제외한다.
+        if frag and not query and path and target.suffix == ".html":
+            if 'id="%s"' % frag not in read(target):
+                fail("R8", "%s → `%s` 의 앵커 #%s 가 대상 파일에 없다"
+                     % (p.relative_to(ROOT), path, frag))
 
 notes.append("docs/ 상대 링크 %d건 확인" % link_count)
 
@@ -464,7 +473,9 @@ if hub_doc_links != all_md:
     fail("R9", "허브의 문서 링크가 docs/ 의 md 집합과 다르다: 허브에만 %s / 파일에만 %s"
          % (sorted(hub_doc_links - all_md), sorted(all_md - hub_doc_links)))
 
-hub_mockups = set(re.findall(r'(?:href|src)="mockups/([A-Za-z0-9._-]+\.html)"', HUB))
+# 허브가 여정 페이지를 특정 단계에서 열도록 프래그먼트를 붙일 수 있다.
+# 링크 대상 파일만 센다 — 프래그먼트 자체는 R8 이 아니라 페이지의 앵커 규칙(R5)이 본다.
+hub_mockups = set(re.findall(r'(?:href|src)="mockups/([A-Za-z0-9._-]+\.html)(?:#[^"]*)?"', HUB))
 if hub_mockups != set(PAGES):
     fail("R9", "허브의 목업 링크가 docs/mockups 의 파일 집합과 다르다: 허브에만 %s / 파일에만 %s"
          % (sorted(hub_mockups - set(PAGES)), sorted(set(PAGES) - hub_mockups)))
