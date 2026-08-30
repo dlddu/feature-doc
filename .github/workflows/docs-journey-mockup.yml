@@ -1,0 +1,52 @@
+# 사용자 여정 ↔ 목업 1:1 정합성 게이트.
+#
+# ci.yml 에 얹지 않고 별도 워크플로로 둔다 — ci.yml 은 cargo + kind e2e 를 돌고
+# 그 뒤에 ghcr 이미지를 밀기 때문에, 문서 정합성 하나 때문에 그 파이프라인을
+# 건드리고 싶지 않다.
+#
+# 두 검사가 있다.
+#   1) 정적 체커 (파이썬 stdlib, 의존성 0) — 매핑·집계·링크·마커 무결성 R0~R10
+#   2) DOM 하네스 (jsdom)                  — 프로토타입 충실도 P1~P7
+#
+# 2가 따로 있는 이유: 파일을 읽어 속성만 세면 배선이 끊긴 버튼과 살아 있는 버튼이
+# 구분되지 않는다. 규칙 5 의 (c) 화면 내 전진 · (d) 실제 입력 · (e) 상태 변형은
+# 실제 DOM 에서 굴려야만 판정된다. 이 잡이 없거나 통과하지 않는 상태는 그 자체가
+# 정합성 위반이다.
+#
+# 무엇을 검사하는지는 각 스크립트 헤더와 docs/mockups/README.md 「여정 페이지 규약」에 있다.
+name: docs — journey ↔ mockup
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-journey-mockup-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 여정 ↔ 목업 1:1
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: check journey ↔ mockup consistency (static)
+        run: python3 tools/check-journey-mockup.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: tools/package-lock.json
+
+      - name: install harness deps
+        run: npm ci --prefix tools
+
+      - name: check journey prototype fidelity (DOM)
+        run: node tools/check-journey-prototype.js

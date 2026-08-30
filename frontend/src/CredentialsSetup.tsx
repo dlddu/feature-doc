@@ -1,5 +1,6 @@
 // S01 · Credentials Setup — the real, stateful screen behind
-// docs/mockups/s01-credentials-setup.html (AC4.1 · AC4.2 · AC4.3).
+// docs/mockups/JRN-connect-repo.html#STP-grant-repo-access and #STP-register-llm-key
+// (S01, AC4.1 · AC4.2 · AC4.3).
 //
 // Once pre-flight confirms the credentials are usable, the primary action becomes
 // the hand-off into S02 (journey flow 1: S01 → S02 → S03).
