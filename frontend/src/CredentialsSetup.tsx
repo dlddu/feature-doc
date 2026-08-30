@@ -27,6 +27,22 @@ const PROVIDERS: { id: ProviderId; label: string; placeholder: string }[] = [
   { id: 'google', label: 'Google', placeholder: 'AIza…' },
 ];
 
+/**
+ * The provider whose key an analysis would actually use, or `null` if the user has
+ * none. Mirrors the backend's active-key rule (`llmkey::ACTIVE_KEY_SQL`): OpenAI
+ * first, then most recently registered — so the screen names the same key the
+ * pipeline would call with.
+ */
+function activeProviderOf(keys: LlmKey[]): ProviderId | null {
+  const active = keys.filter((k) => k.status === 'active');
+  if (active.length === 0) return null;
+  const preferred =
+    active.find((k) => k.provider === 'openai') ??
+    active.reduce((a, b) => (b.createdAt > a.createdAt ? b : a));
+  const known = PROVIDERS.find((p) => p.id === preferred.provider);
+  return known ? known.id : null;
+}
+
 type KeyState = 'idle' | 'verifying' | 'error';
 type ContinueState = 'idle' | 'checking' | 'done' | 'error';
 
@@ -68,6 +84,12 @@ export function CredentialsSetup({ onReady }: Props = {}) {
         const [conn, ks] = await Promise.all([getConnection(), listKeys()]);
         setConnection(conn);
         setKeys(ks);
+        // Someone who already registered a key sees *that* provider. The default
+        // below is where a user who has not chosen starts, not a value that
+        // overrides a choice already made — so this runs on mount only and never
+        // fights a later selection.
+        const already = activeProviderOf(ks);
+        if (already) setProvider(already);
       }
     } catch (e) {
       setMe(null);
