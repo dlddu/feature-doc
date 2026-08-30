@@ -41,9 +41,10 @@ docs/
 ├── wireframes/            # 10개 모바일 화면 정보 구조 (SVG)
 │   ├── README.md
 │   └── s01 ~ s10 *.svg
-└── mockups/               # 10개 모바일 화면 목업 — 디자인 시스템 적용 HTML (단독 파일)
-    ├── README.md
-    └── s01 ~ s10 *.html
+└── mockups/               # 목업 — 디자인 시스템 적용 HTML (단독 파일)
+    ├── README.md                      # 여정 페이지 규약 · 매핑 · 이관 대기 원장
+    ├── JRN-connect-repo.html          # 여정 목업 (S01~S03 흡수) — 5단계를 눌러 걸어본다
+    └── s04 ~ s10 *.html               # 화면 단위 — 여정 페이지로 이관 대기
 
 tools/
 └── gen-wireframes.js      # wireframe SVG 일괄 생성 스크립트

@@ -105,7 +105,7 @@
   <a id="hub-link" href="index.html">← 허브</a>
   <span class="crumb" id="crumb"></span>
   <span class="spacer"></span>
-  <a class="pill" id="mockup-link" href="#" hidden>이 플로우 화면 보기 →</a>
+  <a class="pill" id="mockup-link" href="#" hidden>이 여정의 화면 보기 →</a>
   <a class="pill" id="raw-link" href="#" hidden>원문(.md)</a>
 </header>
 
@@ -121,25 +121,30 @@ const CONFIG = {
   // 문서 제목 접미사
   siteTitle: 'FeatureDoc Docs',
 
-  // 이 레포는 아직 여정 단위 mockup 이 없다. 화면 단위 s01~s10 이고,
-  // 허브가 그 화면들을 플로우별로 묶어 보여준다.
-  // 그래서 여정 문서에서는 "그 여정의 mockup 페이지" 대신 허브의 해당 구획으로 보낸다.
+  // 여정 단위 mockup 으로의 이관이 진행 중이다 (규약: mockups/README.md 「여정 페이지 규약」).
+  // 이관이 끝난 여정은 자기 목업 페이지로 보내고, 아직 화면 단위로 남은 여정은
+  // 허브의 해당 화면 구획으로 보낸다. 이관이 다 끝나면 journeySection 은 비고
+  // journeyPage 만 남는다.
   //
-  // 여정 단위 mockup 으로 전환하면 journeySection 을 지우고
-  // flowHref 를 (id) => `journeys/${id}/` 로 바꾸면 된다.
-  //
-  // 여정 식별자 → 허브 구획. 허브는 아직 화면을 3개 플로우로 묶어 보여주므로
-  // 그 묶음에 대응하는 세 여정만 매칭한다. 나머지 세 여정(understand-feature ·
-  // follow-code-change · restore-history)은 대응하는 허브 구획이 없어 링크를 만들지 않는다.
+  // 여정 페이지는 docs/journeys/ 가 아니라 docs/mockups/ 안에 둔다 — 목업 변경
+  // 감지가 docs/mockups 트리를 보기 때문이다(README 규약 ① 참조).
+  journeyPage: {
+    'JRN-connect-repo': 'mockups/JRN-connect-repo.html',
+  },
+  // 아직 이관되지 않은 여정 → 허브 화면 구획. understand-feature ·
+  // follow-code-change · restore-history 는 대응 구획이 없어 링크를 만들지 않는다.
   journeySection: {
-    'JRN-connect-repo': '01',
     'JRN-discover-features': '02',
     'JRN-review-feature': '03',
   },
   flowFromPath: /(?:^|\/)user-journey\/(JRN-[a-z0-9-]+)\.md$/,
   flowHref(id) {
+    if (this.journeyPage[id]) { return this.journeyPage[id]; }
     const n = this.journeySection[id];
     return n ? `index.html#flow-${n}` : null;
+  },
+  flowLabel(id) {
+    return this.journeyPage[id] ? '이 여정 걸어보기 →' : '이 여정의 화면 보기 →';
   },
 };
 
@@ -368,14 +373,16 @@ async function main() {
     if (!/^[a-z]+:/i.test(src) && !src.startsWith('//')) img.src = resolveFrom(doc, src);
   }
 
-  // 플로우 문서일 때만 해당 화면 구획으로 건너뛰는 링크를 띄운다 (문서 ↔ 화면 왕복).
-  // 근거는 경로뿐이다 — 본문에 "플로우 2" 가 스쳐 나오는 것으로 띄우면
-  // 여러 플로우를 언급하는 values.md·prd/ 에서 엉뚱한 버튼이 뜬다.
+  // 여정 문서일 때만 그 여정의 목업(이관됐으면 여정 페이지, 아니면 허브의 화면
+  // 구획)으로 건너뛰는 링크를 띄운다 (문서 ↔ 화면 왕복). 근거는 경로뿐이다 —
+  // 본문에 여정 이름이 스쳐 나오는 것으로 띄우면 여러 여정을 언급하는
+  // values.md · prd/ 에서 엉뚱한 버튼이 뜬다.
   const flow = (doc.match(CONFIG.flowFromPath) || [])[1];
   const flowHref = flow ? CONFIG.flowHref(flow) : null;
   if (flowHref) {
     const link = document.getElementById('mockup-link');
     link.href = flowHref;
+    link.textContent = CONFIG.flowLabel(flow);
     link.hidden = false;
   }
 

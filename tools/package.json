@@ -1,0 +1,9 @@
+{
+  "name": "featuredoc-doc-tools",
+  "private": true,
+  "description": "문서 정합성 게이트가 쓰는 도구 — 여정 프로토타입 DOM 하네스(jsdom)",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}
