@@ -1,7 +1,7 @@
 # FeatureDoc 문서 체계 상태 추적
 
 ## 현재 상태 요약
-- **마지막 검증 시점**: 2026-08-30 (사용자 여정 문서 행동 축 재작성)
+- **마지막 검증 시점**: 2026-08-30 (여정 단위 목업 이관 슬라이스 1 — `JRN-connect-repo`)
 - 정의된 가치: **8개** (V1 ~ V8)
 - PRD: **4개** (analysis-pipeline, feature-representation, doc-management, platform)
 - Acceptance Criteria: **24개** (가치 연결됨: 24 / 미연결: 0)
@@ -9,10 +9,10 @@
 - e2e spec (`e2e/tests/`): **7개** — AC 전용 1:1 매핑 7건 · 예외 0건 · 공백 17건 (아래 "e2e 매핑")
 - 사용자 여정 문서: **7개** (README + 여정 6개) — 행동 축으로 정리, `JRN-`/`STP-` 안정 식별자 보유. 가치 8/8 · AC 23/24 커버 (미커버 AC4.5는 사용자에게 보이지 않는 운영 배경)
 - 와이어프레임: **10개** (S01 ~ S10, 정보 구조 SVG)
-- 목업: **10개** (S01 ~ S10, 디자인 시스템 적용 HTML) — 와이어프레임과 1:1 대응, 가치 연결됨: 10 / 미연결: 0
+- 목업: **8개 페이지** — 여정 페이지 **1개**(`JRN-connect-repo`, S01~S03 흡수) + 화면 단위 **7개**(S04~S10). 화면 10개는 전부 살아 있고(와이어프레임과 1:1 대응 유지) S01~S03 은 여정 페이지 안의 앵커가 공개 경로다. 여정 6개 중 목업 페이지 보유 **1** · 이관 대기 **4** · 규칙 8 예외 **1**(`JRN-restore-history`). 매핑·원장·상한의 단일 소스는 [`mockups/README.md`](mockups/README.md)
 - 디자인 시스템 §4 컴포넌트: **12개** (사용됨: 12 / 미사용: 0)
 - 공개된 문서: **20개** (`docs/` 전체, 허브에서 도달 가능 20/20)
-- **건강 상태**: ⚠️ **위험 있음 — 제품 소유자(Product Owner) 미지정** · 수용된 위험 2건(`JRN-restore-history` 전체 미시각화 · `STP-sign-in` 미인증 상태 미시각화)
+- **건강 상태**: ⚠️ **위험 있음 — 제품 소유자(Product Owner) 미지정** · 수용된 위험 2건(`JRN-restore-history` 전체 미시각화 · `STP-sign-in` 미인증 상태 미시각화) · 여정 단위 목업 이관 대기 4건(원장·상한으로 래칫)
 
 > 가치 정의·문서화·검증 구조는 완비되었지만, 모든 가치의 책임자가 TBD인 상태이므로 "고아 가치(orphan value)" 위험이 존재합니다. 가장 우선 해결할 항목은 제품 소유자 지정입니다.
 
@@ -49,20 +49,22 @@
 
 ## 연결 매트릭스 — 화면 ↔ 와이어프레임 ↔ 목업
 
-UX 산출물의 연결. 10개 화면(S01~S10)이 각각 와이어프레임(정보 구조)과 목업(디자인 시스템 적용 최종 형태)을 모두 갖습니다. 화면별 AC·가치·플로우 매핑의 단일 소스는 [`mockups/README.md`](mockups/README.md)입니다.
+UX 산출물의 연결. 10개 화면(S01~S10)이 각각 와이어프레임(정보 구조)과 목업(디자인 시스템 적용 최종 형태)을 모두 갖습니다. **목업 칸은 그 화면의 공개 경로**입니다 — 여정 페이지로 이관된 화면은 페이지 안의 단계 앵커가, 아직 이관되지 않은 화면은 화면 단위 파일이 공개 경로입니다. 화면별 AC·가치·여정 매핑의 단일 소스는 [`mockups/README.md`](mockups/README.md)입니다.
 
-| 화면 | 플로우 | 가치 | 와이어프레임 | 목업 | 상태 |
-|------|--------|------|--------------|------|------|
-| S01 Credentials Setup | 1 진입과 연결 | V6 | ✅ | ✅ | ✅ 완전 |
-| S02 Home · Repositories | 1 진입과 연결 | V1·V8 | ✅ | ✅ | ✅ 완전 |
-| S03 Connect Repository | 1 진입과 연결 | V6·V8 | ✅ | ✅ | ✅ 완전 |
-| S04 Analysis in Progress | 2 자동 발견 | V7·V8 | ✅ | ✅ | ✅ 완전 |
-| S05 Cross-cutting Concerns | 2 자동 발견 | V2·V4 | ✅ | ✅ | ✅ 완전 |
-| S06 Discovery Strategy | 2 자동 발견 | V1·V2 | ✅ | ✅ | ✅ 완전 |
-| S07 Feature Candidates | 2 자동 발견 | V1 | ✅ | ✅ | ✅ 완전 |
-| S08 Feature · Acceptance | 3 Feature 문서 | V3·V4 | ✅ | ✅ | ✅ 완전 |
-| S09 Feature · Dependencies | 3 Feature 문서 | V5 | ✅ | ✅ | ✅ 완전 |
-| S10 LLM-assisted Edit | 3 Feature 문서 | V3·V4·V7 | ✅ | ✅ | ✅ 완전 |
+| 화면 | 여정 (터치포인트) | 가치 | 와이어프레임 | 목업 (공개 경로) | 상태 |
+|------|-------------------|------|--------------|------------------|------|
+| S01 Credentials Setup | `JRN-connect-repo` | V6 | ✅ | ✅ [여정 페이지 #STP-grant-repo-access](mockups/JRN-connect-repo.html#STP-grant-repo-access) · [#STP-register-llm-key](mockups/JRN-connect-repo.html#STP-register-llm-key) | ✅ 완전 |
+| S02 Home · Repositories | `JRN-connect-repo` | V1·V8 | ✅ | ✅ [여정 페이지 #STP-pick-target](mockups/JRN-connect-repo.html#STP-pick-target) | ✅ 완전 |
+| S03 Connect Repository | `JRN-connect-repo` | V6·V8 | ✅ | ✅ [여정 페이지 #STP-pick-target](mockups/JRN-connect-repo.html#STP-pick-target) · [#STP-confirm-cost](mockups/JRN-connect-repo.html#STP-confirm-cost) | ✅ 완전 |
+| S04 Analysis in Progress | `JRN-discover-features` · `JRN-follow-code-change` | V7·V8 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
+| S05 Cross-cutting Concerns | `JRN-discover-features` | V2·V4 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
+| S06 Discovery Strategy | `JRN-discover-features` | V1·V2 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
+| S07 Feature Candidates | `JRN-discover-features` · `JRN-follow-code-change` | V1 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
+| S08 Feature · Acceptance | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | V3·V4 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
+| S09 Feature · Dependencies | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | V5 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
+| S10 LLM-assisted Edit | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | V3·V4·V7 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
+
+> 여정 열이 화면 소유를 보여줍니다 — **S01~S03 만 여정 하나의 전용 터치포인트**이고 나머지 7개는 2~3개 여정이 공유합니다. 여정 페이지가 화면을 흡수하며 원본 파일을 삭제하려면 그 화면을 쓰는 여정이 전부 이관돼야 하므로, 이 열이 곧 이관 순서의 제약입니다.
 
 목업은 디자인 시스템([`design-system.md`](design-system.md))의 토큰·컴포넌트를 각 HTML 파일에 인라인 CSS로 적용합니다 (와이어프레임 SVG처럼 화면별 단독 파일). 디자인 시스템 §4의 12개 컴포넌트(Button·Tag·Input·Card·Step·Tabs·Bottom tab bar·Code block·Icon container·Segment selector·Metric grid·Progress bar)는 모두 1개 이상의 목업에서 사용됩니다. 화면별 §4 컴포넌트 사용 매핑과 §4 외 요소(Section title 타이포 역할, 화면 전용 의존성 그래프)의 단일 소스는 [`mockups/README.md`](mockups/README.md)의 "Mockup index"입니다.
 
@@ -170,19 +172,23 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 - **결정적 재현성의 한계**: AC1.2의 "결정적 재현 또는 차이 명시" 정책은 LLM 응답의 비결정성을 어디까지 허용할지에 대한 정책 결정이 필요합니다.
 - **삭제된 feature의 보관 기간**: AC3.3에서 "일정 기간"으로만 표현됨. 운영 정책 결정 필요.
 
-### 🟡 여정 단위 미전환 (공개 축)
+### 🟡 여정 단위 이관 진행 중 (공개 축)
 
-- **화면 단위 목업 10건**: 목업이 여정 단위가 아니라 화면 단위(S01~S10)다.
-  `design-doc-structure-validator` 는 "여정 하나 = 목업 페이지 하나"를 기대하므로,
-  현재 구조는 그 규칙에서 보면 **화면 단위 잔재**에 해당한다.
-  - 다만 허브가 화면을 플로우별로 묶어 보여주고 있어, 흐름을 훑는 것 자체는 가능하다.
-  - 전환하면 얻는 것: 한 페이지에서 단계를 눌러 넘기는 **흐름 체험**, 단계 딥링크의 목업 쪽 대응.
-  - **선행 조건은 2026-08-30에 해소됐다** — 여정 문서가 행동 축으로 재작성되면서
-    `JRN-`/`STP-` 안정 식별자를 갖게 됐다. 목업 페이지는 이제 이 식별자에 붙기만 하면 된다.
-  - 남은 전환 비용: 여정 6개 각각에 대한 목업 페이지 재구성. 여정마다 터치포인트 화면이
-    3~5개라 기존 `sNN-*.html` 을 한 페이지로 합치는 작업이 된다.
-    `JRN-restore-history` 는 소스 화면 자체가 없어 S11 제작이 먼저다.
-  - **미결정**: 전환 여부는 여전히 결정되지 않았다. 택한다면 여정 하나씩 옮기고 그때마다 검증한다.
+- **결정: 여정 단위로 전환한다** (2026-08-30, reconciler `rct_20260830-0001`). 오래 미결정으로
+  남아 있던 항목이다. 선행 조건이던 안정적 단계 식별자가 같은 날 여정 문서 재작성으로
+  확보(`JRN-`/`STP-`)되면서 결정을 미룰 이유가 사라졌고, 방식은 **여정 하나씩 옮기고
+  그때마다 검증**한다. 규약은 [`mockups/README.md`](mockups/README.md) 「여정 페이지 규약」,
+  기계 검사는 `tools/check-journey-mockup.py`.
+- **진행: 1 / 5** — `JRN-connect-repo` 이관 완료(S01~S03 흡수, 화면 파일 3개 삭제).
+  남은 4개는 [`mockups/README.md`](mockups/README.md) 의 **이관 대기 원장**(상한 7)에 있다.
+  - 전환으로 얻은 것: 한 페이지에서 단계를 눌러 넘기는 **흐름 체험**, `#STP-*` 딥링크의
+    목업 쪽 대응, 그리고 여정↔목업 정합성이 산문이 아니라 **CI 게이트**가 된 것.
+  - 남은 전환의 선결 과제는 크기가 아니라 **화면 공유**다. `S04`·`S07` 은 두 여정이,
+    `S08`~`S10` 은 세 여정이 터치포인트로 쓰므로, 흡수하며 원본을 삭제하는 규약을
+    그대로 적용할 수 없다. 공유 화면을 여정마다 복제해 담을지(규칙상 중복이 아니다)
+    다르게 다룰지가 다음 슬라이스의 첫 판단이다.
+  - `JRN-restore-history` 는 소스 화면 자체가 없어 S11 제작이 먼저이며, 그때까지는
+    아래 「수용된 위험」의 여정 단위 예외로 남는다.
 
 - **문서 → 화면 단방향**: 여정 문서에서 허브의 화면 구획으로 가는 링크는 리더가 제공하지만,
   개별 목업(`mockups/sNN-*.html`)에서 그 화면이 속한 플로우 문서로 **돌아오는 링크는 없다**.
@@ -199,15 +205,16 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 - 미검증 AC: **없음** ✅
 - 고아 테스트: **없음** ✅
 - 고아 여정 (가치 미참조): **없음** ✅ — 여정 6개 모두 유효한 가치 식별자 참조
-- 고아 목업 (가치/여정 미연결): **없음** ✅ — 10개 목업 모두 화면·플로우·가치에 매핑됨
+- 고아 목업 (여정 미선언): **7건** — 화면 단위 파일 `s04`~`s10` 이 `data-journey` 를 선언하지 않는다. 이 7개는 2~3개 여정이 공유하는 화면이라 "정확히 1개 여정"을 선언하는 것이 **원리적으로 불가능**하고, 그래서 화면 단위로 남아 있는 것 자체가 위반이다. [`mockups/README.md`](mockups/README.md) 의 **이관 대기 원장**(상한 7)에 등재되어 래칫으로 관리되며, 이관이 끝나면 0이 된다. 여정 페이지 `JRN-connect-repo.html` 은 `data-journey` 를 정확히 1개 선언 ✅
 - 시각화 누락 화면 (목업 없는 와이어프레임): **없음** ✅ — 10개 와이어프레임 모두 목업 보유
+- 목업 페이지 없는 여정: **4건** — `JRN-discover-features` · `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` (이관 대기, 원장 관리). `JRN-restore-history` 는 예외 등재라 위반이 아니다
 - 시각화 누락 단계 (mockup 없는 여정 단계): **2건** — `JRN-restore-history` 의 세 단계 전부(이력 화면 S11 후보가 와이어프레임·목업 모두 없음) · `JRN-connect-repo` / `STP-sign-in` 의 미인증 상태가 와이어프레임·목업에 미표현. → 아래 "수용된 위험" 참조
 - 시각화 없는 가치 (목업 없는 가치): **없음** ✅ — V1~V8 모두 1개 이상 목업이 시각화
 - 임의 스타일 목업 (디자인 시스템 미사용): **없음** ✅ — 전 목업이 인라인 CSS로 디자인 시스템 적용
 - 사용처 없는 컴포넌트: **없음** ✅ — 디자인 시스템 §4의 12개 컴포넌트 모두 사용됨
 - 공개 안 된 문서 (`docs/` 밖 문서): **없음** ✅ — 20개 문서 전부 `docs/` 아래
 - 리더 부재: **없음** ✅ — `docs/reader.html` 설치됨
-- 끊긴 문서 링크: **없음** ✅ — 허브의 문서 링크 24건 · 목업 링크 10건 전부 실재 파일로 이어짐
+- 끊긴 문서 링크: **없음** ✅ — 허브의 문서 링크 20건 · 목업 링크(여정 페이지 1 + 화면 단위 7) 전부 실재 파일로 이어짐. `docs/` 안의 상대 링크 dangling 0 은 `tools/check-journey-mockup.py` 가 CI 에서 확인한다
 - 허브 불일치: **없음** ✅ — `docs/` 아래 md 20개 전부 허브에서 도달 가능
 - 미정의 항목 사용 (§4에 없는 컴포넌트 참조): **없음** ✅ — 2026-05-27 검증에서 발견된 6건을 해소함. 실 컴포넌트 3개(Segment selector·Metric grid·Progress bar)는 §4.10~4.12로 정식 추가, Section title(§2.2 타이포 역할)·진행 링(§4.5 Step의 일부)·의존성 그래프(화면 전용 inline SVG)는 `mockups/README.md` 인덱스에서 "§4 외 요소"로 재분류
 
@@ -235,7 +242,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 | 위험 종류 | 대상 | 사유 | 수용 시점 |
 |-----------|------|------|-----------|
 | 🟡 시각화 누락 단계 | `JRN-restore-history` 전체 — 변경 이력 화면(S11 후보) | 변경 이력 화면은 후순위 작업으로 분류. 지금은 와이어프레임/목업을 제작하지 않고, 향후 제작 시 `wireframes/README.md`·`mockups/README.md`·본 추적 문서를 함께 갱신한다 (`JRN-restore-history.md` 상단 경고 및 `user-journey/README.md §6` 갱신 정책 참조). 2026-08-30 여정 재작성으로 대상 표기가 "플로우 4 시나리오 D"에서 여정 식별자로 바뀌었다 — 위험 자체는 동일하다. | 2026-05-27 |
-| 🟡 시각화 누락 단계 | `JRN-connect-repo` / `STP-sign-in` — 로그인(미인증) 상태 | 구현(GitHub OAuth 게이트)과 여정 문서(`STP-sign-in`)에는 로그인 단계가 있으나, S01 와이어프레임·목업은 로그인 후 상태만 표현한다. 후속 제작 시 `gen-wireframes.js`의 S01 정의와 `mockups/s01-*.html`에 미인증 상태를 추가하고 `wireframes/README.md`·`mockups/README.md`의 S01 행 AC에 AC4.8을 더한 뒤 본 문서에서 해제한다 (그 전까지 두 README의 S01 행은 아티팩트가 실제 표현하는 AC4.1~4.3만 유지). | 2026-07-12 |
+| 🟡 시각화 누락 단계 | `JRN-connect-repo` / `STP-sign-in` — 로그인(미인증) 상태 | 구현(GitHub OAuth 게이트)과 여정 문서(`STP-sign-in`)에는 로그인 단계가 있으나, S01 와이어프레임·목업은 로그인 후 상태만 표현한다. 후속 제작 시 `gen-wireframes.js`의 S01 정의와 `mockups/s01-*.html`에 미인증 상태를 추가하고 `wireframes/README.md`·`mockups/README.md`의 S01 행 AC에 AC4.8을 더한 뒤 본 문서에서 해제한다 (그 전까지 두 README의 S01 행은 아티팩트가 실제 표현하는 AC4.1~4.3만 유지). 2026-08-30 여정 페이지 이관으로 이 공백이 **단계 자리에서 드러난다** — `JRN-connect-repo` 페이지의 `STP-sign-in` 섹션은 화면을 지어내지 않고 "시각화 없음 · 수용된 위험" 자리로 남아 이 문서를 가리킨다. 위험 자체는 동일하다. | 2026-07-12 |
 
 > 수용된 위험: **2건**.
 
@@ -257,6 +264,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 | 2026-08-27 문서 포털 공개 | `docs/` 를 목업 갤러리에서 **문서 포털**로 확장. `.nojekyll` 이 있으면 Pages 가 `.md` 를 렌더링하지 않고 그대로 내보내므로, 지금까지 18개 문서는 링크를 눌러도 파일이 내려받아질 뿐 읽히지 않았다 — 이걸 해소하는 게 이번 변경의 전부다. ① `docs/reader.html` 추가(단일 파일 마크다운 뷰어, `design-system.md` v0.1 토큰으로 테마 적용, 문서 안의 `.md` 상대 링크를 리더 경유로 재작성, 플로우 문서에서 허브의 `#flow-NN` 구획으로 가는 링크 제공) ② `docs/.nojekyll` 추가 ③ 허브에 문서 3구획(제품 문서 9 · 사용자 여정 5 · 디자인 시스템/인덱스 4) 신설, 각 플로우 제목 옆에 여정 문서 링크를 붙여 읽는 경로와 눌러보는 경로를 같은 줄에 배치, hero 카피·요약 수치 갱신. **문서를 옮기지 않았고 새로 공개된 문서도 없다** — 전부 이미 `docs/` 아래 public 이었다. 목업의 여정 단위 전환과 목업→문서 복귀 링크는 범위에서 제외하고 위험으로 등재 | md 18개 공개되나 렌더링 불가 · 허브에서 도달 가능 0개 | md 18개 렌더링 가능 · 허브에서 도달 가능 18개 |
 | 2026-05-27 design-doc 정합성 검증 | 4종 문서(가치/여정/디자인 시스템/목업) 정합성 검증. 위험 2건 발견 후 처리: ① 🟡 시각화 누락 단계(S11 변경 이력 화면) → "수용된 위험"으로 기록 ② 🟢 미정의 항목 사용 6건 → 실 컴포넌트 3개를 `design-system.md` §4.10~4.12로 추가하고 §4 헤더를 "12개"로 정정, 나머지 3개는 `mockups/README.md` 인덱스에서 "§4 외 요소"로 재분류. 부수 정정: `featuredoc-values.md`→`values.md` 오기, `user-journey/README.md §5` AC 커버리지(22→21개, 예외 AC4.5·AC4.7→AC3.2·AC4.4), `wireframes/README.md` AC 칸의 가치 표기 제거. `.claude/skills/`에 주입형 스킬 2개(ui-with-design-system, screen-with-mockup-and-design-system) 추가 | §4 컴포넌트 9 표기·미정의 참조 6건·검증 위험 미기록 | §4 컴포넌트 12 정합·미정의 참조 0·수용된 위험 1건 기록 |
 | 2026-08-30 사용자 여정 행동 축 재작성 | 여정 문서 5개(README + 플로우 4개)를 **폐기하고** 7개(README + 여정 6개)로 재작성. 이전 판은 본문 뼈대가 `## 화면별 상세` 였고 단위 키가 `S01`~`S10`(와이어프레임 ID)이라, 화면을 합치거나 나누면 여정 문서 구조가 함께 깨지는 상태였다 — 본 문서가 2026-05-27부터 기록해 온 "안정적 단계 식별자 없음"이 그것이다. ① 단계를 화면이 아닌 **사용자 행동**으로 재분할하고 `JRN-<슬러그>`/`STP-<슬러그>` 식별자 부여 ② P1·P2 여정 분리 — 구 `03-feature-documents.md` 에 "페르소나 메모"로 묻혀 있던 P2 흐름을 `JRN-understand-feature` 로 독립 ③ 구 플로우 4를 트리거가 다른 두 여정(`JRN-follow-code-change` · `JRN-restore-history`)으로 분할 ④ 여정마다 진입 맥락·트리거·완료 기준(관찰 가능 이벤트)·분기표·**측정 지표**·변경 이력 신설 — 이전 판에는 지표가 5개 문서 통틀어 0건이었다 ⑤ 행동 축으로 자르니 **AC3.2**(자동 추출되지 않은 feature 직접 추가)가 `STP-add-missing` 으로 자연히 편입 — 이전 판에서 "본 여정이 다루지 않는 사용자 행동"으로 제외돼 있던 항목이다. 부수: 허브 문서 목록·플로우별 여정 링크, `reader.html` 의 `flowFromPath`/`journeySection`, 루트 README 트리, `mockups/README.md` 의 여정 참조 문구 갱신. **to-be(가치 8 · AC 24) 불변** — 신규 가치/AC/화면을 만들지 않고 같은 재료를 사용자 행동 축으로 다시 엮었다. 수용된 위험 2건은 대상 표기만 여정 식별자로 옮겼고 위험 자체는 그대로다 | 여정 5개 · 화면 축 · 단계 식별자 없음 · 지표 0건 · AC 커버 22/24(매트릭스 직접 기재 20) | 여정 7개 · 행동 축 · `JRN-`/`STP-` 식별자 · 지표 39건 · AC 커버 23/24 |
+| 2026-08-30 여정 단위 목업 이관 슬라이스 1 | 오래 미결정이던 "목업을 여정 단위로 전환하는가"를 **전환한다**로 결정하고, `JRN-connect-repo` 하나를 실제로 이관해 규약을 실증. ① 「여정 페이지 규약」을 `mockups/README.md` 에 신설 — 경로 `docs/mockups/JRN-<슬러그>.html`(별도 디렉터리에 두면 목업 변경 감지가 트리 해시를 보므로 잡히지 않는다), `data-journey` 1개 + `data-step` 선언, **식별자는 여정 문서가 원천이고 README 는 인용만 한다**(SSOT 이중화 금지), 단계→화면 매핑은 각 단계의 `터치포인트` 줄에서 파싱 ② `docs/mockups/JRN-connect-repo.html` 신설 — 5단계·임베드 5벌, 화면 본문은 손으로 다시 그리지 않고 원본 `<body>` 를 **바이트 동일**하게 옮김(`data-sha256` 지문), `STP-sign-in` 은 화면이 없어 지어내지 않고 "시각화 없음 · 수용된 위험" 자리로 남김, 여정 문서 §4 분기표 7행이 그대로 선택 가능한 분기가 됨 ③ 흡수된 `s01`~`s03` 삭제 — 이 셋은 `JRN-connect-repo` **전용** 터치포인트라 다른 여정의 이관을 막지 않는다 ④ 남은 화면 단위 7개를 **이관 대기 원장 + 상한 7 래칫**으로 등재 (면제가 아니라 래칫 — 원장 밖 위반·공전 행·상한 초과가 전부 CI 실패) ⑤ `tools/check-journey-mockup.py` + 전용 워크플로 신설로 여정↔목업 정합성이 산문에서 **기계 게이트**가 됨 ⑥ 허브·리더·프런트 주석의 경로 갱신, 허브 요약 수치의 자기모순 정정(`18 Documents` ↔ 문서 구획 `20 documents`). **여정·단계·AC·가치는 하나도 바뀌지 않았다** — 같은 재료의 공개 경로만 여정 단위로 옮겼다 (reconciler `rct_20260830-0001`) | 목업 10개 전부 화면 단위 · 여정별 목업 페이지 0 · `data-journey`/`data-step` 0건(정합성 기계 판정 불가) | 여정 페이지 1 + 화면 단위 7 · 이관 1/5 · 예외 1 · 규약과 원장이 CI 게이트 |
 
 ## 다음 단계 권장
 
@@ -264,7 +272,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 2. **제품 명칭 확정** — 파일명·문서 내 식별자 일괄 변경.
 3. **운영 정책 수치화** — 보관 기간, 동시 분석 한도, LLM 호출 한도 등.
 4. **PRD 검토 워크숍** — 4개 PRD를 소유자/엔지니어와 함께 검토하여 누락된 AC가 있는지 확인.
-5. **목업의 여정 단위 전환 여부 결정** — 현재 화면 단위(S01~S10). 선행 조건이던 안정적 단계 식별자는 2026-08-30 여정 재작성으로 확보됐으므로(`JRN-`/`STP-`), 이제 목업 페이지를 그 식별자에 붙이기만 하면 된다. 전환을 택하면 여정 하나씩 옮기고 그때마다 검증한다. `JRN-restore-history` 는 소스 화면이 없어 S11 제작(7번)이 먼저다.
+5. **남은 여정 4개의 목업 이관** — 전환 여부는 2026-08-30 에 "전환한다"로 결정됐고 `JRN-connect-repo` 로 규약이 실증됐다(위 위험 진단 참조). 남은 것은 `JRN-discover-features` · `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` 이며, 첫 판단은 **공유 화면**(S04·S07 은 2개, S08~S10 은 3개 여정이 씀)을 여정마다 복제해 담을지 정하는 것이다. `JRN-restore-history` 는 소스 화면이 없어 S11 제작(7번)이 먼저다.
 6. **목업 → 여정 문서 복귀 링크** — 목업 10개에 그 화면을 터치포인트로 쓰는 여정으로 돌아가는 링크 추가. 지금은 문서 → 화면 단방향이라, 목업을 먼저 연 사람이 근거 문서로 갈 수 없다. 화면 1개가 여러 여정에 걸치므로 링크는 목록 형태가 된다.
 7. **S11 변경 이력 화면 제작** — 현재 "수용된 위험"으로 보류 중. `JRN-restore-history` 는 이 화면이 없으면 세 단계 전부가 시각화 없는 여정으로 남는다. 제작 시 와이어프레임(`gen-wireframes.js` S11 entry)→목업 순서로 만들고 본 추적 문서의 수용된 위험에서 해제.
 

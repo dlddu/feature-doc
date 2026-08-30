@@ -454,6 +454,41 @@
         transition-duration: 0.01ms !important;
       }
     }
+
+    .step-links {
+      list-style: none;
+      margin: 14px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 6px;
+    }
+    .step-links li {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .step-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .step-links a:hover { color: var(--text); }
+    .step-links code { font-family: var(--mono); font-size: 11px; color: var(--quiet); }
+    .step-links .step-screen {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--quiet);
+      white-space: nowrap;
+    }
+    .flow-note {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--quiet);
+    }
   </style>
 </head>
 <body>
@@ -462,19 +497,19 @@
       <div>
         <div class="eyebrow">FeatureDoc · Product UI</div>
         <h1>Read the why,<br>tap the flow.</h1>
-        <p class="intro">제품 가치와 PRD, 사용자 여정 문서, 그리고 10개의 모바일 화면을 한곳에서 봅니다. 각 플로우는 문서로 읽고 화면으로 눌러볼 수 있어요.</p>
+        <p class="intro">제품 가치와 PRD, 사용자 여정 문서, 그리고 목업을 한곳에서 봅니다. 여정은 문서로 읽고, 이관이 끝난 여정은 한 페이지에서 단계를 눌러 걸어볼 수 있어요.</p>
       </div>
-      <div class="summary" role="group" aria-label="목업 요약">
+      <div class="summary" role="group" aria-label="문서·목업 요약">
         <div class="summary-item">
-          <span class="summary-value">10</span>
-          <span class="meta-label">Screens</span>
+          <span class="summary-value">06</span>
+          <span class="meta-label">Journeys</span>
         </div>
         <div class="summary-item">
-          <span class="summary-value">04</span>
-          <span class="meta-label">Flows</span>
+          <span class="summary-value">08</span>
+          <span class="meta-label">Mockup pages</span>
         </div>
         <div class="summary-item">
-          <span class="summary-value">18</span>
+          <span class="summary-value">20</span>
           <span class="meta-label">Documents</span>
         </div>
       </div>
@@ -624,48 +659,31 @@
         </div>
       </section>
 
-      <section aria-labelledby="flow-01">
+      <section aria-labelledby="JRN-connect-repo">
         <div class="flow-heading">
-          <span class="flow-number">Flow 01</span>
-          <h2 id="flow-01">Onboarding &amp; Connect</h2>
-          <a class="flow-doc-link" href="reader.html?doc=user-journey/JRN-connect-repo.md">여정 문서 읽기 — 저장소를 맡기고 첫 분석을 걸기</a>
-          <span class="count">3 screens</span>
+          <span class="flow-number">Journey</span>
+          <h2 id="JRN-connect-repo">저장소를 맡기고 첫 분석을 걸기</h2>
+          <a class="flow-doc-link" href="reader.html?doc=user-journey/JRN-connect-repo.md">여정 문서 읽기 — <code>JRN-connect-repo</code></a>
+          <span class="count">5 steps · 1 page</span>
         </div>
         <div class="grid">
           <article class="mockup-card">
             <div class="card-copy">
-              <span class="screen-id">S01 · AC4.1 · AC4.2 · AC4.3</span>
-              <h3>Credentials Setup</h3>
-              <p class="purpose">GitHub App 연결과 LLM 자격증명 등록</p>
+              <span class="screen-id">JRN-connect-repo · AC1.1 · AC4.1 · AC4.2 · AC4.3 · AC4.6 · AC4.8</span>
+              <h3>여정 목업 — 5단계를 한 페이지에서</h3>
+              <p class="purpose">로그인부터 분석 시작까지 다섯 단계를 눌러 걸어봅니다. S01~S03 화면이 각 단계의 자리에 그대로 들어 있어요.</p>
+              <ul class="step-links">
+              <li><a href="mockups/JRN-connect-repo.html#STP-sign-in"><code>STP-sign-in</code> 본인 확인하고 들어오기</a><span class="step-screen">시각화 없음</span></li>
+              <li><a href="mockups/JRN-connect-repo.html#STP-grant-repo-access"><code>STP-grant-repo-access</code> 들여다볼 범위를 내가 정하기</a><span class="step-screen">S01</span></li>
+              <li><a href="mockups/JRN-connect-repo.html#STP-register-llm-key"><code>STP-register-llm-key</code> 분석 비용을 낼 키 맡기기</a><span class="step-screen">S01</span></li>
+              <li><a href="mockups/JRN-connect-repo.html#STP-pick-target"><code>STP-pick-target</code> 분석할 저장소와 브랜치 고르기</a><span class="step-screen">S02 · S03</span></li>
+              <li><a href="mockups/JRN-connect-repo.html#STP-confirm-cost"><code>STP-confirm-cost</code> 비용을 확인하고 시작 누르기</a><span class="step-screen">S03</span></li>
+              </ul>
             </div>
             <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/s01-credentials-setup.html" title="S01 Credentials Setup 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+              <div class="preview-window"><iframe src="mockups/JRN-connect-repo.html" title="JRN-connect-repo 여정 목업 미리보기" loading="lazy" tabindex="-1"></iframe></div>
             </div>
-            <a class="open-link" href="mockups/s01-credentials-setup.html">Open full mockup</a>
-          </article>
-
-          <article class="mockup-card">
-            <div class="card-copy">
-              <span class="screen-id">S02 · AC1.1 · AC1.5</span>
-              <h3>Home · Repositories</h3>
-              <p class="purpose">연결된 저장소 목록과 분석 상태</p>
-            </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/s02-home-repositories.html" title="S02 Home Repositories 미리보기" loading="lazy" tabindex="-1"></iframe></div>
-            </div>
-            <a class="open-link" href="mockups/s02-home-repositories.html">Open full mockup</a>
-          </article>
-
-          <article class="mockup-card">
-            <div class="card-copy">
-              <span class="screen-id">S03 · AC1.1 · AC4.6</span>
-              <h3>Connect Repository</h3>
-              <p class="purpose">새 저장소 연결과 분석 pre-flight 비용 안내</p>
-            </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/s03-connect-repository.html" title="S03 Connect Repository 미리보기" loading="lazy" tabindex="-1"></iframe></div>
-            </div>
-            <a class="open-link" href="mockups/s03-connect-repository.html">Open full mockup</a>
+            <a class="open-link" href="mockups/JRN-connect-repo.html">Open journey</a>
           </article>
         </div>
       </section>
@@ -674,6 +692,7 @@
         <div class="flow-heading">
           <span class="flow-number">Flow 02</span>
           <h2 id="flow-02">Discovery</h2>
+          <span class="flow-note">여정 페이지 미이관 — 화면 단위 4개</span>
           <a class="flow-doc-link" href="reader.html?doc=user-journey/JRN-discover-features.md">여정 문서 읽기 — 코드에서 기능 목록 뽑아내기</a>
           <span class="count">4 screens</span>
         </div>
@@ -732,6 +751,7 @@
         <div class="flow-heading">
           <span class="flow-number">Flow 03</span>
           <h2 id="flow-03">Feature Documents</h2>
+          <span class="flow-note">여정 페이지 미이관 — 화면 단위 3개</span>
           <a class="flow-doc-link" href="reader.html?doc=user-journey/JRN-review-feature.md">여정 문서 읽기 — 기능 하나의 표현이 맞는지 검수하기</a>
           <span class="count">3 screens</span>
         </div>

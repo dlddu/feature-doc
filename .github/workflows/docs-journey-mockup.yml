@@ -1,0 +1,31 @@
+# 사용자 여정 ↔ 목업 1:1 정합성 게이트.
+#
+# ci.yml 에 얹지 않고 별도 워크플로로 둔다 — ci.yml 은 cargo + kind e2e 를 돌고
+# 그 뒤에 ghcr 이미지를 밀기 때문에, 문서 정합성 하나 때문에 그 파이프라인을
+# 건드리고 싶지 않다. 이 잡은 의존성 0(파이썬 stdlib)이라 1초 미만이다.
+#
+# 무엇을 검사하는지는 tools/check-journey-mockup.py 헤더와
+# docs/mockups/README.md 「여정 페이지 규약」에 있다.
+name: docs — journey ↔ mockup
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-journey-mockup-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 여정 ↔ 목업 1:1
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: check journey ↔ mockup consistency
+        run: python3 tools/check-journey-mockup.py
