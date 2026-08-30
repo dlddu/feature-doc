@@ -30,12 +30,14 @@ docs/
 │   ├── 02-feature-representation.md
 │   ├── 03-doc-management.md
 │   └── 04-platform.md
-├── user-journey/         # 사용자 여정 — README + 플로우 4개
-│   ├── README.md
-│   ├── 01-onboarding-and-connect.md
-│   ├── 02-discovery.md
-│   ├── 03-feature-documents.md
-│   └── 04-continuous-maintenance.md
+├── user-journey/          # 사용자 여정 — README + 여정 6개 (행동 축, JRN-/STP- 식별자)
+│   ├── README.md                     # 페르소나 · 여정 지도 · 마찰점 · 연결 매트릭스
+│   ├── JRN-connect-repo.md           # P1 — 저장소를 맡기고 첫 분석을 걸기
+│   ├── JRN-discover-features.md      # P1 — 코드에서 기능 목록 뽑아내기
+│   ├── JRN-review-feature.md         # P1 — 기능 하나의 표현이 맞는지 검수하기
+│   ├── JRN-understand-feature.md     # P2 — 코드를 못 읽는 사람이 기능을 이해하기
+│   ├── JRN-follow-code-change.md     # P1 — 코드가 바뀐 뒤 문서가 따라왔는지 확인하기
+│   └── JRN-restore-history.md        # P1 — 잘못된 변경을 되짚어 되돌리기
 ├── wireframes/            # 10개 모바일 화면 정보 구조 (SVG)
 │   ├── README.md
 │   └── s01 ~ s10 *.svg
