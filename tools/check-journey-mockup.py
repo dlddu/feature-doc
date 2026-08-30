@@ -401,6 +401,13 @@ for p in sorted(DOCS.rglob("*")):
         if q and not (DOCS / q.group(1)).exists():
             fail("R8", "%s → reader 문서 `%s` 가 실재하지 않는다" % (p.relative_to(ROOT), q.group(1)))
             continue
+        # docs/ 에 .nojekyll 이 있어 Pages 는 .md 를 렌더링하지 않는다 — HTML 에서
+        # .md 를 직접 걸면 클릭 시 파일이 내려받아진다. 레포 규약대로 reader 를 경유해야
+        # 한다(2026-08-27 문서 포털). 여정 페이지가 여정 문서의 링크를 옮겨 실을 때
+        # 실제로 밟은 함정이다.
+        if p.suffix == ".html" and path.endswith(".md") and not query:
+            fail("R8", "%s → `%s` 를 직접 건다 — HTML 에서 .md 는 reader.html?doc= 를 경유할 것"
+                 % (p.relative_to(ROOT), t))
         # 다른 HTML 파일의 앵커로 들어가는 링크는 그 앵커가 실재하는지까지 본다.
         # R5 는 페이지 *안*의 앵커만 보므로, 허브가 여정 페이지의 단계로 거는 링크
         # (index.html → mockups/JRN-*.html#STP-*)는 아무도 검사하지 않는 사각이었다.
