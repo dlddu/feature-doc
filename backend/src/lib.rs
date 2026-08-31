@@ -60,9 +60,19 @@ pub fn build_router(state: AppState) -> Router {
 }
 
 /// Installs the tracing subscriber. `RUST_LOG` controls verbosity (default `info`).
+///
+/// ANSI colour is only enabled when stdout is an interactive terminal. Under
+/// Kubernetes/Docker stdout is a pipe, so container logs stay free of escape
+/// sequences (`\x1b[2m...`) that make `kubectl logs` and log shipping unreadable.
+/// `NO_COLOR=1` forces it off even in a terminal.
 pub fn init_tracing() {
+    use std::io::IsTerminal;
     use tracing_subscriber::EnvFilter;
     let filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+    let ansi = std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none();
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_ansi(ansi)
+        .init();
 }
