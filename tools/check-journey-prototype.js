@@ -206,6 +206,7 @@ const INPUT_PROBE = {
        `입력한 값이 필드에 반영되지 않는다`);
     ok(doc.getElementById('btn-reject-confirm').disabled === false, 'P3',
        `사유를 적어도 거부 확정 버튼이 살아나지 않는다`);
+    click(win, doc.getElementById('btn-reject-confirm'));
 
     // ② 필터(select) — 선택이 실제로 목록을 줄인다.
     const shown = () => [...doc.querySelectorAll('.cand')].filter((c) => c.style.display !== 'none').length;
@@ -304,6 +305,72 @@ const PRODUCT_PATHS = {
         click(win, doc.getElementById('btn-logout'));
         return { landed: active(doc),
                  evidence: doc.getElementById('home-count').textContent === '0' };
+      } },
+  ],
+  'JRN-discover-features': [
+    { name: '특정 분석 단계 실패', run: (win, doc) => {
+        // 운영 측 실패라 사용자가 일으킬 수 없다 — 보조 레이어에서 장전한다.
+        click(win, doc.querySelector('[data-scenario="stagefail"]'));
+        const failed = visible(doc.getElementById('stage-failed'));
+        const onlyThisStage = doc.getElementById('stage-3').classList.contains('todo') &&
+                              doc.getElementById('stage-1').classList.contains('done');
+        click(win, doc.getElementById('btn-retry-stage'));   // 그 단계만 다시
+        const cleared = !visible(doc.getElementById('stage-failed')) &&
+                        doc.getElementById('stage-3').classList.contains('active');
+        return { landed: active(doc), evidence: failed && onlyThisStage && cleared };
+      } },
+    { name: '앱 종료 후 복귀', run: (win, doc) => {
+        const pct = doc.getElementById('prog-pct').textContent;
+        const cost = doc.getElementById('cost-now').textContent;
+        click(win, doc.getElementById('btn-leave'));         // 앱을 닫는다
+        const away = doc.getElementById('leave-card').style.display === 'block';
+        click(win, doc.getElementById('btn-reopen'));        // 알림 받고 복귀
+        const restored = doc.getElementById('prog-pct').textContent === pct &&
+                         doc.getElementById('cost-now').textContent === cost &&
+                         doc.getElementById('leave-card').style.display === 'none';
+        return { landed: active(doc), evidence: away && restored };
+      } },
+    { name: '횡단 분석 결과를 사용자가 수정하고 싶을 때', run: (win, doc) => {
+        click(win, doc.getElementById('btn-see-landscape'));
+        click(win, doc.getElementById('btn-want-edit'));
+        const hinted = visible(doc.getElementById('edit-hint'));
+        click(win, doc.getElementById('btn-to-strategy'));
+        return { landed: active(doc), evidence: hinted };
+      } },
+    { name: '이전에 거부했던 후보가 다시 잡힘', run: (win, doc) => {
+        click(win, doc.querySelector('[data-scenario="rejectedagain"]'));
+        const c3 = doc.querySelector('.cand[data-cand="c3"]');
+        const flagged = !!doc.getElementById('prev-reason') &&
+                        /거부/.test(doc.getElementById('prev-reason').textContent);
+        // 자동 채택하지 않는다 — 그 후보는 여전히 미결정이다.
+        const notAdopted = !c3.classList.contains('approved') &&
+                           doc.getElementById('undecided-count').textContent === '4';
+        return { landed: active(doc), evidence: flagged && notAdopted };
+      } },
+    { name: '후보를 절반만 결정한 채 이탈', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-sift-candidates');
+        for (const id of ['c1', 'c2']) {
+          click(win, doc.querySelector(`.cand[data-cand="${id}"] [data-decide="approve"]`));
+        }
+        click(win, doc.getElementById('btn-leave-partial'));
+        const saved = doc.getElementById('resume-card').style.display === 'block' &&
+                      doc.getElementById('remaining-count').textContent === '2';
+        click(win, doc.getElementById('btn-resume-sift'));
+        // 이어하기 — 앞서 한 결정이 보존돼 있다.
+        const kept = doc.querySelector('.cand[data-cand="c1"]').classList.contains('approved') &&
+                     doc.getElementById('undecided-count').textContent === '2';
+        return { landed: active(doc), evidence: saved && kept };
+      } },
+    { name: '추가하려는 기능의 코드 근거를 못 찾음', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-add-missing');
+        type(win, doc.getElementById('in-newfeature'), '사내 슬랙 알림 연동');
+        click(win, doc.getElementById('btn-draft'));
+        // 근거를 못 찾으면 "근거 없음"을 명시하고 초안을 지어내지 않는다.
+        const flagged = visible(doc.getElementById('no-evidence'));
+        const noFabrication = doc.getElementById('draft-result').style.display === 'none';
+        return { landed: active(doc), evidence: flagged && noFabrication };
       } },
   ],
 };
