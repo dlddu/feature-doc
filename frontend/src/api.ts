@@ -270,3 +270,62 @@ export async function getCrossCutting(id: string): Promise<CrossCuttingDocument>
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as CrossCuttingDocument;
 }
+
+// ── discovery strategy (AC1.3) ───────────────────────────────────────────────
+
+/** One place the next stage will look. `user` entries are the reviewer's own. */
+export type StrategyEntry = {
+  pattern: string;
+  source: 'generated' | 'user';
+};
+
+/** The reviewable strategy for one analysis — draft until `approved`. */
+export type DiscoveryStrategy = {
+  entries: StrategyEntry[];
+  approved: boolean;
+  approvedAt: number | null;
+  updatedAt: number;
+};
+
+/**
+ * The strategy stage 3 proposed, as the user has it so far.
+ *
+ * A 404 means stage 3 has not produced a proposal yet — a different state from
+ * "proposed nothing", so it is surfaced rather than flattened to an empty list.
+ */
+export async function getDiscoveryStrategy(id: string): Promise<DiscoveryStrategy> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/discovery-strategy`, {
+    credentials: 'same-origin',
+  });
+  if (res.status === 404) throw new Error('아직 생성되지 않았어요');
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as DiscoveryStrategy;
+}
+
+/** Replaces the list — deleting and adding are both this call (AC1.3 "수정"). */
+export async function putDiscoveryStrategy(
+  id: string,
+  patterns: string[],
+): Promise<DiscoveryStrategy> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/discovery-strategy/entries`,
+    {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: json,
+      body: JSON.stringify({ patterns }),
+    },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as DiscoveryStrategy;
+}
+
+/** Approves it. Only an approved strategy becomes the next stage's input (AC1.3). */
+export async function approveDiscoveryStrategy(id: string): Promise<DiscoveryStrategy> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/discovery-strategy/approve`,
+    { method: 'POST', credentials: 'same-origin' },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as DiscoveryStrategy;
+}
