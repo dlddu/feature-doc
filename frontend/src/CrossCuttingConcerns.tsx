@@ -1,5 +1,5 @@
 // S05 · Cross-cutting Concerns — the real screen behind
-// docs/mockups/s05-cross-cutting-concerns.html (AC1.2).
+// docs/mockups/JRN-discover-features.html#STP-review-landscape (S05, AC1.2).
 //
 // Everything here comes from `GET /api/analyses/{id}/documents/cross-cutting`:
 // the document stage 2 produced and stored, never anything derived client-side.
