@@ -14,7 +14,9 @@
 #  M1 매핑 완비     상단 주석에 목업 매핑을 가진 `frontend/src/*.tsx` 를 화면으로 보고,
 #                   참조 목업 파일이 실재하며 `#STP-*` 앵커가 그 파일의 `data-step` 으로
 #                   실재한다(dangling 0). 대조 범위 표의 화면 집합이 발견된 화면 집합과
-#                   정확히 같다(누락·유령 0).
+#                   정확히 같다(누락·유령 0). **활성 행의 단계 집합은 손으로 적는 것이
+#                   아니라 목업의 `data-screens` 에서 파생되며, 표가 그 파생과 다르면
+#                   실패한다** — 아래 「단계↔화면은 이미 선언돼 있다」 참조.
 #  M2 토큰 1:1      `docs/design-system.md` §5.2 `:root` ↔ `frontend/src/index.css` `:root`
 #                   의 이름·값 차집합이 0이다.
 #  M3 카피 대조     (A) 목업→구현: 활성 단계의 카피가 구현 화면들에 존재한다.
@@ -26,13 +28,29 @@
 #  M5 래칫          미해소 편차 상한과 대조 보류 상한. 늘면 실패 — 줄이면 상한을 낮추라고
 #                   실패한다(형제 게이트의 원장 래칫과 같은 방침).
 #
+# ── 단계↔화면은 이미 선언돼 있다(미결정이 아니다) ────────────────────────
+#  한 화면이 여러 단계를 그리거나(S01 ← `STP-grant-repo-access` + `STP-register-llm-key`)
+#  한 단계가 여러 화면에 걸치는 것(`STP-pick-target` → S02 + S03)은 **이탈이 아니라
+#  선언된 구성**이다. 원천은 여정 문서(`docs/user-journey/JRN-*.md`)의 각 단계
+#  「터치포인트」 줄이고, 목업은 그것을 `data-screens` 속성으로 인용한다
+#  (`mockups/README.md` 「여정 페이지 규약」 — SSOT 이중화 금지).
+#
+#  따라서 이 게이트는 "어느 단계를 어느 화면과 대조할지"를 표에서 읽지 않고
+#  `data-screens` 에서 **파생**한다. 표는 파생물이며 M1 이 일치를 강제한다. 선언이
+#  있는 화면은 「대조 보류」에 둘 수 없다 — 대조 단위가 이미 정해져 있으므로 보류할
+#  것이 없다. 보류는 **선언 자체가 없는 화면**(여정 이관 전이라 `data-step` 이 없는
+#  화면 단위 목업)만을 위한 자리다.
+#
 # ── 이 게이트가 보지 않는 것(의도적) ─────────────────────────────────────
 #  * 규칙 5(구조·수치)의 CSS 클래스·px 대조는 아직 자동화하지 않는다.
 #  * 실행 스크린샷 픽셀 비교는 모델 정의상 범위 밖이다.
-#  * 구현측 카피 추출(M3B)은 **JSX 텍스트 노드 · 한글 포함 문자열 리터럴 ·
-#    JSX children 위치의 문자열 리터럴**만 본다. 모듈 상수 테이블에 영문으로만 적힌
-#    라벨(예: `STATUS_BADGE` 의 `Queued`)은 잡지 못한다 — 그런 라벨을 가진 화면은
-#    「대조 보류」에 있어야 하고, 보류 상한이 그 사실을 붙잡아 둔다.
+#  * 구현측 카피 추출(M3B)은 **JSX 텍스트 노드 · 한글 포함 문자열 리터럴 · 속성 값이
+#    아닌 문자열 리터럴**을 본다. 모듈 상수 테이블의 영문 라벨(`STATUS_BADGE` 의
+#    `Queued` 등)도 속성 값이 아니므로 **잡힌다**. 템플릿 리터럴의 `${…}` 표현식은
+#    카피가 아니므로 제거한 나머지로 판정한다(`${owner}/${name}` → 대조 대상 아님,
+#    `· not analyzed` → 대조 대상).
+#  * 원장의 면제 문자열은 화면을 구분하지 않고 전역으로 적용된다 — 한 화면에서
+#    등재한 문자열이 다른 화면에서도 면제된다. 알려진 성질이며 좁히는 것은 후속이다.
 #  추출 결과는 `--verbose` 로 전부 출력된다. 무엇이 비교됐는지 눈으로 확인할 것.
 
 import html
@@ -126,6 +144,22 @@ def mockup_steps(path: Path) -> dict[str, list[str]]:
     return steps
 
 
+def mockup_step_screens(path: Path) -> dict[str, list[str]]:
+    """`data-step` 섹션이 선언한 `data-screens` — 단계가 어느 화면에 걸치는지.
+
+    여정 문서의 「터치포인트」 줄이 원천이고 이 속성은 그 인용이다. 값이 비면
+    (예: `STP-sign-in`) 대응 화면이 없다는 선언이다.
+    """
+    src = path.read_text(encoding="utf-8")
+    out: dict[str, list[str]] = {}
+    for m in re.finditer(r'<section id="(STP-[a-z0-9-]+)"([^>]*)>', src):
+        if "data-step=" not in m.group(2):
+            continue
+        declared = re.search(r'data-screens="([^"]*)"', m.group(2))
+        out[m.group(1)] = re.findall(r"S\d{2}", declared.group(1)) if declared else []
+    return out
+
+
 def all_mockup_text() -> str:
     """공전 행 검사용 — 모든 목업 파일의 원문(주석 제외)을 이어 붙인 건초더미."""
     parts = []
@@ -161,6 +195,7 @@ def strip_comments(src: str) -> str:
 
 
 STRING_LITERAL = re.compile(r"""(?<!\\)(['"`])((?:(?!\1)[^\\\n]|\\.)*)\1""")
+TEMPLATE_EXPR = re.compile(r"\$\{[^}]*\}")
 TECHNICAL = re.compile(
     r"""^(?:
           [a-z][a-zA-Z0-9]*                      # idle, checking, anthropic …
@@ -173,7 +208,13 @@ TECHNICAL = re.compile(
 
 
 def literal_spans(src: str) -> list[tuple[int, str]]:
-    return [(m.start(), m.group(2)) for m in STRING_LITERAL.finditer(src)]
+    """문자열 리터럴 — 템플릿 표현식(`${…}`)은 카피가 아니므로 걷어낸 나머지를 돌려준다.
+
+    `${a.repoOwner}/${a.repoName}` 는 남는 글자가 `/` 뿐이라 `is_copy` 에서 떨어지고,
+    `· ${formatAgo(…)}` 는 `·` 만 남아 마찬가지다. 반면 `· not analyzed` 는 그대로 남는다.
+    """
+    return [(m.start(), TEMPLATE_EXPR.sub(" ", m.group(2)))
+            for m in STRING_LITERAL.finditer(src)]
 
 
 CODE_ISH = re.compile(r"[;=]")
@@ -241,6 +282,9 @@ def impl_haystack(paths: list[Path]) -> str:
 MAPPING_REF = re.compile(r"docs/mockups/([A-Za-z0-9._-]+\.html)((?:#STP-[a-z0-9-]+)?)")
 
 
+SCREEN_ID = re.compile(r"^//\s*(S\d{2})\b", re.M)
+
+
 def discover_screens() -> dict[str, list[tuple[str, str]]]:
     """상단 주석에 목업 매핑이 있는 tsx → [(목업파일, 앵커)]."""
     screens: dict[str, list[tuple[str, str]]] = {}
@@ -250,6 +294,34 @@ def discover_screens() -> dict[str, list[tuple[str, str]]]:
         if refs:
             screens[f"frontend/src/{path.name}"] = refs
     return screens
+
+
+def screen_id_of(screen: str) -> str | None:
+    """컴포넌트 상단 주석 첫머리의 화면 ID(`// S02 · Home — Repositories …`)."""
+    found = SCREEN_ID.search((ROOT / screen).read_text(encoding="utf-8")[:2000])
+    return found.group(1) if found else None
+
+
+def derive_steps(screens: dict[str, list[tuple[str, str]]]) -> dict[str, list[str]]:
+    """화면 → 대조할 단계 집합. 목업 `data-screens` 의 역인덱스이며 표에서 읽지 않는다.
+
+    빈 리스트는 "그 화면을 그린다고 선언한 단계가 없다"는 뜻이고, 그런 화면만
+    「대조 보류」에 놓일 수 있다(여정 이관 전의 화면 단위 목업).
+    """
+    derived: dict[str, list[str]] = {}
+    for screen, refs in screens.items():
+        sid = screen_id_of(screen)
+        steps: set[str] = set()
+        if sid:
+            for filename, _anchor in refs:
+                path = MOCKUP_DIR / filename
+                if not path.exists():
+                    continue
+                for step, declared in mockup_step_screens(path).items():
+                    if sid in declared:
+                        steps.add(step)
+        derived[screen] = sorted(steps)
+    return derived
 
 
 def root_tokens(text: str) -> dict[str, str]:
@@ -308,7 +380,23 @@ def main() -> int:
             fail("M1", f"화면 {missing} 가 대조 범위 표에 없다 — 활성이나 보류로 등재할 것")
         for ghost in sorted(declared - set(screens)):
             fail("M1", f"대조 범위 표의 {ghost} 는 매핑을 가진 화면이 아니다(유령 행)")
-    print(f"M1 매핑 완비 — 화면 {len(screens)}개, dangling 앵커 0, 범위 표 일치")
+
+    # 표가 아니라 목업 `data-screens` 가 대조 단위를 정한다. 표는 그 파생이어야 한다.
+    derived = derive_steps(screens)
+    for screen, steps in sorted(derived.items()):
+        note(f"파생 {screen} ({screen_id_of(screen)}) ← {steps or '(선언 없음)'}")
+        # 표에 적는 순서는 사람이 읽는 순서라 자유다 — 집합으로 대조한다.
+        if screen in active and sorted(set(active[screen])) != steps:
+            fail("M1", f"활성 행 {screen} 의 단계 집합이 목업 선언과 다르다 — "
+                       f"표 {sorted(set(active[screen]))} vs `data-screens` 파생 {steps}")
+        if screen in pending and steps:
+            fail("M1", f"{screen} 는 목업이 대조 단계를 선언했으므로({steps}) 보류할 수 없다 "
+                       f"— 활성으로 올릴 것. 보류는 선언이 없는 화면의 자리다")
+        if screen in active and not steps:
+            fail("M1", f"활성 행 {screen} 에 대조할 단계 선언이 없다 — "
+                       f"대응 목업이 여정 페이지로 이관되기 전까지는 보류가 맞다")
+    print(f"M1 매핑 완비 — 화면 {len(screens)}개, dangling 앵커 0, "
+          f"범위 표 = `data-screens` 파생")
 
     # ── M2 ──────────────────────────────────────────────────────────────
     ds_section = DESIGN_SYSTEM.read_text(encoding="utf-8")
