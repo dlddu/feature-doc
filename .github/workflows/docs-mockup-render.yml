@@ -1,0 +1,37 @@
+# 목업 ↔ 구현 렌더링 정합성 게이트.
+#
+# 형제 워크플로 `docs-journey-mockup.yml` 이 「여정 문서 ↔ 목업 페이지」를 보고,
+# 이 워크플로가 그 다음 칸 「목업 ↔ 구현 화면」을 본다. 둘을 한 잡에 합치지 않는 이유는
+# 실패했을 때 어느 칸이 깨졌는지가 잡 이름만으로 드러나게 하기 위해서다.
+#
+# ci.yml 에 얹지 않는 이유도 같다 — ci.yml 은 cargo + kind e2e 를 돌고 그 뒤에 ghcr
+# 이미지를 밀기 때문에, 문서·카피 정합성 하나 때문에 그 파이프라인을 건드리지 않는다.
+#
+# 검사기는 python3 stdlib 만 쓰므로 setup 스텝이 없다. 무엇을 검사하는지는
+# `tools/check-mockup-render.py` 헤더와 `docs/doc-tracker.md` 「목업↔구현 대조 범위」에 있다.
+name: docs — mockup ↔ render
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-mockup-render-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 목업 ↔ 구현 화면
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # --verbose 로 돌려서 "무엇이 비교됐는지"가 로그에 남게 한다 — 통과했을 때도
+      # 대조된 카피 목록이 보여야 규칙이 공허하지 않다는 것을 확인할 수 있다.
+      - name: check mockup ↔ implementation render consistency
+        run: python3 tools/check-mockup-render.py --verbose
