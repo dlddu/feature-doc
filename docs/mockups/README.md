@@ -48,14 +48,14 @@ FeatureDoc 의 **목업** — 색·타이포·인터랙션·디자인 톤이 모
 | 여정 | 여정 문서 | 목업 페이지 | 단계 | 상태 |
 | --- | --- | --- | --- | --- |
 | `JRN-connect-repo` 저장소를 맡기고 첫 분석을 걸기 | [`JRN-connect-repo.md`](../user-journey/JRN-connect-repo.md) | [`JRN-connect-repo.html`](./JRN-connect-repo.html) | 5 | ✅ 이관 완료 |
-| `JRN-discover-features` 코드에서 기능 목록 뽑아내기 | [`JRN-discover-features.md`](../user-journey/JRN-discover-features.md) | — | 5 | ⬜ 이관 대기 |
+| `JRN-discover-features` 코드에서 기능 목록 뽑아내기 | [`JRN-discover-features.md`](../user-journey/JRN-discover-features.md) | [`JRN-discover-features.html`](./JRN-discover-features.html) | 5 | ✅ 이관 완료 |
 | `JRN-follow-code-change` 코드가 바뀐 뒤 문서가 따라왔는지 확인하기 | [`JRN-follow-code-change.md`](../user-journey/JRN-follow-code-change.md) | — | 4 | ⬜ 이관 대기 |
 | `JRN-restore-history` 잘못된 변경을 되짚어 되돌리기 | [`JRN-restore-history.md`](../user-journey/JRN-restore-history.md) | — | 3 | 예외 (수용된 위험) |
 | `JRN-review-feature` 기능 하나의 표현이 맞는지 검수하기 | [`JRN-review-feature.md`](../user-journey/JRN-review-feature.md) | — | 5 | ⬜ 이관 대기 |
 | `JRN-understand-feature` 코드를 못 읽는 사람이 기능을 이해하기 | [`JRN-understand-feature.md`](../user-journey/JRN-understand-feature.md) | — | 4 | ⬜ 이관 대기 |
 <!-- jmap:end -->
 
-집계: 여정 **6**개 · 규칙 8 예외 **1**개 · 판정 대상 **5**개 · 이관 완료 **1**개 · 이관 대기 **4**개. **이관 대기 상한: 4** — 이관 대기 여정은 4개를 넘을 수 없습니다. 여정을 하나 이관할 때마다 이 숫자를 함께 내립니다(면제가 아니라 래칫이라, 되돌리면 CI 가 실패합니다).
+집계: 여정 **6**개 · 규칙 8 예외 **1**개 · 판정 대상 **5**개 · 이관 완료 **2**개 · 이관 대기 **3**개. **이관 대기 상한: 3** — 이관 대기 여정은 3개를 넘을 수 없습니다. 여정을 하나 이관할 때마다 이 숫자를 함께 내립니다(면제가 아니라 래칫이라, 되돌리면 CI 가 실패합니다).
 
 ### 이관 완료 — `JRN-connect-repo`
 
@@ -71,33 +71,48 @@ FeatureDoc 의 **목업** — 색·타이포·인터랙션·디자인 톤이 모
 | 5 | `STP-confirm-cost` 비용을 확인하고 시작 누르기 | S03 | [#STP-confirm-cost](./JRN-connect-repo.html#STP-confirm-cost) |
 <!-- steps:JRN-connect-repo:end -->
 
+### 이관 완료 — `JRN-discover-features`
+
+<!-- steps:JRN-discover-features:begin -->
+| # | 단계 | 화면 | 공개 경로 |
+| --- | --- | --- | --- |
+| 1 | `STP-leave-and-return` 맡겨두고 떠났다가 돌아오기 | S04 | [#STP-leave-and-return](./JRN-discover-features.html#STP-leave-and-return) |
+| 2 | `STP-review-landscape` 내 코드가 무엇 위에 서 있는지 확인하기 | S05 | [#STP-review-landscape](./JRN-discover-features.html#STP-review-landscape) |
+| 3 | `STP-tune-strategy` 내가 아는 코드 구조를 전략에 보태기 | S06 | [#STP-tune-strategy](./JRN-discover-features.html#STP-tune-strategy) |
+| 4 | `STP-sift-candidates` 진짜 기능과 아닌 것 가르기 | S07 | [#STP-sift-candidates](./JRN-discover-features.html#STP-sift-candidates) |
+| 5 | `STP-add-missing` 빠진 기능 직접 추가하기 | S07 | [#STP-add-missing](./JRN-discover-features.html#STP-add-missing) |
+<!-- steps:JRN-discover-features:end -->
+
 ## 화면 단위 잔여 — 이관 대기 원장
 
 아직 여정 페이지로 이관되지 않은 화면 단위 파일입니다. **면제가 아니라 래칫입니다** — 체커는 (a) 이 원장에 없는 새 미선언 파일 (b) 이미 이관됐는데 원장에 남아 있는 공전 행 (c) 아래 상한 초과를 전부 실패로 만듭니다.
 
-이관을 막고 있는 것은 **화면 공유**입니다. `S04`·`S07` 은 두 여정이, `S08`~`S10` 은 세 여정이 터치포인트로 씁니다. 여정 페이지 하나가 화면을 흡수하면서 원본을 삭제하려면 그 화면을 쓰는 여정이 **전부** 이관돼야 하므로, 공유 화면의 처리 방식을 정하는 것이 다음 슬라이스의 선결 과제입니다. (`S01`~`S03` 은 `JRN-connect-repo` 전용이라 선결 판단 없이 이관할 수 있었습니다.)
+**화면 공유는 이관을 막지 않습니다 — 원본 삭제만 미룹니다.** `S04`·`S07` 은 두 여정이, `S08`~`S10` 은 세 여정이 터치포인트로 씁니다. 여기서 공유가 실제로 가로막는 것은 *그 여정의 이관*이 아니라 *원본 `sNN` 파일의 삭제*뿐입니다 — 위 규약 ⑤ 대로 여정 페이지의 화면은 복제본이 아니라 그 자체가 원본이고, 「같은 화면이 여러 여정에 등장하는 것은 중복이 아니다」(여정마다 그 화면의 데이터와 다음 행동이 다르므로 각 여정 페이지에 그 여정의 맥락으로 각각 존재하는 것이 정상)가 이미 규약이기 때문입니다.
+
+그래서 규칙은 이렇습니다 (확정: 2026-08-31, reconciler `rct_20260831-0001`).
+
+- **이관은 여정 단위로 진행합니다.** 공유 화면을 쓰는 여정도 다른 여정을 기다리지 않고, 그 화면을 자기 맥락으로 새로 써서 이관합니다.
+- **원본 `sNN` 삭제는 마지막 소비 여정이 이관될 때 합니다.** 그때까지 원본은 아래 원장에 남고, 「쓰는 여정」 칸에서 이미 이관된 여정을 지워 남은 소비자가 몇인지 드러냅니다.
+
+`S01`~`S03` 은 `JRN-connect-repo` 전용이라 그 여정을 이관하면서 함께 지웠고, `S05`·`S06` 은 `JRN-discover-features` 전용이라 이번에 같은 방식으로 지웠습니다. `S04`·`S07` 은 `JRN-discover-features` 가 이관을 마쳤지만 `JRN-follow-code-change` 가 아직 쓰고 있어 원장에 남습니다.
 
 <!-- ledger:begin -->
 | 파일 | 화면 | 쓰는 여정 | 해소 조건 |
 | --- | --- | --- | --- |
-| [`s04-analysis-progress.html`](./s04-analysis-progress.html) | S04 | `JRN-discover-features` · `JRN-follow-code-change` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
-| [`s05-cross-cutting-concerns.html`](./s05-cross-cutting-concerns.html) | S05 | `JRN-discover-features` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
-| [`s06-discovery-strategy.html`](./s06-discovery-strategy.html) | S06 | `JRN-discover-features` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
-| [`s07-feature-candidates.html`](./s07-feature-candidates.html) | S07 | `JRN-discover-features` · `JRN-follow-code-change` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
+| [`s04-analysis-progress.html`](./s04-analysis-progress.html) | S04 | `JRN-follow-code-change` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
+| [`s07-feature-candidates.html`](./s07-feature-candidates.html) | S07 | `JRN-follow-code-change` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
 | [`s08-feature-acceptance.html`](./s08-feature-acceptance.html) | S08 | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
 | [`s09-feature-dependencies.html`](./s09-feature-dependencies.html) | S09 | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
 | [`s10-llm-edit.html`](./s10-llm-edit.html) | S10 | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | 이 화면을 쓰는 여정이 전부 여정 페이지를 가지면 흡수·삭제 |
 <!-- ledger:end -->
 
-**상한: 7** — 화면 단위 잔여 파일은 7개를 넘을 수 없습니다. 이관이 끝날 때마다 이 숫자를 함께 내립니다.
+**상한: 5** — 화면 단위 잔여 파일은 5개를 넘을 수 없습니다. 이관이 끝날 때마다 이 숫자를 함께 내립니다.
 
 ## 화면 단위 잔여 — 화면별 매핑
 
 | ID  | Mockup | AC | Value | Purpose |
 | --- | ------ | -- | ----- | ------- |
 | S04 | [s04-analysis-progress.html](./s04-analysis-progress.html) | AC1.5 · AC4.6 | V7 · V8 | 분석 파이프라인 진행 상황 (5단계) |
-| S05 | [s05-cross-cutting-concerns.html](./s05-cross-cutting-concerns.html) | AC1.2 | V2 · V4 | 추출된 횡단 관심사 (인프라·아키텍처·프레임워크·미들웨어) |
-| S06 | [s06-discovery-strategy.html](./s06-discovery-strategy.html) | AC1.3 | V1 · V2 | LLM이 만든 탐색 전략 검토 및 승인 |
 | S07 | [s07-feature-candidates.html](./s07-feature-candidates.html) | AC1.4 | V1 | feature 후보 목록 + 승인/거부/병합 |
 | S08 | [s08-feature-acceptance.html](./s08-feature-acceptance.html) | AC2.1 · AC2.2 · AC2.3 | V3 · V4 | feature의 인수 시나리오 (Given-When-Then 4개) |
 | S09 | [s09-feature-dependencies.html](./s09-feature-dependencies.html) | AC2.4 · AC2.5 | V5 | 종단 의존성 그래프 + 카테고리별 의존성 목록 |
@@ -112,10 +127,10 @@ FeatureDoc 의 **목업** — 색·타이포·인터랙션·디자인 톤이 모
 | S01 | [JRN-connect-repo #STP-grant-repo-access](./JRN-connect-repo.html#STP-grant-repo-access) | Input field · Button(primary·secondary) · Tag · Card · Icon container · Segment selector | — |
 | S02 | [JRN-connect-repo #STP-pick-target](./JRN-connect-repo.html#STP-pick-target) | Card · Tag(status badge) · Bottom tab bar · Metric grid · Progress bar | Section title (§2.2 타이포 역할) |
 | S03 | [JRN-connect-repo #STP-confirm-cost](./JRN-connect-repo.html#STP-confirm-cost) | Input field · Card · Button(primary·ghost) · Tag(status badge) | — |
-| S04 | [s04-analysis-progress.html](./s04-analysis-progress.html) | Step(done·active·todo — active의 회전 ring 포함) · Card · Button(secondary) | Section title (§2.2 타이포 역할) |
-| S05 | [s05-cross-cutting-concerns.html](./s05-cross-cutting-concerns.html) | Card | Section title (§2.2 타이포 역할) |
-| S06 | [s06-discovery-strategy.html](./s06-discovery-strategy.html) | Code block(kw·str·com) · Tag · Card · Button(primary·secondary) | — |
-| S07 | [s07-feature-candidates.html](./s07-feature-candidates.html) | Card · Tag(필터 chip·status) · Icon container | — |
+| S04 | [JRN-discover-features #STP-leave-and-return](./JRN-discover-features.html#STP-leave-and-return) · [s04-analysis-progress.html](./s04-analysis-progress.html) | Step(done·active·todo — active의 회전 ring 포함) · Card · Button(secondary) · Metric grid · Progress bar | Section title (§2.2 타이포 역할) |
+| S05 | [JRN-discover-features #STP-review-landscape](./JRN-discover-features.html#STP-review-landscape) | Card · Tag(status badge) | Section title (§2.2 타이포 역할) · 근거 줄 (화면 전용) |
+| S06 | [JRN-discover-features #STP-tune-strategy](./JRN-discover-features.html#STP-tune-strategy) | Input field · Card · Button(primary·secondary·ghost) | 전략 항목 줄 (화면 전용) |
+| S07 | [JRN-discover-features #STP-sift-candidates](./JRN-discover-features.html#STP-sift-candidates) · [s07-feature-candidates.html](./s07-feature-candidates.html) | Input field · Card · Tag(status) · Button(primary·secondary·ghost) · Code block(kw) | 후보 카드 (화면 전용) |
 | S08 | [s08-feature-acceptance.html](./s08-feature-acceptance.html) | Tabs · Card · Tag | Section title (§2.2 타이포 역할) |
 | S09 | [s09-feature-dependencies.html](./s09-feature-dependencies.html) | Tabs · Card · Tag | 의존성 그래프 (화면 전용 inline SVG — 디자인 시스템 컴포넌트 아님) |
 | S10 | [s10-llm-edit.html](./s10-llm-edit.html) | Code block(diff add·del) · Card · Tag · Button(primary·secondary) | — |

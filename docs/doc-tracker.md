@@ -9,7 +9,7 @@
 - e2e spec (`e2e/tests/`): **7개** — AC 전용 1:1 매핑 7건 · 예외 0건 · 공백 17건 (아래 "e2e 매핑")
 - 사용자 여정 문서: **7개** (README + 여정 6개) — 행동 축으로 정리, `JRN-`/`STP-` 안정 식별자 보유. 가치 8/8 · AC 23/24 커버 (미커버 AC4.5는 사용자에게 보이지 않는 운영 배경)
 - 와이어프레임: **10개** (S01 ~ S10, 정보 구조 SVG)
-- 목업: **8개 페이지** — 여정 페이지 **1개**(`JRN-connect-repo`, S01~S03 흡수) + 화면 단위 **7개**(S04~S10). 화면 10개는 전부 살아 있고(와이어프레임과 1:1 대응 유지) S01~S03 은 여정 페이지 안의 앵커가 공개 경로다. 여정 6개 중 목업 페이지 보유 **1** · 이관 대기 **4** · 규칙 8 예외 **1**(`JRN-restore-history`). 매핑·원장·상한의 단일 소스는 [`mockups/README.md`](mockups/README.md)
+- 목업: **7개 페이지** — 여정 페이지 **2개**(`JRN-connect-repo` S01~S03 흡수 · `JRN-discover-features` S04~S07 흡수) + 화면 단위 **5개**(S04·S07~S10). 화면 10개는 전부 살아 있고(와이어프레임과 1:1 대응 유지) 이관된 화면은 여정 페이지 안의 앵커가 공개 경로다. S04·S07 은 `JRN-follow-code-change` 가 아직 써서 원본 파일도 함께 남는다. 여정 6개 중 목업 페이지 보유 **2** · 이관 대기 **3** · 규칙 8 예외 **1**(`JRN-restore-history`). 매핑·원장·상한의 단일 소스는 [`mockups/README.md`](mockups/README.md)
 - 디자인 시스템 §4 컴포넌트: **12개** (사용됨: 12 / 미사용: 0)
 - 공개된 문서: **20개** (`docs/` 전체, 허브에서 도달 가능 20/20)
 - **건강 상태**: ⚠️ **위험 있음 — 제품 소유자(Product Owner) 미지정** · 수용된 위험 2건(`JRN-restore-history` 전체 미시각화 · `STP-sign-in` 미인증 상태 **와이어프레임** 미표현) · 여정 단위 목업 이관 대기 4건(원장·상한으로 래칫)
@@ -56,15 +56,15 @@ UX 산출물의 연결. 10개 화면(S01~S10)이 각각 와이어프레임(정�
 | S01 Credentials Setup | `JRN-connect-repo` | V6 | ✅ | ✅ [여정 페이지 #STP-grant-repo-access](mockups/JRN-connect-repo.html#STP-grant-repo-access) · [#STP-register-llm-key](mockups/JRN-connect-repo.html#STP-register-llm-key) | ✅ 완전 |
 | S02 Home · Repositories | `JRN-connect-repo` | V1·V8 | ✅ | ✅ [여정 페이지 #STP-pick-target](mockups/JRN-connect-repo.html#STP-pick-target) | ✅ 완전 |
 | S03 Connect Repository | `JRN-connect-repo` | V6·V8 | ✅ | ✅ [여정 페이지 #STP-pick-target](mockups/JRN-connect-repo.html#STP-pick-target) · [#STP-confirm-cost](mockups/JRN-connect-repo.html#STP-confirm-cost) | ✅ 완전 |
-| S04 Analysis in Progress | `JRN-discover-features` · `JRN-follow-code-change` | V7·V8 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
-| S05 Cross-cutting Concerns | `JRN-discover-features` | V2·V4 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
-| S06 Discovery Strategy | `JRN-discover-features` | V1·V2 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
-| S07 Feature Candidates | `JRN-discover-features` · `JRN-follow-code-change` | V1 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
+| S04 Analysis in Progress | `JRN-discover-features` · `JRN-follow-code-change` | V7·V8 | ✅ | ✅ [여정 페이지 #STP-leave-and-return](mockups/JRN-discover-features.html#STP-leave-and-return) · 화면 단위 (follow-code-change 이관 대기) | ✅ 완전 |
+| S05 Cross-cutting Concerns | `JRN-discover-features` | V2·V4 | ✅ | ✅ [여정 페이지 #STP-review-landscape](mockups/JRN-discover-features.html#STP-review-landscape) | ✅ 완전 |
+| S06 Discovery Strategy | `JRN-discover-features` | V1·V2 | ✅ | ✅ [여정 페이지 #STP-tune-strategy](mockups/JRN-discover-features.html#STP-tune-strategy) | ✅ 완전 |
+| S07 Feature Candidates | `JRN-discover-features` · `JRN-follow-code-change` | V1 | ✅ | ✅ [여정 페이지 #STP-sift-candidates](mockups/JRN-discover-features.html#STP-sift-candidates) · 화면 단위 (follow-code-change 이관 대기) | ✅ 완전 |
 | S08 Feature · Acceptance | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | V3·V4 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
 | S09 Feature · Dependencies | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | V5 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
 | S10 LLM-assisted Edit | `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` | V3·V4·V7 | ✅ | ✅ 화면 단위 (이관 대기) | ✅ 완전 |
 
-> 여정 열이 화면 소유를 보여줍니다 — **S01~S03 만 여정 하나의 전용 터치포인트**이고 나머지 7개는 2~3개 여정이 공유합니다. 여정 페이지가 화면을 흡수하며 원본 파일을 삭제하려면 그 화면을 쓰는 여정이 전부 이관돼야 하므로, 이 열이 곧 이관 순서의 제약입니다.
+> 여정 열이 화면 소유를 보여줍니다 — **S01~S03(connect-repo)·S05~S06(discover-features)만 여정 하나의 전용 터치포인트**이고 나머지 5개는 2~3개 여정이 공유합니다. 공유가 막는 것은 *그 여정의 이관*이 아니라 *원본 `sNN` 파일의 삭제*뿐입니다 — 여정 페이지의 화면은 복제본이 아니라 그 자체가 원본이고, 같은 화면이 여러 여정에 각자의 맥락으로 등장하는 것은 중복이 아니기 때문입니다. 그래서 이관은 여정 단위로 진행하고, 원본 삭제만 마지막 소비 여정까지 미룹니다(확정: 2026-08-31, reconciler `rct_20260831-0001`). 이 열은 이관 순서의 제약이 아니라 **원본 삭제 시점의 제약**입니다.
 
 목업은 디자인 시스템([`design-system.md`](design-system.md))의 토큰·컴포넌트를 각 HTML 파일에 인라인 CSS로 적용합니다 (와이어프레임 SVG처럼 화면별 단독 파일). 디자인 시스템 §4의 12개 컴포넌트(Button·Tag·Input·Card·Step·Tabs·Bottom tab bar·Code block·Icon container·Segment selector·Metric grid·Progress bar)는 모두 1개 이상의 목업에서 사용됩니다. 화면별 §4 컴포넌트 사용 매핑과 §4 외 요소(Section title 타이포 역할, 화면 전용 의존성 그래프)의 단일 소스는 [`mockups/README.md`](mockups/README.md)의 "Mockup index"입니다.
 
@@ -155,7 +155,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
   (`mockups/sNN-*.html`) 모두 단독 정적 파일이라 `file://` 로 그대로 열려야 하고,
   안 열리면 그건 진짜 결함이다.
 - 리더의 `CONFIG.journeyPage` / `journeySection` / `flowHref` 는 **이관 여부에 따라 갈린다** —
-  여정 페이지가 있는 여정(`JRN-connect-repo`)은 그 페이지로, 아직 화면 단위인 여정은 허브의
+  여정 페이지가 있는 여정(`JRN-connect-repo`·`JRN-discover-features`)은 그 페이지로, 아직 화면 단위인 여정은 허브의
   `#flow-NN` 구획으로 보낸다. 허브 구획에도 대응하지 않는 여정(`JRN-understand-feature` ·
   `JRN-follow-code-change` · `JRN-restore-history`)은 링크를 만들지 않는다. 이관이 끝나면
   `journeySection` 은 비고 `journeyPage` 만 남는다.
@@ -181,7 +181,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
   확보(`JRN-`/`STP-`)되면서 결정을 미룰 이유가 사라졌고, 방식은 **여정 하나씩 옮기고
   그때마다 검증**한다. 규약은 [`mockups/README.md`](mockups/README.md) 「여정 페이지 규약」,
   기계 검사는 `tools/check-journey-mockup.py`(정적 R0~R10) + `tools/check-journey-prototype.js`(DOM P1~P7).
-- **진행: 1 / 5** — `JRN-connect-repo` 이관 완료(S01~S03 흡수, 화면 파일 3개 삭제). 이관은 화면을 옮겨 붙이는 일이 아니라 **프로토타입으로 다시 쓰는 일**이다 — 여정 페이지는 실제 입력 요소와 상태 변형을 갖고 모든 단계가 화면 안의 행동으로 전진해야 하며, 그 세 가지는 정적 검사로 판정할 수 없어 DOM 하네스가 CI 에서 굴린다.
+- **진행: 2 / 5** — `JRN-connect-repo`(S01~S03 흡수, 화면 파일 3개 삭제) · `JRN-discover-features`(S04~S07 흡수, 전용 화면 파일 S05·S06 2개 삭제 — S04·S07 은 `JRN-follow-code-change` 가 아직 써서 원본이 남는다) 이관 완료. 이관은 화면을 옮겨 붙이는 일이 아니라 **프로토타입으로 다시 쓰는 일**이다 — 여정 페이지는 실제 입력 요소와 상태 변형을 갖고 모든 단계가 화면 안의 행동으로 전진해야 하며, 그 세 가지는 정적 검사로 판정할 수 없어 DOM 하네스가 CI 에서 굴린다.
   남은 4개는 [`mockups/README.md`](mockups/README.md) 의 **이관 대기 원장**(상한 7)에 있다.
   - 전환으로 얻은 것: 한 페이지에서 단계를 눌러 넘기는 **흐름 체험**, `#STP-*` 딥링크의
     목업 쪽 대응, 그리고 여정↔목업 정합성이 산문이 아니라 **CI 게이트**가 된 것.
@@ -192,7 +192,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
   - `JRN-restore-history` 는 소스 화면 자체가 없어 S11 제작이 먼저이며, 그때까지는
     아래 「수용된 위험」의 여정 단위 예외로 남는다.
 
-- **문서 → 화면 단방향 (화면 단위 파일 7개에 한해 남음)**: 화면 단위 목업
+- **문서 → 화면 단방향 (화면 단위 파일 5개에 한해 남음)**: 화면 단위 목업
   (`mockups/sNN-*.html`)에서 그 화면이 속한 여정 문서로 **돌아오는 링크는 없다**.
   목업을 먼저 연 사람은 "왜 이 화면이 이렇게 생겼는지"로 이동할 방법이 없다.
   이 7개는 2~3개 여정이 공유하므로 복귀 링크는 단일 링크가 아니라 여정 목록이 된다.
@@ -209,7 +209,7 @@ grep -rohE 'AC[0-9]+\.[0-9]+' docs/prd | sort -u | wc -l     # AC 총수
 - 미검증 AC: **없음** ✅
 - 고아 테스트: **없음** ✅
 - 고아 여정 (가치 미참조): **없음** ✅ — 여정 6개 모두 유효한 가치 식별자 참조
-- 고아 목업 (여정 미선언): **7건** — 화면 단위 파일 `s04`~`s10` 이 `data-journey` 를 선언하지 않는다. 이 7개는 2~3개 여정이 공유하는 화면이라 "정확히 1개 여정"을 선언하는 것이 **원리적으로 불가능**하고, 그래서 화면 단위로 남아 있는 것 자체가 위반이다. [`mockups/README.md`](mockups/README.md) 의 **이관 대기 원장**(상한 7)에 등재되어 래칫으로 관리되며, 이관이 끝나면 0이 된다. 여정 페이지 `JRN-connect-repo.html` 은 `data-journey` 를 정확히 1개 선언 ✅
+- 고아 목업 (여정 미선언): **5건** — 화면 단위 파일 `s04`·`s07`~`s10` 이 `data-journey` 를 선언하지 않는다. 이 5개는 2~3개 여정이 공유하는 화면이라 "정확히 1개 여정"을 선언하는 것이 **원리적으로 불가능**하고, 그래서 화면 단위로 남아 있는 것 자체가 위반이다. [`mockups/README.md`](mockups/README.md) 의 **이관 대기 원장**(상한 5)에 등재되어 래칫으로 관리되며, 이관이 끝나면 0이 된다. 여정 페이지 `JRN-connect-repo.html`·`JRN-discover-features.html` 은 각각 `data-journey` 를 정확히 1개 선언 ✅
 - 시각화 누락 화면 (목업 없는 와이어프레임): **없음** ✅ — 10개 와이어프레임 모두 목업 보유
 - 목업 페이지 없는 여정: **4건** — `JRN-discover-features` · `JRN-review-feature` · `JRN-understand-feature` · `JRN-follow-code-change` (이관 대기, 원장 관리). `JRN-restore-history` 는 예외 등재라 위반이 아니다
 - 시각화 누락 단계 (mockup 없는 여정 단계): **1건** — `JRN-restore-history` 의 세 단계 전부(이력 화면 S11 후보가 와이어프레임·목업 모두 없음). `JRN-connect-repo` / `STP-sign-in` 은 2026-08-30 프로토타입 이관으로 목업 쪽이 해소됐고 와이어프레임 공백만 남았다. → 아래 "수용된 위험" 참조
@@ -325,6 +325,7 @@ SSOT 이므로 판정은 "구현이 목업과 어긋나는가"이고, 어긋남�
 | 2026-08-30 사용자 여정 행동 축 재작성 | 여정 문서 5개(README + 플로우 4개)를 **폐기하고** 7개(README + 여정 6개)로 재작성. 이전 판은 본문 뼈대가 `## 화면별 상세` 였고 단위 키가 `S01`~`S10`(와이어프레임 ID)이라, 화면을 합치거나 나누면 여정 문서 구조가 함께 깨지는 상태였다 — 본 문서가 2026-05-27부터 기록해 온 "안정적 단계 식별자 없음"이 그것이다. ① 단계를 화면이 아닌 **사용자 행동**으로 재분할하고 `JRN-<슬러그>`/`STP-<슬러그>` 식별자 부여 ② P1·P2 여정 분리 — 구 `03-feature-documents.md` 에 "페르소나 메모"로 묻혀 있던 P2 흐름을 `JRN-understand-feature` 로 독립 ③ 구 플로우 4를 트리거가 다른 두 여정(`JRN-follow-code-change` · `JRN-restore-history`)으로 분할 ④ 여정마다 진입 맥락·트리거·완료 기준(관찰 가능 이벤트)·분기표·**측정 지표**·변경 이력 신설 — 이전 판에는 지표가 5개 문서 통틀어 0건이었다 ⑤ 행동 축으로 자르니 **AC3.2**(자동 추출되지 않은 feature 직접 추가)가 `STP-add-missing` 으로 자연히 편입 — 이전 판에서 "본 여정이 다루지 않는 사용자 행동"으로 제외돼 있던 항목이다. 부수: 허브 문서 목록·플로우별 여정 링크, `reader.html` 의 `flowFromPath`/`journeySection`, 루트 README 트리, `mockups/README.md` 의 여정 참조 문구 갱신. **to-be(가치 8 · AC 24) 불변** — 신규 가치/AC/화면을 만들지 않고 같은 재료를 사용자 행동 축으로 다시 엮었다. 수용된 위험 2건은 대상 표기만 여정 식별자로 옮겼고 위험 자체는 그대로다 | 여정 5개 · 화면 축 · 단계 식별자 없음 · 지표 0건 · AC 커버 22/24(매트릭스 직접 기재 20) | 여정 7개 · 행동 축 · `JRN-`/`STP-` 식별자 · 지표 39건 · AC 커버 23/24 |
 | 2026-08-30 여정 단위 목업 이관 슬라이스 1 | 오래 미결정이던 "목업을 여정 단위로 전환하는가"를 **전환한다**로 결정하고, `JRN-connect-repo` 하나를 **클릭되는 제품 프로토타입**으로 이관해 규약을 실증. ① 「여정 페이지 규약」을 `mockups/README.md` 에 신설 — 경로 `docs/mockups/JRN-<슬러그>.html`(별도 디렉터리에 두면 목업 변경 감지가 트리 해시를 보므로 잡히지 않는다), `data-journey` 1개 + `data-step` 선언, **식별자는 여정 문서가 원천이고 README 는 인용만 한다**(SSOT 이중화 금지), 단계→화면 매핑은 각 단계의 `터치포인트` 줄에서 파싱해 `data-screens` 와 대조 ② `docs/mockups/JRN-connect-repo.html` 신설 — 5단계 전부가 **화면 안의 행동으로 전진**하고, 텍스트·선택이 진짜 `<input>`/`<select>` 이며, 여정 문서 §4 분기표 7행의 상태(범위 밖 저장소·URL 오타·키 미등록·큐 등록 실패·재방문·이탈 후 이어하기·로그아웃)에 프로토타입 안에서 실제로 도달한다. 문서 메타는 기본 닫힌 보조 레이어로 내려 **연 직후 보이는 것이 제품**이 되게 했다. 화면 본문을 원본과 바이트 동일하게 고정하는 방식은 쓰지 않는다 — 지문으로 화면을 못 박으면 입력과 상태 변형을 넣을 길이 구조적으로 막힌다. 여정 페이지의 화면은 복제본이 아니라 **그 자체가 원본**이다 ③ 흡수된 `s01`~`s03` 삭제 — 이 셋은 `JRN-connect-repo` **전용** 터치포인트라 다른 여정의 이관을 막지 않는다 ④ 남은 화면 단위 7개를 **이관 대기 원장 + 상한 7 래칫**으로 등재 (면제가 아니라 래칫 — 원장 밖 위반·공전 행·상한 초과가 전부 CI 실패) ⑤ 정합성이 산문에서 **기계 게이트**가 됨 — 정적 체커 `tools/check-journey-mockup.py`(R0~R10)와 DOM 하네스 `tools/check-journey-prototype.js`(jsdom, P1~P7)를 전용 워크플로에서 함께 돌린다. 배선·입력·상태는 파일을 읽어서는 판정할 수 없어(끊긴 버튼과 살아 있는 버튼이 구분되지 않는다) 실제 DOM 에서 굴리며, 하네스의 기대값은 페이지가 아니라 **여정 문서에서 파싱**한다 ⑥ 허브·리더·프런트 주석의 경로 갱신, 허브 요약 수치의 자기모순 정정(`18 Documents` ↔ 문서 구획 `20 documents`). **여정·단계·AC·가치는 하나도 바뀌지 않았다** — 같은 흐름의 공개 경로를 여정 단위로 옮기고 눌러볼 수 있게 만들었을 뿐이다 (reconciler `rct_20260830-0001`) | 목업 10개 전부 화면 단위 · 여정별 목업 페이지 0 · `data-journey`/`data-step` 0건(정합성 기계 판정 불가) · 목업 전체에 폼 요소 0개 | 여정 페이지 1(프로토타입) + 화면 단위 7 · 이관 1/5 · 예외 1 · 규약과 원장과 프로토타입 충실도가 CI 게이트 |
 | 2026-08-31 목업↔구현 대조를 기계 게이트로 | 이 레포의 목업↔구현 정합성은 지금까지 **산문**이었다 — 원장 표 하나가 전부였고, 그 표가 맞는지 확인하는 장치가 없었다. 2026-08-30 여정 이관(#22)으로 `s01`~`s03` 이 삭제되자 그 사실이 드러났다: 표의 S02·S03 행 4건이 **사라진 파일을 근거로** 남았고(공전 행), 행 수(7)와 캡션 집계(6)도 어긋나 있었다. ① 정적 체커 [`tools/check-mockup-render.py`](../tools/check-mockup-render.py)(python3 stdlib, 의존성 0) 신설 — M0 파싱 · M1 매핑 완비 · M2 토큰 1:1 · M3 카피 양방향 대조 · M4 원장 무결성(공전 행 0 · 캡션=행 수) · M5 래칫. 판정 대상 화면은 하드코딩하지 않고 **상단 주석에 목업 매핑을 가진 tsx** 로 발견하므로 새 화면이 생기면 자동 편입되고, 등재되지 않으면 M1 이 실패한다 ② 「목업↔구현 대조 범위」 신설 — 전 화면을 한꺼번에 대조하지 않는다. 구현이 목업 단계를 **병합**(`CredentialsSetup`)하거나 **분할**(`HomeRepositories`+`ConnectRepository`)한 쌍은 카피 배치가 정합성이 아니라 제품 결정이므로 「대조 보류」에 두고 **상한 3 래칫**으로 붙잡는다(면제가 아니다 — 늘면 실패) ③ 원장을 현재 목업 기준으로 재기준선 — 공전 행 제거, 유형 3종(데이터 부재 / 제3자 소유 / 분할·병합 미결정) 도입, 6칸 기계 판독 형식, 백틱 토큰만 대조 대상. `STP-grant-repo-access` 는 **GitHub 이 소유하는 설치 동의 화면**이라 구조적으로 수렴하지 않음을 처음으로 명시했다 ④ 제품 결정이 필요 없는 **무전제 수렴 5건**만 구현에 반영 — `기능 후보`(목업과 한 글자 차이였다) · CTA `비용 확인하기` · 추정 카드 캡션 `Target` 과 목업 순서(대상 → 비용·소요 → 스캔 수치) · 섹션 제목 `연결된 저장소`. **AC·여정·목업은 하나도 바뀌지 않았다** — 목업이 SSOT 이므로 움직인 것은 구현과 기록뿐이다 (reconciler `rct_20260831-0001`, 모델 `tbm_feature-doc-mockup-render`) | 편차 원장 7행 ↔ 캡션 6건(모순) · 공전 행 4 · 기계 판정 장치 없음 · 대조 범위 정의 없음 | 편차 원장 22행 = 캡션 22건 · 공전 행 0 · CI 게이트 6규칙 · 활성 대조 1 · 대조 보류 3(상한 래칫) |
+| 2026-08-31 여정 단위 목업 이관 슬라이스 2 | `JRN-discover-features` 를 규칙 5 프로토타입으로 이관(5단계 · §4 분기 6행 · 갈래의 끝 2개)하고, 전용 화면 `s05`·`s06` 2개를 흡수·삭제했다. **선결 과제였던 「공유 화면」을 결정으로 닫았다** — 공유가 막는 것은 그 여정의 이관이 아니라 원본 `sNN` 파일의 삭제뿐이므로(규약 ⑤ + 「같은 화면이 여러 여정에 등장하는 것은 중복이 아니다」), 이관은 여정 단위로 진행하고 원본 삭제만 마지막 소비 여정까지 미룬다. `S04`·`S07` 은 `JRN-follow-code-change` 가 아직 써서 원장에 남는다. **실질 블로커는 페이지가 아니라 하네스였다** — `tools/check-journey-prototype.js` 의 P3(실제 입력)과 마지막 P5(두 번째 갈래의 끝)가 `JRN-connect-repo` 전용 id 에 여정 조건 없이 묶여 있어, 두 번째 여정 페이지가 생기는 순간 null 에 `.value` 를 대입하고 uncaught TypeError 로 통째 죽었다(단언 보고조차 못 한다). 여정별 등록부를 `INPUT_PROBE`·`SECOND_END` 로 추가해 4종으로 늘리고 P0 의 미등록 검사를 넷 전부로 넓혔다 — connect-repo 의 단언 80건은 회귀 없이 그대로다. 래칫 2종을 함께 내렸다(이관 대기 4→3 · 화면 단위 잔여 7→5). to-be(가치 8 · AC 24) 불변 — 문서·정적 HTML·도구 스크립트만 바뀌고 실행 코드 동작 변화 0 (reconciler `rct_20260831-0001`) | 여정 페이지 1 · 화면 단위 7 · 이관 대기 4 · 하네스 단언 80건(여정 1개) | 여정 페이지 2 · 화면 단위 5 · 이관 대기 3 · 하네스 단언 160건(여정 2개) |
 
 ## 다음 단계 권장
 
