@@ -95,7 +95,7 @@ export function ConnectRepository({ onDone }: Props) {
       <div style={{ marginTop: 22 }}>
         <h1 className="h-display">Connect a repository</h1>
         <p className="h-display-sub">
-          분석을 시작하면 횡단 관심사 → 탐색 전략 → feature 후보 순으로 진행돼요.
+          분석을 시작하면 횡단 관심사 → 탐색 전략 → 기능 후보 순으로 진행돼요.
         </p>
       </div>
 
@@ -143,12 +143,31 @@ export function ConnectRepository({ onDone }: Props) {
       {estimate?.hasAccess && (
         <div className="card stack-14" style={{ marginTop: 18 }} data-testid="estimate">
           <div className="row between">
-            <span className="caps">Pre-flight Estimate</span>
+            <span className="caps">Target</span>
             <span className="badge success">
               <span className="dot" />
               Ready
             </span>
           </div>
+          <div className="stack">
+            <div className="row between">
+              <span className="body sm" style={{ color: 'var(--text-primary)' }}>
+                Repository
+              </span>
+              <span className="meta" style={{ color: 'var(--text-primary)' }}>
+                {estimate.fullName}
+              </span>
+            </div>
+            <div className="row between">
+              <span className="body sm" style={{ color: 'var(--text-primary)' }}>
+                Branch
+              </span>
+              <span className="meta" style={{ color: 'var(--text-primary)' }}>
+                ⎇ {estimate.branch}
+              </span>
+            </div>
+          </div>
+          <hr className="divider" />
           <div className="row" style={{ gap: 0 }}>
             <div className="grow">
               <div className="metric">~{formatCost(estimate.estCostCents)}</div>
@@ -165,14 +184,6 @@ export function ConnectRepository({ onDone }: Props) {
           </div>
           <hr className="divider" />
           <div className="stack">
-            <div className="row between">
-              <span className="body sm" style={{ color: 'var(--text-primary)' }}>
-                Target
-              </span>
-              <span className="meta" style={{ color: 'var(--text-primary)' }}>
-                {estimate.fullName} <span className="dot-sep">·</span> ⎇ {estimate.branch}
-              </span>
-            </div>
             <div className="row between">
               <span className="body sm" style={{ color: 'var(--text-primary)' }}>
                 Files to scan
@@ -241,7 +252,7 @@ export function ConnectRepository({ onDone }: Props) {
               ? '시작하는 중…'
               : ready
                 ? 'Start Analysis →'
-                : '접근 확인 및 비용 추정'}
+                : '비용 확인하기'}
         </button>
         <button className="btn btn-ghost block" type="button" onClick={onDone} data-testid="cancel">
           취소

@@ -160,7 +160,7 @@ export function HomeRepositories({
       </div>
 
       <div className="section-title" style={{ marginTop: 28, alignItems: 'center' }}>
-        <span>Repositories</span>
+        <span>연결된 저장소</span>
         <span className="row" style={{ gap: 12 }}>
           <span className="count">{rows.length}</span>
           <button
