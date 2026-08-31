@@ -29,10 +29,13 @@
 # ── 이 게이트가 보지 않는 것(의도적) ─────────────────────────────────────
 #  * 규칙 5(구조·수치)의 CSS 클래스·px 대조는 아직 자동화하지 않는다.
 #  * 실행 스크린샷 픽셀 비교는 모델 정의상 범위 밖이다.
-#  * 구현측 카피 추출(M3B)은 **JSX 텍스트 노드 · 한글 포함 문자열 리터럴 ·
-#    JSX children 위치의 문자열 리터럴**만 본다. 모듈 상수 테이블에 영문으로만 적힌
-#    라벨(예: `STATUS_BADGE` 의 `Queued`)은 잡지 못한다 — 그런 라벨을 가진 화면은
-#    「대조 보류」에 있어야 하고, 보류 상한이 그 사실을 붙잡아 둔다.
+#  * 구현측 카피 추출(M3B)은 **JSX 텍스트 노드 · 한글 포함 문자열 리터럴 · 속성 값이
+#    아닌 문자열 리터럴**을 본다. 모듈 상수 테이블의 영문 라벨(`STATUS_BADGE` 의
+#    `Queued` 등)도 속성 값이 아니므로 **잡힌다**. 템플릿 리터럴의 `${…}` 표현식은
+#    카피가 아니므로 제거한 나머지로 판정한다(`${owner}/${name}` → 대조 대상 아님,
+#    `· not analyzed` → 대조 대상).
+#  * 원장의 면제 문자열은 화면을 구분하지 않고 전역으로 적용된다 — 한 화면에서
+#    등재한 문자열이 다른 화면에서도 면제된다. 알려진 성질이며 좁히는 것은 후속이다.
 #  추출 결과는 `--verbose` 로 전부 출력된다. 무엇이 비교됐는지 눈으로 확인할 것.
 
 import html
@@ -161,6 +164,7 @@ def strip_comments(src: str) -> str:
 
 
 STRING_LITERAL = re.compile(r"""(?<!\\)(['"`])((?:(?!\1)[^\\\n]|\\.)*)\1""")
+TEMPLATE_EXPR = re.compile(r"\$\{[^}]*\}")
 TECHNICAL = re.compile(
     r"""^(?:
           [a-z][a-zA-Z0-9]*                      # idle, checking, anthropic …
@@ -173,7 +177,13 @@ TECHNICAL = re.compile(
 
 
 def literal_spans(src: str) -> list[tuple[int, str]]:
-    return [(m.start(), m.group(2)) for m in STRING_LITERAL.finditer(src)]
+    """문자열 리터럴 — 템플릿 표현식(`${…}`)은 카피가 아니므로 걷어낸 나머지를 돌려준다.
+
+    `${a.repoOwner}/${a.repoName}` 는 남는 글자가 `/` 뿐이라 `is_copy` 에서 떨어지고,
+    `· ${formatAgo(…)}` 는 `·` 만 남아 마찬가지다. 반면 `· not analyzed` 는 그대로 남는다.
+    """
+    return [(m.start(), TEMPLATE_EXPR.sub(" ", m.group(2)))
+            for m in STRING_LITERAL.finditer(src)]
 
 
 CODE_ISH = re.compile(r"[;=]")
