@@ -17,10 +17,12 @@ SSOT 방향:
                           선언하거나, 이관 대기 원장에 등재되어 있다
   R3 단계 집합 일치 — 여정 페이지의 data-step 집합 == 여정 문서의 STP 헤딩 집합
   R4 분기 대응 — 여정 문서 §4 분기표의 모든 "이어지는 단계"가 페이지에서 이동 가능
-  R5 앵커 무결성 — 페이지 안의 이동 대상이 전부 실재 섹션 id
+                 (다른 여정의 단계로 이어지는 갈래는 handoff 선언으로 해소한다)
+  R5 앵커 무결성 — 페이지 안의 이동 대상이 전부 실재 섹션 id · 여정 밖 분기 규약
   R6 화면 대조 — 단계 섹션이 선언한 data-screens 집합 == 여정 문서의 그 단계
                  터치포인트 줄에서 파싱한 S01~S10 집합
-  R7 원장 래칫 — 원장 밖 위반 · 이미 해소됐는데 남은 공전 행 · 상한 초과
+  R7 원장 래칫 — 원장 밖 위반 · 이미 해소됐는데 남은 공전 행 · 상한 초과 ·
+                 「쓰는 여정」 칸이 여정 문서에서 파생한 실측과 일치
   R8 링크 무결성 — docs/ 안의 상대 링크가 전부 실재 파일
   R9 집계 일치 — README·허브·doc-tracker 가 선언한 숫자가 실측과 같다
   R10 보조 레이어 — 문서 메타가 기본 닫힌 <details> 안에만 있다 (규칙 5b)
@@ -143,6 +145,19 @@ def parse_pages():
         if bodytag is None:
             fail("R2", "`%s` 에 <body> 태그가 없다" % p.name)
         sections = re.findall(r'<section [^>]*\bid="([^"]+)"[^>]*>', s)
+        # 여정 밖 분기(handoff) 선언과 그 섹션 본문. 갈래가 다른 여정의 단계로
+        # 이어질 때, 그 끝 블록이 대상을 선언한다 — 선언은 한 곳에만 둔다.
+        handoffs = {}
+        section_html = {}
+        for sm in re.finditer(r'<section\b([^>]*)>(.*?)</section>', s, re.S):
+            attrs, inner = sm.group(1), sm.group(2)
+            sid = re.search(r'\bid="([^"]+)"', attrs)
+            if not sid:
+                continue
+            section_html[sid.group(1)] = inner
+            hj = re.search(r'\bdata-goto-journey="([^"]*)"', attrs)
+            if hj:
+                handoffs[sid.group(1)] = hj.group(1)
         steps = re.findall(r'\bdata-step="([^"]+)"', s)
         gotos = set(re.findall(r'\bdata-goto(?:-next|-prev)?="([^"]+)"', s))
         # 단계 섹션이 선언한 화면. 원본을 복제하지 않으므로 지문 대신 이 선언을
@@ -151,12 +166,20 @@ def parse_pages():
         for m in re.finditer(r'<section [^>]*\bdata-step="([^"]+)"[^>]*\bdata-screens="([^"]*)"', s):
             step_screens[m.group(1)] = sorted(set(re.findall(r"\bS(?:0[1-9]|10)\b", m.group(2))))
         out[p.name] = {"path": p, "text": s, "journeys": journeys, "sections": sections,
-                       "steps": steps, "gotos": gotos, "step_screens": step_screens}
+                       "steps": steps, "gotos": gotos, "step_screens": step_screens,
+                       "handoffs": handoffs, "section_html": section_html}
     return out
 
 
 JOURNEYS = parse_journeys()
 PAGES = parse_pages()
+
+# 어떤 단계가 어느 여정의 것인가 — 여정 문서에서 파생한다. §4 의 「이어지는 단계」가
+# 이 인덱스에서 다른 여정으로 나오면 그 갈래는 여정 밖 분기(handoff)다.
+STEP_OWNER = {}
+for _jid, _jr in JOURNEYS.items():
+    for _sid in _jr["step_ids"]:
+        STEP_OWNER.setdefault(_sid, _jid)
 README = read(MK / "README.md")
 HUB = read(DOCS / "index.html")
 TRACKER = read(DOCS / "doc-tracker.md")
@@ -231,6 +254,7 @@ for jid in sorted(owners):
 
 # ── R7 · 이관 대기 원장 (화면 단위 잔여) ─────────────────────────
 ledger_files = []
+ledger_rows = []
 if ledger_block:
     for cells in table_rows(ledger_block):
         if len(cells) != 4:
@@ -241,6 +265,7 @@ if ledger_block:
             fail("R7", "원장 행에서 파일명을 읽을 수 없다: %s" % cells[0])
             continue
         ledger_files.append(g.group(1))
+        ledger_rows.append((g.group(1), cells[1], cells[2]))
 
 cap = re.search(r"\*\*상한: (\d+)\*\*", README)
 cap_n = int(cap.group(1)) if cap else None
@@ -263,6 +288,34 @@ for f in screen_files:
         fail("R7", "화면 단위 파일 `%s` 가 이관 대기 원장에 없다 — 등재하거나 이관할 것" % f)
 if cap_n is not None and len(screen_files) > cap_n:
     fail("R7", "화면 단위 잔여 %d개가 상한 %d을 넘는다" % (len(screen_files), cap_n))
+
+# ── R7 · 원장 「쓰는 여정」 칸은 파생이다 ────────────────────────
+# 손으로 적은 목록은 이관이 진행되면 조용히 낡는다. 그 칸의 원천은 여정 문서의
+# 터치포인트이며, 남은 소비자 = {그 화면을 쓰는 여정} − {이미 이관된 여정}
+# − {규칙 8 예외 여정}. 예외 여정은 페이지를 갖지 않기로 등재된 것이라 원본
+# 삭제를 영원히 막지 않는다. 소비자가 0이 되면 그 파일은 흡수·삭제할 차례다.
+def screen_users(screen):
+    out = set()
+    for j, jr in JOURNEYS.items():
+        if any(screen in st["screens"] for st in jr["steps"]):
+            out.add(j)
+    return out
+
+
+for fname, screen_cell, users_cell in ledger_rows:
+    sg = re.search(r"\bS(?:0[1-9]|10)\b", screen_cell)
+    if not sg:
+        fail("R7", "원장 행 `%s` 의 화면 칸에서 화면 ID 를 읽을 수 없다: %r" % (fname, screen_cell))
+        continue
+    screen = sg.group(0)
+    want_users = screen_users(screen) - set(owners) - exempt_journeys
+    got_users = set(re.findall(r"JRN-[a-z0-9-]+", users_cell))
+    if not want_users:
+        fail("R7", "`%s`(%s) 를 쓰는 여정이 전부 이관됐다 — 흡수·삭제하고 원장 행을 지울 것"
+             % (fname, screen))
+    elif got_users != want_users:
+        fail("R7", "원장 `%s`(%s) 의 「쓰는 여정」 %s 이 여정 문서에서 파생한 실측 %s 과 다르다"
+             % (fname, screen, sorted(got_users), sorted(want_users)))
 
 waiting = [j for j, st in declared.items() if "이관 대기" in st]
 if wait_cap_n is not None and len(waiting) > wait_cap_n:
@@ -310,7 +363,14 @@ for name in journey_files:
     # 페이지에 있는지를 순서까지 대조한다.
     page_branches = []
     for m in re.finditer(r'<li><span class="sit">(.*?)</span>.*?<button [^>]*data-goto="([^"]+)"', pg["text"], re.S):
-        page_branches.append((norm_text(m.group(1)), m.group(2)))
+        goto = m.group(2)
+        # 여정 밖 분기는 이 여정의 끝(END-*)으로 가고, 그 끝 블록이 대상 여정·단계를
+        # 선언한다. 실효 대상은 그 선언에서 읽는다 — 페이지가 다른 여정의 단계 id 를
+        # 직접 data-goto 로 쓰면 갈 곳이 없어 R5 가 잡는다.
+        decl = pg["handoffs"].get(goto)
+        if decl and "#" in decl:
+            goto = decl.split("#", 1)[1]
+        page_branches.append((norm_text(m.group(1)), goto))
     doc_branches = [(norm_text(sit), to) for sit, to in jr["branch_to"]]
     if len(page_branches) != len(doc_branches):
         fail("R4", "`%s` 의 분기 항목 %d개가 여정 문서 §4 의 %d행과 다르다"
@@ -329,6 +389,40 @@ for name in journey_files:
             fail("R5", "`%s` 의 내부 앵커 #%s 가 실재하지 않는다" % (name, href))
     if not re.search(r'id="END-[a-z0-9-]+"', pg["text"]):
         fail("R5", "`%s` 에 갈래의 끝(END-*) 블록이 없다 (규칙 5f)" % name)
+
+    # R5 여정 밖 분기(handoff) — §4 의 「이어지는 단계」가 다른 여정의 것이면 그
+    # 갈래는 이 여정의 끝이며, 끝 블록이 대상을 선언하고 실제로 그리로 링크한다.
+    # 선언 대상의 실재 여부는 페이지가 아니라 여정 문서에서 확인한다(자기참조 금지).
+    for sec_id in sorted(pg["handoffs"]):
+        decl = pg["handoffs"][sec_id]
+        g = re.fullmatch(r"(JRN-[a-z0-9-]+)#(STP-[a-z0-9-]+)", decl)
+        if not g:
+            fail("R5", "`%s` 의 `%s` 가 선언한 data-goto-journey %r 이 "
+                       "`JRN-<여정>#STP-<단계>` 형식이 아니다" % (name, sec_id, decl))
+            continue
+        tj, tstep = g.groups()
+        if not sec_id.startswith("END-"):
+            fail("R5", "`%s` 의 여정 밖 분기 선언이 `%s` 에 있다 — 갈래의 끝(END-*)이어야 한다"
+                 % (name, sec_id))
+        if tj == jid:
+            fail("R5", "`%s` 의 `%s` 가 자기 여정을 여정 밖 분기로 선언한다" % (name, sec_id))
+            continue
+        if tj not in JOURNEYS:
+            fail("R5", "`%s` 의 `%s` 가 존재하지 않는 여정 `%s` 로 넘긴다" % (name, sec_id, tj))
+            continue
+        if tstep not in JOURNEYS[tj]["step_ids"]:
+            fail("R5", "`%s` 의 `%s` 가 `%s` 에 없는 단계 `%s` 로 넘긴다 "
+                       "(그 여정 문서의 단계: %s)" % (name, sec_id, tj, tstep, JOURNEYS[tj]["step_ids"]))
+            continue
+        # 넘기는 자리는 실제로 눌러 갈 수 있어야 한다. 대상 여정에 페이지가 있으면
+        # 그 단계 앵커로, 아직 없으면 여정 문서를 reader 로 연다(.md 직결은 R8 금지).
+        target_pages = owners.get(tj, [])
+        want = ("./%s#%s" % (target_pages[0], tstep) if target_pages
+                else "../reader.html?doc=user-journey/%s.md" % tj)
+        if ('href="%s"' % want) not in pg["section_html"].get(sec_id, ""):
+            fail("R5", "`%s` 의 `%s` 에 대상으로 나가는 링크 `%s` 가 없다 "
+                       "(대상 여정에 페이지가 %s)" % (name, sec_id, want,
+                                                    "있다" if target_pages else "아직 없다"))
 
     # R6 화면 대조 — 단계 섹션이 선언한 data-screens 가 여정 문서의 터치포인트와 같은가.
     # 기대값의 원천은 페이지가 아니라 여정 문서다(자기참조면 무엇을 바꿔도 통과한다).
