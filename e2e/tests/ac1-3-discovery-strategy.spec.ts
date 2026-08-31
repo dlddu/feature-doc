@@ -119,7 +119,10 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       const dropped = proposed.entries[0].pattern;
       await page.getByTestId('strategy-drop').first().click();
       await expect(page.getByTestId('strategy-entry')).toHaveCount(proposed.entries.length - 1);
-      await expect(page.locator('[data-testid="strategy-entry"]')).not.toContainText(dropped);
+      // 정확 일치로 본다 — 다중 요소 로케이터에 `.not.toContainText` 를 걸면 strict mode
+      // 위반이고, 부분 문자열 대조는 `payments-api/**` 처럼 서로 접두사인 패턴에서 공허해진다.
+      const shown = await page.locator('[data-testid="strategy-entry"] .sname').allTextContents();
+      expect(shown).not.toContain(dropped);
 
       // ── 검토: 보탠다 ────────────────────────────────────────────────────
       const mine = 'cmd/admin-cli';
@@ -171,7 +174,8 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       expect(carried.approved).toBe(false);
       const carriedMine = carried.entries.filter((e) => e.source === 'user');
       expect(carriedMine.map((e) => e.pattern)).toEqual([mine]);
-      // 지웠던 항목은 되살아나지 않는다 — 새 분석의 제안은 새 제안이다.
+      // 새 분석의 제안은 그 분석의 것이다 — 직전에 지운 항목이 여기서 다시 나타나도
+      // 이상하지 않다(같은 트리에 대한 새 제안이다). 이어받는 것은 사용자가 보탠 것뿐이다.
       expect(carried.entries.filter((e) => e.source === 'generated').length).toBeGreaterThan(0);
 
       await page.goto(`/#/analyses/${second}/discovery-strategy`);
