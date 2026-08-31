@@ -91,11 +91,8 @@ jobs:
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/featuredoc
           tags: |
-            # PR: github.sha 는 refs/pull/N/merge 의 임시 머지 커밋 SHA라
-            # 병합 후 추적이 불가능하다. PR에서는 head 커밋 SHA를 쓴다.
             type=raw,value=${{ github.event.pull_request.head.sha || github.sha }}
-            # latest 는 배포 매니페스트가 참조하므로 main 에서만 갱신한다.
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
 
       - name: Build & push image
         uses: docker/build-push-action@v6
