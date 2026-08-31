@@ -45,6 +45,7 @@ pub fn routes() -> Router<AppState> {
         .route("/internal/analyses/claim", post(claim))
         .route("/internal/analyses/{id}/heartbeat", post(heartbeat))
         .route("/internal/analyses/{id}/stages/{key}", post(report_stage))
+        .route("/internal/analyses/{id}/documents/{kind}", post(submit_document))
         .route("/internal/analyses/{id}/finish", post(finish))
 }
 
@@ -119,6 +120,12 @@ struct ClaimView {
     /// Short-lived GitHub installation token for this job's repository. `None` in
     /// stub mode (nothing to call). Never persisted, never logged.
     installation_token: Option<String>,
+    /// The provider the LLM key below belongs to (`anthropic` / `openai` / `google`).
+    llm_provider: Option<String>,
+    /// The owner's active LLM key, unsealed for this job only (AC1.2~AC1.4 stages).
+    /// `None` when the user has no active key — the stage then fails with a clear
+    /// reason instead of the worker inventing a result. Never persisted, never logged.
+    llm_api_key: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -208,14 +215,33 @@ async fn claim(
         _ => None,
     };
 
+    // Unsealed here for the same reason as the installation token: the worker owns
+    // no database, and a job-scoped plaintext that lives only for this response is
+    // narrower than any stored alternative (AC4.1/AC4.3).
+    let (llm_provider, llm_api_key) = match crate::llmkey::active_key_for_user(&state, &job.user_id)
+        .await
+    {
+        Ok(Some((provider, key))) => (Some(provider), Some(key)),
+        Ok(None) => (None, None),
+        Err(e) => {
+            tracing::warn!(analysis_id = %job.id, "llm key unavailable: {e:?}");
+            (None, None)
+        }
+    };
+
     Ok(Json(ClaimView {
         id: job.id,
         repo_owner: job.repo_owner,
         repo_name: job.repo_name,
         branch: job.branch,
-        executable_stages: vec![pipeline::FETCH.to_string()],
+        executable_stages: vec![
+            pipeline::FETCH.to_string(),
+            pipeline::CROSS_CUTTING.to_string(),
+        ],
         lease_expires_at: lease_until,
         installation_token,
+        llm_provider,
+        llm_api_key,
     })
     .into_response())
 }
@@ -352,6 +378,76 @@ async fn finish(
 
     tracing::info!(analysis_id = %id, worker_id = %req.worker_id, status = %req.status, "analysis finished");
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DocumentReq {
+    worker_id: String,
+    /// The stage's JSON output, as produced by the pipeline stage module.
+    content: serde_json::Value,
+    /// Model identifier and per-call token usage — the cost accounting AC4.6
+    /// surfaces in a later slice.
+    model: String,
+    #[serde(default)]
+    input_tokens: i64,
+    #[serde(default)]
+    output_tokens: i64,
+}
+
+/// Stores a stage's document output. Lease-guarded like [`report_stage`], so a
+/// reclaimed worker cannot overwrite its successor's result.
+///
+/// Upsert rather than insert: AC1.5's per-stage retry re-runs the stage, and the
+/// re-run's output replaces the previous one for that (analysis, kind) — the
+/// analysis is the unit of history, not the document.
+async fn submit_document(
+    State(state): State<AppState>,
+    _auth: WorkerAuth,
+    Path((id, kind)): Path<(String, String)>,
+    Json(req): Json<DocumentReq>,
+) -> Result<StatusCode, AppError> {
+    if pipeline::stage(&kind).is_none() {
+        return Err(AppError::BadRequest("unknown pipeline stage".into()));
+    }
+    require_lease(&state, &id, &req.worker_id).await?;
+
+    let serialized = serde_json::to_string(&req.content)
+        .map_err(|_| AppError::BadRequest("document is not serializable".into()))?;
+    let hash = content_hash(&serialized);
+
+    sqlx::query(
+        "INSERT INTO analysis_documents \
+         (id, analysis_id, kind, content, content_hash, model, input_tokens, output_tokens, created_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         ON CONFLICT(analysis_id, kind) DO UPDATE SET \
+           content = excluded.content, content_hash = excluded.content_hash, \
+           model = excluded.model, input_tokens = excluded.input_tokens, \
+           output_tokens = excluded.output_tokens, created_at = excluded.created_at",
+    )
+    .bind(uuid::Uuid::new_v4().to_string())
+    .bind(&id)
+    .bind(&kind)
+    .bind(&serialized)
+    .bind(&hash)
+    .bind(&req.model)
+    .bind(req.input_tokens)
+    .bind(req.output_tokens)
+    .bind(now_unix())
+    .execute(&state.db)
+    .await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Stable fingerprint of a document's canonical JSON. Comparing this across
+/// analyses of the same target is what makes AC1.2's "결정적으로 재현되거나 차이가
+/// 명시된다" observable without diffing documents client-side.
+pub fn content_hash(serialized: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(serialized.as_bytes());
+    format!("{:x}", hasher.finalize())
 }
 
 /// 409s unless `worker_id` currently holds an unexpired lease on `id`.

@@ -14,6 +14,7 @@ use featuredoc::state::AppState;
 use featuredoc::{build_router, session, users};
 
 const VALID_KEY: &str = "sk-ant-api03-aaaaaaaaaaaaaaaaaaaa";
+const OPENAI_KEY: &str = "sk-proj-bbbbbbbbbbbbbbbbbbbbbb";
 
 async fn login_user(state: &AppState, login: &str, id: i64) -> String {
     let user = users::upsert(
@@ -160,6 +161,69 @@ async fn revoke_blocks_subsequent_use() {
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     let body = json(resp).await;
     assert_eq!(body["error"], "키가 없거나 폐기되었습니다");
+    let _ = std::fs::remove_file(&path);
+}
+
+/// A user may hold one key per provider, so "the active key" needs a rule.
+/// It is OpenAI first — the product default (`llm::DEFAULT_PROVIDER`) — and only
+/// then most-recent. The OpenAI key here is deliberately the *older* one, so a
+/// plain recency rule would pick Anthropic and this assertion would fail.
+#[tokio::test]
+async fn an_openai_key_is_preferred_over_a_newer_one() {
+    let (state, path) = stub_state().await;
+    let token = login_user(&state, "alice", 1).await;
+
+    for (provider, key) in [("openai", OPENAI_KEY), ("anthropic", VALID_KEY)] {
+        let resp = build_router(state.clone())
+            .oneshot(post_json(
+                "/api/llm-keys",
+                &token,
+                serde_json::json!({ "provider": provider, "key": key }),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED, "registering {provider}");
+    }
+
+    // Backdate the OpenAI key: registration timestamps are whole seconds, so
+    // without this the two rows can tie and the test would prove nothing.
+    sqlx::query("UPDATE llm_keys SET created_at = created_at - 100 WHERE provider = 'openai'")
+        .execute(&state.db)
+        .await
+        .unwrap();
+
+    let resp = build_router(state.clone())
+        .oneshot(get("/api/llm-keys/preflight", &token))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(json(resp).await["provider"], "openai");
+    let _ = std::fs::remove_file(&path);
+}
+
+/// The preference is a preference, not a hard-coded provider: a user who only
+/// registered Anthropic still gets Anthropic.
+#[tokio::test]
+async fn a_lone_anthropic_key_is_still_the_active_one() {
+    let (state, path) = stub_state().await;
+    let token = login_user(&state, "alice", 1).await;
+
+    let resp = build_router(state.clone())
+        .oneshot(post_json(
+            "/api/llm-keys",
+            &token,
+            serde_json::json!({ "provider": "anthropic", "key": VALID_KEY }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let resp = build_router(state.clone())
+        .oneshot(get("/api/llm-keys/preflight", &token))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(json(resp).await["provider"], "anthropic");
     let _ = std::fs::remove_file(&path);
 }
 

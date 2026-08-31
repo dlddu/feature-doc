@@ -6,14 +6,17 @@
 //! serving; jobs simply accumulate in the queue) and scaled out (SQLite serialises
 //! the claim, so N workers take disjoint jobs) — test/04 scenarios 7 and 8.
 //!
-//! Today exactly one stage is implemented: `fetch` (measure the repository tree).
-//! Stages 2-5 stay `pending` and the job lands in `awaiting_pipeline` rather than
-//! `succeeded`, because pretending an unimplemented stage ran would be a lie the
-//! user reads as progress.
+//! Two stages are implemented today: `fetch` (measure the repository tree) and
+//! `cross_cutting` (AC1.2 — extract the repository's cross-cutting concerns with
+//! the owner's LLM key). Stages 3-5 stay `pending` and the job lands in
+//! `awaiting_pipeline` rather than `succeeded`, because pretending an unimplemented
+//! stage ran would be a lie the user reads as progress.
 
 use std::time::Duration;
 
 use featuredoc::config::Mode;
+use featuredoc::cross_cutting;
+use featuredoc::llm;
 use featuredoc::pipeline;
 use featuredoc::repo_scan;
 use serde::Deserialize;
@@ -33,6 +36,8 @@ struct Claim {
     branch: String,
     executable_stages: Vec<String>,
     installation_token: Option<String>,
+    llm_provider: Option<String>,
+    llm_api_key: Option<String>,
 }
 
 struct Worker {
@@ -147,7 +152,7 @@ impl Worker {
         )
         .await;
 
-        match scanned {
+        let result = match scanned {
             Ok(result) => {
                 self.stage(
                     &job.id,
@@ -157,22 +162,126 @@ impl Worker {
                     None,
                 )
                 .await?;
-                // Not `succeeded`: stages 2-5 are still unimplemented (AC1.2~1.4).
-                self.finish(&job.id, "awaiting_pipeline", None).await?;
                 tracing::info!(
                     analysis_id = %job.id,
                     files = result.files,
                     bytes = result.bytes,
                     "fetch stage complete"
                 );
+                result
             }
             Err(reason) => {
                 self.stage(&job.id, pipeline::FETCH, "failed", None, Some(&reason))
                     .await?;
                 self.finish(&job.id, "failed", Some(&reason)).await?;
+                return Ok(());
+            }
+        };
+
+        // Stage 2 runs only if this build knows it *and* the queue offered it, so an
+        // older worker against a newer API (or the reverse) degrades to stopping
+        // early rather than reporting a stage it cannot run.
+        if job
+            .executable_stages
+            .iter()
+            .any(|s| s == pipeline::CROSS_CUTTING)
+        {
+            if let Err(reason) = self.run_cross_cutting(&job, &result.paths).await {
+                // The failure is this stage's, not the job's: `fetch` keeps its
+                // measured detail, and AC1.5's per-stage retry can re-run just this
+                // one once the cause (usually a missing or rejected key) is fixed.
+                self.stage(
+                    &job.id,
+                    pipeline::CROSS_CUTTING,
+                    "failed",
+                    None,
+                    Some(&reason),
+                )
+                .await?;
+                self.finish(&job.id, "failed", Some(&reason)).await?;
+                return Ok(());
             }
         }
+
+        // Not `succeeded`: stages 3-5 are still unimplemented (AC1.3~1.4).
+        self.finish(&job.id, "awaiting_pipeline", None).await?;
         Ok(())
+    }
+
+    /// Stage 2 (AC1.2). Returns the reason string on failure so the caller owns the
+    /// reporting, keeping the "which stage failed" decision in one place.
+    async fn run_cross_cutting(&self, job: &Claim, paths: &[String]) -> Result<(), String> {
+        self.stage(&job.id, pipeline::CROSS_CUTTING, "running", None, None)
+            .await
+            .map_err(|e| format!("could not report stage start: {e}"))?;
+        // The model call is the long one in this job; renew before it as `fetch` does.
+        self.heartbeat(&job.id)
+            .await
+            .map_err(|e| format!("could not renew lease: {e}"))?;
+
+        let provider = match (self.mode, job.llm_provider.as_deref()) {
+            // Stub mode never reaches a provider, so an absent key is not a failure.
+            (Mode::Stub, other) => other
+                .and_then(llm::Provider::parse)
+                .unwrap_or(llm::DEFAULT_PROVIDER),
+            (Mode::Real, Some(p)) => llm::Provider::parse(p)
+                .ok_or_else(|| format!("unsupported LLM provider registered: {p}"))?,
+            (Mode::Real, None) => {
+                return Err("no active LLM key for this user; register one to analyze".to_string())
+            }
+        };
+
+        let answer = cross_cutting::extract(
+            &self.http,
+            self.mode,
+            provider,
+            job.llm_api_key.as_deref(),
+            &job.repo_owner,
+            &job.repo_name,
+            &job.branch,
+            paths,
+        )
+        .await?;
+
+        self.submit_document(&job.id, pipeline::CROSS_CUTTING, &answer)
+            .await
+            .map_err(|e| format!("could not store the document: {e}"))?;
+        self.stage(
+            &job.id,
+            pipeline::CROSS_CUTTING,
+            "succeeded",
+            Some(&cross_cutting::detail(&answer.content)),
+            None,
+        )
+        .await
+        .map_err(|e| format!("could not report stage completion: {e}"))?;
+
+        tracing::info!(
+            analysis_id = %job.id,
+            model = %answer.model,
+            "cross-cutting stage complete"
+        );
+        Ok(())
+    }
+
+    async fn submit_document(
+        &self,
+        id: &str,
+        kind: &str,
+        answer: &llm::Answer,
+    ) -> anyhow::Result<()> {
+        let body = json!({
+            "workerId": self.worker_id,
+            "content": answer.content,
+            "model": answer.model,
+            "inputTokens": answer.input_tokens,
+            "outputTokens": answer.output_tokens,
+        });
+        self.expect_ok(
+            self.post(&format!("/internal/analyses/{id}/documents/{kind}"), body)
+                .await?,
+            "document submit",
+        )
     }
 
     async fn stage(

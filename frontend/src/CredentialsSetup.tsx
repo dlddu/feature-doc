@@ -18,11 +18,31 @@ import {
 } from './api';
 import type { Connection, LlmKey, ProviderId, User } from './api';
 
+// OpenAI first because it is the default the rest of the system assumes: the
+// worker falls back to it and an analysis picks an OpenAI key over the others
+// (`llm::DEFAULT_PROVIDER`, `llmkey::ACTIVE_KEY_SQL`). The order is the signal —
+// a user who does not choose gets the cheapest supported engine.
 const PROVIDERS: { id: ProviderId; label: string; placeholder: string }[] = [
-  { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-…' },
   { id: 'openai', label: 'OpenAI', placeholder: 'sk-…' },
+  { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-…' },
   { id: 'google', label: 'Google', placeholder: 'AIza…' },
 ];
+
+/**
+ * The provider whose key an analysis would actually use, or `null` if the user has
+ * none. Mirrors the backend's active-key rule (`llmkey::ACTIVE_KEY_SQL`): OpenAI
+ * first, then most recently registered — so the screen names the same key the
+ * pipeline would call with.
+ */
+function activeProviderOf(keys: LlmKey[]): ProviderId | null {
+  const active = keys.filter((k) => k.status === 'active');
+  if (active.length === 0) return null;
+  const preferred =
+    active.find((k) => k.provider === 'openai') ??
+    active.reduce((a, b) => (b.createdAt > a.createdAt ? b : a));
+  const known = PROVIDERS.find((p) => p.id === preferred.provider);
+  return known ? known.id : null;
+}
 
 type KeyState = 'idle' | 'verifying' | 'error';
 type ContinueState = 'idle' | 'checking' | 'done' | 'error';
@@ -43,7 +63,7 @@ export function CredentialsSetup({ onReady }: Props = {}) {
   const [keys, setKeys] = useState<LlmKey[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [provider, setProvider] = useState<ProviderId>('anthropic');
+  const [provider, setProvider] = useState<ProviderId>('openai');
   const [keyInput, setKeyInput] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [keyState, setKeyState] = useState<KeyState>('idle');
@@ -65,6 +85,12 @@ export function CredentialsSetup({ onReady }: Props = {}) {
         const [conn, ks] = await Promise.all([getConnection(), listKeys()]);
         setConnection(conn);
         setKeys(ks);
+        // Someone who already registered a key sees *that* provider. The default
+        // below is where a user who has not chosen starts, not a value that
+        // overrides a choice already made — so this runs on mount only and never
+        // fights a later selection.
+        const already = activeProviderOf(ks);
+        if (already) setProvider(already);
       }
     } catch (e) {
       setMe(null);
