@@ -21,6 +21,16 @@
  *   P5 (g) 분기와 끝   — END-* 갈래의 끝에 도달한다
  *   P6 (b) 보조 레이어 — 문서 메타를 담은 <details> 가 기본으로 닫혀 있다
  *   P7 (h) 정적 동작   — 외부 자원은 폰트뿐. 스크립트·스타일 외부 참조 0
+ *
+ * 여정별로 다른 부분은 **등록부 4종**에 둔다 — 한 여정의 화면 id 를 검사 본문에
+ * 직접 쓰면 두 번째 여정 페이지가 생기는 순간 하네스가 그 페이지에서도 같은 id 를
+ * 찾다가 죽는다(실제로 그랬다. 아래 INPUT_PROBE 주석 참조).
+ *   ARM[jid][stepId]  — 그 단계의 CTA 가 살아나게 하는 최소 입력      (P2)
+ *   INPUT_PROBE[jid]  — 타이핑·선택이 상태를 바꾸는지 보는 프로브     (P3)
+ *   PRODUCT_PATHS[jid]— §4 각 분기 상황의 제품 화면 경로              (P4)
+ *   SECOND_END[jid]   — 정상 경로 말고 또 하나의 갈래의 끝            (P5)
+ * 네 등록부 중 하나라도 비면 P0 가 그 페이지를 실패시킨다 — 새 여정이 이관될 때
+ * 하네스가 조용히 공허해지는 것을 막는다.
  */
 'use strict';
 
@@ -126,6 +136,112 @@ const ARM = {
     },
     'STP-confirm-cost': () => {},
   },
+  'JRN-discover-features': {
+    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
+    'STP-leave-and-return': () => {},
+    'STP-review-landscape': () => {},
+    'STP-tune-strategy': (win, doc) => {
+      type(win, doc.getElementById('in-entrypoint'), 'cmd/admin-cli');
+      click(win, doc.getElementById('btn-add-entrypoint'));
+    },
+    'STP-sift-candidates': (win, doc) => {
+      // 후보 4건을 전부 결정해야 다음으로 넘어간다(미결정 0건이 완료 기준).
+      for (const b of [...doc.querySelectorAll('.cand [data-decide="approve"]')]) click(win, b);
+    },
+    'STP-add-missing': (win, doc) => {
+      type(win, doc.getElementById('in-newfeature'), '주간 사용량 리포트 메일 발송');
+      click(win, doc.getElementById('btn-draft'));
+    },
+  },
+};
+
+/* ── 페이지별 입력 프로브 등록 (P3) ──────────────────────────────
+   "타이핑·선택이 관측 가능한 상태 변화를 일으키는가"는 그 여정의 어떤 필드가
+   무엇을 검증하는지에 달려 있어 여정마다 다르다. 여정 무관한 부분(폼 요소가
+   0개가 아닌가 · 가짜 필드 패턴이 없는가)만 공통으로 두고, 나머지는 여기에
+   등록한다. 등록이 없으면 P0 가 실패시킨다.
+
+   ⚠️ 이 등록부가 없던 시절, P3 는 `JRN-connect-repo` 전용 id(`#in-key` 등)를
+   여정 조건 없이 만졌다 — 두 번째 여정 페이지가 생기는 순간 null 에 `.value` 를
+   대입해 하네스가 uncaught TypeError 로 통째 죽었다(단언 보고조차 못 한다).   */
+const INPUT_PROBE = {
+  'JRN-connect-repo': (win, doc, at, ok) => {
+    at('#STP-register-llm-key');
+    const key = doc.getElementById('in-key');
+    ok(key && key.tagName === 'INPUT', 'P3', `API Key 가 실제 <input> 이 아니다`);
+    if (!key) return;
+    type(win, key, 'not-a-key');
+    ok(key.value === 'not-a-key', 'P3', `입력한 값이 필드에 반영되지 않는다`);
+    ok(doc.getElementById('btn-savekey').disabled === true, 'P3',
+       `잘못된 키인데 저장 버튼이 살아 있다 (입력 검증이 죽어 있다)`);
+    ok(visible(doc.getElementById('key-error')), 'P3',
+       `잘못된 키에 대한 검증 표시가 나타나지 않는다`);
+    type(win, key, 'sk-ant-api03-demo-key');
+    ok(doc.getElementById('btn-savekey').disabled === false, 'P3',
+       `올바른 키를 입력해도 저장 버튼이 살아나지 않는다`);
+
+    // 선택(select)도 동작하는가
+    const prov = doc.getElementById('in-provider');
+    ok(prov && prov.tagName === 'SELECT', 'P3', `Provider 가 실제 <select> 가 아니다`);
+    // google 키는 `AIza` 로 시작하므로 위의 anthropic 키와 접두사가 겹치지 않는다.
+    // (openai 의 `sk-` 는 `sk-ant-` 의 접두사라 이 자리에서 쓰면 검사가 공허해진다.)
+    change(win, prov, 'google');
+    ok(doc.getElementById('btn-savekey').disabled === true, 'P3',
+       `provider 를 바꿨는데 키 검증이 따라 바뀌지 않는다 (선택이 죽어 있다)`);
+  },
+  'JRN-discover-features': (win, doc, at, ok) => {
+    // ① 거부 사유(textarea) — 비어 있으면 거부를 확정할 수 없다(F7 재발 방지).
+    at('#STP-sift-candidates');
+    const first = doc.querySelector('.cand');
+    click(win, first.querySelector('[data-decide="reject"]'));
+    const why = doc.getElementById('in-reject-why');
+    ok(why && why.tagName === 'TEXTAREA', 'P3', `거부 사유가 실제 <textarea> 가 아니다`);
+    if (!why) return;
+    ok(doc.getElementById('btn-reject-confirm').disabled === true, 'P3',
+       `사유가 비었는데 거부 확정 버튼이 살아 있다 (입력 검증이 죽어 있다)`);
+    ok(visible(doc.getElementById('reject-error')), 'P3',
+       `빈 사유에 대한 검증 표시가 나타나지 않는다`);
+    type(win, why, '내부 디버그용 엔드포인트라 사용자 기능이 아님');
+    ok(why.value === '내부 디버그용 엔드포인트라 사용자 기능이 아님', 'P3',
+       `입력한 값이 필드에 반영되지 않는다`);
+    ok(doc.getElementById('btn-reject-confirm').disabled === false, 'P3',
+       `사유를 적어도 거부 확정 버튼이 살아나지 않는다`);
+
+    // ② 필터(select) — 선택이 실제로 목록을 줄인다.
+    const shown = () => [...doc.querySelectorAll('.cand')].filter((c) => c.style.display !== 'none').length;
+    const filt = doc.getElementById('in-filter');
+    ok(filt && filt.tagName === 'SELECT', 'P3', `후보 필터가 실제 <select> 가 아니다`);
+    const before = shown();
+    change(win, filt, 'undecided');
+    ok(shown() < before, 'P3', `필터를 바꿨는데 목록이 그대로다 (선택이 죽어 있다)`);
+
+    // ③ 수동 추가(input) — 빈 이름으로는 초안을 만들 수 없다.
+    at('#STP-add-missing');
+    const nf = doc.getElementById('in-newfeature');
+    ok(nf && nf.tagName === 'INPUT', 'P3', `기능명이 실제 <input> 이 아니다`);
+    ok(doc.getElementById('btn-draft').disabled === true, 'P3',
+       `기능명이 비었는데 초안 생성 버튼이 살아 있다`);
+    type(win, nf, '주간 사용량 리포트 메일 발송');
+    ok(doc.getElementById('btn-draft').disabled === false, 'P3',
+       `기능명을 입력해도 초안 생성 버튼이 살아나지 않는다`);
+  },
+};
+
+/* ── 페이지별 두 번째 갈래의 끝 등록 (P5) ────────────────────────
+   정상 경로의 끝은 P2 가 마지막 단계의 전진으로 확인한다. 그 밖에 최소 하나의
+   **다른** 갈래가 END-* 로 끝나는지를 여기서 본다 — 갈래가 하나뿐인 프로토타입은
+   규칙 5(g) 의 "각 갈래의 끝이 표현된다"를 충족하지 못한다.                     */
+const SECOND_END = {
+  'JRN-connect-repo': { name: '저장 후 종료', at: '#STP-confirm-cost', run: (win, doc, ok) => {
+    const later = doc.getElementById('btn-later');
+    if (!ok(later, 'P5', `대안 갈래(저장 후 종료)의 행동이 없다`)) return;
+    click(win, later);
+  } },
+  'JRN-discover-features': { name: '누적 비용 초과로 중단', at: '#STP-sift-candidates', run: (win, doc, ok) => {
+    const stop = doc.getElementById('btn-stop-cost');
+    if (!ok(stop, 'P5', `대안 갈래(누적 비용 초과 중단)의 행동이 없다`)) return;
+    click(win, stop);
+  } },
 };
 
 /* 분기 상황이 화면에 실제로 나타나는지 — 제품 화면 안의 경로로 확인한다.
@@ -206,8 +322,12 @@ for (const file of pages) {
   const jr = parseJourney(docPath);
   const pagePath = path.join(MK, file);
 
-  if (!ARM[jid] || !PRODUCT_PATHS[jid]) {
+  const missing = [['ARM', ARM], ['PRODUCT_PATHS', PRODUCT_PATHS],
+                   ['INPUT_PROBE', INPUT_PROBE], ['SECOND_END', SECOND_END]]
+    .filter(([, reg]) => !reg[jid]).map(([n]) => n);
+  if (missing.length) {
     failures.push(`P0: \`${file}\` 의 제품 경로가 tools/check-journey-prototype.js 에 등록되지 않았다 ` +
+                  `(누락: ${missing.join(', ')}) ` +
                   '— 등록 없이는 규칙 5(c)(d)(e) 를 굴려 볼 수 없다 (하네스가 공허해진다)');
     continue;
   }
@@ -268,29 +388,13 @@ for (const file of pages) {
     ok(doc.querySelectorAll('.input .val').length === 0, 'P3',
        `${file}: "입력처럼 보이는 비대화형 요소"(.input > .val) 패턴이 남아 있다 (규칙 5d)`);
 
-    // 타이핑이 실제로 관측 가능한 상태 변화를 만드는가
-    window.location.hash = '#STP-register-llm-key';
-    window.dispatchEvent(new window.HashChangeEvent('hashchange'));
-    const key = doc.getElementById('in-key');
-    ok(key && key.tagName === 'INPUT', 'P3', `${file}: API Key 가 실제 <input> 이 아니다`);
-    type(window, key, 'not-a-key');
-    ok(key.value === 'not-a-key', 'P3', `${file}: 입력한 값이 필드에 반영되지 않는다`);
-    ok(doc.getElementById('btn-savekey').disabled === true, 'P3',
-       `${file}: 잘못된 키인데 저장 버튼이 살아 있다 (입력 검증이 죽어 있다)`);
-    ok(visible(doc.getElementById('key-error')), 'P3',
-       `${file}: 잘못된 키에 대한 검증 표시가 나타나지 않는다`);
-    type(window, key, 'sk-ant-api03-demo-key');
-    ok(doc.getElementById('btn-savekey').disabled === false, 'P3',
-       `${file}: 올바른 키를 입력해도 저장 버튼이 살아나지 않는다`);
-
-    // 선택(select)도 동작하는가
-    const prov = doc.getElementById('in-provider');
-    ok(prov && prov.tagName === 'SELECT', 'P3', `${file}: Provider 가 실제 <select> 가 아니다`);
-    // google 키는 `AIza` 로 시작하므로 위의 anthropic 키와 접두사가 겹치지 않는다.
-    // (openai 의 `sk-` 는 `sk-ant-` 의 접두사라 이 자리에서 쓰면 검사가 공허해진다.)
-    change(window, prov, 'google');
-    ok(doc.getElementById('btn-savekey').disabled === true, 'P3',
-       `${file}: provider 를 바꿨는데 키 검증이 따라 바뀌지 않는다 (선택이 죽어 있다)`);
+    // 타이핑·선택이 실제로 관측 가능한 상태 변화를 만드는가 — 어떤 필드가 무엇을
+    // 검증하는지는 여정마다 다르므로 등록된 프로브가 굴린다.
+    const at = (hash) => {
+      window.location.hash = hash;
+      window.dispatchEvent(new window.HashChangeEvent('hashchange'));
+    };
+    INPUT_PROBE[jid](window, doc, at, (cond, rule, msg) => ok(cond, rule, `${file}: ${msg}`));
     window.close();
   }
 
@@ -363,16 +467,14 @@ for (const file of pages) {
     }
   }
 
-  /* P5 (g) 두 번째 갈래의 끝 */
+  /* P5 (g) 두 번째 갈래의 끝 — 어떤 행동이 대안 갈래인지는 여정마다 다르다 */
   {
-    const { window } = load(pagePath, '#STP-confirm-cost');
+    const spec = SECOND_END[jid];
+    const { window } = load(pagePath, spec.at);
     const doc = window.document;
-    const later = doc.getElementById('btn-later');
-    if (ok(later, 'P5', `${file}: 대안 갈래(저장 후 종료)의 행동이 없다`)) {
-      click(window, later);
-      ok(/^END-/.test(active(doc) || ''), 'P5',
-         `${file}: 대안 갈래가 END-* 로 끝나지 않는다 (도착: ${active(doc)})`);
-    }
+    spec.run(window, doc, (cond, rule, msg) => ok(cond, rule, `${file}: ${msg}`));
+    ok(/^END-/.test(active(doc) || ''), 'P5',
+       `${file}: 대안 갈래 "${spec.name}" 이 END-* 로 끝나지 않는다 (도착: ${active(doc)})`);
     window.close();
   }
 }
