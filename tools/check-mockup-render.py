@@ -108,6 +108,56 @@ def ticked(cell: str) -> list[str]:
 
 
 # ── 목업 파싱 ───────────────────────────────────────────────────────────────
+# ── 예시값 표기 규약 (`data-sample`) ────────────────────────────────────────
+# 목업이 그리는 문자열 중에는 **그 자리에 실제 데이터가 렌더된다**는 뜻일 뿐인 것이 있다
+# (분석 결과 항목명, 근거 파일 경로 …). 구현은 같은 자리에 서버가 준 값을 그리므로 리터럴
+# 카피 대조가 성립하지 않는다. 그런 값을 담은 **잎 요소**에 `data-sample` 을 붙이면 카피
+# 대조에서 빠진다. 규약 전문은 docs/mockups/README.md 「예시값 표기 규약」.
+#
+# 잎에만 붙이는 이유: 값을 감싼 행 전체에 붙이면 같은 행의 제품 카피(예: `근거 없음` 태그)
+# 까지 함께 사라진다. 숨김은 최소 범위여야 한다.
+SAMPLE_OPEN = re.compile(r"<(\w+)(?=[^>]*\bdata-sample\b)([^>]*)>")
+
+# 예시값으로 위장해 대조를 빠져나갈 수 없게 한다 — 상호작용하는 것은 제품 카피다.
+INTERACTIVE_ATTR = re.compile(r"\b(data-goto|data-goto-journey|data-cta|id|href|onclick)\b")
+INTERACTIVE_TAG = {"a", "button"}
+
+
+def drop_samples(body: str) -> str:
+    """`data-sample` 이 붙은 요소를 내용째 걷어 낸다(같은 태그명 중첩을 세어 짝을 찾는다)."""
+    while True:
+        m = SAMPLE_OPEN.search(body)
+        if not m:
+            return body
+        tag, depth, i = m.group(1), 1, m.end()
+        step = re.compile(r"</?%s\b[^>]*>" % re.escape(tag))
+        while depth and i < len(body):
+            n = step.search(body, i)
+            if not n:
+                i = len(body)
+                break
+            depth += -1 if n.group(0).startswith("</") else 1
+            i = n.end()
+        body = body[: m.start()] + body[i:]
+
+
+def sample_misuse() -> list[str]:
+    """규약 위반을 사람 리뷰가 아니라 게이트가 잡는다."""
+    bad = []
+    for path in sorted(MOCKUP_DIR.glob("*.html")):
+        src = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.S)
+        for m in SAMPLE_OPEN.finditer(src):
+            tag, attrs = m.group(1).lower(), m.group(2)
+            hit = INTERACTIVE_ATTR.search(attrs)
+            if tag in INTERACTIVE_TAG:
+                bad.append(f"docs/mockups/{path.name}: <{tag}> 는 상호작용 요소다 — "
+                           f"제품 카피이므로 `data-sample` 을 붙일 수 없다")
+            elif hit:
+                bad.append(f"docs/mockups/{path.name}: `data-sample` 요소가 상호작용 속성 "
+                           f"`{hit.group(1)}` 을 갖는다 — 예시값이 아니라 제품 카피다")
+    return bad
+
+
 def mockup_steps(path: Path) -> dict[str, list[str]]:
     """`data-step` 섹션별 가시 텍스트(+ placeholder)."""
     src = path.read_text(encoding="utf-8")
@@ -119,6 +169,7 @@ def mockup_steps(path: Path) -> dict[str, list[str]]:
         body = re.sub(r"<script.*?</script>", "", part, flags=re.S)
         body = re.sub(r"<style.*?</style>", "", body, flags=re.S)
         body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
+        body = drop_samples(body)
         placeholders = re.findall(r'placeholder="([^"]*)"', body)
         text = re.sub(r"<[^>]+>", "\x00", body).split("\x00")
         chunks = [norm(html.unescape(t)) for t in text + placeholders]
@@ -437,6 +488,14 @@ def main() -> int:
             fail("M5", f"{label} 가 {actual}건으로 줄었다 — 상한을 {actual}로 낮출 것(래칫)")
         else:
             print(f"M5 래칫 — {label} {actual}/{cap}")
+
+    # ── M6 예시값 표기 규약 ─────────────────────────────────────────────
+    marked = sum(len(SAMPLE_OPEN.findall(re.sub(r"<!--.*?-->", "", p.read_text(encoding="utf-8"),
+                                                flags=re.S)))
+                 for p in sorted(MOCKUP_DIR.glob("*.html")))
+    for message in sample_misuse():
+        fail("M6", message)
+    print(f"M6 예시값 표기 — `data-sample` {marked}건, 오용 0건")
 
     report()
     return 1 if failures else 0
