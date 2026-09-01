@@ -103,18 +103,17 @@ export function CrossCuttingConcerns({ id, onBack }: Props) {
     label: AXIS_LABELS[axis],
     items: byAxis.get(axis) ?? [],
   }));
-  const total = sections.reduce((n, s) => n + s.items.length, 0);
 
   return (
     <main className="screen">
       <Appbar onBack={onBack} sub={`run ${id.slice(0, 8)}`} />
 
       <h1 className="h-display" style={{ marginTop: 24 }}>
-        Cross-cutting concerns
+        내 코드가 서 있는 바닥
       </h1>
       <p className="h-display-sub" data-testid="concerns-lede">
-        LLM이 코드 전체에서 추출한 {sections.length}개 횡단 관심사 카테고리 · 항목 {total}개. 각
-        항목은 근거 파일과 함께 보존돼요.
+        항목마다 근거가 된 코드 위치를 함께 적었어요. 같은 커밋을 다시 분석하면 같은 결과가
+        나오고, 달라지면 무엇이 달라졌는지 항목별로 알려 드립니다.
       </p>
 
       <div className="row" style={{ marginTop: 14 }} data-testid="reproducibility">
@@ -142,13 +141,23 @@ export function CrossCuttingConcerns({ id, onBack }: Props) {
                     <span className="label" data-testid="concern-name">
                       {item.name}
                     </span>
-                    <span className="meta" data-testid="concern-evidence">
-                      {item.evidence.join(' · ')}
-                    </span>
+                    {item.evidence.length === 0 ? (
+                      <span className="tag warn" data-testid="concern-no-evidence">
+                        <span className="dot" />
+                        근거 없음
+                      </span>
+                    ) : (
+                      <span className="meta" data-testid="concern-evidence">
+                        {item.evidence.join(' · ')}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
             )}
+            <p className="legend" style={{ marginTop: 12 }}>
+              <span className="mk">↳</span> 근거를 찾지 못한 항목은 지어내지 않고 그대로 표시합니다
+            </p>
           </div>
         ))}
       </div>
@@ -159,11 +168,11 @@ export function CrossCuttingConcerns({ id, onBack }: Props) {
 function Appbar({ onBack, sub }: { onBack: () => void; sub: string }) {
   return (
     <div className="appbar">
-      <button className="icon-btn" type="button" onClick={onBack} aria-label="뒤로">
+      <button className="icon-btn" type="button" onClick={onBack} aria-label="back">
         ‹
       </button>
       <div>
-        <div className="appbar-title">Cross-cutting</div>
+        <div className="appbar-title">횡단 관심사</div>
         <div className="appbar-sub">{sub}</div>
       </div>
     </div>
