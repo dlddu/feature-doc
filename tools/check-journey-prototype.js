@@ -170,6 +170,21 @@ const ARM = {
     },
     'STP-decide-diff': () => {},
   },
+  'JRN-follow-code-change': {
+    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
+    'STP-notice-change': () => {},
+    'STP-scan-diff': (win, doc) => {
+      // 한 곳도 열어 보지 않으면 다음으로 넘어갈 수 없다(보지 않고 넘기면 확인이 아니다).
+      click(win, doc.querySelector('[data-diff-open="f1"]'));
+    },
+    'STP-resolve-conflict': (win, doc) => {
+      check(win, doc.getElementById('dec-auto'), true);
+    },
+    'STP-recheck-candidates': (win, doc) => {
+      // 후보 3건을 전부 결정해야 다음으로 넘어간다(미결정 0건이 완료 기준).
+      for (const b of [...doc.querySelectorAll('.cand [data-decide="approve"]')]) click(win, b);
+    },
+  },
 };
 
 /* ── 페이지별 입력 프로브 등록 (P3) ──────────────────────────────
@@ -287,6 +302,53 @@ const INPUT_PROBE = {
     ok(doc.getElementById('feat-title').textContent !== title0, 'P3',
        `기능을 바꿨는데 화면이 그대로다 (선택이 죽어 있다)`);
   },
+  'JRN-follow-code-change': (win, doc, at, ok) => {
+    // ① 거부 사유(textarea) — 비어 있으면 거부를 확정할 수 없다(F7 재발 방지).
+    at('#STP-recheck-candidates');
+    const first = doc.querySelector('.cand');
+    click(win, first.querySelector('[data-decide="reject"]'));
+    const why = doc.getElementById('in-recheck-why');
+    ok(why && why.tagName === 'TEXTAREA', 'P3', `거부 사유가 실제 <textarea> 가 아니다`);
+    if (!why) return;
+    ok(doc.getElementById('btn-reject-confirm').disabled === true, 'P3',
+       `사유가 비었는데 거부 확정 버튼이 살아 있다 (입력 검증이 죽어 있다)`);
+    ok(visible(doc.getElementById('reject-error')), 'P3',
+       `빈 사유에 대한 검증 표시가 나타나지 않는다`);
+    type(win, why, '관리자 전용이라 사용자 기능이 아님');
+    ok(why.value === '관리자 전용이라 사용자 기능이 아님', 'P3',
+       `입력한 값이 필드에 반영되지 않는다`);
+    ok(doc.getElementById('btn-reject-confirm').disabled === false, 'P3',
+       `사유를 적어도 거부 확정 버튼이 살아나지 않는다`);
+    click(win, doc.getElementById('btn-reject-confirm'));
+
+    // ② 후보 필터(select) — 선택이 실제로 목록을 줄인다.
+    const shown = () => [...doc.querySelectorAll('.cand')].filter((c) => c.style.display !== 'none').length;
+    const filt = doc.getElementById('in-cand-filter');
+    ok(filt && filt.tagName === 'SELECT', 'P3', `후보 필터가 실제 <select> 가 아니다`);
+    const before = shown();
+    change(win, filt, 'undecided');
+    ok(shown() < before, 'P3', `필터를 바꿨는데 목록이 그대로다 (선택이 죽어 있다)`);
+
+    // ③ 재분석 회차(select) — 고른 회차의 수치가 실제로 화면에 반영된다.
+    //    두 회차의 변경 기능 수가 3 과 1 로 겹치지 않아 단언이 공허해지지 않는다.
+    at('#STP-notice-change');
+    const runSel = doc.getElementById('in-run');
+    ok(runSel && runSel.tagName === 'SELECT', 'P3', `재분석 회차가 실제 <select> 가 아니다`);
+    const changed0 = doc.getElementById('changed-count').textContent;
+    change(win, runSel, 'r1');
+    ok(doc.getElementById('changed-count').textContent !== changed0, 'P3',
+       `회차를 바꿨는데 화면 수치가 그대로다 (선택이 죽어 있다)`);
+
+    // ④ 보존 토글(checkbox) — 켜야 보존할 문단이 드러난다.
+    at('#STP-resolve-conflict');
+    const keep = doc.getElementById('in-keep-mine');
+    ok(keep && keep.type === 'checkbox', 'P3', `문단 보존이 실제 체크박스가 아니다`);
+    ok(doc.getElementById('keep-preview').style.display === 'none', 'P3',
+       `보존할 문단이 기본으로 드러나 있다 (켜기 전에는 보이지 않아야 한다)`);
+    check(win, keep, true);
+    ok(doc.getElementById('keep-preview').style.display === 'block', 'P3',
+       `보존을 켰는데 대상 문단이 나타나지 않는다 (토글이 죽어 있다)`);
+  },
 };
 
 /* ── 페이지별 두 번째 갈래의 끝 등록 (P5) ────────────────────────
@@ -310,6 +372,13 @@ const SECOND_END = {
     const later = doc.getElementById('btn-leave-review');
     if (!ok(later, 'P5', `대안 갈래(일부만 검수하고 종료)의 행동이 없다`)) return;
     click(win, later);
+  } },
+  // 여정 문서 §4 의 「충돌 없이 자동 갱신만 발생 → STP-scan-diff 후 종료」 — 분기 목록은
+  // 도착 단계까지만 보므로, 그 뒤의 "확인만으로 마친다"는 화면 안의 행동과 갈래의 끝으로 본다.
+  'JRN-follow-code-change': { name: '확인만으로 종료', at: '#STP-scan-diff', run: (win, doc, ok) => {
+    const finish = doc.getElementById('btn-finish-diff');
+    if (!ok(finish, 'P5', `대안 갈래(확인만으로 종료)의 행동이 없다`)) return;
+    click(win, finish);
   } },
 };
 
@@ -490,6 +559,63 @@ const PRODUCT_PATHS = {
         const flagged = row.style.display !== 'none' && /근거 없음/.test(row.textContent);
         const noFabrication = row.querySelector('.esrc') === null;
         return { landed: active(doc), evidence: flagged && noFabrication };
+      } },
+  ],
+  'JRN-follow-code-change': [
+    { name: '충돌 없이 자동 갱신만 발생', run: (win, doc) => {
+        // 이번 재분석에 부딪히는 편집이 있었는지는 서버가 정한다 — 보조 레이어에서 장전한다.
+        click(win, doc.querySelector('[data-scenario="noconflict"]'));
+        const clean = visible(doc.getElementById('no-conflict-note')) &&
+                      !visible(doc.getElementById('conflict-banner'));
+        // 확인만으로 마칠 수 있는 자리가 실제로 있다.
+        const canFinish = !!doc.getElementById('btn-finish-diff');
+        return { landed: active(doc), evidence: clean && canFinish };
+      } },
+    { name: '충돌을 결정하지 않고 이탈', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-resolve-conflict');
+        click(win, doc.getElementById('btn-leave-conflict'));
+        // 어느 쪽도 덮어쓰지 않는다 — 미해소로 표시된 채 남고 결정은 저장되지 않는다.
+        const marked = visible(doc.getElementById('unresolved-note')) &&
+                       doc.getElementById('unresolved-count').textContent === '1' &&
+                       doc.getElementById('btn-to-recheck').disabled === true;
+        return { landed: active(doc), evidence: marked };
+      } },
+    { name: '병합 결과가 마음에 안 듦', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-resolve-conflict');
+        check(win, doc.getElementById('dec-merge'), true);
+        const proposed = doc.getElementById('merge-panel').style.display === 'block';
+        click(win, doc.getElementById('btn-reject-merge'));
+        // 버린 제안은 적용되지 않고, 결정은 다시 비어 있는 상태로 돌아간다.
+        const dropped = visible(doc.getElementById('merge-rejected')) &&
+                        doc.getElementById('dec-merge').checked === false &&
+                        doc.getElementById('btn-to-recheck').disabled === true;
+        return { landed: active(doc), evidence: proposed && dropped };
+      } },
+    { name: '거부했던 항목을 이번엔 채택', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-recheck-candidates');
+        const c3 = doc.querySelector('.cand[data-cand="c3"]');
+        // 거부 사유가 보존돼 있어 같은 판단을 처음부터 다시 하지 않는다.
+        const reasonKept = /거부/.test(doc.getElementById('prev-why').textContent);
+        click(win, c3.querySelector('[data-decide="approve"]'));
+        const adopted = c3.classList.contains('approved') &&
+                        visible(doc.getElementById('adopt-card'));
+        click(win, doc.getElementById('btn-to-review'));
+        return { landed: active(doc), evidence: reasonKept && adopted };
+      } },
+    { name: '재분석 중 단계 실패', run: (win, doc) => {
+        // 운영 측 실패라 사용자가 일으킬 수 없다 — 보조 레이어에서 장전한다.
+        click(win, doc.querySelector('[data-scenario="stagefail"]'));
+        const failed = visible(doc.getElementById('stage-failed'));
+        const onlyThisStage = doc.getElementById('stage-3').classList.contains('todo') &&
+                              doc.getElementById('stage-1').classList.contains('done');
+        click(win, doc.getElementById('btn-retry-stage'));   // 그 단계만 다시
+        const cleared = !visible(doc.getElementById('stage-failed')) &&
+                        doc.getElementById('stage-3').classList.contains('active') &&
+                        doc.getElementById('stage-1').classList.contains('done');
+        return { landed: active(doc), evidence: failed && onlyThisStage && cleared };
       } },
   ],
 };

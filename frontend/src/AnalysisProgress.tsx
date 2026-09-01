@@ -1,5 +1,7 @@
 // S04 · Analysis in Progress — the real, stateful screen behind
-// docs/mockups/s04-analysis-progress.html (AC1.5).
+// docs/mockups/JRN-discover-features.html#STP-leave-and-return (AC1.5). The standalone
+// s04-*.html mockup was absorbed when JRN-follow-code-change migrated (2026-09-01); the
+// journey page's step anchor is the screen's public path now.
 //
 // Every figure on this screen comes from `GET /api/analyses/{id}`: the stage rows
 // the worker reports into (AC4.5 seeded them at enqueue), and nothing else. The

@@ -518,7 +518,8 @@ button.ico { cursor: pointer; }
 /* leave room for the fixed tab bar */
 .screen.has-tabbar { padding-bottom: 90px; }
 
-/* ── step — pipeline progress (§4.5), ported from s04-analysis-progress.html ── */
+/* ── step — pipeline progress (§4.5), ported from the S04 screen (now
+   docs/mockups/JRN-discover-features.html#STP-leave-and-return) ── */
 .step {
   display: flex;
   align-items: center;

@@ -1,0 +1,1742 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JRN-follow-code-change · 코드가 바뀐 뒤 문서가 따라왔는지 확인하기 — FeatureDoc 여정 프로토타입</title>
+<meta name="description" content="FeatureDoc 여정 프로토타입 — JRN-follow-code-change. 흐름의 SSOT는 docs/user-journey/JRN-follow-code-change.md.">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   FeatureDoc — mockup base stylesheet
+   ------------------------------------------------------------
+   docs/design-system.md (v0.1) 를 그대로 CSS 로 인코딩한 파일.
+   모든 sNN-*.html 목업이 <link> 로 이 파일 하나만 공유한다.
+   토큰·컴포넌트·원칙의 단일 진실 원천은 design-system.md 이며,
+   이 파일은 그 결정을 클래스로 옮긴 것일 뿐 — 새 값을 만들지 않는다.
+   ============================================================ */
+
+:root {
+  /* surfaces — 5단계, 그림자 없이 톤 차이로만 elevation */
+  --bg-base:        #0a0a0a;
+  --bg-elevated:    #0f0f0f;
+  --bg-card:        #141414;
+  --bg-input:       #181818;
+  --bg-hover:       #1c1c1c;
+
+  /* borders — 항상 1px, 색의 강약으로만 구분 */
+  --border-subtle:  #1d1d1d;
+  --border-default: #272727;
+  --border-strong:  #333333;
+
+  /* text — 4단계 위계 */
+  --text-primary:    #ededed;
+  --text-secondary:  #9a9a9a;
+  --text-tertiary:   #6a6a6a;
+  --text-quaternary: #454545;
+
+  /* status — 채도 낮춰 거의 무채색, 작은 dot 으로만 신호 */
+  --success:  #86b89a;
+  --warning:  #c9a868;
+  --danger:   #c98080;
+  --info:     #8aa4c4;
+
+  /* accent — 화면당 1~2회, 사실상 표식용 */
+  --accent:        #c8ff5e;
+  --accent-dim:    rgba(200, 255, 94, 0.06);
+  --accent-border: rgba(200, 255, 94, 0.18);
+
+  /* fonts */
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* code surface — design-system 4.8 */
+  --bg-code: #070707;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+/* ── device frame — 393×844 (iOS), 38px radius ─────────────── */
+.frame {
+  position: relative;
+  width: 393px;
+  height: 844px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 38px;
+  overflow: hidden;
+}
+
+/* status bar */
+.statusbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px 0 30px;
+  z-index: 8;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+.statusbar .ind { display: flex; gap: 5px; align-items: center; }
+.statusbar .ind i { display: block; background: var(--text-primary); border-radius: 1px; }
+.statusbar .ind .sig  { width: 16px; height: 9px; }
+.statusbar .ind .wifi { width: 14px; height: 9px; }
+.statusbar .ind .bat  {
+  width: 21px; height: 10px; background: none;
+  border: 1px solid var(--text-primary); border-radius: 2px;
+  position: relative;
+}
+.statusbar .ind .bat::after {
+  content: ""; position: absolute;
+  top: 2px; bottom: 2px; left: 2px; right: 6px;
+  background: var(--text-primary);
+}
+
+/* home indicator */
+.home-indicator {
+  position: absolute;
+  bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 134px; height: 5px;
+  border-radius: 3px;
+  background: #3a3a3a;
+  z-index: 8;
+}
+
+/* scroll area */
+.screen {
+  position: absolute;
+  top: 54px; bottom: 0; left: 0; right: 0;
+  overflow-y: auto;
+  padding: 0 22px 44px;
+}
+.screen.has-tabbar { bottom: 66px; }
+.screen::-webkit-scrollbar { width: 0; height: 0; }
+
+/* ── app bar — 3.x layout ──────────────────────────────────── */
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 6px;
+  gap: 12px;
+}
+.appbar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.appbar-title.caps {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.appbar-sub {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* icon button — 36px appbar slot (icon container 3-tier) */
+.icon-btn {
+  flex: none;
+  width: 36px; height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1;
+  cursor: pointer;
+}
+.icon-btn svg { display: block; }
+.icon-btn.ghost { border-color: transparent; background: transparent; }
+
+/* brand mark / step counter row */
+.toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 0;
+}
+.brand {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.brand .mk { color: var(--accent); }
+.stepcount {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── headings — 2.3 hierarchy: one display per screen ──────── */
+.h-display {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.h-display-sub {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.page-h1 {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+/* section title — 11px mono caps */
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.section-title .count { color: var(--text-quaternary); }
+.section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+/* caps label — 10px mono */
+.caps {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+
+/* body text */
+.body  { font-size: 14px; line-height: 1.55; color: var(--text-primary); }
+.body.sm { font-size: 13px; color: var(--text-secondary); }
+.meta  {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.metric {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ── button — primary 1개 원칙 ─────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 9px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: #ededed;
+  color: #0a0a0a;
+}
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-tertiary);
+}
+.btn.block { width: 100%; }
+.btn-row { display: flex; gap: 8px; }
+.btn-row .btn { flex: 1; }
+
+/* ── tag — 모두 동일 회색 outline, dot 색만 변함 ───────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.tag .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex: none;
+}
+.tag.accent  .dot { background: var(--accent); }
+.tag.success .dot { background: var(--success); }
+.tag.warn    .dot { background: var(--warning); }
+.tag.danger  .dot { background: var(--danger); }
+.tag.info    .dot { background: var(--info); }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── card — 모든 카드 동일 스타일 ──────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+/* ── input field — caps mono 라벨 + value ──────────────────── */
+.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  padding: 13px 15px;
+  position: relative;
+}
+.input .lbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.input .val {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.input .val.placeholder { color: var(--text-quaternary); }
+.input .field-action {
+  position: absolute;
+  top: 12px; right: 12px;
+}
+.input-row { display: flex; gap: 8px; }
+.input-row .input { flex: 1; min-width: 0; }
+
+/* status badge inside input / card corner */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.badge .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text-tertiary); flex: none;
+}
+.badge.success .dot { background: var(--success); }
+.badge.warn    .dot { background: var(--warning); }
+.badge.danger  .dot { background: var(--danger); }
+.badge.info    .dot { background: var(--info); }
+.badge.accent  .dot { background: var(--accent); }
+
+/* ── tabs — 활성 탭만 fill + ring ──────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+}
+.tabs .t {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.tabs .t.active {
+  background: var(--bg-base);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── bottom tab bar — 4 슬롯 고정 ──────────────────────────── */
+.tabbar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 66px;
+  display: flex;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  padding-bottom: 14px;
+  z-index: 6;
+}
+.tabbar .tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+  cursor: pointer;
+}
+.tabbar .tab .gl {
+  width: 18px; height: 14px;
+  border: 1.2px solid var(--text-quaternary);
+  border-radius: 3px;
+}
+.tabbar .tab.active { color: var(--text-primary); }
+.tabbar .tab.active .gl { border-color: var(--text-primary); }
+
+/* ── step — 파이프라인 진행 ────────────────────────────────── */
+.step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.step .ic {
+  flex: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.step.done .ic {
+  background: #ededed;
+  color: #0a0a0a;
+}
+.step.active .ic {
+  border: 1.5px solid var(--text-primary);
+}
+.step.active .ic::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px dashed var(--border-strong);
+  animation: spin 3.4s linear infinite;
+}
+.step.todo .ic {
+  border: 1.5px solid var(--border-default);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.step .body-col { flex: 1; min-width: 0; }
+.step .label { font-size: 13.5px; color: var(--text-primary); }
+.step.todo .label { color: var(--text-tertiary); }
+.step .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.step .time {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+/* ── code block — syntax 거의 무채색 ───────────────────────── */
+.code {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.code .ln {
+  display: flex;
+  gap: 12px;
+  white-space: pre;
+}
+.code .ln .n {
+  color: var(--text-quaternary);
+  text-align: right;
+  min-width: 16px;
+  user-select: none;
+}
+.code .kw  { color: var(--text-primary); }
+.code .str { color: var(--text-secondary); }
+.code .com { color: var(--text-quaternary); }
+.code .add { color: var(--success); }
+.code .del { color: var(--danger); }
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  padding: 9px 14px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+}
+.code-header + .code {
+  border-radius: 0 0 12px 12px;
+  border-top: none;
+}
+
+/* ── icon container — 동일 회색 ────────────────────────────── */
+.ico {
+  flex: none;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-tertiary);
+}
+.ico-24 { width: 24px; height: 24px; border-radius: 6px; }
+.ico-28 { width: 28px; height: 28px; border-radius: 7px; }
+.ico-36 { width: 36px; height: 36px; border-radius: 10px; }
+
+/* ── small primitives ──────────────────────────────────────── */
+.divider { height: 1px; background: var(--border-subtle); border: 0; }
+.dot-sep { color: var(--text-quaternary); }
+
+/* progress bar */
+.progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-secondary);
+}
+
+/* segmented selector (provider, etc.) */
+.segment {
+  display: flex;
+  gap: 6px;
+}
+.segment .seg {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-quaternary);
+  cursor: pointer;
+}
+.segment .seg.active {
+  background: var(--bg-input);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* metric grid (bordered, divider lines) */
+.metric-grid {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.metric-grid .cell {
+  flex: 1;
+  padding: 13px 14px;
+}
+.metric-grid .cell + .cell {
+  border-left: 1px solid var(--border-default);
+}
+.metric-grid .cell .k {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.metric-grid .cell .v {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 8px;
+}
+
+/* layout helpers — spacing is the hierarchy (principle 8) */
+.stack    > * + * { margin-top: 8px; }
+.stack-10 > * + * { margin-top: 10px; }
+.stack-14 > * + * { margin-top: 14px; }
+.stack-18 > * + * { margin-top: 18px; }
+.stack-28 > * + * { margin-top: 28px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row.between { justify-content: space-between; }
+.row.top { align-items: flex-start; }
+.grow { flex: 1; min-width: 0; }
+
+/* footer legend — the one accent use per screen */
+.legend {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+}
+.legend .mk { color: var(--accent); }
+
+/* subtle page-load reveal — no glow/gradient, opacity only */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen > * { animation: rise 0.4s ease both; }
+.screen > *:nth-child(2) { animation-delay: 0.04s; }
+.screen > *:nth-child(3) { animation-delay: 0.08s; }
+.screen > *:nth-child(4) { animation-delay: 0.12s; }
+.screen > *:nth-child(5) { animation-delay: 0.16s; }
+.screen > *:nth-child(n+6) { animation-delay: 0.2s; }
+@media (prefers-reduced-motion: reduce) {
+  .screen > *, .step.active .ic::after { animation: none; }
+}
+
+
+/* ── 여정 프로토타입 크롬 ───────────────────────────────────────────
+   규칙 5(b): 문서 메타는 제품 화면과 같은 평면에 두지 않는다. 단계 번호·
+   식별자·터치포인트·연결 AC·행동 서술은 전부 아래 .doc-layer(기본 닫힘)
+   안에만 있고, 스테이지에 보이는 것은 제품 화면뿐이다. 스텝퍼도 두지 않는다 —
+   전진은 화면 안의 행동으로만 한다(규칙 5c).                                */
+.stage {
+  display: flex;
+  justify-content: center;
+  padding: 28px 16px 96px;
+}
+.stp { display: none; }
+.stp.on { display: block; }
+
+/* 실제 폼 요소 (규칙 5d) — .input 의 시각 언어를 그대로 쓰되 안쪽이 진짜
+   <input>/<select> 다. "입력처럼 보이는 비대화형 요소"를 쓰지 않는다.       */
+.field {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  padding: 11px 15px 12px;
+  position: relative;
+}
+.field > label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.field input[type="text"],
+.field input[type="password"],
+.field select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field input::placeholder { color: var(--text-quaternary); }
+.field select { cursor: pointer; }
+.field select option { background: var(--bg-card); color: var(--text-primary); }
+.field:focus-within { border-color: var(--border-strong); }
+.field.bad { border-color: var(--danger); }
+.field .suffix {
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 13px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.choice input { margin: 2px 0 0; accent-color: var(--accent); cursor: pointer; }
+.choice .ct { font-size: 12.5px; color: var(--text-primary); }
+.choice .cs { display: block; margin-top: 3px; font-size: 11px; color: var(--text-tertiary); }
+.choice:has(input:checked) { border-color: var(--accent-border); background: var(--accent-dim); }
+
+.notice {
+  display: none;
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-card);
+}
+.notice.on { display: block; }
+.notice.err { border-color: rgba(201, 128, 128, 0.4); color: var(--danger); }
+.notice.warn { border-color: rgba(201, 168, 104, 0.4); color: var(--warning); }
+.notice.ok { border-color: rgba(134, 184, 154, 0.4); color: var(--success); }
+.notice .btn { margin-top: 10px; height: 34px; font-size: 12px; }
+
+.btn[disabled] { opacity: 0.38; cursor: not-allowed; }
+.btn-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.repo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 13px 14px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.repo-item:hover { background: var(--bg-hover); }
+.repo-item .rn { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-primary); }
+.repo-item .rm { display: block; margin-top: 4px; font-size: 10.5px; color: var(--text-tertiary); }
+
+.end-card { text-align: center; padding: 30px 18px; }
+.end-card .em { font-size: 26px; }
+
+/* 보조 레이어 — 기본으로 접혀 있다. 연 직후 보이는 것은 제품이어야 하므로
+   <details> 는 스테이지 아래에 두고 open 속성을 달지 않는다.               */
+.doc-layer {
+  max-width: 393px;
+  margin: 0 auto 40px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--bg-card);
+}
+.doc-layer > summary {
+  cursor: pointer;
+  padding: 13px 16px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  list-style: none;
+}
+.doc-layer > summary::-webkit-details-marker { display: none; }
+.doc-layer > summary::after { content: " ▾"; }
+.doc-layer[open] > summary::after { content: " ▴"; }
+.doc-body { padding: 0 16px 18px; border-top: 1px solid var(--border-subtle); }
+.doc-body h3 {
+  margin: 16px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-quaternary);
+  font-weight: 500;
+}
+.doc-body ol, .doc-body ul { margin: 0; padding: 0; list-style: none; }
+.doc-body li + li { margin-top: 7px; }
+.doc-body .sid { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.doc-body .stt { font-size: 12px; color: var(--text-primary); }
+.doc-body .smeta { display: block; margin-top: 3px; font-size: 10.5px; color: var(--text-quaternary); }
+.doc-body .sit { font-size: 11.5px; color: var(--text-secondary); }
+.doc-body .branches li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.doc-body .branches button {
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+.doc-body .branches button:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.doc-body a { color: var(--text-secondary); font-size: 11.5px; }
+.doc-note { margin: 14px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-quaternary); }
+
+
+/* ── 이 여정에서만 쓰는 요소 ───────────────────────────────────
+   디자인 시스템 토큰(색·radius·타이포)은 위 공용 CSS 를 그대로 쓰고,
+   변경 기능 줄·diff 조각·충돌 비교·후보 카드만 여기서 조합한다.       */
+.dfeat { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 13px 14px; }
+.dfeat + .dfeat { margin-top: 10px; }
+.dfeat.conflict { border-color: rgba(201, 168, 104, 0.45); }
+.dfeat .dhead { display: flex; align-items: baseline; gap: 8px; }
+.dfeat .dname { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text-primary); }
+.dfeat .dwhere { display: block; margin-top: 5px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); }
+.dfeat .dbody { display: none; margin-top: 11px; }
+.dfeat.open .dbody { display: block; }
+.dline { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); }
+.dline:last-child { border-bottom: 0; }
+.dline .dtext { flex: 1; min-width: 0; font-size: 12px; line-height: 1.55; color: var(--text-secondary); }
+.dline .dmark { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; }
+.dline.added .dmark { color: var(--success); }
+.dline.removed .dmark { color: var(--danger); }
+
+.side { background: var(--bg-input); border: 1px solid var(--border-default); border-radius: 12px; padding: 11px 12px; }
+.side + .side { margin-top: 10px; }
+.side .sname { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-quaternary); }
+.side .stext { display: block; margin-top: 7px; font-size: 12.5px; line-height: 1.6; color: var(--text-primary); }
+.side.mine { border-color: var(--accent-border); background: var(--accent-dim); }
+
+.cand { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 13px 14px; }
+.cand + .cand { margin-top: 10px; }
+.cand.approved { border-color: rgba(134, 184, 154, 0.45); }
+.cand.rejected { border-color: rgba(201, 128, 128, 0.4); opacity: 0.72; }
+.cand .cname { font-size: 13.5px; color: var(--text-primary); }
+.cand .cwhere { display: block; margin-top: 5px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); }
+.cand .cwhy { display: block; margin-top: 6px; font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
+.cand .cbtns { display: flex; gap: 8px; margin-top: 11px; }
+.cand .cbtns .btn { flex: 1; height: 34px; font-size: 12px; }
+.cand .cstate { display: none; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); }
+.cand.approved .cstate, .cand.rejected .cstate { display: block; }
+.cand .prev { margin-top: 9px; border: 1px solid rgba(201, 168, 104, 0.4); border-radius: 8px; padding: 8px 10px; font-size: 11px; line-height: 1.5; color: var(--warning); }
+
+.field textarea { display: block; width: 100%; margin-top: 6px; padding: 0; background: transparent; border: 0; outline: none; resize: none; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; color: var(--text-primary); }
+.field textarea::placeholder { color: var(--text-quaternary); }
+.dline .dtext code { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+</style>
+</head>
+<body data-journey="JRN-follow-code-change">
+<div class="stage">
+
+<!-- ══ STP-notice-change ════════════════════════════════════════════ -->
+<section id="STP-notice-change" data-step="STP-notice-change" data-screens="S04" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>09:12</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <header class="appbar">
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+        <span class="appbar-title">dlddu/payments-api</span>
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+      </header>
+
+      <div id="notif-card" class="card row top" style="margin-top:16px;gap:12px">
+        <span class="ico ico-28">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M3 5.6a4 4 0 1 1 8 0V9l1.2 1.6H1.8L3 9V5.6Z" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M5.6 12.1a1.5 1.5 0 0 0 2.8 0" stroke="currentColor" stroke-width="1.1"/>
+          </svg>
+        </span>
+        <p class="body sm grow" style="color:var(--text-secondary)"><strong id="notice-headline">3개 기능의 표현이 갱신됐어요</strong><br>부딪히는 편집이 <span id="conflict-count">1</span>건 있습니다. 바뀐 것만 모아 두었어요.</p>
+      </div>
+
+      <div class="field" style="margin-top:16px">
+        <label for="in-run">재분석</label>
+        <select id="in-run">
+          <option value="r2">오늘 09:12 · main 3 commits</option>
+          <option value="r1">어제 18:40 · main 1 commit</option>
+        </select>
+      </div>
+
+      <div class="metric-grid" style="margin-top:16px">
+        <div class="cell">
+          <div class="k">Changed</div>
+          <div class="v" id="changed-count">3</div>
+        </div>
+        <div class="cell">
+          <div class="k">Conflicts</div>
+          <div class="v" id="conflict-metric">1</div>
+        </div>
+      </div>
+
+      <div class="progress" style="margin-top:12px"><i id="prog-bar" style="width:100%"></i></div>
+
+      <div class="stack" style="margin-top:22px">
+        <span class="caps">Re-analysis</span>
+        <div class="step done" id="stage-1">
+          <span class="ic">✓</span>
+          <span class="body-col"><span class="label">바뀐 코드 모으기</span><span class="sub">3 commits · 18 files</span></span>
+          <span class="time">0m 21s</span>
+        </div>
+        <div class="step done" id="stage-2">
+          <span class="ic">✓</span>
+          <span class="body-col"><span class="label">영향받은 기능 추리기</span><span class="sub" id="stage-2-sub">3 features</span></span>
+          <span class="time">1m 12s</span>
+        </div>
+        <div class="step done" id="stage-3">
+          <span class="ic">✓</span>
+          <span class="body-col"><span class="label" id="stage-3-label">시나리오 다시 쓰기</span><span class="sub" id="stage-3-sub">7 scenarios</span></span>
+          <span class="time" id="stage-3-time">2m 40s</span>
+        </div>
+        <div class="step done" id="stage-4">
+          <span class="ic">✓</span>
+          <span class="body-col"><span class="label">내 편집과 부딪히는지 보기</span><span class="sub" id="stage-4-sub">1 conflict</span></span>
+          <span class="time">0m 09s</span>
+        </div>
+      </div>
+
+      <div id="stage-failed" class="notice err" style="margin-top:16px">
+        <strong>시나리오 다시 쓰기</strong> 단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.
+        <button class="btn btn-secondary" id="btn-retry-stage">이 단계만 다시 시도</button>
+      </div>
+
+      <div class="stack" style="margin-top:24px">
+        <button class="btn btn-primary block" data-cta="advance" data-goto="STP-scan-diff" id="btn-see-diff">무엇이 달라졌는지 보기</button>
+      </div>
+
+      <p class="legend" style="margin-top:22px"><span class="mk">↳</span> 바뀌지 않은 기능은 손대지 않고 표시도 하지 않아요</p>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- ══ STP-scan-diff ════════════════════════════════════════════════ -->
+<section id="STP-scan-diff" data-step="STP-scan-diff" data-screens="S07 S08 S09" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>09:14</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <header class="appbar">
+        <button class="icon-btn" data-goto="STP-notice-change" aria-label="back">‹</button>
+        <span class="appbar-title">달라진 것</span>
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+      </header>
+
+      <div class="row between" style="margin-top:16px;gap:10px">
+        <div class="field" style="flex:1;min-width:0">
+          <label for="in-diff-scope">Show</label>
+          <select id="in-diff-scope">
+            <option value="all">시나리오 + 의존성</option>
+            <option value="scenario">시나리오만</option>
+            <option value="dep">의존성만</option>
+          </select>
+        </div>
+        <div style="text-align:right">
+          <div class="metric" id="dline-count">0</div>
+          <div class="caps" style="margin-top:6px">변경 줄</div>
+        </div>
+      </div>
+
+      <div id="conflict-banner" class="notice warn" style="margin-top:14px">
+        내가 손봤던 문장과 자동 결과가 부딪히는 기능이 <strong id="banner-count">1</strong>건 있어요. 덮어쓰지 않고 그대로 두었습니다.
+      </div>
+
+      <div id="no-conflict-note" class="notice ok" style="margin-top:14px">
+        이번에는 부딪히는 편집이 없었어요. 달라진 곳만 확인하면 여기서 마쳐도 됩니다.
+      </div>
+
+      <div id="changed-list" style="margin-top:16px">
+        <div class="dfeat conflict" data-feat="f1">
+          <div class="dhead">
+            <span class="dname">재고 동기화</span>
+            <span class="tag warn"><span class="dot"></span>확인 필요</span>
+          </div>
+          <span class="dwhere">src/inventory/sync.ts:88 · 3 scenarios</span>
+          <div class="dbody">
+            <div class="dline" data-kind="scenario">
+              <span class="dmark">+</span>
+              <span class="dtext">품절 임박 임계값을 넘으면 동기화 주기를 10분에서 2분으로 줄인다</span>
+            </div>
+            <div class="dline" data-kind="scenario">
+              <span class="dmark">−</span>
+              <span class="dtext">동기화 주기는 항상 10분 간격이다</span>
+            </div>
+            <div class="dline" data-kind="dep">
+              <span class="dmark">+</span>
+              <span class="dtext">의존성 추가 — <code>redis/stream</code></span>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:11px">
+            <button class="btn btn-ghost" data-diff-open="f1">달라진 곳 보기</button>
+          </div>
+        </div>
+        <div class="dfeat" data-feat="f2">
+          <div class="dhead">
+            <span class="dname">결제 수단 등록</span>
+            <span class="tag info"><span class="dot"></span>갱신됨</span>
+          </div>
+          <span class="dwhere">src/billing/card.ts:41 · 2 scenarios</span>
+          <div class="dbody">
+            <div class="dline" data-kind="scenario">
+              <span class="dmark">+</span>
+              <span class="dtext">만료된 카드를 저장하려 하면 저장하지 않고 만료 사실을 알린다</span>
+            </div>
+            <div class="dline" data-kind="dep">
+              <span class="dmark">−</span>
+              <span class="dtext">의존성 제거 — <code>legacy/card-vault</code></span>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:11px">
+            <button class="btn btn-ghost" data-diff-open="f2">달라진 곳 보기</button>
+          </div>
+        </div>
+        <div class="dfeat" data-feat="f3">
+          <div class="dhead">
+            <span class="dname">주문 내역 내려받기</span>
+            <span class="tag info"><span class="dot"></span>갱신됨</span>
+          </div>
+          <span class="dwhere">src/orders/export.ts:31 · 1 scenario</span>
+          <div class="dbody">
+            <div class="dline" data-kind="scenario">
+              <span class="dmark">+</span>
+              <span class="dtext">내려받기가 30초를 넘으면 메일로 링크를 보낸다</span>
+            </div>
+            <div class="dline" data-kind="dep">
+              <span class="dmark">+</span>
+              <span class="dtext">의존성 추가 — <code>mailer/queue</code></span>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:11px">
+            <button class="btn btn-ghost" data-diff-open="f3">달라진 곳 보기</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:22px">
+        <button class="btn btn-primary block" data-cta="advance" data-goto="STP-resolve-conflict" id="btn-to-conflict" disabled>부딪힌 곳 정리하기</button>
+        <button class="btn btn-ghost block" id="btn-finish-diff">여기까지만 보고 마치기</button>
+      </div>
+
+      <p class="legend" style="margin-top:20px"><span class="mk">↳</span> 한 곳이라도 열어 봐야 다음으로 넘어갈 수 있어요</p>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- ══ STP-resolve-conflict ═════════════════════════════════════════ -->
+<section id="STP-resolve-conflict" data-step="STP-resolve-conflict" data-screens="S08 S10" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>09:18</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <header class="appbar">
+        <button class="icon-btn" data-goto="STP-scan-diff" aria-label="back">‹</button>
+        <span class="appbar-title" id="conflict-feat">재고 동기화</span>
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+      </header>
+
+      <div class="card" style="margin-top:16px">
+        <span class="caps">부딪힌 문장</span>
+        <div class="side mine" style="margin-top:10px">
+          <span class="sname">내가 고친 것 · 2026-08-24</span>
+          <span class="stext">동기화 주기는 10분이며, 품절 임박 상품은 <strong>매장 재고까지 함께</strong> 맞춘다.</span>
+        </div>
+        <div class="side" style="margin-top:10px">
+          <span class="sname">이번 자동 결과</span>
+          <span class="stext">품절 임박 임계값을 넘으면 동기화 주기를 10분에서 <strong>2분</strong>으로 줄인다.</span>
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:18px">
+        <span class="caps">어느 쪽을 살릴까요</span>
+        <label class="choice" for="dec-auto">
+          <input type="radio" id="dec-auto" name="decision" value="auto">
+          <span><span class="ct">자동 결과로 바꾸기</span><span class="cs">이번 코드 변경을 그대로 반영합니다. 내가 고친 문장은 이력에 남습니다.</span></span>
+        </label>
+        <label class="choice" for="dec-mine">
+          <input type="radio" id="dec-mine" name="decision" value="mine">
+          <span><span class="ct">내 문장 그대로 두기</span><span class="cs">자동 결과는 버립니다. 다음 재분석에서 다시 제안될 수 있어요.</span></span>
+        </label>
+        <label class="choice" for="dec-merge">
+          <input type="radio" id="dec-merge" name="decision" value="merge">
+          <span><span class="ct">둘을 합쳐 보기</span><span class="cs">내가 보탠 내용을 살린 채 새 규칙만 얹은 문장을 제안받습니다.</span></span>
+        </label>
+      </div>
+
+      <label class="choice" for="in-keep-mine" style="margin-top:10px">
+        <input type="checkbox" id="in-keep-mine">
+        <span><span class="ct">내가 덧붙인 문단은 건드리지 않기</span><span class="cs">합칠 때 그 문단을 그대로 두고 새 규칙만 덧붙입니다.</span></span>
+      </label>
+
+      <div id="keep-preview" class="notice ok" style="margin-top:10px">
+        보존할 문단: <strong>매장 재고까지 함께 맞춘다</strong>
+      </div>
+
+      <div id="merge-panel" class="card" style="display:none;margin-top:14px">
+        <span class="caps">합친 문장 제안</span>
+        <div class="code" style="margin-top:10px">
+          <div class="ln"><span class="n">1</span><span class="del">− 동기화 주기는 10분이며, 품절 임박 상품은 매장 재고까지 함께 맞춘다.</span></div>
+          <div class="ln"><span class="n">2</span><span class="add">+ 품절 임박 임계값을 넘으면 주기를 2분으로 줄이고, 그때도 매장 재고까지 함께 맞춘다.</span></div>
+        </div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn btn-primary grow" id="btn-approve-merge">이 문장으로 확정</button>
+          <button class="btn btn-ghost" id="btn-reject-merge">마음에 안 들어요</button>
+        </div>
+      </div>
+
+      <div id="merge-rejected" class="notice warn" style="margin-top:12px">
+        합친 문장을 버렸어요. 위에서 다시 고르거나, 한 번 더 합쳐 볼 수 있습니다. 그때까지 이 충돌은 미해소로 남습니다.
+      </div>
+
+      <div id="unresolved-note" class="notice warn" style="margin-top:12px">
+        결정하지 않고 두었어요. 미해소 <strong id="unresolved-count">1</strong>건은 다음 재분석에서도 이 표시 그대로 남습니다. 어느 쪽도 자동으로 덮어쓰지 않아요.
+      </div>
+
+      <div class="stack" style="margin-top:22px">
+        <button class="btn btn-primary block" data-cta="advance" data-goto="STP-recheck-candidates" id="btn-to-recheck" disabled>결정 저장하고 후보 보기</button>
+        <button class="btn btn-ghost block" id="btn-leave-conflict">지금은 결정하지 않기</button>
+      </div>
+
+      <p class="legend" style="margin-top:20px"><span class="mk">↳</span> 결정하기 전에는 어느 쪽도 저장되지 않아요</p>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- ══ STP-recheck-candidates ═══════════════════════════════════════ -->
+<section id="STP-recheck-candidates" data-step="STP-recheck-candidates" data-screens="S07" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>09:24</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <header class="appbar">
+        <button class="icon-btn" data-goto="STP-resolve-conflict" aria-label="back">‹</button>
+        <span class="appbar-title">이번에 새로 잡힌 후보</span>
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+      </header>
+
+      <div class="row between" style="margin-top:16px;gap:10px">
+        <div class="field" style="flex:1;min-width:0">
+          <label for="in-cand-filter">Filter</label>
+          <select id="in-cand-filter">
+            <option value="all">전체</option>
+            <option value="undecided">미결정</option>
+            <option value="approved">승인</option>
+            <option value="rejected">거부</option>
+          </select>
+        </div>
+        <div style="text-align:right">
+          <div class="metric" id="undecided-count">3</div>
+          <div class="caps" style="margin-top:6px">미결정</div>
+        </div>
+      </div>
+
+      <div id="cand-list" style="margin-top:16px">
+        <div class="cand" data-cand="c1">
+          <span class="cname">웹훅 재전송</span>
+          <span class="cwhere">src/webhooks/retry.ts:22 · POST /webhooks/replay</span>
+          <span class="cwhy">이번 커밋에서 생긴 경로예요. 실패한 웹훅을 사용자가 직접 다시 보낼 수 있습니다.</span>
+          <span class="cstate">결정됨</span>
+          <div class="cbtns">
+            <button class="btn btn-secondary" data-decide="approve">승인</button>
+            <button class="btn btn-ghost" data-decide="reject">거부</button>
+          </div>
+        </div>
+        <div class="cand" data-cand="c2">
+          <span class="cname">결제 실패 알림</span>
+          <span class="cwhere">src/billing/notify.ts:57 · sendPaymentFailed</span>
+          <span class="cwhy">결제가 실패하면 메일과 앱 알림을 함께 보내는 흐름이 새로 생겼어요.</span>
+          <span class="cstate">결정됨</span>
+          <div class="cbtns">
+            <button class="btn btn-secondary" data-decide="approve">승인</button>
+            <button class="btn btn-ghost" data-decide="reject">거부</button>
+          </div>
+        </div>
+        <div class="cand" data-cand="c3">
+          <span class="cname">내부 디버그 콘솔</span>
+          <span class="cwhere">src/routes/admin.ts:9 · GET /admin/debug</span>
+          <span class="cwhy">관리자 세션에서만 열리는 라우트예요. 이번 커밋에서 응답이 바뀌며 다시 후보로 올라왔습니다.</span>
+          <div class="prev" id="prev-why">지난번에 <strong>거부</strong>한 항목이에요 — “내부 도구라 사용자 기능이 아님” (2026-08-14). 자동으로 채택하지 않았으니 이번에도 직접 정해 주세요.</div>
+          <span class="cstate">결정됨</span>
+          <div class="cbtns">
+            <button class="btn btn-secondary" data-decide="approve">승인</button>
+            <button class="btn btn-ghost" data-decide="reject">거부</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="reject-panel" class="card" style="display:none;margin-top:14px">
+        <span class="caps">거부 사유 — <span id="reject-target">—</span></span>
+        <div class="field" style="margin-top:10px">
+          <label for="in-recheck-why">Why not a feature</label>
+          <textarea id="in-recheck-why" rows="2" placeholder="예: 관리자 전용이라 사용자 기능이 아님"></textarea>
+        </div>
+        <div id="reject-error" class="notice warn" style="margin-top:10px">
+          사유를 적어야 거부를 확정할 수 있어요. 다음 재분석에서 같은 판단을 반복하지 않으려면 한 줄이라도 남겨 주세요.
+        </div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn btn-primary grow" id="btn-reject-confirm" disabled>거부 확정</button>
+          <button class="btn btn-ghost" id="btn-reject-cancel">취소</button>
+        </div>
+      </div>
+
+      <div id="adopt-card" class="card end-card" style="margin-top:14px">
+        <div class="em">↪</div>
+        <p class="h-display-sub" style="margin-top:10px">지난번에 거부했던 걸 이번엔 채택했어요. 사유를 갱신해 두었고, 이 기능의 표현은 아직 아무도 검수하지 않았습니다.</p>
+        <button class="btn btn-secondary block" id="btn-to-review" style="margin-top:16px">지금 표현 검수하러 가기</button>
+      </div>
+
+      <div class="stack" style="margin-top:22px">
+        <button class="btn btn-primary block" data-cta="advance" data-goto="END-follow-done" id="btn-finish-recheck" disabled>다 정리했어요</button>
+      </div>
+
+      <p class="legend" style="margin-top:20px"><span class="mk">↳</span> 거부한 항목은 사유와 함께 보관돼 다음에도 그대로 보여요</p>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- ══ 갈래의 끝 ════════════════════════════════════════════════════ -->
+<section id="END-follow-done" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>09:26</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <div class="card end-card" style="margin-top:170px">
+        <div class="em">✓</div>
+        <h1 class="h-display" style="margin-top:14px">문서가 코드를 따라잡았어요</h1>
+        <p class="h-display-sub" style="margin-top:8px">바뀐 기능 <span id="done-changed">3</span>개를 확인했고, 부딪힌 곳은 남김없이 정했어요. 미해소 <span id="done-unresolved">0</span>건.</p>
+        <span class="badge success" style="margin-top:16px"><span class="dot"></span>결정 이력 저장됨</span>
+      </div>
+      <div class="stack" style="margin-top:26px">
+        <button class="btn btn-secondary block" data-goto="STP-notice-change">알림 화면으로 돌아가기</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- 여정 밖 분기의 끝 — 이 갈래는 다른 여정으로 넘어간다.
+     대상은 여정 문서 §4 가 정한 값이고, 그 선언이 data-goto-journey 다. -->
+<section id="END-to-review" class="stp" data-goto-journey="JRN-review-feature#STP-read-scenarios">
+  <div class="frame">
+    <div class="statusbar">
+      <span>09:25</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <div class="card end-card" style="margin-top:150px">
+        <div class="em">↪</div>
+        <h1 class="h-display" style="margin-top:14px">이제 표현이 맞는지 볼 차례예요</h1>
+        <p class="h-display-sub" style="margin-top:8px" id="handoff-note">채택한 기능은 아직 시나리오가 검수되지 않았어요. 확정 목록에 넣어 두었으니 검수 자리에서 이어서 보면 됩니다.</p>
+        <span class="badge info" style="margin-top:16px"><span class="dot"></span>확정 목록에 편입</span>
+      </div>
+      <div class="stack" style="margin-top:26px">
+        <a class="btn btn-primary block" id="lnk-review" href="./JRN-review-feature.html#STP-read-scenarios">표현 검수 화면 열기</a>
+        <button class="btn btn-ghost block" data-goto="STP-recheck-candidates">후보 목록으로 돌아가기</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<section id="END-diff-only" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>09:16</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <div class="card end-card" style="margin-top:170px">
+        <div class="em">◐</div>
+        <h1 class="h-display" style="margin-top:14px">달라진 곳만 보고 나왔어요</h1>
+        <p class="h-display-sub" style="margin-top:8px">확인만으로 충분한 날도 있죠. 남은 <span id="diffonly-left">1</span>건은 미해소로 표시된 채 그대로 있고, 다음 재분석에서도 사라지지 않아요.</p>
+        <span class="badge warn" style="margin-top:16px"><span class="dot"></span>미해소 유지</span>
+      </div>
+      <div class="stack" style="margin-top:26px">
+        <button class="btn btn-secondary block" data-goto="STP-scan-diff">다시 들여다보기</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+</div>
+
+<!-- 보조 레이어 (규칙 5b) — 기본으로 접혀 있다. 여기 밖에는 문서 메타가 없다. -->
+<details class="doc-layer" data-meta="doc">
+  <summary>여정 정보 · 시나리오</summary>
+  <div class="doc-body">
+    <h3>단계 (SSOT: 여정 문서)</h3>
+    <ol class="steps">
+      <li>
+        <span class="sid">1 · STP-notice-change</span>
+        <span class="stt">무엇이 바뀌었는지 알기</span>
+        <span class="smeta">터치포인트: 푸시 알림 · S04 분석 진행(재분석 상태) · 연결 AC: AC2.6</span>
+      </li>
+      <li>
+        <span class="sid">2 · STP-scan-diff</span>
+        <span class="stt">어느 기능의 무엇이 달라졌는지 훑기</span>
+        <span class="smeta">터치포인트: S07 후보 목록(변경 표시) · S08 인수 시나리오(diff) · S09 종단 의존성(diff) · 연결 AC: AC2.6</span>
+      </li>
+      <li>
+        <span class="sid">3 · STP-resolve-conflict</span>
+        <span class="stt">내 편집과 자동 결과 중 무엇을 살릴지 정하기</span>
+        <span class="smeta">터치포인트: S08 인수 시나리오(충돌 배너) · S10 LLM 보조 편집(병합 diff) · 연결 AC: AC3.5</span>
+      </li>
+      <li>
+        <span class="sid">4 · STP-recheck-candidates</span>
+        <span class="stt">후보 목록의 변화 확인하기</span>
+        <span class="smeta">터치포인트: S07 feature 후보 검토(재진입) · 연결 AC: AC1.4, AC3.3</span>
+      </li>
+    </ol>
+
+    <h3>분기·예외 흐름</h3>
+    <ul class="branches">
+      <li><span class="sit">충돌 없이 자동 갱신만 발생</span><button data-goto="STP-scan-diff" data-scenario="noconflict">STP-scan-diff</button></li>
+      <li><span class="sit">충돌을 결정하지 않고 이탈</span><button data-goto="STP-resolve-conflict" data-scenario="leaveconflict">STP-resolve-conflict</button></li>
+      <li><span class="sit">병합 결과가 마음에 안 듦</span><button data-goto="STP-resolve-conflict" data-scenario="mergerejected">STP-resolve-conflict</button></li>
+      <li><span class="sit">거부했던 항목을 이번엔 채택</span><button data-goto="END-to-review" data-scenario="adoptrejected">JRN-review-feature#STP-read-scenarios</button></li>
+      <li><span class="sit">재분석 중 단계 실패</span><button data-goto="STP-notice-change" data-scenario="stagefail">STP-notice-change</button></li>
+    </ul>
+
+    <h3>원천 문서</h3>
+    <p><a href="../reader.html?doc=user-journey/JRN-follow-code-change.md">사용자 여정: 코드가 바뀐 뒤 문서가 따라왔는지 확인하기</a></p>
+    <p class="doc-note">
+      이 레이어의 내용은 전부 여정 문서에서 인용한 것입니다. 흐름의 SSOT는 여정 문서이고
+      이 페이지는 그 흐름을 써볼 수 있게 만든 프로토타입입니다. 네 번째 분기는 이어지는 단계가
+      <strong>다른 여정</strong>(기능 하나의 표현이 맞는지 검수하기)의 단계라, 이 여정의 끝으로
+      표현하고 그 여정의 페이지로 넘깁니다 — 규약은 mockups README 「여정 밖 분기」 절에 있습니다.
+      여정 문서 §4 의 첫 행 「변경 사항 없음 → 여정 미진입」과 다섯째 행 「자동 갱신 결과가 명백히
+      틀림 → 이력에서 복원」은 이어지는 단계가 이 여정 안에 없어 위 목록에 오르지 않습니다.
+      전자는 알림 자체가 오지 않는 경우이고, 후자는 아직 목업이 없는 여정(수용된 위험)으로
+      이어집니다.
+    </p>
+  </div>
+</details>
+
+<script>
+/* JRN-follow-code-change — 여정 프로토타입.
+ *
+ * 흐름의 SSOT 는 docs/user-journey/JRN-follow-code-change.md 다. 이 스크립트는 그
+ * 흐름을 실제로 눌러 볼 수 있게 만든 것이며, 단계 전진은 전부 화면 안의 행동으로
+ * 일어난다 (규칙 5c — 래퍼 네비게이션으로만 넘어가는 단계는 없다).
+ */
+(function () {
+  'use strict';
+
+  var STEPS = ['STP-notice-change', 'STP-scan-diff', 'STP-resolve-conflict',
+               'STP-recheck-candidates'];
+
+  /* 재분석 회차. 회차를 바꾸면 이 화면의 수치가 전부 그 회차의 것으로 바뀐다. */
+  var RUNS = {
+    r2: { changed: 3, conflicts: 1, headline: '3개 기능의 표현이 갱신됐어요',
+          scenarios: '7 scenarios', features: '3 features' },
+    r1: { changed: 1, conflicts: 0, headline: '1개 기능의 표현이 갱신됐어요',
+          scenarios: '2 scenarios', features: '1 feature' }
+  };
+
+  var CANDS = { c1: 'undecided', c2: 'undecided', c3: 'undecided' };
+
+  var state = {
+    run: 'r2',
+    opened: {},          // featId -> true
+    scope: 'all',
+    decision: '',        // '' | 'auto' | 'mine' | 'merge'
+    decided: false,
+    unresolved: 1,
+    keepMine: false,
+    filter: 'all',
+    rejecting: ''        // 거부 사유를 적는 중인 후보 id
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function toggle(el, on) { if (el) { el.classList.toggle('on', !!on); el.style.display = on ? 'block' : 'none'; } }
+  function run() { return RUNS[state.run]; }
+  function openedCount() { return Object.keys(state.opened).length; }
+  function undecided() {
+    return Object.keys(CANDS).filter(function (k) { return CANDS[k] === 'undecided'; }).length;
+  }
+
+  /* ── 화면 전환 ─────────────────────────────────────────────────── */
+  var navigating = false;
+
+  function show(id) {
+    var target = document.getElementById(id);
+    if (!target || !target.classList.contains('stp')) return;
+    all('.stp').forEach(function (s) { s.classList.toggle('on', s === target); });
+    document.body.setAttribute('data-active-step', target.hasAttribute('data-step') ? id : '');
+    document.body.setAttribute('data-active-section', id);
+    if (window.location.hash !== '#' + id) {
+      navigating = true;
+      window.location.hash = '#' + id;
+      navigating = false;
+    }
+  }
+
+  window.addEventListener('hashchange', function () {
+    if (navigating) return;
+    var id = window.location.hash.replace(/^#/, '');
+    if (id) show(id);
+  });
+
+  /* ── STP-notice-change ─────────────────────────────────────────── */
+  /* 'ok' | 'failed' | 'retrying' — 실패는 그 단계에만 머문다. */
+  var stageState = 'ok';
+
+  function syncNotice() {
+    var r = run();
+    var failed = stageState === 'failed';
+    var retrying = stageState === 'retrying';
+    $('notice-headline').textContent = r.headline;
+    $('changed-count').textContent = String(r.changed);
+    $('conflict-count').textContent = String(r.conflicts);
+    $('conflict-metric').textContent = String(r.conflicts);
+    $('stage-2-sub').textContent = r.features;
+    $('stage-3-sub').textContent = failed ? '실패' : (retrying ? '다시 도는 중' : r.scenarios);
+    $('stage-4-sub').textContent = r.conflicts === 1 ? '1 conflict' : r.conflicts + ' conflicts';
+    // 실패한 단계만 되돌린다 — 앞 단계의 결과는 그대로 둔다.
+    $('stage-3').className = failed ? 'step todo' : (retrying ? 'step active' : 'step done');
+    $('stage-4').className = (failed || retrying) ? 'step todo' : 'step done';
+    $('stage-3-time').textContent = (failed || retrying) ? '—' : '2m 40s';
+    $('prog-bar').style.width = failed ? '50%' : (retrying ? '60%' : '100%');
+    toggle($('stage-failed'), failed);
+  }
+
+  $('in-run').addEventListener('change', function () {
+    state.run = $('in-run').value;
+    state.unresolved = run().conflicts;
+    syncNotice();
+    syncDiff();
+  });
+
+  $('btn-retry-stage').addEventListener('click', function () {
+    // 그 단계만 다시 — 앞 단계의 결과와 다른 분석은 손대지 않는다.
+    stageState = 'retrying';
+    syncNotice();
+  });
+
+  $('btn-see-diff').addEventListener('click', function () { show('STP-scan-diff'); });
+
+  /* ── STP-scan-diff ─────────────────────────────────────────────── */
+  function syncDiff() {
+    var shown = 0;
+    all('.dfeat').forEach(function (f) {
+      f.classList.toggle('open', !!state.opened[f.getAttribute('data-feat')]);
+    });
+    all('.dline').forEach(function (line) {
+      var on = state.scope === 'all' || line.getAttribute('data-kind') === state.scope;
+      line.style.display = on ? 'flex' : 'none';
+      if (on && state.opened[line.closest('.dfeat').getAttribute('data-feat')]) shown += 1;
+    });
+    $('dline-count').textContent = String(shown);
+    var hasConflict = run().conflicts > 0;
+    toggle($('conflict-banner'), hasConflict);
+    toggle($('no-conflict-note'), !hasConflict);
+    $('banner-count').textContent = String(run().conflicts);
+    // 한 곳도 열어 보지 않으면 다음으로 넘어갈 수 없다.
+    $('btn-to-conflict').disabled = openedCount() === 0;
+  }
+
+  $('in-diff-scope').addEventListener('change', function () {
+    state.scope = $('in-diff-scope').value;
+    syncDiff();
+  });
+
+  all('[data-diff-open]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      state.opened[btn.getAttribute('data-diff-open')] = true;
+      syncDiff();
+    });
+  });
+
+  $('btn-to-conflict').addEventListener('click', function () { show('STP-resolve-conflict'); });
+
+  $('btn-finish-diff').addEventListener('click', function () {
+    $('diffonly-left').textContent = String(state.unresolved);
+    show('END-diff-only');
+  });
+
+  /* ── STP-resolve-conflict ──────────────────────────────────────── */
+  function syncConflict() {
+    toggle($('merge-panel'), state.decision === 'merge' && !state.decided);
+    toggle($('keep-preview'), state.keepMine);
+    $('unresolved-count').textContent = String(state.unresolved);
+    $('btn-to-recheck').disabled = !state.decided;
+  }
+
+  all('input[name="decision"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      if (!radio.checked) return;
+      state.decision = radio.value;
+      // 합치기는 제안을 승인해야 결정이 된다 — 나머지 둘은 고른 순간 결정이다.
+      state.decided = radio.value !== 'merge';
+      state.unresolved = state.decided ? 0 : run().conflicts;
+      toggle($('merge-rejected'), false);
+      toggle($('unresolved-note'), false);
+      syncConflict();
+    });
+  });
+
+  $('in-keep-mine').addEventListener('change', function () {
+    state.keepMine = $('in-keep-mine').checked;
+    syncConflict();
+  });
+
+  $('btn-approve-merge').addEventListener('click', function () {
+    state.decided = true;
+    state.unresolved = 0;
+    syncConflict();
+  });
+
+  $('btn-reject-merge').addEventListener('click', function () {
+    // 버린 제안은 적용되지 않는다. 결정은 아직 없는 상태로 되돌린다.
+    state.decision = '';
+    state.decided = false;
+    state.unresolved = run().conflicts;
+    all('input[name="decision"]').forEach(function (r) { r.checked = false; });
+    toggle($('merge-rejected'), true);
+    syncConflict();
+  });
+
+  $('btn-leave-conflict').addEventListener('click', function () {
+    // 결정하지 않고 나가도 어느 쪽도 덮어쓰지 않는다 — 미해소로 표시만 한다.
+    state.decided = false;
+    state.unresolved = run().conflicts;
+    toggle($('unresolved-note'), true);
+    syncConflict();
+  });
+
+  $('btn-to-recheck').addEventListener('click', function () { show('STP-recheck-candidates'); });
+
+  /* ── STP-recheck-candidates ────────────────────────────────────── */
+  function syncRecheck() {
+    var shown = 0;
+    all('.cand').forEach(function (c) {
+      var id = c.getAttribute('data-cand');
+      var st = CANDS[id];
+      c.classList.toggle('approved', st === 'approved');
+      c.classList.toggle('rejected', st === 'rejected');
+      var on = state.filter === 'all' || st === state.filter;
+      c.style.display = on ? 'block' : 'none';
+      if (on) shown += 1;
+    });
+    $('undecided-count').textContent = String(undecided());
+    $('reject-panel').style.display = state.rejecting ? 'block' : 'none';
+    toggle($('adopt-card'), CANDS.c3 === 'approved');
+    var why = $('in-recheck-why').value.trim();
+    $('btn-reject-confirm').disabled = why.length === 0;
+    toggle($('reject-error'), state.rejecting !== '' && why.length === 0);
+    $('btn-finish-recheck').disabled = undecided() > 0;
+    return shown;
+  }
+
+  $('in-cand-filter').addEventListener('change', function () {
+    state.filter = $('in-cand-filter').value;
+    syncRecheck();
+  });
+
+  all('.cand [data-decide]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.closest('.cand').getAttribute('data-cand');
+      if (btn.getAttribute('data-decide') === 'approve') {
+        CANDS[id] = 'approved';
+        state.rejecting = '';
+      } else {
+        // 사유 없이는 거부를 확정하지 않는다 — 다음 재분석에서 같은 판단을 반복하지 않으려면 필요하다.
+        state.rejecting = id;
+        $('reject-target').textContent = btn.closest('.cand').querySelector('.cname').textContent;
+      }
+      syncRecheck();
+    });
+  });
+
+  $('in-recheck-why').addEventListener('input', syncRecheck);
+
+  $('btn-reject-confirm').addEventListener('click', function () {
+    if (!state.rejecting) return;
+    CANDS[state.rejecting] = 'rejected';
+    state.rejecting = '';
+    $('in-recheck-why').value = '';
+    syncRecheck();
+  });
+
+  $('btn-reject-cancel').addEventListener('click', function () {
+    state.rejecting = '';
+    $('in-recheck-why').value = '';
+    syncRecheck();
+  });
+
+  $('btn-to-review').addEventListener('click', function () { show('END-to-review'); });
+
+  $('btn-finish-recheck').addEventListener('click', function () {
+    $('done-changed').textContent = String(run().changed);
+    $('done-unresolved').textContent = String(state.unresolved);
+    show('END-follow-done');
+  });
+
+  /* ── 보조 레이어의 시나리오 스위치 ─────────────────────────────
+     사용자가 스스로 일으킬 수 없는 상태(이번 재분석에 충돌이 없었다, 단계가
+     운영 측 이유로 실패했다)까지 프로토타입 안에서 재현하기 위한 것. 각 버튼의
+     이동 대상은 여정 문서 §4 의 「이어지는 단계」이며, 그 단계가 다른 여정의
+     것이면 이 여정의 끝(handoff)으로 간다.                                      */
+  var SCENARIOS = {
+    noconflict: function () {
+      state.run = 'r1';
+      $('in-run').value = 'r1';
+      state.unresolved = 0;
+    },
+    leaveconflict: function () {
+      state.decided = false;
+      state.unresolved = run().conflicts;
+      toggle($('unresolved-note'), true);
+    },
+    mergerejected: function () {
+      state.decision = '';
+      state.decided = false;
+      all('input[name="decision"]').forEach(function (r) { r.checked = false; });
+      toggle($('merge-rejected'), true);
+    },
+    adoptrejected: function () {
+      CANDS.c3 = 'approved';
+    },
+    stagefail: function () {
+      stageState = 'failed';
+    }
+  };
+
+  all('[data-scenario]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var fn = SCENARIOS[btn.getAttribute('data-scenario')];
+      if (fn) fn();
+      syncNotice();
+      syncDiff();
+      syncConflict();
+      syncRecheck();
+      show(btn.getAttribute('data-goto'));
+    });
+  });
+
+  /* ── 그 밖의 이동 버튼 (뒤로 가기, 끝에서 목록으로) ────────────── */
+  var WIRED = ['btn-see-diff', 'btn-to-conflict', 'btn-to-recheck', 'btn-finish-recheck',
+               'btn-to-review'];
+  all('[data-goto]').forEach(function (el) {
+    if (el.hasAttribute('data-scenario')) return;
+    if (el.id && WIRED.indexOf(el.id) !== -1) return;
+    if (el.tagName === 'A') return;                 // 여정 밖으로 나가는 실제 링크
+    el.addEventListener('click', function () { show(el.getAttribute('data-goto')); });
+  });
+
+  /* ── 진입 ──────────────────────────────────────────────────────── */
+  toggle($('stage-failed'), false);
+  toggle($('merge-rejected'), false);
+  toggle($('unresolved-note'), false);
+  toggle($('keep-preview'), false);
+  toggle($('adopt-card'), false);
+  syncNotice();
+  syncDiff();
+  syncConflict();
+  syncRecheck();
+  var initial = window.location.hash.replace(/^#/, '');
+  show(document.getElementById(initial) ? initial : STEPS[0]);
+})();
+</script>
+</body>
+</html>
