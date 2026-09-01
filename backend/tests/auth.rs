@@ -24,11 +24,19 @@ use featuredoc::{build_router, db, session, users};
 use common::temp_db_url;
 
 async fn stub_state() -> (AppState, PathBuf) {
+    stub_state_for_preview(None).await
+}
+
+/// A stub-mode state that optionally believes it is the preview for a pull
+/// request, which is what makes `login` prefix the OAuth state.
+async fn stub_state_for_preview(preview_id: Option<&str>) -> (AppState, PathBuf) {
     let (url, path) = temp_db_url();
     let pool = db::connect(&url).await.expect("connect");
     let config = Arc::new(Config {
         database_url: url,
         base_url: "http://localhost:8080".into(),
+        oauth_redirect_base_url: "http://localhost:8080".into(),
+        preview_id: preview_id.map(String::from),
         static_dir: "dist".into(),
         kek: [7u8; 32],
         mode: Mode::Stub,
@@ -132,5 +140,86 @@ async fn stub_login_redirects_to_callback_and_sets_state_cookie() {
     assert!(location.starts_with("/api/auth/callback?code=stub&state="), "got {location}");
     let set_cookie = resp.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap();
     assert!(set_cookie.contains("fd_oauth_state="), "got {set_cookie}");
+    let _ = std::fs::remove_file(&path);
+}
+
+/// A preview deployment cannot register its own callback URL with the GitHub App,
+/// so it tags the OAuth state with its pull-request number and lets the redirect
+/// proxy on the registered host route the callback back. The cookie must hold the
+/// same tagged value, or the callback's CSRF check would reject every preview
+/// login.
+#[tokio::test]
+async fn preview_login_tags_state_with_pull_request_number() {
+    let (state, path) = stub_state_for_preview(Some("42")).await;
+    let resp = build_router(state)
+        .oneshot(
+            Request::builder()
+                .uri("/api/auth/login")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let location = resp.headers().get(header::LOCATION).unwrap().to_str().unwrap();
+    let sent = location.split("&state=").nth(1).expect("state in redirect");
+    assert!(sent.starts_with("pr-42~"), "state not tagged: {location}");
+    assert_eq!(sent.len(), "pr-42~".len() + 64, "nonce is still 32 random bytes");
+
+    let set_cookie = resp.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap();
+    let stored = common::cookie_value(set_cookie, "fd_oauth_state").expect("state cookie");
+    assert_eq!(stored, sent, "cookie must hold the tagged state verbatim");
+    let _ = std::fs::remove_file(&path);
+}
+
+/// The tag is routing metadata, not a credential: a tagged state still has to
+/// match the cookie to open a session, and still fails the check when it does not.
+#[tokio::test]
+async fn preview_callback_round_trips_the_tagged_state() {
+    let (state, path) = stub_state_for_preview(Some("42")).await;
+    let router = build_router(state);
+
+    let login = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/auth/login")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let location = login.headers().get(header::LOCATION).unwrap().to_str().unwrap().to_string();
+    let set_cookie = login.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap();
+    let issued = common::cookie_value(set_cookie, "fd_oauth_state").unwrap();
+
+    let ok = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(location.as_str())
+                .header(header::COOKIE, format!("fd_oauth_state={issued}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(ok.status(), StatusCode::SEE_OTHER, "tagged state should be accepted");
+    let session = ok.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap();
+    assert!(session.contains("fd_session="), "no session opened: {session}");
+
+    // Same tag, different nonce: the prefix must not buy anything on its own.
+    let forged = format!("/api/auth/callback?code=stub&state=pr-42~{}", "0".repeat(64));
+    let rejected = router
+        .oneshot(
+            Request::builder()
+                .uri(forged.as_str())
+                .header(header::COOKIE, format!("fd_oauth_state={issued}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(rejected.status(), StatusCode::BAD_REQUEST);
     let _ = std::fs::remove_file(&path);
 }

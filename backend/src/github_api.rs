@@ -50,7 +50,12 @@ pub async fn exchange_code_for_user(
 
 async fn exchange_code(state: &AppState, code: &str) -> Result<String, AppError> {
     let url = format!("{}/login/oauth/access_token", state.config.github.web_base);
-    let redirect_uri = format!("{}/api/auth/callback", state.config.base_url);
+    // Must match the redirect_uri sent to /login/oauth/authorize exactly, so this
+    // is the registered origin rather than our own — they differ on previews.
+    let redirect_uri = format!(
+        "{}/api/auth/callback",
+        state.config.oauth_redirect_base_url
+    );
 
     let resp = state
         .http

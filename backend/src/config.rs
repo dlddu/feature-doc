@@ -39,8 +39,21 @@ pub struct GithubConfig {
 #[derive(Clone)]
 pub struct Config {
     pub database_url: String,
-    /// Public origin this service is reached at; used to build OAuth redirect URIs.
+    /// Public origin this service is reached at.
     pub base_url: String,
+    /// Origin the GitHub App's callback URL is registered at. Normally the same
+    /// as [`Self::base_url`].
+    ///
+    /// A GitHub App accepts no wildcard in its callback URL, so per-pull-request
+    /// preview hosts cannot each register their own. Previews instead point this
+    /// at the production origin and rely on a redirect proxy there to bounce the
+    /// code back — see [`Self::preview_id`].
+    pub oauth_redirect_base_url: String,
+    /// Set only on preview deployments: the pull-request number this instance
+    /// serves. `Some` means callbacks land on [`Self::oauth_redirect_base_url`]
+    /// and are bounced here, so the OAuth `state` carries a `pr-<id>~` prefix for
+    /// the proxy to route on. Digits only (see [`sanitize_preview_id`]).
+    pub preview_id: Option<String>,
     pub static_dir: String,
     /// 32-byte key-encryption-key that wraps per-record DEKs. Secret.
     pub kek: [u8; 32],
@@ -79,9 +92,23 @@ impl Config {
             web_base: trim_trailing_slash(&env_or("GITHUB_WEB_BASE", "https://github.com")),
         };
 
+        let base_url = trim_trailing_slash(&env_or("BASE_URL", "http://localhost:8080"));
+        // Unset (the normal case, including production) means "callbacks come
+        // back to me", which is exactly base_url.
+        let oauth_redirect_base_url = match env_or("OAUTH_REDIRECT_BASE_URL", "") {
+            v if v.trim().is_empty() => base_url.clone(),
+            v => trim_trailing_slash(v.trim()),
+        };
+
+        let preview_id = std::env::var("FEATUREDOC_PREVIEW_ID")
+            .ok()
+            .and_then(|v| sanitize_preview_id(&v));
+
         Ok(Arc::new(Self {
             database_url: env_or("DATABASE_URL", "sqlite://featuredoc.db?mode=rwc"),
-            base_url: trim_trailing_slash(&env_or("BASE_URL", "http://localhost:8080")),
+            base_url,
+            oauth_redirect_base_url,
+            preview_id,
             static_dir: env_or("STATIC_DIR", "dist"),
             kek,
             mode,
@@ -114,6 +141,30 @@ fn trim_trailing_slash(s: &str) -> String {
     s.trim_end_matches('/').to_string()
 }
 
+/// Accepts a preview id only if it is a short run of ASCII digits, and drops it
+/// otherwise rather than escaping it.
+///
+/// The id is interpolated into the OAuth `state`, so a `~`, `&` or `#` here would
+/// let it forge extra query parameters on the callback URL. Nothing is lost by
+/// being strict: the redirect proxy rebuilds the preview host from this id with
+/// the same `[0-9]{1,6}` shape, so a value this function would have to escape
+/// could never have routed anywhere anyway.
+fn sanitize_preview_id(raw: &str) -> Option<String> {
+    let v = raw.trim();
+    if v.is_empty() {
+        return None;
+    }
+    if v.len() <= 6 && v.bytes().all(|b| b.is_ascii_digit()) {
+        Some(v.to_string())
+    } else {
+        tracing::warn!(
+            "FEATUREDOC_PREVIEW_ID is not a 1-6 digit pull-request number; \
+             ignoring it and signing in as a non-preview deployment"
+        );
+        None
+    }
+}
+
 // Redacting Debug: secrets (KEK, App private key, client secret) render as
 // [REDACTED] so a `{:?}` of the config can never leak them (AC4.3). client_id is
 // a public identifier and is shown.
@@ -135,6 +186,8 @@ impl std::fmt::Debug for Config {
         f.debug_struct("Config")
             .field("database_url", &self.database_url)
             .field("base_url", &self.base_url)
+            .field("oauth_redirect_base_url", &self.oauth_redirect_base_url)
+            .field("preview_id", &self.preview_id)
             .field("static_dir", &self.static_dir)
             .field("kek", &"[REDACTED]")
             .field("mode", &self.mode)
