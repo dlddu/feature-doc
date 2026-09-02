@@ -113,8 +113,14 @@ struct ClaimView {
     repo_owner: String,
     repo_name: String,
     branch: String,
-    /// Stage keys the worker is expected to execute, in order. Today this is just
-    /// `fetch`; later slices widen it as their stages become implemented.
+    /// Stage keys the worker is expected to execute, in order.
+    ///
+    /// This is also where AC1.3's approval gate lives: `feature_candidates` is
+    /// **withheld** until the user has approved this analysis's discovery strategy,
+    /// so "승인된 전략만 다음 단계의 입력이 된다" is a property of the queue rather
+    /// than a rule each worker is trusted to remember. The stage is not implemented
+    /// yet — naming it here is what makes the gate testable before stage 4 lands,
+    /// and a worker only runs keys it both knows and was offered.
     executable_stages: Vec<String>,
     lease_expires_at: i64,
     /// Short-lived GitHub installation token for this job's repository. `None` in
@@ -229,15 +235,31 @@ async fn claim(
         }
     };
 
+    // AC1.3's gate. Read after the claim rather than inside it: the claim is an
+    // atomic hand-off of one row and joining a second table into that statement
+    // would put the gate inside the concurrency-critical path for no benefit.
+    let strategy_approved: Option<(i64,)> = sqlx::query_as(
+        "SELECT 1 FROM discovery_strategies WHERE analysis_id = ? AND approved_at IS NOT NULL",
+    )
+    .bind(&job.id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let mut executable_stages = vec![
+        pipeline::FETCH.to_string(),
+        pipeline::CROSS_CUTTING.to_string(),
+        pipeline::DISCOVERY_STRATEGY.to_string(),
+    ];
+    if strategy_approved.is_some() {
+        executable_stages.push(pipeline::FEATURE_CANDIDATES.to_string());
+    }
+
     Ok(Json(ClaimView {
         id: job.id,
         repo_owner: job.repo_owner,
         repo_name: job.repo_name,
         branch: job.branch,
-        executable_stages: vec![
-            pipeline::FETCH.to_string(),
-            pipeline::CROSS_CUTTING.to_string(),
-        ],
+        executable_stages,
         lease_expires_at: lease_until,
         installation_token,
         llm_provider,

@@ -591,3 +591,41 @@ button.ico { cursor: pointer; }
   font-weight: 500;
   letter-spacing: -0.02em;
 }
+
+/* discovery-strategy list — S06 (mockups/JRN-discover-features.html#STP-tune-strategy).
+   Copied from the mockup's inline CSS so the screen and the prototype render the
+   same shape; the tokens are the ones §5.2 already defines. */
+.strat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+}
+.strat + .strat {
+  margin-top: 8px;
+}
+.strat .sname {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+
+/* inline notice — the mockup shows it with `.on`; the screen renders it or not */
+.notice {
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-card);
+}
+.notice.warn {
+  border-color: rgba(201, 168, 104, 0.4);
+  color: var(--warning);
+}
