@@ -33,12 +33,39 @@ DB를 직접 손대는 것뿐입니다.
 - 목업·와이어프레임 파일명
 - 언제든 옮겨질 수 있는 모듈·함수 경로
 
-**대신 안정 식별자를 씁니다**:
+**대신 식별자를 씁니다.** 다만 "안정"의 강도가 다릅니다:
 
-- AC 번호 (`AC4.5`), 가치 번호 (`V3`)
-- 여정·단계 ID (`JRN-discover-features`, `STP-leave-and-return`)
-- 화면 ID (`S04`)
-- PR 번호, 커밋 SHA 퍼머링크
+| 등급 | 식별자 | 성질 |
+| --- | --- | --- |
+| 불변 | PR 번호, 커밋 SHA 퍼머링크 | 절대 안 변합니다 |
+| 문서 재편에도 생존 | `JRN-*`, `STP-*` | 여정 문서를 화면 축에서 행동 축으로 통째로 재작성한 `0b45376` 을 거치고도 그대로였습니다 |
+| 자리는 안정, 내용은 개정됨 | AC 번호, 화면 ID(`S04`) | 번호는 append-only 로 밀리거나 삭제된 적이 없지만, **가리키는 내용은 제자리에서 갈아끼워질 수 있습니다** |
+
+마지막 등급이 함정입니다. `AC4.1` 은 원래 "사용자 GitHub Token 등록·교체·폐기"였는데,
+인증을 PAT 에서 GitHub App 으로 바꾼 `ef2660c` 에서 "GitHub App 설치를 통한 저장소
+접근 연결·변경·해제"로 같은 번호 자리에 덮어썼습니다. 죽은 파일 경로는 링크 체커가
+잡아내지만 이런 의미 drift 는 참조가 멀쩡해 보이는 채로 어긋나서 아무도 모릅니다.
+
+그래서 **AC 번호와 화면 ID 는 단독으로 던지지 않습니다.** 그때 무엇을 뜻했는지
+한 줄로 같이 적어, AC 가 나중에 개정돼도 주석이 그 자체로 읽히게 합니다.
+
+```sql
+-- 나쁨:  AC4.1 을 만족시키기 위한 테이블.
+-- 좋음:  short-lived installation access tokens are minted on demand and never
+--        stored (AC4.1).
+```
+
+## 시점 서술을 쓰지 않습니다
+
+"지금은 / 아직 / 나중 슬라이스에" 같은 **현재 상태에 대한 주장**은 파일을 고칠 수
+없는 곳에 두면 시간이 지나 그냥 거짓말로 남습니다.
+
+`0004` 의 "Only stage 1 (`fetch`) executes today; stages 2-5 stay 'pending'" 이
+실제로 그렇게 됐습니다 — 워커는 그 뒤로 stage 2·3 까지 실행하게 됐는데 주석은
+못 고쳐서 한동안 틀린 채로 있었습니다.
+
+같은 내용도 구조로 쓰면 늙지 않습니다: "stage 2-5 는 아직 안 돈다"가 아니라
+"executor 가 없는 stage 는 'pending' 으로 남는다".
 
 **스키마의 "지금 의미"는 이 파일에 두지 않습니다.** 의미는 계속 변하는데 파일은
 못 고치기 때문입니다. SQLite에는 `COMMENT ON COLUMN`이 없으므로, 컬럼의 현재
@@ -106,7 +133,7 @@ DB를 직접 손대는 것뿐입니다.
    sqlite3 /data/featuredoc.db \
      "SELECT version, description, hex(checksum) FROM _sqlx_migrations ORDER BY version;"
    sqlite3 /data/featuredoc.db \
-     "UPDATE _sqlx_migrations SET checksum = X'<새_체크섬_hex>' WHERE version = <버전>;"
+     "UPDATE _sqlx_migrations SET checksum = X'<새_체크섬_hex>' WHERE version = <버전>;"  # 바뀐 파일마다 한 번씩
    ```
 
    적용된 적 없는 버전이라면 행이 없습니다. 그때는 UPDATE가 0행을 바꾸고

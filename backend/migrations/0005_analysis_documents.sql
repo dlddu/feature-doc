@@ -10,9 +10,9 @@
 -- against the previous analysis's row for the same target answers "did the result
 -- reproduce, or did it change" without diffing the documents in the client.
 --
--- `model`, `input_tokens`, `output_tokens` are the per-call cost accounting AC4.6
--- eventually surfaces. Recorded now so the numbers exist when the screen for them
--- lands; nothing reads them yet.
+-- `model`, `input_tokens`, `output_tokens` are the per-call cost accounting for
+-- AC4.6. The stage that produced the row writes them whether or not anything
+-- reads them back.
 CREATE TABLE analysis_documents (
     id            TEXT    PRIMARY KEY,
     analysis_id   TEXT    NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,

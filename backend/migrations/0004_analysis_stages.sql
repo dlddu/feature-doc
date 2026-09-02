@@ -20,9 +20,9 @@ ALTER TABLE analyses ADD COLUMN error            TEXT;
 CREATE INDEX idx_analyses_queue ON analyses(status, created_at);
 
 -- One row per pipeline stage, seeded at enqueue from pipeline::STAGES (the code
--- SSOT for the S04 screen). Only stage 1 (`fetch`) executes today; stages 2-5
--- stay 'pending' until the LLM pipeline lands (AC1.2~1.4). `detail` carries the
--- operator/user-facing one-liner the S04 step renders ("847 files · 2.3 MB").
+-- SSOT for the S04 screen). A stage with no executor stays 'pending'. `detail`
+-- carries the operator/user-facing one-liner the S04 step renders
+-- ("847 files · 2.3 MB").
 CREATE TABLE analysis_stages (
     id           TEXT    PRIMARY KEY,
     analysis_id  TEXT    NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
