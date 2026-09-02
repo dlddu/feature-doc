@@ -13,6 +13,7 @@ pub mod cross_cutting;
 pub mod db;
 pub mod discovery_strategy;
 pub mod error;
+pub mod feature_candidates;
 pub mod github;
 pub mod github_api;
 pub mod github_app;

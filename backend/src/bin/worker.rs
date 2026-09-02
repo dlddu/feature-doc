@@ -6,22 +6,29 @@
 //! serving; jobs simply accumulate in the queue) and scaled out (SQLite serialises
 //! the claim, so N workers take disjoint jobs) — test/04 scenarios 7 and 8.
 //!
-//! Three stages are implemented today: `fetch` (measure the repository tree),
+//! Four stages are implemented today: `fetch` (measure the repository tree),
 //! `cross_cutting` (AC1.2 — extract the repository's cross-cutting concerns with
-//! the owner's LLM key) and `discovery_strategy` (AC1.3 — propose where features
-//! can be found). Stages 4-5 stay `pending` and the job lands in
+//! the owner's LLM key), `discovery_strategy` (AC1.3 — propose where features can
+//! be found) and `feature_candidates` (AC1.4 — extract the candidates the approved
+//! strategy points at). Stage 5 stays `pending` and the job lands in
 //! `awaiting_pipeline` rather than `succeeded`, because pretending an unimplemented
 //! stage ran would be a lie the user reads as progress.
 //!
 //! Stage 3 only *proposes*. AC1.3 requires that the user review, edit and approve
 //! the strategy before it feeds the next stage, so approval is a user action on the
 //! API side and the worker is never the thing that decides a strategy is final.
+//! Approval re-queues the job, which is how stage 4 gets its turn: this worker sees
+//! a second claim of the same analysis whose `executableStages` no longer contain
+//! the stages that already succeeded. It runs what it is offered and nothing else —
+//! re-running stage 2 or 3 there would spend the owner's LLM budget again and
+//! replace the very proposal the reviewer approved.
 
 use std::time::Duration;
 
 use featuredoc::config::Mode;
 use featuredoc::cross_cutting;
 use featuredoc::discovery_strategy;
+use featuredoc::feature_candidates;
 use featuredoc::llm;
 use featuredoc::pipeline;
 use featuredoc::repo_scan;
@@ -41,6 +48,10 @@ struct Claim {
     repo_name: String,
     branch: String,
     executable_stages: Vec<String>,
+    /// Stage 4's input: the patterns the reviewer approved (AC1.3). Empty until
+    /// they have, which is also when stage 4 is not offered.
+    #[serde(default)]
+    approved_patterns: Vec<String>,
     installation_token: Option<String>,
     llm_provider: Option<String>,
     llm_api_key: Option<String>,
@@ -239,9 +250,78 @@ impl Worker {
             }
         }
 
-        // Not `succeeded`: stages 4-5 are still unimplemented (AC1.4), and stage 4
-        // additionally waits on the user approving the strategy stage 3 proposed.
+        // Stage 4 (AC1.4). Offered only when the reviewer approved a strategy *and*
+        // the stage has not already succeeded, so this arm runs on the claim that
+        // follows approval. Its inputs are this pass's path list and the approved
+        // patterns the claim carried — never an in-pass product of stages 2-3,
+        // which is what lets those stages stay untouched here.
+        if job
+            .executable_stages
+            .iter()
+            .any(|s| s == pipeline::FEATURE_CANDIDATES)
+        {
+            if let Err(reason) = self.run_feature_candidates(job, &result.paths).await {
+                self.stage(
+                    &job.id,
+                    pipeline::FEATURE_CANDIDATES,
+                    "failed",
+                    None,
+                    Some(&reason),
+                )
+                .await?;
+                self.finish(&job.id, "failed", Some(&reason)).await?;
+                return Ok(());
+            }
+        }
+
+        // Not `succeeded`: stage 5 is still unimplemented, and stage 4 waits on the
+        // user approving the strategy stage 3 proposed. The API turns this into
+        // `queued` when an approval arrived while this pass was running.
         self.finish(&job.id, "awaiting_pipeline", None).await?;
+        Ok(())
+    }
+
+    /// Stage 4 (AC1.4). Same shape as stages 2 and 3: the caller owns the reporting
+    /// so the "which stage failed" decision stays in one place.
+    async fn run_feature_candidates(&self, job: &Claim, paths: &[String]) -> Result<(), String> {
+        self.stage(&job.id, pipeline::FEATURE_CANDIDATES, "running", None, None)
+            .await
+            .map_err(|e| format!("could not report stage start: {e}"))?;
+        self.heartbeat(&job.id)
+            .await
+            .map_err(|e| format!("could not renew lease: {e}"))?;
+
+        let answer = feature_candidates::extract(
+            &self.http,
+            self.mode,
+            self.provider_for(job)?,
+            job.llm_api_key.as_deref(),
+            &job.repo_owner,
+            &job.repo_name,
+            &job.branch,
+            paths,
+            &job.approved_patterns,
+        )
+        .await?;
+
+        self.submit_document(&job.id, pipeline::FEATURE_CANDIDATES, &answer)
+            .await
+            .map_err(|e| format!("could not store the document: {e}"))?;
+        self.stage(
+            &job.id,
+            pipeline::FEATURE_CANDIDATES,
+            "succeeded",
+            Some(&feature_candidates::detail(&answer.content)),
+            None,
+        )
+        .await
+        .map_err(|e| format!("could not report stage completion: {e}"))?;
+
+        tracing::info!(
+            analysis_id = %job.id,
+            candidates = feature_candidates::candidates(&answer.content).len(),
+            "feature candidates stage complete"
+        );
         Ok(())
     }
 

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { AnalysisProgress } from './AnalysisProgress';
 import { CrossCuttingConcerns } from './CrossCuttingConcerns';
 import { DiscoveryStrategy } from './DiscoveryStrategy';
+import { FeatureCandidates } from './FeatureCandidates';
 import { ConnectRepository } from './ConnectRepository';
 import { CredentialsSetup } from './CredentialsSetup';
 import { HomeRepositories } from './HomeRepositories';
@@ -20,20 +21,22 @@ type Screen = 'credentials' | 'home' | 'connect';
 /** Which analysis screen a hash addresses, if any. */
 export type AnalysisRoute = {
   id: string;
-  view: 'progress' | 'cross-cutting' | 'discovery-strategy';
+  view: 'progress' | 'cross-cutting' | 'discovery-strategy' | 'candidates';
 };
 
 /**
  * `#/analyses/<id>` → S04, `.../cross-cutting` → S05, `.../discovery-strategy` → S06,
- * null otherwise.
+ * `.../candidates` → S07, null otherwise.
  *
- * All three are addressable for the same reason S04 is (AC1.5): a screen you cannot
+ * All four are addressable for the same reason S04 is (AC1.5): a screen you cannot
  * navigate straight to cannot demonstrate that its content is server state. For S06
- * it is also what makes AC1.3's review resumable — a reviewer who leaves mid-edit
- * comes back to the list the server has, not to a lost draft.
+ * and S07 it is also what makes the review resumable — a reviewer who leaves
+ * mid-decision comes back to the list the server has, not to a lost draft, which is
+ * the whole of the mockup's "여기까지 저장하고 나가기".
  */
 export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
-  const match = /^#\/analyses\/([^/?#]+)(?:\/(cross-cutting|discovery-strategy))?$/.exec(hash);
+  const match =
+    /^#\/analyses\/([^/?#]+)(?:\/(cross-cutting|discovery-strategy|candidates))?$/.exec(hash);
   if (!match) return null;
   return {
     id: decodeURIComponent(match[1]),
@@ -84,15 +87,34 @@ export function App() {
     setRoute({ id, view: 'discovery-strategy' });
   }
 
+  // S06 → S07. The mockup wires it exactly here: `이 전략으로 후보 뽑기` carries
+  // `data-goto="STP-sift-candidates"`, so the button that approves a strategy is
+  // also the way into the list it produces. S04 draws no entry of its own.
+  /** S06 → S07, for a run whose feature-candidates stage has extracted a list (AC1.4). */
+  function openCandidates(id: string) {
+    window.location.hash = `#/analyses/${encodeURIComponent(id)}/candidates`;
+    setRoute({ id, view: 'candidates' });
+  }
+
   // The hash wins over the state machine: a deep link must land on S04/S05 even on
   // a cold load, before the user has walked the journey in this session.
   if (route !== null) {
+    if (route.view === 'candidates') {
+      return (
+        <FeatureCandidates
+          key={`${route.id}-fc`}
+          id={route.id}
+          onBack={() => openAnalysis(route.id)}
+        />
+      );
+    }
     if (route.view === 'discovery-strategy') {
       return (
         <DiscoveryStrategy
           key={`${route.id}-ds`}
           id={route.id}
           onBack={() => openAnalysis(route.id)}
+          onOpenCandidates={() => openCandidates(route.id)}
         />
       );
     }

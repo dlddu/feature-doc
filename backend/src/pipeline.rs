@@ -4,9 +4,9 @@
 //! ("Pipeline · 3 of 5"), so the screen and the persisted rows cannot drift apart.
 //! Every analysis is seeded with one `analysis_stages` row per entry at enqueue.
 //!
-//! [`FETCH`], [`CROSS_CUTTING`] and [`DISCOVERY_STRATEGY`] run today. Stages 4-5
-//! stay `pending` until the rest of the pipeline lands (AC1.4) — the worker never
-//! fabricates a result for work that is not implemented.
+//! [`FETCH`], [`CROSS_CUTTING`], [`DISCOVERY_STRATEGY`] and [`FEATURE_CANDIDATES`]
+//! run today. Stage 5 stays `pending` until the rest of the pipeline lands — the
+//! worker never fabricates a result for work that is not implemented.
 
 /// One step of the pipeline as the user sees it on S04.
 pub struct Stage {
@@ -27,9 +27,9 @@ pub const CROSS_CUTTING: &str = "cross_cutting";
 /// Stage 3 (AC1.3): the discovery strategy the user reviews and approves.
 pub const DISCOVERY_STRATEGY: &str = "discovery_strategy";
 
-/// Stage 4 (AC1.4): feature candidate extraction. Not implemented yet — named here
-/// because AC1.3's approval gate is expressed as "this stage is withheld from the
-/// queue until the strategy is approved", and that sentence needs the key.
+/// Stage 4 (AC1.4): feature candidate extraction. Withheld from the queue until the
+/// user approves the discovery strategy stage 3 proposed — AC1.3's gate is
+/// expressed as a property of the queue, not a rule each worker remembers.
 pub const FEATURE_CANDIDATES: &str = "feature_candidates";
 
 pub const STAGES: [Stage; 5] = [
@@ -52,7 +52,7 @@ pub mod status {
     /// Claimed by a worker and within its lease.
     pub const RUNNING: &str = "running";
     /// Every *implemented* stage finished; the remaining stages are still
-    /// `pending` because their implementation has not landed yet (AC1.4).
+    /// `pending` because their implementation has not landed yet (stage 5).
     /// Deliberately not `succeeded` — the analysis is not complete, and saying so
     /// would overstate what ran.
     pub const AWAITING_PIPELINE: &str = "awaiting_pipeline";
