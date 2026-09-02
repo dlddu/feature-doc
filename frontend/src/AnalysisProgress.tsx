@@ -9,13 +9,19 @@
 // ("앱을 종료했다 다시 열어도 같은 진행률") true by construction — a reload is just
 // another read of the same server state.
 //
-// Two mockup elements are deliberately not reproduced as drawn:
-//   · "LLM Spend $0.32 of est. $0.80 / Calls 47" — the *measured* spend needs
-//     per-call accounting, which is AC4.6 (slice 7). Showing an invented number
-//     would be worse than showing the estimate and saying the actual is pending.
-//   · "run #14" — analyses have no run counter; the sub-line carries the branch and
-//     the job's short id instead, which is what actually identifies this run.
-// Both are registered in docs/doc-tracker.md "알려진 목업↔구현 편차".
+// This screen became an *active* copy comparison on 2026-09-02 — until then it sat in
+// docs/doc-tracker.md "대조 보류" because most of what the mockup draws in the pipeline
+// rows is example data. The `data-sample` convention (docs/mockups/README.md) closed
+// that, so the step is compared in both directions now and every remaining difference
+// is a row in "알려진 목업↔구현 편차" rather than something this comment holds. The
+// larger ones, for context while reading the JSX below:
+//   · the *measured* spend the mockup shows as "Cost so far" needs per-call
+//     accounting, which is AC4.6 (slice 7) — the card below shows the pre-flight
+//     estimate and says so, because an invented number would be worse.
+//   · the stage titles are seeded by the backend (backend/src/pipeline.rs) in English
+//     while the mockup draws them in Korean; this screen only renders what it is given.
+//   · the mockup draws progress as a metric grid + linear bar; this screen kept the
+//     ring, whose second grid cell would be the not-yet-measured spend above.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAnalysis, retryStage } from './api';
@@ -44,7 +50,7 @@ function toneOf(status: Stage['status']): string {
 function subOf(stage: Stage): string {
   if (stage.status === 'failed') return stage.error ?? '실패했어요';
   if (stage.detail) return stage.detail;
-  if (stage.status === 'running') return '진행 중…';
+  if (stage.status === 'running') return '진행 중';
   if (stage.status === 'succeeded') return '완료';
   return '대기 중';
 }
@@ -196,7 +202,7 @@ export function AnalysisProgress({
                 onClick={onOpenCrossCutting}
                 data-testid="open-cross-cutting"
               >
-                횡단 관심사 문서 보기
+                추출된 횡단 관심사 보기
               </button>
             )}
             {stage.status === 'failed' && (

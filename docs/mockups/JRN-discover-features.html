@@ -929,7 +929,7 @@ body {
     <div class="screen">
       <header class="appbar">
         <button class="icon-btn ghost" aria-hidden="true"></button>
-        <span class="appbar-title">dlddu/payments-api</span>
+        <span class="appbar-title" data-sample>dlddu/payments-api</span>
         <button class="icon-btn ghost" aria-hidden="true"></button>
       </header>
 
@@ -960,18 +960,18 @@ body {
         <span class="caps">Pipeline</span>
         <div class="step done" id="stage-1">
           <span class="ic">✓</span>
-          <span class="body-col"><span class="label">저장소 내려받기</span><span class="sub">847 files · 2.3 MB</span></span>
-          <span class="time">1m 04s</span>
+          <span class="body-col"><span class="label">저장소 내려받기</span><span class="sub" data-sample>847 files · 2.3 MB</span></span>
+          <span class="time" data-sample>1m 04s</span>
         </div>
         <div class="step done" id="stage-2">
           <span class="ic">✓</span>
-          <span class="body-col"><span class="label">횡단 관심사 추출</span><span class="sub">12 items</span></span>
-          <span class="time">3m 51s</span>
+          <span class="body-col"><span class="label">횡단 관심사 추출</span><span class="sub" data-sample>12 items</span></span>
+          <span class="time" data-sample>3m 51s</span>
         </div>
         <div class="step active" id="stage-3">
           <span class="ic"></span>
           <span class="body-col"><span class="label" id="stage-3-label">탐색 전략 생성</span><span class="sub" id="stage-3-sub">진행 중</span></span>
-          <span class="time" id="stage-3-time">2m 12s</span>
+          <span class="time" data-sample>2m 12s</span>
         </div>
         <div class="step todo" id="stage-4">
           <span class="ic"></span>
@@ -1465,7 +1465,7 @@ body {
     s3.classList.toggle('active', !state.stageFailed);
     s3.classList.toggle('todo', state.stageFailed);
     $('stage-3-sub').textContent = state.stageFailed ? '실패 — 재시도 대기' : '진행 중';
-    $('stage-3-time').textContent = state.stageFailed ? '—' : '2m 12s';
+    s3.querySelector('.time').textContent = state.stageFailed ? '—' : '2m 12s';
     toggle($('stage-failed'), state.stageFailed);
 
     // 떠나 있는 동안에도 진행률·누적 비용은 그대로 보존된다(F3).
