@@ -10,7 +10,7 @@
 | 담당자 | 미지정 |
 | 최종 수정일 | 2026-08-30 |
 | 달성 가치 | V3(사용자 관점 표현) · V5(의존성 가시성) · V7(모바일 우선) |
-| 연결 문서 | PRD [02-feature-representation](../prd/02-feature-representation.md) · [04-platform](../prd/04-platform.md) / 와이어프레임 S08·S09·S10 / mockup 미연결 |
+| 연결 문서 | PRD [02-feature-representation](../prd/02-feature-representation.md) · [04-platform](../prd/04-platform.md) / 화면 S08·S09·S10 / 목업 [`JRN-understand-feature.html`](../mockups/JRN-understand-feature.html) |
 
 ## 1. 서비스 개요 (참고)
 

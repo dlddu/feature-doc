@@ -10,7 +10,7 @@
 | 담당자 | 미지정 |
 | 최종 수정일 | 2026-08-30 |
 | 달성 가치 | V1(코드 기반 발견) · V2(횡단·종단 이해) · V4(코드와 일치) · V8(안정 운영) |
-| 연결 문서 | PRD [01-analysis-pipeline](../prd/01-analysis-pipeline.md) · [03-doc-management](../prd/03-doc-management.md) / 와이어프레임 S04·S05·S06·S07 / mockup 미연결 |
+| 연결 문서 | PRD [01-analysis-pipeline](../prd/01-analysis-pipeline.md) · [03-doc-management](../prd/03-doc-management.md) / 화면 S04·S05·S06·S07 / 목업 [`JRN-discover-features.html`](../mockups/JRN-discover-features.html) |
 
 ## 1. 서비스 개요 (참고)
 
@@ -72,7 +72,7 @@ Pre (P1). P2는 이 여정에 들어오지 않는다 — 후보 승인·거부�
 ### `STP-add-missing` 빠진 기능 직접 추가하기
 
 - **사용자 행동**: 목록을 보고 "이건 왜 없지" 싶은 기능을 자연어로 직접 추가한다. LLM이 코드를 뒤져 인수 기준 초안과 의존성 후보를 제안하면 확정한다
-- **터치포인트**: S07 feature 후보 검토(추가 진입점 — 목업·와이어프레임 미표현)
+- **터치포인트**: S07 feature 후보 검토(추가 진입점 — 목업 미표현)
 - **생각·감정**: "자동으로는 못 잡았지만 이건 분명히 사용자 기능이야"
 - **페인포인트 / 이탈 위험**: 코드에서 근거를 못 찾았는데도 그럴듯한 초안을 만들어내면 V1(코드 근거)이 무너진다 → 근거를 못 찾으면 **"근거 없음"을 명시하고 강제로 만들어내지 않는다**. 이 단계의 진입점이 화면에 없으면 사용자는 기능이 없다고 생각한다
 - **연결 AC**: AC3.2

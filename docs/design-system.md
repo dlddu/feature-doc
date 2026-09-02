@@ -410,5 +410,5 @@ danger를 빨강, success를 초록, warning을 주황으로 칠하지 않음. �
 ## 7. References
 
 - **Mockups** — 이 시스템을 적용한 화면별 HTML 목업은 [`docs/mockups/`](./mockups/). 각 목업은 이 문서의 토큰·컴포넌트를 인라인 CSS로 담은 단독 파일입니다.
-- **Wireframes** — 정보 구조 검토용 SVG 와이어프레임은 [`docs/wireframes/`](./wireframes/)
+- **Journey mockups** — 각 화면이 어떤 흐름 위에 놓이는지는 [`docs/mockups/`](./mockups/)의 여정 페이지
 - **PRDs** — 각 화면이 지원하는 acceptance criteria는 [`docs/prd/`](./prd/)
