@@ -24,9 +24,9 @@ spec:
     spec:
       containers:
         - name: worker
-          image: ghcr.io/dlddu/featuredoc:latest
-          # Same image as the API — only the command differs. (The e2e overlay in
-          # deploy/e2e/ patches the pull policy, as it does for the API.)
+          # ⚙️ API와 같은 이미지, 같은 SHA — `pin` job이 두 파일을 함께 바꾸므로
+          # 둘이 어긋날 일은 없습니다. 명령만 다릅니다.
+          image: ghcr.io/dlddu/featuredoc:f36c94301e5575d1144ccf80705d6f455a9a15e0
           command: ["/usr/local/bin/featuredoc-worker"]
           env:
             # NOTE: no DATABASE_URL and no volume mount. The worker never opens

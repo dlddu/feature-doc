@@ -139,6 +139,7 @@ body {
 }
 .screen.has-tabbar { bottom: 66px; }
 .screen::-webkit-scrollbar { width: 0; height: 0; }
+.screen { overscroll-behavior: contain; }
 
 /* ── app bar — 3.x layout ──────────────────────────────────── */
 .appbar {
@@ -659,6 +660,20 @@ body {
 .screen > *:nth-child(4) { animation-delay: 0.12s; }
 .screen > *:nth-child(5) { animation-delay: 0.16s; }
 .screen > *:nth-child(n+6) { animation-delay: 0.2s; }
+/* ── 좁은 화면 (<=460px) ────────────────────────────────────────
+   실기기에서 볼 때. 프레임은 그대로 두되 393x844 고정을 풀어
+   뷰포트 안에 들어오게 한다. 이렇게 하지 않으면 393 + 좌우 패딩 32
+   = 425px 라 가로 스크롤이 생기고 프레임 좌우가 잘린다.
+   높이도 844 고정이면 프레임 안 스크롤과 페이지 스크롤이 겹친다. */
+@media (max-width: 460px) {
+  body { padding: 8px 6px; }
+
+  .frame {
+    width: min(393px, 100vw - 12px);
+    height: min(844px, 100dvh - 16px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .screen > *, .step.active .ic::after { animation: none; }
 }

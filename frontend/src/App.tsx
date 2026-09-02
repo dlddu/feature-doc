@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { AnalysisProgress } from './AnalysisProgress';
 import { CrossCuttingConcerns } from './CrossCuttingConcerns';
+import { DiscoveryStrategy } from './DiscoveryStrategy';
 import { ConnectRepository } from './ConnectRepository';
 import { CredentialsSetup } from './CredentialsSetup';
 import { HomeRepositories } from './HomeRepositories';
@@ -17,20 +18,26 @@ import { HomeRepositories } from './HomeRepositories';
 type Screen = 'credentials' | 'home' | 'connect';
 
 /** Which analysis screen a hash addresses, if any. */
-export type AnalysisRoute = { id: string; view: 'progress' | 'cross-cutting' };
+export type AnalysisRoute = {
+  id: string;
+  view: 'progress' | 'cross-cutting' | 'discovery-strategy';
+};
 
 /**
- * `#/analyses/<id>` → S04, `#/analyses/<id>/cross-cutting` → S05, null otherwise.
+ * `#/analyses/<id>` → S04, `.../cross-cutting` → S05, `.../discovery-strategy` → S06,
+ * null otherwise.
  *
- * Both are addressable for the same reason S04 is (AC1.5): a screen you cannot
- * navigate straight to cannot demonstrate that its content is server state.
+ * All three are addressable for the same reason S04 is (AC1.5): a screen you cannot
+ * navigate straight to cannot demonstrate that its content is server state. For S06
+ * it is also what makes AC1.3's review resumable — a reviewer who leaves mid-edit
+ * comes back to the list the server has, not to a lost draft.
  */
 export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
-  const match = /^#\/analyses\/([^/?#]+)(\/cross-cutting)?$/.exec(hash);
+  const match = /^#\/analyses\/([^/?#]+)(?:\/(cross-cutting|discovery-strategy))?$/.exec(hash);
   if (!match) return null;
   return {
     id: decodeURIComponent(match[1]),
-    view: match[2] ? 'cross-cutting' : 'progress',
+    view: (match[2] as AnalysisRoute['view'] | undefined) ?? 'progress',
   };
 }
 
@@ -71,9 +78,24 @@ export function App() {
     setRoute({ id, view: 'cross-cutting' });
   }
 
+  /** S04 → S06, for a run whose discovery-strategy stage has proposed one (AC1.3). */
+  function openDiscoveryStrategy(id: string) {
+    window.location.hash = `#/analyses/${encodeURIComponent(id)}/discovery-strategy`;
+    setRoute({ id, view: 'discovery-strategy' });
+  }
+
   // The hash wins over the state machine: a deep link must land on S04/S05 even on
   // a cold load, before the user has walked the journey in this session.
   if (route !== null) {
+    if (route.view === 'discovery-strategy') {
+      return (
+        <DiscoveryStrategy
+          key={`${route.id}-ds`}
+          id={route.id}
+          onBack={() => openAnalysis(route.id)}
+        />
+      );
+    }
     if (route.view === 'cross-cutting') {
       return (
         <CrossCuttingConcerns
@@ -89,6 +111,7 @@ export function App() {
         id={route.id}
         onBack={leaveAnalysis}
         onOpenCrossCutting={() => openCrossCutting(route.id)}
+        onOpenDiscoveryStrategy={() => openDiscoveryStrategy(route.id)}
       />
     );
   }

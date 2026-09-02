@@ -6,16 +6,22 @@
 //! serving; jobs simply accumulate in the queue) and scaled out (SQLite serialises
 //! the claim, so N workers take disjoint jobs) — test/04 scenarios 7 and 8.
 //!
-//! Two stages are implemented today: `fetch` (measure the repository tree) and
+//! Three stages are implemented today: `fetch` (measure the repository tree),
 //! `cross_cutting` (AC1.2 — extract the repository's cross-cutting concerns with
-//! the owner's LLM key). Stages 3-5 stay `pending` and the job lands in
+//! the owner's LLM key) and `discovery_strategy` (AC1.3 — propose where features
+//! can be found). Stages 4-5 stay `pending` and the job lands in
 //! `awaiting_pipeline` rather than `succeeded`, because pretending an unimplemented
 //! stage ran would be a lie the user reads as progress.
+//!
+//! Stage 3 only *proposes*. AC1.3 requires that the user review, edit and approve
+//! the strategy before it feeds the next stage, so approval is a user action on the
+//! API side and the worker is never the thing that decides a strategy is final.
 
 use std::time::Duration;
 
 use featuredoc::config::Mode;
 use featuredoc::cross_cutting;
+use featuredoc::discovery_strategy;
 use featuredoc::llm;
 use featuredoc::pipeline;
 use featuredoc::repo_scan;
@@ -181,36 +187,137 @@ impl Worker {
         // Stage 2 runs only if this build knows it *and* the queue offered it, so an
         // older worker against a newer API (or the reverse) degrades to stopping
         // early rather than reporting a stage it cannot run.
+        let mut cross_cutting_doc: Option<serde_json::Value> = None;
         if job
             .executable_stages
             .iter()
             .any(|s| s == pipeline::CROSS_CUTTING)
         {
-            if let Err(reason) = self.run_cross_cutting(&job, &result.paths).await {
-                // The failure is this stage's, not the job's: `fetch` keeps its
-                // measured detail, and AC1.5's per-stage retry can re-run just this
-                // one once the cause (usually a missing or rejected key) is fixed.
-                self.stage(
-                    &job.id,
-                    pipeline::CROSS_CUTTING,
-                    "failed",
-                    None,
-                    Some(&reason),
-                )
-                .await?;
-                self.finish(&job.id, "failed", Some(&reason)).await?;
-                return Ok(());
+            match self.run_cross_cutting(&job, &result.paths).await {
+                Ok(doc) => cross_cutting_doc = Some(doc),
+                Err(reason) => {
+                    // The failure is this stage's, not the job's: `fetch` keeps its
+                    // measured detail, and AC1.5's per-stage retry can re-run just
+                    // this one once the cause (usually a missing key) is fixed.
+                    self.stage(
+                        &job.id,
+                        pipeline::CROSS_CUTTING,
+                        "failed",
+                        None,
+                        Some(&reason),
+                    )
+                    .await?;
+                    self.finish(&job.id, "failed", Some(&reason)).await?;
+                    return Ok(());
+                }
             }
         }
 
-        // Not `succeeded`: stages 3-5 are still unimplemented (AC1.3~1.4).
+        // Stage 3 (AC1.3) needs stage 2's document as its input, so it runs only
+        // when stage 2 actually produced one in this pass.
+        if job
+            .executable_stages
+            .iter()
+            .any(|s| s == pipeline::DISCOVERY_STRATEGY)
+        {
+            if let Some(landscape) = cross_cutting_doc.as_ref() {
+                if let Err(reason) = self
+                    .run_discovery_strategy(&job, &result.paths, landscape)
+                    .await
+                {
+                    self.stage(
+                        &job.id,
+                        pipeline::DISCOVERY_STRATEGY,
+                        "failed",
+                        None,
+                        Some(&reason),
+                    )
+                    .await?;
+                    self.finish(&job.id, "failed", Some(&reason)).await?;
+                    return Ok(());
+                }
+            }
+        }
+
+        // Not `succeeded`: stages 4-5 are still unimplemented (AC1.4), and stage 4
+        // additionally waits on the user approving the strategy stage 3 proposed.
         self.finish(&job.id, "awaiting_pipeline", None).await?;
         Ok(())
     }
 
-    /// Stage 2 (AC1.2). Returns the reason string on failure so the caller owns the
-    /// reporting, keeping the "which stage failed" decision in one place.
-    async fn run_cross_cutting(&self, job: &Claim, paths: &[String]) -> Result<(), String> {
+    /// Stage 3 (AC1.3). Same shape as stage 2: the caller owns the reporting so the
+    /// "which stage failed" decision stays in one place.
+    async fn run_discovery_strategy(
+        &self,
+        job: &Claim,
+        paths: &[String],
+        landscape: &serde_json::Value,
+    ) -> Result<(), String> {
+        self.stage(&job.id, pipeline::DISCOVERY_STRATEGY, "running", None, None)
+            .await
+            .map_err(|e| format!("could not report stage start: {e}"))?;
+        self.heartbeat(&job.id)
+            .await
+            .map_err(|e| format!("could not renew lease: {e}"))?;
+
+        let answer = discovery_strategy::propose(
+            &self.http,
+            self.mode,
+            self.provider_for(job)?,
+            job.llm_api_key.as_deref(),
+            &job.repo_owner,
+            &job.repo_name,
+            &job.branch,
+            paths,
+            landscape,
+        )
+        .await?;
+
+        self.submit_document(&job.id, pipeline::DISCOVERY_STRATEGY, &answer)
+            .await
+            .map_err(|e| format!("could not store the document: {e}"))?;
+        self.stage(
+            &job.id,
+            pipeline::DISCOVERY_STRATEGY,
+            "succeeded",
+            Some(&discovery_strategy::detail(&answer.content)),
+            None,
+        )
+        .await
+        .map_err(|e| format!("could not report stage completion: {e}"))?;
+
+        tracing::info!(
+            analysis_id = %job.id,
+            entries = discovery_strategy::patterns(&answer.content).len(),
+            "discovery strategy stage complete"
+        );
+        Ok(())
+    }
+
+    /// Which provider this job's key belongs to. Shared by every LLM-backed stage so
+    /// they cannot disagree about it mid-job.
+    fn provider_for(&self, job: &Claim) -> Result<llm::Provider, String> {
+        match (self.mode, job.llm_provider.as_deref()) {
+            // Stub mode never reaches a provider, so an absent key is not a failure.
+            (Mode::Stub, other) => Ok(other
+                .and_then(llm::Provider::parse)
+                .unwrap_or(llm::DEFAULT_PROVIDER)),
+            (Mode::Real, Some(p)) => llm::Provider::parse(p)
+                .ok_or_else(|| format!("unsupported LLM provider registered: {p}")),
+            (Mode::Real, None) => {
+                Err("no active LLM key for this user; register one to analyze".to_string())
+            }
+        }
+    }
+
+    /// Stage 2 (AC1.2). Returns the extracted document (stage 3's input) on success
+    /// and the reason string on failure, so the caller owns the reporting and the
+    /// "which stage failed" decision stays in one place.
+    async fn run_cross_cutting(
+        &self,
+        job: &Claim,
+        paths: &[String],
+    ) -> Result<serde_json::Value, String> {
         self.stage(&job.id, pipeline::CROSS_CUTTING, "running", None, None)
             .await
             .map_err(|e| format!("could not report stage start: {e}"))?;
@@ -219,22 +326,10 @@ impl Worker {
             .await
             .map_err(|e| format!("could not renew lease: {e}"))?;
 
-        let provider = match (self.mode, job.llm_provider.as_deref()) {
-            // Stub mode never reaches a provider, so an absent key is not a failure.
-            (Mode::Stub, other) => other
-                .and_then(llm::Provider::parse)
-                .unwrap_or(llm::DEFAULT_PROVIDER),
-            (Mode::Real, Some(p)) => llm::Provider::parse(p)
-                .ok_or_else(|| format!("unsupported LLM provider registered: {p}"))?,
-            (Mode::Real, None) => {
-                return Err("no active LLM key for this user; register one to analyze".to_string())
-            }
-        };
-
         let answer = cross_cutting::extract(
             &self.http,
             self.mode,
-            provider,
+            self.provider_for(job)?,
             job.llm_api_key.as_deref(),
             &job.repo_owner,
             &job.repo_name,
@@ -261,7 +356,7 @@ impl Worker {
             model = %answer.model,
             "cross-cutting stage complete"
         );
-        Ok(())
+        Ok(answer.content)
     }
 
     async fn submit_document(

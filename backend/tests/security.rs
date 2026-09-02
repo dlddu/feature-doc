@@ -61,6 +61,8 @@ fn config_debug_redacts_secrets() {
     let config = Config {
         database_url: "sqlite://x.db".into(),
         base_url: "http://localhost:8080".into(),
+        oauth_redirect_base_url: "http://localhost:8080".into(),
+        preview_id: None,
         static_dir: "dist".into(),
         kek: [0xAB; 32],
         mode: Mode::Real,

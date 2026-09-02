@@ -62,9 +62,16 @@ type Props = {
   onBack: () => void;
   /** S04 → S05, offered once the cross-cutting stage has produced its document. */
   onOpenCrossCutting: () => void;
+  /** S04 → S06, offered once stage 3 has proposed a strategy to review (AC1.3). */
+  onOpenDiscoveryStrategy: () => void;
 };
 
-export function AnalysisProgress({ id, onBack, onOpenCrossCutting }: Props) {
+export function AnalysisProgress({
+  id,
+  onBack,
+  onOpenCrossCutting,
+  onOpenDiscoveryStrategy,
+}: Props) {
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -170,6 +177,17 @@ export function AnalysisProgress({ id, onBack, onOpenCrossCutting }: Props) {
             </div>
             {/* A stage that produced a document gets a way into it. Gated on the
                 stage having succeeded, so the link never leads to a 404. */}
+            {stage.key === 'discovery_strategy' && stage.status === 'succeeded' && (
+              <button
+                className="btn btn-secondary block"
+                type="button"
+                style={{ marginTop: 12 }}
+                onClick={onOpenDiscoveryStrategy}
+                data-testid="open-discovery-strategy"
+              >
+                탐색 전략 검토하기
+              </button>
+            )}
             {stage.key === 'cross_cutting' && stage.status === 'succeeded' && (
               <button
                 className="btn btn-secondary block"

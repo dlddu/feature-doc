@@ -262,17 +262,26 @@ pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<
     }
 }
 
-/// Verifies the signed-in user actually has access to `installation_id` before we
-/// link it. The Setup URL's installation_id is spoofable (GitHub docs), so in real
-/// mode we list the user's installations with their OAuth token and require a
-/// match. Stub mode trusts the synthetic id.
-pub async fn verify_user_owns_installation(
+/// One installation of *this* App that the signed-in user can reach, as
+/// `GET /user/installations` reports it.
+pub struct UserInstallation {
+    pub installation_id: i64,
+    pub account_login: Option<String>,
+    pub account_type: Option<String>,
+    pub repository_selection: Option<String>,
+}
+
+/// Lists the user's installations of this App, using their OAuth token.
+///
+/// The endpoint is already scoped to the App that issued the token, so there is
+/// nothing to filter by app id. Stub mode has no GitHub to ask and reports none —
+/// the stub install flow writes its row through the Setup URL instead.
+pub async fn list_user_installations(
     state: &AppState,
     user_id: &str,
-    installation_id: i64,
-) -> Result<(), AppError> {
+) -> Result<Vec<UserInstallation>, AppError> {
     if state.config.mode == Mode::Stub {
-        return Ok(());
+        return Ok(Vec::new());
     }
 
     let token = crate::github_tokens::load(&state.db, &state.config.kek, user_id)
@@ -298,8 +307,16 @@ pub async fn verify_user_owns_installation(
     }
 
     #[derive(Deserialize)]
+    struct Account {
+        login: Option<String>,
+        #[serde(rename = "type")]
+        kind: Option<String>,
+    }
+    #[derive(Deserialize)]
     struct Inst {
         id: i64,
+        account: Option<Account>,
+        repository_selection: Option<String>,
     }
     #[derive(Deserialize)]
     struct R {
@@ -310,7 +327,36 @@ pub async fn verify_user_owns_installation(
         .await
         .map_err(|_| AppError::internal("github installations: malformed response"))?;
 
-    if body.installations.iter().any(|i| i.id == installation_id) {
+    Ok(body
+        .installations
+        .into_iter()
+        .map(|i| UserInstallation {
+            installation_id: i.id,
+            account_login: i.account.as_ref().and_then(|a| a.login.clone()),
+            account_type: i.account.and_then(|a| a.kind),
+            repository_selection: i.repository_selection,
+        })
+        .collect())
+}
+
+/// Verifies the signed-in user actually has access to `installation_id` before we
+/// link it. The Setup URL's installation_id is spoofable (GitHub docs), so in real
+/// mode we list the user's installations with their OAuth token and require a
+/// match. Stub mode trusts the synthetic id.
+pub async fn verify_user_owns_installation(
+    state: &AppState,
+    user_id: &str,
+    installation_id: i64,
+) -> Result<(), AppError> {
+    if state.config.mode == Mode::Stub {
+        return Ok(());
+    }
+
+    let installations = list_user_installations(state, user_id).await?;
+    if installations
+        .iter()
+        .any(|i| i.installation_id == installation_id)
+    {
         Ok(())
     } else {
         Err(AppError::Forbidden)

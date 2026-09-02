@@ -107,11 +107,13 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
         .toBe('failed');
 
       // ── 진행 가시성: the finished stage reports what it measured ────────
-      // Two stages are implemented as of slice 4a (fetch + cross_cutting, AC1.2);
-      // stages 3-5 stay pending, so the run lands at 2 of 5.
+      // Three stages are implemented as of slice 4b-1 (fetch + cross_cutting, AC1.2 +
+      // discovery_strategy, AC1.3); stages 4-5 stay pending, so the run lands at 3 of 5.
+      // This number is a direct consequence of how much of the pipeline exists — it
+      // moves every time a slice implements one more stage (1→2 in 4a, 2→3 here).
       await page.goto(`/#/analyses/${good}`);
-      await expect(page.getByTestId('pipeline-count')).toHaveText('2 of 5');
-      await expect(page.getByTestId('progress-percent')).toHaveText('40');
+      await expect(page.getByTestId('pipeline-count')).toHaveText('3 of 5');
+      await expect(page.getByTestId('progress-percent')).toHaveText('60');
       // The stub repository is 2300 KiB ⇒ 766 files · 2.2 MB (repo_scan::stub_scan);
       // the number is the worker's measurement, not a fixture in this file.
       await expect(page.locator('[data-stage="fetch"]')).toContainText('766 files · 2.2 MB');
@@ -121,8 +123,8 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
 
       // ── 시나리오 5: 앱을 닫았다 다시 열어도 같은 진행 ───────────────────
       await page.reload();
-      await expect(page.getByTestId('pipeline-count')).toHaveText('2 of 5');
-      await expect(page.getByTestId('progress-percent')).toHaveText('40');
+      await expect(page.getByTestId('pipeline-count')).toHaveText('3 of 5');
+      await expect(page.getByTestId('progress-percent')).toHaveText('60');
       await expect(page.locator('[data-stage="fetch"]')).toContainText('766 files · 2.2 MB');
 
       // ── the user path into S04: S02 카드 → 진행 상황 ─────────────────────
@@ -132,9 +134,9 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
       await expect(page.getByTestId('ready')).toBeVisible();
       await cont.click();
       const card = page.getByTestId('repo-card').filter({ hasText: 'stub-account/payments-api' });
-      await expect(card).toContainText('step 2 of 5');
+      await expect(card).toContainText('step 3 of 5');
       await card.getByTestId('open-progress').click();
-      await expect(page.getByTestId('pipeline-count')).toHaveText('2 of 5');
+      await expect(page.getByTestId('pipeline-count')).toHaveText('3 of 5');
 
       // ── 시나리오 6: 실패한 단계와 그 사유, 그리고 그 단계만의 재시도 ────
       await page.goto(`/#/analyses/${failing}`);

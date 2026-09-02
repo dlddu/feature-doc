@@ -2,7 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Production base. Points at the image CI publishes (ghcr.io/dlddu/featuredoc)
-# with no imagePullPolicy, so the :latest tag defaults to Always.
+# at an immutable commit-SHA tag. CI's `pin` job rewrites that tag in the two
+# Deployments and commits it back to main after each build, so this directory
+# always states exactly which commit is running — no rolling tag, no :latest,
+# and no imagePullPolicy needed (IfNotPresent is correct for an immutable tag).
 #
 # Two workloads out of that one image (AC4.5): `featuredoc` serves the API and
 # owns the SQLite volume; `featuredoc-worker` drains the analysis queue over the

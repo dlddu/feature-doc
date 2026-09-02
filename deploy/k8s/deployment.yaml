@@ -19,10 +19,14 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/dlddu/featuredoc:latest
-          # imagePullPolicy intentionally omitted: with the :latest tag it
-          # defaults to Always, so every pod start pulls the newest image.
-          # (The e2e overlay in deploy/e2e/ patches this to IfNotPresent.)
+          # ⚙️ CI가 관리하는 줄입니다. main에 푸시가 들어오면 ci.yml의 `pin` job이
+          # 이미지 빌드를 마친 뒤 이 태그를 그 커밋의 SHA로 바꿔 다시 커밋합니다.
+          # 손으로 고칠 일은 롤백뿐이고, 그때는 되돌릴 커밋의 SHA를 적으면 됩니다.
+          image: ghcr.io/dlddu/featuredoc:f36c94301e5575d1144ccf80705d6f455a9a15e0
+          # imagePullPolicy intentionally omitted: the tag is an immutable commit
+          # SHA, so the default IfNotPresent is correct — a cached layer can never
+          # be stale, and a rollout only happens when the tag above changes.
+          # (The e2e overlay in deploy/e2e/ retags this to featuredoc:dev.)
           ports:
             - containerPort: 8080
               name: http

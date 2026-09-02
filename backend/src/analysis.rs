@@ -17,6 +17,10 @@
 //!  - `GET /api/analyses/{id}` — the job and its stages, which is everything S04
 //!    draws. Nothing about the run lives in the client, so closing the app and
 //!    coming back shows the same progress (test/01 시나리오 5).
+//!  - the discovery-strategy review routes (AC1.3) — read the strategy stage 3
+//!    proposed, edit the list, and approve it. Approval is what opens the next
+//!    pipeline stage in the queue, so "승인된 전략만 다음 단계의 입력이 된다" is
+//!    enforced in one place rather than trusted to each caller.
 //!  - `POST /api/analyses/{id}/stages/{key}/retry` — re-run one *failed* stage and
 //!    only that one (시나리오 6).
 //!
@@ -32,7 +36,7 @@
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +56,15 @@ pub fn routes() -> Router<AppState> {
         .route("/api/analyses/{id}", get(detail))
         .route("/api/analyses/{id}/stages/{key}/retry", post(retry_stage))
         .route("/api/analyses/{id}/documents/{kind}", get(document))
+        .route("/api/analyses/{id}/discovery-strategy", get(strategy))
+        .route(
+            "/api/analyses/{id}/discovery-strategy/entries",
+            put(update_strategy),
+        )
+        .route(
+            "/api/analyses/{id}/discovery-strategy/approve",
+            post(approve_strategy),
+        )
 }
 
 // ── views / rows ──────────────────────────────────────────────────────────────
@@ -645,4 +658,292 @@ impl Estimate {
             duration_min,
         }
     }
+}
+
+// ── discovery strategy review · edit · approve (AC1.3) ────────────────────────
+//
+// Stage 3 proposes; this is where a person decides. The proposal itself stays in
+// `analysis_documents` untouched (so re-running the stage and reproducibility keep
+// working); what the user edits lives in `discovery_strategies` (migration 0006)
+// and is what AC1.3 calls "승인된 전략".
+
+/// How long the reviewable list may get once the user starts adding to it. Twice
+/// the model's cap: the person adding non-standard entry points knows their own
+/// codebase, but a list this screen cannot show is not reviewable either.
+const MAX_STRATEGY_ENTRIES: usize = 24;
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct StrategyEntry {
+    pattern: String,
+    /// `generated` — proposed by stage 3. `user` — added by the reviewer, and the
+    /// only kind carried into the next analysis of the same target.
+    source: String,
+}
+
+const SOURCE_GENERATED: &str = "generated";
+const SOURCE_USER: &str = "user";
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StrategyView {
+    entries: Vec<StrategyEntry>,
+    /// AC1.3's gate, as a single boolean the screen can render and the queue reads.
+    approved: bool,
+    approved_at: Option<i64>,
+    updated_at: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct StrategyRow {
+    entries: String,
+    approved_at: Option<i64>,
+    updated_at: i64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EntriesReq {
+    /// The list as the screen is showing it — deletions are absences, additions are
+    /// new members. The screen PUTs what it has rather than sending a diff, because
+    /// a diff of an unordered list is ambiguous about which duplicate went away.
+    patterns: Vec<String>,
+}
+
+/// The analysis, if it belongs to this user. `404` (not `403`) for someone else's
+/// id, so the API never confirms that an id exists (AC4.7).
+async fn owned_analysis(
+    state: &AppState,
+    user_id: &str,
+    id: &str,
+) -> Result<(String, String, String, i64), AppError> {
+    sqlx::query_as::<_, (String, String, String, i64)>(
+        "SELECT repo_owner, repo_name, branch, created_at FROM analyses \
+          WHERE id = ? AND user_id = ?",
+    )
+    .bind(id)
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound)
+}
+
+/// The patterns stage 3 proposed for this analysis, or `None` when the stage has
+/// not produced its document yet.
+async fn proposed_patterns(state: &AppState, id: &str) -> Result<Option<Vec<String>>, AppError> {
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",
+    )
+    .bind(id)
+    .bind(pipeline::DISCOVERY_STRATEGY)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some((content,)) = row else {
+        return Ok(None);
+    };
+    let doc: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|_| AppError::internal("stored strategy document is unreadable"))?;
+    Ok(Some(crate::discovery_strategy::patterns(&doc)))
+}
+
+/// The reviewer's own entries from the most recent *earlier* approved strategy for
+/// the same target — the mockup's promise that "여기서 보탠 항목은 다음 분석에서도
+/// 그대로 참조됩니다". Only `user` entries carry over: a generated pattern belongs
+/// to the analysis that generated it.
+async fn carried_over(
+    state: &AppState,
+    user_id: &str,
+    id: &str,
+    owner: &str,
+    name: &str,
+    branch: &str,
+    created_at: i64,
+) -> Result<Vec<StrategyEntry>, AppError> {
+    // Ordered by `(created_at, rowid)` for the reason documented on the
+    // reproducibility query: unix *seconds* tie for analyses triggered together.
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT s.entries FROM discovery_strategies s \
+           JOIN analyses prev ON prev.id = s.analysis_id \
+          WHERE prev.user_id = ? AND prev.repo_owner = ? AND prev.repo_name = ? \
+            AND prev.branch = ? AND prev.id != ? AND s.approved_at IS NOT NULL \
+            AND (prev.created_at < ? \
+                 OR (prev.created_at = ? \
+                     AND prev.rowid < (SELECT rowid FROM analyses WHERE id = ?))) \
+          ORDER BY prev.created_at DESC, prev.rowid DESC LIMIT 1",
+    )
+    .bind(user_id)
+    .bind(owner)
+    .bind(name)
+    .bind(branch)
+    .bind(id)
+    .bind(created_at)
+    .bind(created_at)
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let Some((entries,)) = row else {
+        return Ok(Vec::new());
+    };
+    let parsed: Vec<StrategyEntry> = serde_json::from_str(&entries).unwrap_or_default();
+    Ok(parsed.into_iter().filter(|e| e.source == SOURCE_USER).collect())
+}
+
+/// Appends `entry` unless an equal pattern is already present. Order is the review
+/// order the screen shows, so first occurrence wins.
+fn push_unique(into: &mut Vec<StrategyEntry>, entry: StrategyEntry) {
+    if !into.iter().any(|e| e.pattern == entry.pattern) {
+        into.push(entry);
+    }
+}
+
+/// The strategy for one analysis, seeding it from stage 3's proposal on first read.
+///
+/// Seeding lazily (rather than when the stage reports) keeps the worker protocol
+/// unchanged and makes the seed idempotent: whoever reads first materialises it,
+/// and every later read returns the row that person edited.
+async fn strategy(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<StrategyView>, AppError> {
+    let (owner, name, branch, created_at) = owned_analysis(&state, &user.id, &id).await?;
+
+    if let Some(row) = load_strategy(&state, &id).await? {
+        return Ok(Json(row));
+    }
+
+    // 404 rather than an empty strategy: "아직 제안되지 않았다" and "제안했는데
+    // 비었다"는 사용자에게 다른 상태다 (stage 2's document read makes the same
+    // distinction).
+    let Some(proposed) = proposed_patterns(&state, &id).await? else {
+        return Err(AppError::NotFound);
+    };
+
+    let mut entries: Vec<StrategyEntry> = Vec::new();
+    for pattern in proposed {
+        push_unique(
+            &mut entries,
+            StrategyEntry { pattern, source: SOURCE_GENERATED.to_string() },
+        );
+    }
+    for entry in carried_over(&state, &user.id, &id, &owner, &name, &branch, created_at).await? {
+        push_unique(&mut entries, entry);
+    }
+    entries.truncate(MAX_STRATEGY_ENTRIES);
+
+    let now = now_unix();
+    // `OR IGNORE`: two concurrent first reads would otherwise race to insert the
+    // same seed. The loser simply reads the winner's row below.
+    sqlx::query(
+        "INSERT OR IGNORE INTO discovery_strategies (analysis_id, entries, approved_at, updated_at) \
+         VALUES (?, ?, NULL, ?)",
+    )
+    .bind(&id)
+    .bind(serde_json::to_string(&entries).map_err(|_| AppError::internal("strategy encode"))?)
+    .bind(now)
+    .execute(&state.db)
+    .await?;
+
+    load_strategy(&state, &id).await?.ok_or(AppError::NotFound).map(Json)
+}
+
+async fn load_strategy(state: &AppState, id: &str) -> Result<Option<StrategyView>, AppError> {
+    let row: Option<StrategyRow> = sqlx::query_as(
+        "SELECT entries, approved_at, updated_at FROM discovery_strategies WHERE analysis_id = ?",
+    )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await?;
+    Ok(row.map(|r| StrategyView {
+        entries: serde_json::from_str(&r.entries).unwrap_or_default(),
+        approved: r.approved_at.is_some(),
+        approved_at: r.approved_at,
+        updated_at: r.updated_at,
+    }))
+}
+
+/// Replaces the reviewable list (AC1.3's "검토·수정").
+///
+/// Rejected once approved: the approved strategy is the pipeline's input, and
+/// letting it change underneath a running or finished stage 4 would make "이 후보는
+/// 어느 전략에서 나왔나"를 답할 수 없게 만든다. Re-opening it would be a new
+/// analysis, which is already how this product expresses "다시 해 보자".
+async fn update_strategy(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Json(req): Json<EntriesReq>,
+) -> Result<Json<StrategyView>, AppError> {
+    owned_analysis(&state, &user.id, &id).await?;
+    let current = load_strategy(&state, &id).await?.ok_or(AppError::NotFound)?;
+    if current.approved {
+        return Err(AppError::Conflict(
+            "승인된 전략은 수정할 수 없어요. 다시 분석하면 새 전략을 검토할 수 있습니다.".into(),
+        ));
+    }
+
+    // A pattern the model proposed keeps its provenance even if the user deleted and
+    // re-added it; anything else is theirs, and only theirs carries forward.
+    let proposed = proposed_patterns(&state, &id).await?.unwrap_or_default();
+
+    let mut entries: Vec<StrategyEntry> = Vec::new();
+    for pattern in req.patterns {
+        let pattern = pattern.trim().to_string();
+        if pattern.is_empty() {
+            continue;
+        }
+        if pattern.chars().count() > 200 {
+            return Err(AppError::BadRequest("탐색 대상이 너무 길어요".into()));
+        }
+        let source = if proposed.contains(&pattern) { SOURCE_GENERATED } else { SOURCE_USER };
+        push_unique(&mut entries, StrategyEntry { pattern, source: source.to_string() });
+    }
+    if entries.len() > MAX_STRATEGY_ENTRIES {
+        return Err(AppError::BadRequest(format!(
+            "탐색 대상은 최대 {MAX_STRATEGY_ENTRIES}건까지예요"
+        )));
+    }
+
+    sqlx::query("UPDATE discovery_strategies SET entries = ?, updated_at = ? WHERE analysis_id = ?")
+        .bind(serde_json::to_string(&entries).map_err(|_| AppError::internal("strategy encode"))?)
+        .bind(now_unix())
+        .bind(&id)
+        .execute(&state.db)
+        .await?;
+
+    load_strategy(&state, &id).await?.ok_or(AppError::NotFound).map(Json)
+}
+
+/// Approves the strategy (AC1.3's "승인").
+///
+/// This is the only thing that opens `feature_candidates` in the queue — see the
+/// `executable_stages` comment in [`crate::worker_api`]. An empty strategy cannot be
+/// approved: a scan with no entry points would silently produce no candidates and
+/// read as "이 저장소에는 기능이 없다".
+async fn approve_strategy(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<StrategyView>, AppError> {
+    owned_analysis(&state, &user.id, &id).await?;
+    let current = load_strategy(&state, &id).await?.ok_or(AppError::NotFound)?;
+    if current.approved {
+        return Err(AppError::Conflict("이미 승인된 전략이에요.".into()));
+    }
+    if current.entries.is_empty() {
+        return Err(AppError::BadRequest(
+            "탐색 대상이 하나도 없어요. 최소 한 곳은 남겨 주세요.".into(),
+        ));
+    }
+
+    sqlx::query("UPDATE discovery_strategies SET approved_at = ?, updated_at = ? WHERE analysis_id = ?")
+        .bind(now_unix())
+        .bind(now_unix())
+        .bind(&id)
+        .execute(&state.db)
+        .await?;
+
+    tracing::info!(analysis_id = %id, entries = current.entries.len(), "discovery strategy approved");
+    load_strategy(&state, &id).await?.ok_or(AppError::NotFound).map(Json)
 }
