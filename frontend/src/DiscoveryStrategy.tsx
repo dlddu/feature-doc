@@ -10,8 +10,10 @@
 // One thing the mockup draws that this screen deliberately does not: the five
 // example patterns (`src/routes/**/*.ts` and friends). Those are sample data in a
 // static prototype; here the list is whatever the model proposed for *this*
-// repository, and hard-coding the samples would be a false list. Registered in
-// docs/doc-tracker.md "알려진 목업↔구현 편차".
+// repository, and hard-coding the samples would be a false list. The mockup marks
+// them `data-sample` so the copy gate skips them (docs/mockups/README.md "예시값
+// 표기 규약") — it used to be carried as a row in docs/doc-tracker.md "알려진
+// 목업↔구현 편차" instead, which is no longer needed.
 
 import { useEffect, useState } from 'react';
 import { approveDiscoveryStrategy, getDiscoveryStrategy, putDiscoveryStrategy } from './api';

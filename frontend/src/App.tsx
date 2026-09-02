@@ -102,6 +102,7 @@ export function App() {
           key={`${route.id}-cc`}
           id={route.id}
           onBack={() => openAnalysis(route.id)}
+          onOpenDiscoveryStrategy={() => openDiscoveryStrategy(route.id)}
         />
       );
     }
