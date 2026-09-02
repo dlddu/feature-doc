@@ -146,16 +146,17 @@ bash scripts/e2e.sh
 
 스크립트는 kind 클러스터 생성 → docker build → `kind load docker-image` → `kubectl apply -k deploy/e2e/` → rollout 대기 → `kubectl port-forward` → smoke.sh + Playwright 실행 → 종료 시 port-forward·클러스터 정리 순서로 한 명령으로 그린까지 갑니다. 클러스터를 남기려면 `KEEP_CLUSTER=1 bash scripts/e2e.sh`.
 
-kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로 핀. `deploy/k8s/`는 운영용 kustomize 베이스로, CI가 푸시하는 `ghcr.io/dlddu/featuredoc:latest`를 가리키고 `imagePullPolicy`를 명시하지 않아 `:latest` 태그 기본값인 `Always`로 동작합니다. e2e는 `deploy/e2e/` 오버레이가 이 베이스를 가져와 이미지를 로컬 빌드본(`featuredoc:dev`)으로 retag하고 `imagePullPolicy: IfNotPresent`로 패치하므로, kind에 `load`한 이미지를 GHCR에서 다시 받지 않고 그대로 씁니다.
+kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로 핀. `deploy/k8s/`는 운영용 kustomize 베이스로, CI가 커밋마다 고정해 넣는 불변 태그 `ghcr.io/dlddu/featuredoc:<commit sha>`를 가리킵니다. 태그가 불변이라 `imagePullPolicy`는 기본값 `IfNotPresent`가 맞고, 배포는 오직 그 태그 줄이 바뀔 때만 일어납니다. e2e는 `deploy/e2e/` 오버레이가 이 베이스를 가져와 이미지를 로컬 빌드본(`featuredoc:dev`)으로 retag하고 `imagePullPolicy: IfNotPresent`로 패치하므로, kind에 `load`한 이미지를 GHCR에서 다시 받지 않고 그대로 씁니다.
 
 ### CI (GitHub Actions)
 
-`.github/workflows/ci.yml` — 단일 워크플로, `ubuntu-24.04-arm` runner. 두 job:
+`.github/workflows/ci.yml` — 단일 워크플로, `ubuntu-24.04-arm` runner. 세 job:
 
 - **`test`** — `cargo test` → kind+kubectl 설치 → `scripts/e2e.sh`(docker build + 클러스터 e2e). main 푸시·모든 PR에서 실행.
-- **`push`** — `needs: test`로 test 그린 후에만. `docker/setup-buildx-action` + `docker/login-action` + `docker/metadata-action` + `docker/build-push-action@v6`(GHA 캐시) 조합으로 `ghcr.io/<owner>/featuredoc`에 푸시. 태그는 `<github.sha>` + `latest` 두 개.
+- **`push`** — `needs: test`로 test 그린 후에만. `docker/setup-buildx-action` + `docker/login-action` + `docker/metadata-action` + `docker/build-push-action@v6`(GHA 캐시) 조합으로 `ghcr.io/<owner>/featuredoc`에 푸시. **태그는 커밋 SHA 하나뿐입니다** — `latest`도, 브랜치 롤링 태그도 만들지 않습니다.
+- **`pin`** — `needs: push`, **main 푸시에서만**. `deploy/k8s/deployment.yaml`과 `worker-deployment.yaml`의 이미지 태그를 방금 빌드한 커밋 SHA로 바꿔 `chore(deploy): ... [skip ci]` 커밋으로 main에 되돌려 놓습니다(`contents: write`는 이 job에만 부여). 기본 `GITHUB_TOKEN`으로 나가는 푸시는 새 워크플로를 트리거하지 않으므로 재귀 빌드가 생기지 않고, `[skip ci]`가 이중 안전장치입니다.
 
-> ⚠️ **`push` job에는 브랜치 조건이 없습니다.** `on:`이 `pull_request`를 포함하므로 **PR의 CI가 그린이 되는 순간 그 PR의 코드가 `:latest`로 푸시**되고, `deploy/k8s`가 `:latest` + (기본값)`Always`를 쓰므로 다음 파드 재시작부터 운영에 반영됩니다 — 머지 여부와 무관합니다. 워크로드가 둘로 늘어난 지금은 API·워커가 함께 갱신됩니다(같은 이미지라 둘이 어긋날 일은 없습니다). 이 동작을 의도한 것이 아니라면 `push` job에 `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`을 다는 것이 최소 수정입니다.
+> **태그 = 배포 상태.** 지금 운영에 무엇이 떠 있는지는 `deploy/k8s/deployment.yaml`의 태그 한 줄이 그대로 말해줍니다. PR 빌드도 이미지는 `<head sha>`로 올라가지만(preview 환경이 이 태그를 씁니다) 매니페스트를 건드리지 않으므로 **머지 전에는 운영에 닿을 수 없습니다.** 롤백은 그 줄을 되돌릴 커밋 SHA로 바꾸는 것이고, 이미지는 이미 GHCR에 있으니 재빌드가 필요 없습니다.
 
 ## 문서 작성 원칙
 
