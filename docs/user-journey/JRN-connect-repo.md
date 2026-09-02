@@ -10,7 +10,7 @@
 | 담당자 | 미지정 (`values.md` 제품 소유자 TBD와 함께 지정 필요) |
 | 최종 수정일 | 2026-08-30 |
 | 달성 가치 | V6(자격증명·비용 통제) · V1(코드 기반 발견) · V8(안정 운영) |
-| 연결 문서 | PRD [04-platform](../prd/04-platform.md) · [01-analysis-pipeline](../prd/01-analysis-pipeline.md) / 와이어프레임 S01·S02·S03 / mockup 미연결 (화면 단위 목업만 존재) |
+| 연결 문서 | PRD [04-platform](../prd/04-platform.md) · [01-analysis-pipeline](../prd/01-analysis-pipeline.md) / 화면 S01·S02·S03 / 목업 [`JRN-connect-repo.html`](../mockups/JRN-connect-repo.html) |
 
 ## 1. 서비스 개요 (참고)
 
@@ -40,7 +40,7 @@ Pre (P1) — 자기 사이드 프로젝트나 회사 서비스 저장소 하나�
 ### `STP-sign-in` 본인 확인하고 들어오기
 
 - **사용자 행동**: GitHub 계정으로 로그인해 "이 인스턴스에서의 나"를 만든다
-- **터치포인트**: 로그인 화면(미인증 상태 — 와이어프레임·목업 미표현, [doc-tracker 수용된 위험](../doc-tracker.md) 참조), GitHub OAuth 동의 화면
+- **터치포인트**: 로그인 화면(미인증 상태 — 대응 화면 ID 미부여, [doc-tracker 수용된 위험](../doc-tracker.md) 참조), GitHub OAuth 동의 화면
 - **생각·감정**: "또 계정 만들어야 되나" — 가입 자체보다 *권한 범위*를 본다
 - **페인포인트 / 이탈 위험**: OAuth 동의 화면의 요청 범위가 넓어 보이면 여기서 바로 창을 닫는다 → 로그인 단계의 OAuth 스코프는 신원 확인에 필요한 최소로 두고, 저장소 접근은 다음 단계(App 설치)에서 별도로 요청해 **두 권한을 섞지 않는다**
 - **연결 AC**: AC4.8

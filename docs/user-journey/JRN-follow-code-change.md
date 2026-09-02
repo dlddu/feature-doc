@@ -10,7 +10,7 @@
 | 담당자 | 미지정 |
 | 최종 수정일 | 2026-08-30 |
 | 달성 가치 | V4(살아있는 문서) · V5(의존성 가시성) · V7(모바일 우선) |
-| 연결 문서 | PRD [02-feature-representation](../prd/02-feature-representation.md) · [03-doc-management](../prd/03-doc-management.md) / 와이어프레임 S04·S07·S08·S09·S10(모두 재진입) / mockup 미연결 |
+| 연결 문서 | PRD [02-feature-representation](../prd/02-feature-representation.md) · [03-doc-management](../prd/03-doc-management.md) / 화면 S04·S07·S08·S09·S10(모두 재진입) / 목업 [`JRN-follow-code-change.html`](../mockups/JRN-follow-code-change.html) |
 
 ## 1. 서비스 개요 (참고)
 
