@@ -6,25 +6,29 @@
 //! serving; jobs simply accumulate in the queue) and scaled out (SQLite serialises
 //! the claim, so N workers take disjoint jobs) — test/04 scenarios 7 and 8.
 //!
-//! Four stages are implemented today: `fetch` (measure the repository tree),
+//! All five stages are implemented: `fetch` (measure the repository tree),
 //! `cross_cutting` (AC1.2 — extract the repository's cross-cutting concerns with
 //! the owner's LLM key), `discovery_strategy` (AC1.3 — propose where features can
-//! be found) and `feature_candidates` (AC1.4 — extract the candidates the approved
-//! strategy points at). Stage 5 stays `pending` and the job lands in
-//! `awaiting_pipeline` rather than `succeeded`, because pretending an unimplemented
-//! stage ran would be a lie the user reads as progress.
+//! be found), `feature_candidates` (AC1.4 — extract the candidates the approved
+//! strategy points at) and `acceptance_dependencies` (AC2.1~AC2.3 — write the
+//! acceptance scenarios for the features the reviewer confirmed). A job still lands
+//! in `awaiting_pipeline` rather than `succeeded` whenever a stage behind a human
+//! gate has not had its turn yet, because calling a half-run analysis complete would
+//! be a lie the user reads as progress.
 //!
-//! Stage 3 only *proposes*. AC1.3 requires that the user review, edit and approve
-//! the strategy before it feeds the next stage, so approval is a user action on the
-//! API side and the worker is never the thing that decides a strategy is final.
-//! Approval re-queues the job, which is how stage 4 gets its turn: this worker sees
-//! a second claim of the same analysis whose `executableStages` no longer contain
-//! the stages that already succeeded. It runs what it is offered and nothing else —
+//! Stages 3 and 4 only *propose*. AC1.3 requires that the user review, edit and
+//! approve the strategy before it feeds the next stage, and AC2.1 is about a
+//! **confirmed** feature — so both approvals are user actions on the API side and
+//! the worker is never the thing that decides they are final. Each approval
+//! re-queues the job, which is how the next stage gets its turn: this worker sees a
+//! second claim of the same analysis whose `executableStages` no longer contain the
+//! stages that already succeeded. It runs what it is offered and nothing else —
 //! re-running stage 2 or 3 there would spend the owner's LLM budget again and
 //! replace the very proposal the reviewer approved.
 
 use std::time::Duration;
 
+use featuredoc::acceptance;
 use featuredoc::config::Mode;
 use featuredoc::cross_cutting;
 use featuredoc::discovery_strategy;
@@ -52,9 +56,22 @@ struct Claim {
     /// they have, which is also when stage 4 is not offered.
     #[serde(default)]
     approved_patterns: Vec<String>,
+    /// Stage 5's input: the candidates the reviewer approved (AC1.4). Empty until
+    /// they have, which is also when stage 5 is not offered.
+    #[serde(default)]
+    approved_candidates: Vec<ApprovedCandidate>,
     installation_token: Option<String>,
     llm_provider: Option<String>,
     llm_api_key: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ApprovedCandidate {
+    key: String,
+    name: String,
+    location: String,
+    symbol: Option<String>,
 }
 
 struct Worker {
@@ -274,10 +291,88 @@ impl Worker {
             }
         }
 
-        // Not `succeeded`: stage 5 is still unimplemented, and stage 4 waits on the
-        // user approving the strategy stage 3 proposed. The API turns this into
-        // `queued` when an approval arrived while this pass was running.
+        // Stage 5 (AC2.1~AC2.3). Offered only when the reviewer approved at least one
+        // feature candidate *and* the stage has not already succeeded, so this arm
+        // runs on the claim that follows that approval — the same shape as stage 4,
+        // one gate further along.
+        if job
+            .executable_stages
+            .iter()
+            .any(|s| s == pipeline::ACCEPTANCE_DEPENDENCIES)
+        {
+            if let Err(reason) = self.run_acceptance(job, &result.paths).await {
+                self.stage(
+                    &job.id,
+                    pipeline::ACCEPTANCE_DEPENDENCIES,
+                    "failed",
+                    None,
+                    Some(&reason),
+                )
+                .await?;
+                self.finish(&job.id, "failed", Some(&reason)).await?;
+                return Ok(());
+            }
+        }
+
+        // Not `succeeded`: a stage behind a human gate may still be waiting — stage 4
+        // on the strategy approval, stage 5 on a confirmed feature. The API turns
+        // this into `queued` when an approval arrived while this pass was running.
         self.finish(&job.id, "awaiting_pipeline", None).await?;
+        Ok(())
+    }
+
+    /// Stage 5 (AC2.1~AC2.3). Same shape as stages 2-4: the caller owns the
+    /// reporting so the "which stage failed" decision stays in one place.
+    async fn run_acceptance(&self, job: &Claim, paths: &[String]) -> Result<(), String> {
+        self.stage(&job.id, pipeline::ACCEPTANCE_DEPENDENCIES, "running", None, None)
+            .await
+            .map_err(|e| format!("could not report stage start: {e}"))?;
+        self.heartbeat(&job.id)
+            .await
+            .map_err(|e| format!("could not renew lease: {e}"))?;
+
+        let subjects: Vec<acceptance::Subject> = job
+            .approved_candidates
+            .iter()
+            .map(|c| acceptance::Subject {
+                key: c.key.clone(),
+                name: c.name.clone(),
+                location: c.location.clone(),
+                symbol: c.symbol.clone(),
+            })
+            .collect();
+
+        let answer = acceptance::derive(
+            &self.http,
+            self.mode,
+            self.provider_for(job)?,
+            job.llm_api_key.as_deref(),
+            &job.repo_owner,
+            &job.repo_name,
+            &job.branch,
+            paths,
+            &subjects,
+        )
+        .await?;
+
+        self.submit_document(&job.id, pipeline::ACCEPTANCE_DEPENDENCIES, &answer)
+            .await
+            .map_err(|e| format!("could not store the document: {e}"))?;
+        self.stage(
+            &job.id,
+            pipeline::ACCEPTANCE_DEPENDENCIES,
+            "succeeded",
+            Some(&acceptance::detail(&answer.content)),
+            None,
+        )
+        .await
+        .map_err(|e| format!("could not report stage completion: {e}"))?;
+
+        tracing::info!(
+            analysis_id = %job.id,
+            features = acceptance::features(&answer.content).len(),
+            "acceptance stage complete"
+        );
         Ok(())
     }
 

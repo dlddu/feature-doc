@@ -959,26 +959,42 @@ async fn approve_strategy(
         .bind(&id)
         .execute(&mut *tx)
         .await?;
-    let requeued = sqlx::query(
+    let requeued = requeue(&mut tx, &id).await?;
+    tx.commit().await?;
+
+    tracing::info!(
+        analysis_id = %id,
+        entries = current.entries.len(),
+        requeued,
+        "discovery strategy approved"
+    );
+    load_strategy(&state, &id).await?.ok_or(AppError::NotFound).map(Json)
+}
+
+/// Puts an analysis back in the queue so the stage an approval just opened gets a
+/// turn.
+///
+/// Never touches a job under a live lease (`status <> running`): re-queueing
+/// underneath its holder is exactly what `retry_stage`'s invariant forbids, and
+/// `worker_api::finish` lands such a job on `queued` itself when it sees that work
+/// remains. Both approvals (strategy, candidate) go through here so there is one
+/// answer to "what does approving do to the queue".
+async fn requeue(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    id: &str,
+) -> Result<bool, AppError> {
+    let res = sqlx::query(
         "UPDATE analyses \
             SET status = ?, error = NULL, claimed_by = NULL, claimed_at = NULL, \
                 lease_expires_at = NULL, finished_at = NULL \
           WHERE id = ? AND status <> ?",
     )
     .bind(pipeline::status::QUEUED)
-    .bind(&id)
+    .bind(id)
     .bind(pipeline::status::RUNNING)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await?;
-    tx.commit().await?;
-
-    tracing::info!(
-        analysis_id = %id,
-        entries = current.entries.len(),
-        requeued = requeued.rows_affected() == 1,
-        "discovery strategy approved"
-    );
-    load_strategy(&state, &id).await?.ok_or(AppError::NotFound).map(Json)
+    Ok(res.rows_affected() == 1)
 }
 
 // ── feature candidate review (AC1.4) ──────────────────────────────────────────
@@ -1252,20 +1268,31 @@ async fn decide_candidate(
         _ => return Err(AppError::BadRequest("unknown decision".into())),
     };
 
+    // Approving is what opens stage 5, so the decision and the re-queue are one
+    // transaction for the same reason `approve_strategy`'s pair is: they are one
+    // fact ("this analysis may now write acceptance scenarios for this feature").
+    // A rejection opens nothing, so it re-queues nothing — an analysis whose every
+    // candidate was rejected must not spin.
+    let now = now_unix();
+    let mut tx = state.db.begin().await?;
     let res = sqlx::query(
         "UPDATE feature_candidates SET decision = ?, reject_reason = ?, updated_at = ? \
           WHERE analysis_id = ? AND key = ? AND merged_into IS NULL",
     )
     .bind(decision)
     .bind(reason.as_deref())
-    .bind(now_unix())
+    .bind(now)
     .bind(&id)
     .bind(&key)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
+    if decision == DECISION_APPROVED {
+        requeue(&mut tx, &id).await?;
+    }
+    tx.commit().await?;
 
     crate::audit::record(
         &state.db,

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { AnalysisProgress } from './AnalysisProgress';
 import { CrossCuttingConcerns } from './CrossCuttingConcerns';
 import { DiscoveryStrategy } from './DiscoveryStrategy';
+import { FeatureAcceptance } from './FeatureAcceptance';
 import { FeatureCandidates } from './FeatureCandidates';
 import { ConnectRepository } from './ConnectRepository';
 import { CredentialsSetup } from './CredentialsSetup';
@@ -21,22 +22,26 @@ type Screen = 'credentials' | 'home' | 'connect';
 /** Which analysis screen a hash addresses, if any. */
 export type AnalysisRoute = {
   id: string;
-  view: 'progress' | 'cross-cutting' | 'discovery-strategy' | 'candidates';
+  view: 'progress' | 'cross-cutting' | 'discovery-strategy' | 'candidates' | 'acceptance';
 };
 
 /**
  * `#/analyses/<id>` → S04, `.../cross-cutting` → S05, `.../discovery-strategy` → S06,
- * `.../candidates` → S07, null otherwise.
+ * `.../candidates` → S07, `.../acceptance` → S08, null otherwise.
  *
- * All four are addressable for the same reason S04 is (AC1.5): a screen you cannot
+ * All five are addressable for the same reason S04 is (AC1.5): a screen you cannot
  * navigate straight to cannot demonstrate that its content is server state. For S06
  * and S07 it is also what makes the review resumable — a reviewer who leaves
  * mid-decision comes back to the list the server has, not to a lost draft, which is
- * the whole of the mockup's "여기까지 저장하고 나가기".
+ * the whole of the mockup's "여기까지 저장하고 나가기". S08 is addressable for a third
+ * reason: `JRN-review-feature` is entered "나중에 특정 기능의 문서가 미심쩍어서 다시
+ * 들어옴", i.e. by address rather than by walking the pipeline again.
  */
 export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
   const match =
-    /^#\/analyses\/([^/?#]+)(?:\/(cross-cutting|discovery-strategy|candidates))?$/.exec(hash);
+    /^#\/analyses\/([^/?#]+)(?:\/(cross-cutting|discovery-strategy|candidates|acceptance))?$/.exec(
+      hash,
+    );
   if (!match) return null;
   return {
     id: decodeURIComponent(match[1]),
@@ -96,9 +101,25 @@ export function App() {
     setRoute({ id, view: 'candidates' });
   }
 
+  // S08 has no in-app entry yet: the mockup puts one on the *confirmed list*
+  // (`END-features-confirmed`), which is the screen slice 5b brings in. Until then
+  // the address is the entry — which is also how the journey describes re-entry
+  // ("나중에 특정 기능의 문서가 미심쩍어서 다시 들어옴"). Adding a button S07's mockup
+  // does not draw would be copy this repo would have to carry as a deviation.
+
   // The hash wins over the state machine: a deep link must land on S04/S05 even on
   // a cold load, before the user has walked the journey in this session.
   if (route !== null) {
+    if (route.view === 'acceptance') {
+      return (
+        <FeatureAcceptance
+          key={`${route.id}-fa`}
+          id={route.id}
+          onBack={() => openAnalysis(route.id)}
+          onOpenCandidates={() => openCandidates(route.id)}
+        />
+      );
+    }
     if (route.view === 'candidates') {
       return (
         <FeatureCandidates
