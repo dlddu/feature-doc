@@ -59,6 +59,20 @@ impl Provider {
             Provider::Google => "AIza",
         }
     }
+
+    /// The call-side view of this provider.
+    ///
+    /// The two enums stay separate — this one is the registration vocabulary, the
+    /// other is the call vocabulary — but the registration *scope* has to follow the
+    /// calls (AC4.2), so this bridge is the only place they meet and
+    /// [`crate::llm::Provider::supports_analysis`] is the only predicate consulted.
+    fn llm(self) -> crate::llm::Provider {
+        match self {
+            Provider::Anthropic => crate::llm::Provider::Anthropic,
+            Provider::OpenAI => crate::llm::Provider::OpenAI,
+            Provider::Google => crate::llm::Provider::Google,
+        }
+    }
 }
 
 // ── views / rows ──────────────────────────────────────────────────────────────
@@ -94,8 +108,9 @@ struct RegisterReq {
     key: String,
 }
 
-/// Registers a key: validate provider → live-validate the key → envelope-encrypt →
-/// store ciphertext only. Returns the identifier view (201).
+/// Registers a key: validate provider → check it is in the supported scope →
+/// live-validate the key → envelope-encrypt → store ciphertext only. Returns the
+/// identifier view (201).
 async fn register(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -103,6 +118,19 @@ async fn register(
 ) -> Result<(StatusCode, Json<LlmKeyView>), AppError> {
     let provider = Provider::parse(&req.provider)
         .ok_or_else(|| AppError::BadRequest("지원하지 않는 provider입니다".into()))?;
+
+    // AC4.2 지원 제공자 범위. 분석 호출이 구현되지 않은 제공자의 키는 받지 않는다 —
+    // 보관해도 호출도 비용 추정도 할 수 없고, 그 사이 [`ACTIVE_KEY_SQL`]이 등록 순서만으로
+    // 그 키를 "활성 키"로 골라 **이미 동작하던 분석을 조용히 깨뜨린다**(Anthropic 키를 쓰던
+    // 사용자가 미지원 키를 나중에 등록하는 경우). 쓸 수 없는 자격증명을 보관하지 않는 편이
+    // AC4.3 과도 맞다. 거부는 사용자가 아직 아무것도 맡기지 않은 이 지점에서 일어난다.
+    if !provider.llm().supports_analysis() {
+        return Err(AppError::BadRequest(format!(
+            "{}는 아직 분석 호출을 지원하지 않아 키를 등록할 수 없습니다. OpenAI 또는 Anthropic 키를 등록해 주세요",
+            provider.as_str()
+        )));
+    }
+
     let key = req.key.trim();
     if key.is_empty() {
         return Err(AppError::BadRequest("API 키가 비어 있습니다".into()));
@@ -203,6 +231,12 @@ async fn revoke(
 ///
 /// Shared by [`preflight`] and [`active_key_for_user`] on purpose: preflight tells
 /// the user which key an analysis will use, so it has to resolve the same one.
+///
+/// The ranking is deliberately blind to whether a provider is callable — it does not
+/// have to know, because [`register`] refuses keys outside AC4.2's supported scope, so
+/// every row it can rank is usable. Widening registration without widening the calls
+/// would put that invariant back at risk (a newer unsupported key would outrank a
+/// working one; `a_refused_provider_cannot_displace_a_working_active_key` pins it).
 const ACTIVE_KEY_SQL: &str = "SELECT provider, fingerprint, ciphertext, nonce, wrapped_dek, dek_nonce \
      FROM llm_keys WHERE user_id = ? AND status = 'active' \
      ORDER BY (provider = 'openai') DESC, created_at DESC LIMIT 1";
