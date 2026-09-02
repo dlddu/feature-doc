@@ -1,6 +1,6 @@
 //! The analysis pipeline's stage list — one place, mirrored by the S04 mockup.
 //!
-//! `docs/mockups/s04-analysis-progress.html` renders exactly these five steps
+//! `docs/mockups/JRN-discover-features.html#STP-leave-and-return` renders exactly these five steps
 //! ("Pipeline · 3 of 5"), so the screen and the persisted rows cannot drift apart.
 //! Every analysis is seeded with one `analysis_stages` row per entry at enqueue.
 //!
