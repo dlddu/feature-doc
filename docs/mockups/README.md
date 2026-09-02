@@ -57,6 +57,41 @@ FeatureDoc 의 **목업** — 색·타이포·인터랙션·디자인 톤이 모
 
 이 규약의 기계 검사는 [`tools/check-journey-mockup.py`](../../tools/check-journey-mockup.py)(정적 R0~R10)와 [`tools/check-journey-prototype.js`](../../tools/check-journey-prototype.js)(DOM P1~P7)가 [`docs — journey ↔ mockup`](../../.github/workflows/docs-journey-mockup.yml) 게이트에서 함께 수행합니다.
 
+## 예시값 표기 규약 (`data-sample`)
+
+목업이 그리는 문자열에는 성격이 다른 두 가지가 섞여 있습니다.
+
+- **제품 카피** — 화면이 언제나 그대로 렌더하는 말. 제목·라벨·안내문·버튼 문구·빈 상태 문장.
+  구현이 이것과 다르면 그것이 곧 정합성 이탈입니다.
+- **예시값** — *「이 자리에 이런 종류의 값이 온다」* 를 보여 주려고 적어 둔 표본. 분석 결과
+  항목명, 근거 파일 경로, 저장소 이름처럼 **실제로는 서버가 준 값이 렌더되는** 자리입니다.
+  구현이 목업과 같은 문자열을 그리면 오히려 **거짓 화면**이 됩니다.
+
+리터럴 카피 대조([`tools/check-mockup-render.py`](../../tools/check-mockup-render.py) 의 M3A·M3B)는
+둘을 구분하지 못합니다. 그래서 **예시값을 담은 요소에 `data-sample` 을 붙여** 대조에서 뺍니다.
+
+```html
+<div class="ev">
+  <span class="ename" data-sample>PostgreSQL 15 · 단일 인스턴스</span>
+  <span class="esrc" data-sample>docker-compose.yml:12</span>
+</div>
+```
+
+**규칙 세 가지.**
+
+1. **값을 담은 잎(leaf) 요소에만 붙입니다.** 위 예에서 행(`div.ev`) 에 붙이면 같은 행에 있는
+   제품 카피까지 함께 사라집니다 — 실제로 `근거 없음` 태그가 그렇게 묻힙니다. 숨김은 언제나
+   최소 범위여야 합니다.
+2. **제품 카피에는 붙일 수 없습니다.** 특히 상호작용 요소(`<a>`·`<button>`, 또는
+   `data-goto`·`data-cta`·`id`·`href` 를 가진 요소)에는 금지입니다. CTA 문구를 예시값으로
+   위장해 대조를 빠져나가는 길을 막기 위한 것이고, 이 금지는 게이트 규칙 **M6** 이 집행합니다.
+3. **숫자·단위만으로 이루어진 표본에는 필요 없습니다.** `847 · 2.3 MB` · `~6 min` 같은 것은
+   체커의 `is_copy()` 가 이미 카피로 보지 않습니다. `data-sample` 은 **글자로 된 예시값**
+   (제품명·경로·문장)을 위한 장치입니다.
+
+> 이 속성은 렌더링에 영향을 주지 않습니다(스타일 훅이 아닙니다). 목업을 `file://` 로 열었을 때
+> 보이는 화면은 붙이기 전과 완전히 같습니다.
+
 ## Journeys — 여정 ↔ 목업 페이지 매핑
 
 여정 문서에서 파싱한 값입니다. 「예외」는 [`doc-tracker.md`](../doc-tracker.md) 「수용된 위험」에 여정 단위로 등재되어 목업 페이지가 없어도 되는 여정입니다.
