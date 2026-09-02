@@ -16,9 +16,15 @@
 // The reproducibility line has no mockup counterpart at all: AC1.2's verification
 // method requires that a re-analysis either reproduce deterministically *or* state
 // the difference, and a screen that never mentions it cannot satisfy that clause.
+//
+// The way out to S06 is the mockup's: this screen does not edit its own result, it
+// points at the strategy screen where the correction actually lands. It is gated on
+// stage 3 having succeeded — the same rule S04 uses for its per-stage entry points,
+// so the link never leads to a 404. Stages finish in order but not instantly, so
+// arriving here says nothing about whether the strategy exists yet.
 
 import { useEffect, useState } from 'react';
-import { getCrossCutting } from './api';
+import { getAnalysis, getCrossCutting } from './api';
 import type { CrossCuttingDocument } from './api';
 
 /** AC1.2's five axes, in PRD order, with the label each one renders under. */
@@ -52,17 +58,37 @@ type Props = {
   id: string;
   /** S05 → S04 (back to the run this document came from). */
   onBack: () => void;
+  /** S05 → S06, offered only once stage 3 has a strategy to review. */
+  onOpenDiscoveryStrategy: () => void;
 };
 
-export function CrossCuttingConcerns({ id, onBack }: Props) {
+export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Props) {
   const [doc, setDoc] = useState<CrossCuttingDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [strategyReady, setStrategyReady] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
     getCrossCutting(id)
       .then((d) => active && setDoc(d))
       .catch((e: unknown) => active && setError(messageOf(e)));
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  // Whether the way out is offered is a fact about the run, not about this
+  // document — so it is a separate read, and its failure never blocks the page
+  // this screen exists to show.
+  useEffect(() => {
+    let active = true;
+    getAnalysis(id)
+      .then((a) => {
+        const stage = a.stages.find((s) => s.key === 'discovery_strategy');
+        if (active) setStrategyReady(stage?.status === 'succeeded');
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -161,6 +187,44 @@ export function CrossCuttingConcerns({ id, onBack }: Props) {
           </div>
         ))}
       </div>
+
+      {strategyReady && (
+        <>
+          {hintOpen && (
+            <div className="notice info on" style={{ marginTop: 16 }} data-testid="edit-hint">
+              이 화면에서는 결과를 직접 고치지 않아요. 무엇이 빠졌는지 기억해 두었다가 <strong>다음 화면의 탐색 전략</strong>에서
+              보태면, 그 보정이 후보 추출에 반영됩니다.
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={onOpenDiscoveryStrategy}
+                data-testid="hint-to-strategy"
+              >
+                탐색 전략으로 가기
+              </button>
+            </div>
+          )}
+
+          <div className="stack" style={{ marginTop: 22 }}>
+            <button
+              className="btn btn-primary block"
+              type="button"
+              onClick={onOpenDiscoveryStrategy}
+              data-testid="to-discovery-strategy"
+            >
+              탐색 전략 검토하기
+            </button>
+            <button
+              className="btn btn-ghost block"
+              type="button"
+              onClick={() => setHintOpen(true)}
+              data-testid="want-edit"
+            >
+              이 결과를 고치고 싶어요
+            </button>
+          </div>
+        </>
+      )}
     </main>
   );
 }
