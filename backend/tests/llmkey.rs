@@ -15,6 +15,9 @@ use featuredoc::{build_router, session, users};
 
 const VALID_KEY: &str = "sk-ant-api03-aaaaaaaaaaaaaaaaaaaa";
 const OPENAI_KEY: &str = "sk-proj-bbbbbbbbbbbbbbbbbbbbbb";
+/// Shape-valid for the stub validator on purpose: the registration refusal below has
+/// to come from the supported-provider scope, not from key validation.
+const GOOGLE_KEY: &str = "AIzaSyCcccccccccccccccccccc";
 
 async fn login_user(state: &AppState, login: &str, id: i64) -> String {
     let user = users::upsert(
@@ -270,6 +273,87 @@ async fn keys_are_isolated_per_user() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
+    let _ = std::fs::remove_file(&path);
+}
+
+/// AC4.2 supported-provider scope. A provider with no analysis call is refused at
+/// registration — nothing is stored, so nothing has to be cleaned up later.
+#[tokio::test]
+async fn a_provider_without_an_analysis_call_cannot_be_registered() {
+    let (state, path) = stub_state().await;
+    let token = login_user(&state, "alice", 1).await;
+
+    let resp = build_router(state.clone())
+        .oneshot(post_json(
+            "/api/llm-keys",
+            &token,
+            serde_json::json!({ "provider": "google", "key": GOOGLE_KEY }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = json(resp).await;
+    let err = body["error"].as_str().unwrap();
+    assert!(err.contains("google"), "{err}");
+    assert!(err.contains("분석 호출을 지원하지 않아"), "{err}");
+    // The rejection names a way forward rather than only what failed.
+    assert!(err.contains("OpenAI"), "{err}");
+    // Nothing was persisted — not even a row we would have to sweep up later.
+    let stored: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM llm_keys")
+        .fetch_one(&state.db)
+        .await
+        .unwrap();
+    assert_eq!(stored, 0);
+    // And the user sees no key.
+    let resp = build_router(state).oneshot(get("/api/llm-keys", &token)).await.unwrap();
+    assert_eq!(json(resp).await.as_array().unwrap().len(), 0);
+    let _ = std::fs::remove_file(&path);
+}
+
+/// Why the refusal is at registration and not at call time: `ACTIVE_KEY_SQL` ranks by
+/// `(provider = 'openai') DESC, created_at DESC`, so an unsupported key registered
+/// *after* a working one would outrank it and every later analysis would fail. This
+/// asserts the working key keeps the seat.
+#[tokio::test]
+async fn a_refused_provider_cannot_displace_a_working_active_key() {
+    let (state, path) = stub_state().await;
+    let token = login_user(&state, "alice", 1).await;
+
+    let resp = build_router(state.clone())
+        .oneshot(post_json(
+            "/api/llm-keys",
+            &token,
+            serde_json::json!({ "provider": "anthropic", "key": VALID_KEY }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // Backdate it so the ordering is decided, not tied: registration timestamps are
+    // whole seconds, and a tie would let this pass for the wrong reason. Measured with
+    // the gate removed, this is exactly the setup where preflight answers "google".
+    sqlx::query("UPDATE llm_keys SET created_at = created_at - 100 WHERE provider = 'anthropic'")
+        .execute(&state.db)
+        .await
+        .unwrap();
+
+    // Newer, and not OpenAI — it would win the ordering if it were ever stored.
+    let resp = build_router(state.clone())
+        .oneshot(post_json(
+            "/api/llm-keys",
+            &token,
+            serde_json::json!({ "provider": "google", "key": GOOGLE_KEY }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    let resp = build_router(state)
+        .oneshot(get("/api/llm-keys/preflight", &token))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(json(resp).await["provider"], "anthropic");
     let _ = std::fs::remove_file(&path);
 }
 
