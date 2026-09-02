@@ -412,3 +412,67 @@ export function mergeCandidates(
 ): Promise<CandidateList> {
   return candidateAction(id, 'merge', { into, keys });
 }
+
+// ── acceptance scenarios (AC2.1 · AC2.2 · AC2.3) ─────────────────────────────
+
+/** One acceptance criterion, in the words of a person using the product. */
+export type AcceptanceScenario = {
+  given: string;
+  when: string;
+  then: string;
+  /** The repository path this criterion was read from — AC2.1's 근거. */
+  evidence: string;
+  symbol: string | null;
+  /** Which pass found it: the logic read (AC2.1) or the test read (AC2.2). */
+  source: 'logic' | 'test';
+};
+
+/**
+ * One place the logic and the tests describe the same situation differently.
+ * Kept out of the scenario list on purpose — test/02 시나리오 3.
+ */
+export type AcceptanceContradiction = {
+  given: string;
+  when: string;
+  codeSays: string;
+  codeEvidence: string;
+  testSays: string;
+  testEvidence: string;
+};
+
+/** One confirmed feature's acceptance document (AC2.3: one per feature). */
+export type FeatureAcceptance = {
+  key: string;
+  name: string;
+  location: string;
+  symbol: string | null;
+  scenarios: AcceptanceScenario[];
+  contradictions: AcceptanceContradiction[];
+};
+
+export type AcceptanceDocument = {
+  kind: string;
+  content: { features: FeatureAcceptance[] };
+  model: string;
+  createdAt: number;
+  reproducibility: Reproducibility;
+};
+
+/**
+ * The acceptance scenarios stage 5 wrote for this analysis, or `null` when it has
+ * not run yet.
+ *
+ * `null` rather than a thrown 404: "아직 만들어지지 않았다" is a state S08 draws (the
+ * reviewer confirms a feature and comes here while the stage is still queued), not
+ * an error to report. The distinction from "ran and found nothing" survives — that
+ * case is a document with an empty feature list, which the stage refuses to write.
+ */
+export async function getAcceptance(id: string): Promise<AcceptanceDocument | null> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/documents/acceptance-dependencies`,
+    { credentials: 'same-origin' },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as AcceptanceDocument;
+}

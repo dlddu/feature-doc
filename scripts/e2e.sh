@@ -48,8 +48,9 @@ kubectl apply -k "${ROOT}/deploy/e2e/"
 echo "[5/7] wait for rollout (API + worker)"
 kubectl rollout status deployment/featuredoc --timeout=180s
 # The worker is a separate workload (AC4.5) and the overlay starts it at 0
-# replicas — the specs that need it (ac4-5, ac1-5) lease it: scale up, assert,
-# scale back to 0. This still confirms the Deployment applied cleanly.
+# replicas — the specs that need it (ac4-5, ac1-5, and every spec that has to see a
+# pipeline stage actually run: ac1-2 … ac1-4, ac2-1 … ac2-3) lease it: scale up,
+# assert, scale back to 0. This still confirms the Deployment applied cleanly.
 kubectl rollout status deployment/featuredoc-worker --timeout=180s
 
 echo "[6/7] port-forward svc/featuredoc ${LOCAL_PORT}:8080"

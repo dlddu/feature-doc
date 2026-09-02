@@ -115,11 +115,13 @@ struct ClaimView {
     branch: String,
     /// Stage keys the worker is expected to execute, in order.
     ///
-    /// This is also where AC1.3's approval gate lives: `feature_candidates` is
-    /// **withheld** until the user has approved this analysis's discovery strategy,
-    /// so "승인된 전략만 다음 단계의 입력이 된다" is a property of the queue rather
-    /// than a rule each worker is trusted to remember. A worker only runs keys it
-    /// both knows and was offered.
+    /// This is also where the two human gates live. `feature_candidates` is
+    /// **withheld** until the user has approved this analysis's discovery strategy
+    /// (AC1.3), and `acceptance_dependencies` until at least one feature candidate is
+    /// approved (AC1.4 → AC2.1). So "승인된 전략만 다음 단계의 입력이 된다" — and its
+    /// one-step-later twin, "확정된 feature 에 대해서만 표현을 만든다" — are properties
+    /// of the queue rather than rules each worker is trusted to remember. A worker
+    /// only runs keys it both knows and was offered.
     ///
     /// A stage that already **succeeded** is not offered again. That is what makes
     /// the post-approval re-queue safe: stage 4 opens without stages 2-3 re-running
@@ -130,6 +132,9 @@ struct ClaimView {
     /// carried on the claim so the worker needs no second round-trip — and so the
     /// gate and the input come from the same read of the same row.
     approved_patterns: Vec<String>,
+    /// The feature candidates the reviewer approved (AC1.4). Stage 5's input and its
+    /// gate, carried the same way and for the same reason as `approved_patterns`.
+    approved_candidates: Vec<CandidateRef>,
     lease_expires_at: i64,
     /// Short-lived GitHub installation token for this job's repository. `None` in
     /// stub mode (nothing to call). Never persisted, never logged.
@@ -140,6 +145,17 @@ struct ClaimView {
     /// `None` when the user has no active key — the stage then fails with a clear
     /// reason instead of the worker inventing a result. Never persisted, never logged.
     llm_api_key: Option<String>,
+}
+
+/// One approved feature candidate as stage 5 receives it — the same four fields
+/// `feature_candidates::Subject` needs, named as they are stored.
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct CandidateRef {
+    pub key: String,
+    pub name: String,
+    pub location: String,
+    pub symbol: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -247,7 +263,14 @@ async fn claim(
     // atomic hand-off of one row and joining a second table into that statement
     // would put the gate inside the concurrency-critical path for no benefit.
     let approved_patterns = approved_patterns(&state, &job.id).await?;
-    let executable_stages = offered_stages(&state, &job.id, approved_patterns.is_some()).await?;
+    let approved_candidates = approved_candidates(&state, &job.id).await?;
+    let executable_stages = offered_stages(
+        &state,
+        &job.id,
+        approved_patterns.is_some(),
+        acceptance_pending(&state, &job.id, &approved_candidates).await?,
+    )
+    .await?;
 
     Ok(Json(ClaimView {
         id: job.id,
@@ -256,6 +279,7 @@ async fn claim(
         branch: job.branch,
         executable_stages,
         approved_patterns: approved_patterns.unwrap_or_default(),
+        approved_candidates,
         lease_expires_at: lease_until,
         installation_token,
         llm_provider,
@@ -290,6 +314,62 @@ pub async fn approved_patterns(
     ))
 }
 
+/// The feature candidates the reviewer approved, in review order — stage 5's input
+/// and, by being empty or not, its gate (AC2.1~AC2.3 are about a **confirmed**
+/// feature, so an unreviewed list is not something to write scenarios from).
+///
+/// Merged-away rows are excluded: a candidate folded into another is no longer a
+/// feature of its own, which is exactly what `merged_into` records.
+pub async fn approved_candidates(
+    state: &AppState,
+    analysis_id: &str,
+) -> Result<Vec<CandidateRef>, AppError> {
+    Ok(sqlx::query_as(
+        "SELECT key, name, location, symbol FROM feature_candidates \
+          WHERE analysis_id = ? AND decision = 'approved' AND merged_into IS NULL \
+          ORDER BY seq, rowid",
+    )
+    .bind(analysis_id)
+    .fetch_all(&state.db)
+    .await?)
+}
+
+/// Whether stage 5 has work to do: is there an approved feature the stored
+/// acceptance document does not cover?
+///
+/// Not "has the stage succeeded" — that would be wrong here. A reviewer decides
+/// candidates **one at a time**, so approving a second feature after the stage has
+/// already run must re-open it; otherwise the second feature would never get a
+/// document and the screen would silently show a shorter list than the reviewer
+/// confirmed. Re-running rewrites the whole document (the submit route upserts on
+/// `(analysis_id, kind)`), which keeps one document per analysis and keeps the
+/// content hash meaningful.
+pub async fn acceptance_pending(
+    state: &AppState,
+    analysis_id: &str,
+    approved: &[CandidateRef],
+) -> Result<bool, AppError> {
+    if approved.is_empty() {
+        return Ok(false);
+    }
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",
+    )
+    .bind(analysis_id)
+    .bind(pipeline::ACCEPTANCE_DEPENDENCIES)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some((content,)) = row else {
+        return Ok(true);
+    };
+    let doc: serde_json::Value = serde_json::from_str(&content).unwrap_or_default();
+    let documented: Vec<String> = crate::acceptance::features(&doc)
+        .into_iter()
+        .map(|f| f.key)
+        .collect();
+    Ok(approved.iter().any(|c| !documented.contains(&c.key)))
+}
+
 /// Which stages this claim offers.
 ///
 /// The rule is "a stage that has not succeeded yet", with one deliberate exception:
@@ -306,6 +386,7 @@ pub async fn offered_stages(
     state: &AppState,
     analysis_id: &str,
     strategy_approved: bool,
+    acceptance_pending: bool,
 ) -> Result<Vec<String>, AppError> {
     let rows: Vec<(String, String)> =
         sqlx::query_as("SELECT key, status FROM analysis_stages WHERE analysis_id = ?")
@@ -327,19 +408,31 @@ pub async fn offered_stages(
     if strategy_approved && !done(pipeline::FEATURE_CANDIDATES) {
         offered.push(pipeline::FEATURE_CANDIDATES.to_string());
     }
+    // Stage 5's predicate is coverage, not success — see [`acceptance_pending`].
+    if acceptance_pending {
+        offered.push(pipeline::ACCEPTANCE_DEPENDENCIES.to_string());
+    }
     Ok(offered)
 }
 
-/// Whether an executable stage is still waiting — i.e. whether handing this job back
-/// to the queue would accomplish anything. Used at [`finish`] to close the one race
-/// the approval re-queue cannot: a strategy approved *while* the worker was running.
+/// Whether a stage behind a human gate is still waiting — i.e. whether handing this
+/// job back to the queue would accomplish anything. Used at [`finish`] to close the
+/// one race the approvals cannot: an approval that lands *while* the worker is
+/// running, when the re-queue is refused because the lease is live.
+///
+/// Only the gated stages count. `fetch` is always offered, so asking "is anything
+/// offered" would re-queue every job forever.
 async fn work_remains(state: &AppState, analysis_id: &str) -> Result<bool, AppError> {
-    let approved = approved_patterns(state, analysis_id).await?.is_some();
-    if !approved {
+    let strategy_approved = approved_patterns(state, analysis_id).await?.is_some();
+    if !strategy_approved {
         return Ok(false);
     }
-    let offered = offered_stages(state, analysis_id, approved).await?;
-    Ok(offered.iter().any(|k| k == pipeline::FEATURE_CANDIDATES))
+    let approved = approved_candidates(state, analysis_id).await?;
+    let pending = acceptance_pending(state, analysis_id, &approved).await?;
+    let offered = offered_stages(state, analysis_id, strategy_approved, pending).await?;
+    Ok(offered
+        .iter()
+        .any(|k| k == pipeline::FEATURE_CANDIDATES || k == pipeline::ACCEPTANCE_DEPENDENCIES))
 }
 
 // ── lease + progress ──────────────────────────────────────────────────────────
