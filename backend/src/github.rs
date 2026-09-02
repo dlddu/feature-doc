@@ -37,7 +37,11 @@ async fn install_url(
     jar: CookieJar,
     CurrentUser(user): CurrentUser,
 ) -> Result<(CookieJar, Json<InstallUrlView>), AppError> {
-    let nonce = util::random_token();
+    // Prefixed on previews for the same reason as login: the App's Setup URL is a
+    // single registered origin, so the redirect proxy there needs the PR number
+    // to send the installation back. Harmless when GitHub drops the state — see
+    // the best-effort check in `setup` below.
+    let nonce = util::oauth_state(state.config.preview_id.as_deref());
     let jar = jar.add(cookies::make(&state, SETUP_STATE_COOKIE, nonce.clone()));
 
     let url = match state.config.mode {

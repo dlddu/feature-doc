@@ -44,6 +44,8 @@ pub async fn stub_state() -> (AppState, PathBuf) {
     let config = Arc::new(Config {
         database_url: url,
         base_url: "http://localhost:8080".into(),
+        oauth_redirect_base_url: "http://localhost:8080".into(),
+        preview_id: None,
         static_dir: "dist".into(),
         kek: [9u8; 32],
         mode: Mode::Stub,

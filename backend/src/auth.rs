@@ -39,7 +39,9 @@ async fn login(
     jar: CookieJar,
     Query(params): Query<LoginParams>,
 ) -> Result<(CookieJar, Redirect), AppError> {
-    let nonce = util::random_token();
+    // The cookie holds the *whole* state, `pr-<id>~` prefix included, so the
+    // callback's CSRF check below stays a plain equality test.
+    let nonce = util::oauth_state(state.config.preview_id.as_deref());
     let jar = jar.add(cookies::make(&state, STATE_COOKIE, nonce.clone()));
 
     let location = match state.config.mode {
@@ -48,7 +50,14 @@ async fn login(
             format!("/api/auth/callback?code={code}&state={nonce}")
         }
         Mode::Real => {
-            let redirect_uri = format!("{}/api/auth/callback", state.config.base_url);
+            // Must be the origin registered on the App, not necessarily our own:
+            // on a preview that is production, whose redirect proxy sends the
+            // code back here. `github_api::exchange_code` re-derives the same
+            // value, since GitHub rejects a mismatch at the token exchange.
+            let redirect_uri = format!(
+                "{}/api/auth/callback",
+                state.config.oauth_redirect_base_url
+            );
             let mut url = url::Url::parse(&format!(
                 "{}/login/oauth/authorize",
                 state.config.github.web_base

@@ -17,6 +17,22 @@ pub fn random_token() -> String {
     hex::encode(bytes)
 }
 
+/// Builds an OAuth `state`: a fresh nonce, prefixed with `pr-<id>~` when this
+/// process is a pull-request preview.
+///
+/// The prefix is routing metadata for the redirect proxy sitting on the App's
+/// registered callback host — it tells that proxy which preview to bounce the
+/// code back to. It is not a secret and grants nothing: CSRF safety still rests
+/// entirely on the whole string matching the cookie the browser kept, and the
+/// proxy can only ever rebuild a host inside the preview namespace.
+pub fn oauth_state(preview_id: Option<&str>) -> String {
+    let nonce = random_token();
+    match preview_id {
+        Some(id) => format!("pr-{id}~{nonce}"),
+        None => nonce,
+    }
+}
+
 /// Parses an RFC 3339 timestamp (as GitHub returns for token expiry) to unix seconds.
 pub fn rfc3339_to_unix(s: &str) -> Option<i64> {
     time::OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
