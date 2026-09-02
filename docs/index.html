@@ -505,7 +505,7 @@
           <span class="meta-label">Journeys</span>
         </div>
         <div class="summary-item">
-          <span class="summary-value">07</span>
+          <span class="summary-value">05</span>
           <span class="meta-label">Mockup pages</span>
         </div>
         <div class="summary-item">
@@ -717,53 +717,6 @@
         </div>
       </section>
 
-      <section aria-labelledby="pending-screens">
-        <div class="flow-heading">
-          <span class="flow-number">이관 대기</span>
-          <h2 id="pending-screens">아직 화면 단위로 남은 것</h2>
-          <span class="flow-note">이 화면들을 쓰는 여정이 아직 여정 페이지를 갖지 못했습니다 — 마지막 소비 여정이 이관될 때 흡수·삭제됩니다</span>
-          <a class="flow-doc-link" href="reader.html?doc=mockups/README.md">이관 대기 원장 읽기 — <code>mockups/README.md</code></a>
-          <span class="count">3 screens</span>
-        </div>
-        <div class="grid">
-          <article class="mockup-card">
-            <div class="card-copy">
-              <span class="screen-id">S08 · AC2.1 · AC2.2 · AC2.3</span>
-              <h3>Feature · Acceptance</h3>
-              <p class="purpose">Feature의 Given–When–Then 인수 시나리오 — 남은 소비 여정: <code>JRN-understand-feature</code></p>
-            </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/s08-feature-acceptance.html" title="S08 Feature Acceptance 미리보기" loading="lazy" tabindex="-1"></iframe></div>
-            </div>
-            <a class="open-link" href="mockups/s08-feature-acceptance.html">Open full mockup</a>
-          </article>
-
-          <article class="mockup-card">
-            <div class="card-copy">
-              <span class="screen-id">S09 · AC2.4 · AC2.5</span>
-              <h3>Feature · Dependencies</h3>
-              <p class="purpose">종단 의존성 그래프와 카테고리별 의존성 — 남은 소비 여정: <code>JRN-understand-feature</code></p>
-            </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/s09-feature-dependencies.html" title="S09 Feature Dependencies 미리보기" loading="lazy" tabindex="-1"></iframe></div>
-            </div>
-            <a class="open-link" href="mockups/s09-feature-dependencies.html">Open full mockup</a>
-          </article>
-
-          <article class="mockup-card">
-            <div class="card-copy">
-              <span class="screen-id">S10 · AC3.1</span>
-              <h3>LLM-assisted Edit</h3>
-              <p class="purpose">자연어 지시에서 diff 검토와 승인까지 — 남은 소비 여정: <code>JRN-understand-feature</code></p>
-            </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/s10-llm-edit.html" title="S10 LLM-assisted Edit 미리보기" loading="lazy" tabindex="-1"></iframe></div>
-            </div>
-            <a class="open-link" href="mockups/s10-llm-edit.html">Open full mockup</a>
-          </article>
-        </div>
-      </section>
-
       <section aria-labelledby="JRN-review-feature">
         <div class="flow-heading">
           <span class="flow-number">Journey</span>
@@ -817,6 +770,34 @@
               <div class="preview-window"><iframe src="mockups/JRN-follow-code-change.html#STP-scan-diff" title="JRN-follow-code-change 여정 목업 미리보기" loading="lazy" tabindex="-1"></iframe></div>
             </div>
             <a class="open-link" href="mockups/JRN-follow-code-change.html">Open journey</a>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="JRN-understand-feature">
+        <div class="flow-heading">
+          <span class="flow-number">Journey</span>
+          <h2 id="JRN-understand-feature">코드를 못 읽는 사람이 기능을 이해하기</h2>
+          <a class="flow-doc-link" href="reader.html?doc=user-journey/JRN-understand-feature.md">여정 문서 읽기 — <code>JRN-understand-feature</code></a>
+          <span class="count">4 steps · 1 page</span>
+        </div>
+        <div class="grid">
+          <article class="mockup-card">
+            <div class="card-copy">
+              <span class="screen-id">JRN-understand-feature · AC2.3 · AC2.4 · AC3.1 · AC3.4 · AC4.7 · AC4.8</span>
+              <h3>여정 목업 — 4단계를 한 페이지에서</h3>
+              <p class="purpose">공유받은 링크로 들어와, 인수 시나리오를 위에서 아래로 읽고, 무엇에 얽혀 있는지 훑은 뒤, 이상했던 곳을 한 줄로 남기기까지 눌러 걸어봅니다. 이 여정의 화면에는 설치·키 등록 같은 준비 절차가 나오지 않습니다.</p>
+              <ul class="step-links">
+              <li><a href="mockups/JRN-understand-feature.html#STP-open-shared"><code>STP-open-shared</code> 공유받은 기능 열기</a><span class="step-screen">S02</span></li>
+              <li><a href="mockups/JRN-understand-feature.html#STP-grasp-behavior"><code>STP-grasp-behavior</code> 위에서 아래로 읽어 이해하기</a><span class="step-screen">S08</span></li>
+              <li><a href="mockups/JRN-understand-feature.html#STP-check-scope"><code>STP-check-scope</code> 이 기능이 무엇에 얽혀 있는지 훑기</a><span class="step-screen">S09</span></li>
+              <li><a href="mockups/JRN-understand-feature.html#STP-flag-ambiguity"><code>STP-flag-ambiguity</code> 이상한 부분을 자연어로 넘기기</a><span class="step-screen">S10</span></li>
+              </ul>
+            </div>
+            <div class="preview-stage" aria-hidden="true">
+              <div class="preview-window"><iframe src="mockups/JRN-understand-feature.html#STP-grasp-behavior" title="JRN-understand-feature 여정 목업 미리보기" loading="lazy" tabindex="-1"></iframe></div>
+            </div>
+            <a class="open-link" href="mockups/JRN-understand-feature.html">Open journey</a>
           </article>
         </div>
       </section>
