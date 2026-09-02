@@ -77,6 +77,9 @@
   code {
     background: var(--code-bg); padding: .2em .4em; border-radius: 6px;
     font-family: var(--mono); font-size: .9em;
+    /* `JRN-review-feature` 같은 긴 식별자가 한 덩어리로 남으면 360px 화면에서
+       줄 밖으로 삐져나가 문서 전체에 가로 스크롤이 생긴다. */
+    overflow-wrap: anywhere;
   }
   pre {
     background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto;
@@ -97,6 +100,26 @@
   .msg { color: var(--muted); padding: 40px 0; }
   .msg strong { color: var(--fg); display: block; margin-bottom: .6em; font-size: 1.1em; }
   .msg code { white-space: pre-wrap; }
+
+  /* ── 좁은 화면 (<=600px) ──────────────────────────────────────
+     sticky 헤더가 두 줄로 접히면서 높이가 72px 를 넘어, #STP-* 딥링크로
+     들어왔을 때 대상 헤딩이 헤더 밑에 가려진다. 헤더를 한 줄로 눌러
+     담고 scroll-margin-top 도 함께 키운다. */
+  @media (max-width: 600px) {
+    header { padding: 8px 14px; gap: 10px; }
+    .crumb { font-size: 12.5px; }
+    .pill { padding: 3px 10px; font-size: 12px; }
+    .spacer { flex-basis: 0; }
+
+    main { padding: 22px 14px 80px; }
+    h1, h2, h3, h4, h5, h6 { scroll-margin-top: 104px; }
+    h1 { font-size: 1.6em; }
+    h2 { font-size: 1.3em; }
+
+    pre { padding: 12px 13px; }
+    table { font-size: .92em; }
+    th, td { padding: 6px 10px; }
+  }
 </style>
 </head>
 <body>

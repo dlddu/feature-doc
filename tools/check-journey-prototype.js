@@ -17,7 +17,10 @@
  *   P3 (d) 실제 입력   — 텍스트·선택이 진짜 폼 요소이고, 타이핑·선택이 관측 가능한
  *                        상태 변화를 일으킨다. "입력처럼 보이는 div" 패턴은 금지
  *   P4 (e) 상태 변형   — 여정 문서 §4 분기표의 각 행이 선언된 단계로 실제 이동하고,
- *                        그 상황의 상태(오류·경고·재시도)가 화면에 실제로 나타난다
+ *                        그 상황의 상태(오류·경고·재시도)가 화면에 실제로 나타난다.
+ *                        「이어지는 단계」가 다른 여정의 것이면(여정 밖 분기) 이 여정의
+ *                        끝으로 가고, 그 끝 블록이 대상을 data-goto-journey 로 선언한다 —
+ *                        기대값(대상 여정·단계)의 원천은 여기서도 여정 문서다
  *   P5 (g) 분기와 끝   — END-* 갈래의 끝에 도달한다
  *   P6 (b) 보조 레이어 — 문서 메타를 담은 <details> 가 기본으로 닫혀 있다
  *   P7 (h) 정적 동작   — 외부 자원은 폰트뿐. 스크립트·스타일 외부 참조 0
@@ -153,6 +156,20 @@ const ARM = {
       click(win, doc.getElementById('btn-draft'));
     },
   },
+  'JRN-review-feature': {
+    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
+    'STP-read-scenarios': () => {},
+    'STP-verify-evidence': (win, doc) => {
+      // 근거를 한 건도 열지 않으면 다음으로 넘어갈 수 없다(읽지 않고 넘기면 검수가 아니다).
+      change(win, doc.getElementById('in-scn'), 's1');
+      click(win, doc.getElementById('btn-open-evidence'));
+    },
+    'STP-trace-dependencies': () => {},
+    'STP-request-edit': (win, doc) => {
+      type(win, doc.getElementById('in-request'), '왜 저장이 안 되는지 한 문장으로 더 분명하게');
+    },
+    'STP-decide-diff': () => {},
+  },
 };
 
 /* ── 페이지별 입력 프로브 등록 (P3) ──────────────────────────────
@@ -226,6 +243,50 @@ const INPUT_PROBE = {
     ok(doc.getElementById('btn-draft').disabled === false, 'P3',
        `기능명을 입력해도 초안 생성 버튼이 살아나지 않는다`);
   },
+  'JRN-review-feature': (win, doc, at, ok) => {
+    // ① 편집 요청(textarea) — 무엇을 고칠지 없으면 요청을 보낼 수 없다(F8).
+    at('#STP-request-edit');
+    const req = doc.getElementById('in-request');
+    ok(req && req.tagName === 'TEXTAREA', 'P3', `편집 요청이 실제 <textarea> 가 아니다`);
+    if (!req) return;
+    ok(doc.getElementById('btn-send-request').disabled === true, 'P3',
+       `요청이 비었는데 보내기 버튼이 살아 있다 (입력 검증이 죽어 있다)`);
+    ok(visible(doc.getElementById('request-error')), 'P3',
+       `빈 요청에 대한 검증 표시가 나타나지 않는다`);
+    type(win, req, '왜 저장이 안 되는지 한 문장으로 더 분명하게');
+    ok(req.value === '왜 저장이 안 되는지 한 문장으로 더 분명하게', 'P3',
+       `입력한 값이 필드에 반영되지 않는다`);
+    ok(doc.getElementById('btn-send-request').disabled === false, 'P3',
+       `요청을 적어도 보내기 버튼이 살아나지 않는다`);
+
+    // ② 분류 선택(select) — 선택이 실제로 목록을 줄인다.
+    at('#STP-trace-dependencies');
+    const shown = () => [...doc.querySelectorAll('#dep-list .dep')]
+      .filter((r) => r.style.display !== 'none').length;
+    const filt = doc.getElementById('in-dep-filter');
+    ok(filt && filt.tagName === 'SELECT', 'P3', `의존성 분류가 실제 <select> 가 아니다`);
+    const before = shown();
+    change(win, filt, 'logic');
+    ok(shown() < before, 'P3', `분류를 바꿨는데 목록이 그대로다 (선택이 죽어 있다)`);
+
+    // ③ 그림 토글(checkbox) — 좁은 화면 기본값은 목록이고, 켜야 그림이 보인다.
+    const gr = doc.getElementById('in-graph');
+    ok(gr && gr.type === 'checkbox', 'P3', `그림 보기가 실제 체크박스가 아니다`);
+    ok(doc.getElementById('dep-graph').style.display === 'none', 'P3',
+       `그림이 기본으로 켜져 있다 (좁은 화면 기본은 목록)`);
+    check(win, gr, true);
+    ok(doc.getElementById('dep-graph').style.display === 'block', 'P3',
+       `그림 보기를 켰는데 그림이 나타나지 않는다 (토글이 죽어 있다)`);
+
+    // ④ 검수할 기능 선택(select) — 고른 기능이 실제로 화면에 반영된다.
+    at('#STP-read-scenarios');
+    const feat = doc.getElementById('in-feature');
+    ok(feat && feat.tagName === 'SELECT', 'P3', `검수할 기능이 실제 <select> 가 아니다`);
+    const title0 = doc.getElementById('feat-title').textContent;
+    change(win, feat, 'f2');
+    ok(doc.getElementById('feat-title').textContent !== title0, 'P3',
+       `기능을 바꿨는데 화면이 그대로다 (선택이 죽어 있다)`);
+  },
 };
 
 /* ── 페이지별 두 번째 갈래의 끝 등록 (P5) ────────────────────────
@@ -242,6 +303,13 @@ const SECOND_END = {
     const stop = doc.getElementById('btn-stop-cost');
     if (!ok(stop, 'P5', `대안 갈래(누적 비용 초과 중단)의 행동이 없다`)) return;
     click(win, stop);
+  } },
+  // 여정 문서 §4 의 「12개 중 1~2개만 처리하고 종료」 — 이어지는 단계가 없는 정상
+  // 종료라 분기 목록이 아니라 화면 안의 행동과 그 갈래의 끝으로 표현된다.
+  'JRN-review-feature': { name: '일부만 검수하고 종료', at: '#STP-read-scenarios', run: (win, doc, ok) => {
+    const later = doc.getElementById('btn-leave-review');
+    if (!ok(later, 'P5', `대안 갈래(일부만 검수하고 종료)의 행동이 없다`)) return;
+    click(win, later);
   } },
 };
 
@@ -373,7 +441,78 @@ const PRODUCT_PATHS = {
         return { landed: active(doc), evidence: flagged && noFabrication };
       } },
   ],
+  'JRN-review-feature': [
+    { name: '로직과 테스트가 모순', run: (win, doc) => {
+        // 모순은 사용자가 일으키는 것이 아니라 그 기능의 분석 결과에 딸려 온다.
+        change(win, doc.getElementById('in-feature'), 'f3');
+        const shown = visible(doc.getElementById('conflict-box'));
+        // 본 시나리오에 섞지 않고 별도 섹션으로 분리한다 — 섞이면 검수가 오염된다.
+        const separated = doc.querySelector('#scn-list [data-scn="x1"]') === null &&
+                          doc.querySelector('#conflict-box [data-scn="x1"]') !== null;
+        return { landed: active(doc), evidence: shown && separated };
+      } },
+    { name: '표현이 아니라 발견 자체가 잘못됨', run: (win, doc) => {
+        click(win, doc.getElementById('btn-not-a-feature'));
+        const asked = visible(doc.getElementById('notfeature-confirm'));
+        click(win, doc.getElementById('btn-back-to-discovery'));
+        // 이 갈래는 다른 여정으로 넘어가며, 이 여정의 검수는 적용되지 않는다.
+        const notApplied = /미적용/.test(doc.getElementById('END-back-to-discovery').textContent);
+        return { landed: active(doc), evidence: asked && notApplied };
+      } },
+    { name: 'LLM 제안이 요청과 어긋남', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-request-edit');
+        type(win, doc.getElementById('in-request'), '만료 안내를 더 분명하게');
+        click(win, doc.getElementById('btn-send-request'));
+        const sawDiff = active(doc) === 'STP-decide-diff';
+        click(win, doc.getElementById('btn-reject-diff'));
+        // 거부한 제안은 기록되어 다음 제안에서 회피한다. 승인 없이 적용되는 경로는 없다.
+        const recorded = visible(doc.getElementById('rejected-note')) &&
+                         doc.getElementById('rejected-count').textContent === '1';
+        return { landed: active(doc), evidence: sawDiff && recorded };
+      } },
+    { name: '검수 도중 이탈', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-trace-dependencies');
+        click(win, doc.getElementById('btn-leave-3'));
+        // 읽던 feature 와 위치가 보존된 채 재진입 지점으로 돌아온다.
+        const kept = doc.getElementById('resume-card').style.display === 'block' &&
+                     doc.getElementById('resume-name').textContent === '결제 수단 등록' &&
+                     doc.getElementById('resume-where').textContent === '의존성';
+        return { landed: active(doc), evidence: kept };
+      } },
+    { name: '의존성 근거가 비어 있음', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-trace-dependencies');
+        change(win, doc.getElementById('in-dep-filter'), 'middleware');
+        const row = doc.getElementById('dep-noevidence');
+        // "근거 없음"으로 명시하고 임의로 채우지 않는다.
+        const flagged = row.style.display !== 'none' && /근거 없음/.test(row.textContent);
+        const noFabrication = row.querySelector('.esrc') === null;
+        return { landed: active(doc), evidence: flagged && noFabrication };
+      } },
+  ],
 };
+
+/* ── 단계 → 소유 여정 (여정 밖 분기 판정의 근거) ──────────────────
+   전부 여정 문서에서 파생한다. §4 의 「이어지는 단계」가 이 인덱스에서 다른
+   여정으로 나오면 그 갈래는 이 여정의 끝(handoff)이다.                        */
+const STEP_OWNER = {};
+for (const f of fs.readdirSync(UJ).filter((n) => /^JRN-[a-z0-9-]+\.md$/.test(n)).sort()) {
+  const owner = f.replace(/\.md$/, '');
+  for (const st of parseJourney(path.join(UJ, f)).steps) {
+    if (!(st.id in STEP_OWNER)) STEP_OWNER[st.id] = owner;
+  }
+}
+
+/* 분기 i 의 기대 도착 지점. 같은 여정이면 그 단계, 다른 여정이면 그 대상을
+   선언한 END-* 블록이다. 선언을 페이지에서 찾되 키(여정#단계)는 문서에서 온다. */
+function expectedTarget(d, jid, to) {
+  const owner = STEP_OWNER[to];
+  if (!owner || owner === jid) return to;
+  const sec = d.querySelector(`section[data-goto-journey="${owner}#${to}"]`);
+  return sec ? sec.id : null;
+}
 
 /* ── 본 검사 ────────────────────────────────────────────────────── */
 const pages = fs.readdirSync(MK).filter((f) => /^JRN-[a-z0-9-]+\.html$/.test(f)).sort();
@@ -509,9 +648,14 @@ for (const file of pages) {
     window.close();
 
     for (let i = 0; i < Math.min(btns.length, jr.branches.length); i += 1) {
-      const want = jr.branches[i].to;                    // ← 기대값은 여정 문서에서
+      const to = jr.branches[i].to;                      // ← 기대값은 여정 문서에서
       const w = load(pagePath).window;
       const d = w.document;
+      const want = expectedTarget(d, jid, to);
+      if (!ok(want !== null, 'P4',
+              `${file}: 분기 ${i + 1} "${jr.branches[i].situation}" 은 다른 여정(${STEP_OWNER[to]})의 ` +
+              `${to} 로 이어지는데, 그 대상을 선언한 END-* 블록` +
+              `(data-goto-journey="${STEP_OWNER[to]}#${to}")이 페이지에 없다`)) { w.close(); continue; }
       click(w, [...d.querySelectorAll('.branches [data-goto]')][i]);
       ok(active(d) === want, 'P4',
          `${file}: 분기 ${i + 1} "${jr.branches[i].situation}" 이 ${want} 로 가지 않고 ${active(d)} 로 갔다`);
@@ -523,8 +667,8 @@ for (const file of pages) {
     ok(paths.length === jr.branches.length, 'P4',
        `${file}: 등록된 제품 경로 ${paths.length}개가 여정 문서 §4 의 ${jr.branches.length}행과 다르다`);
     for (let i = 0; i < Math.min(paths.length, jr.branches.length); i += 1) {
-      const want = jr.branches[i].to;                    // ← 여기서도 문서가 기대값
       const w = load(pagePath).window;
+      const want = expectedTarget(w.document, jid, jr.branches[i].to);  // ← 여기서도 문서가 기대값
       const r = paths[i].run(w, w.document);
       ok(r.landed === want, 'P4',
          `${file}: 제품 경로 "${paths[i].name}" 이 ${want} 로 가지 않고 ${r.landed} 로 갔다`);

@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::auth::CurrentUser;
 use crate::config::Mode;
 use crate::error::AppError;
+use crate::models::Installation;
 use crate::state::AppState;
 use crate::{cookies, github_app, installations, util};
 
@@ -37,7 +38,11 @@ async fn install_url(
     jar: CookieJar,
     CurrentUser(user): CurrentUser,
 ) -> Result<(CookieJar, Json<InstallUrlView>), AppError> {
-    let nonce = util::random_token();
+    // Prefixed on previews for the same reason as login: the App's Setup URL is a
+    // single registered origin, so the redirect proxy there needs the PR number
+    // to send the installation back. Harmless when GitHub drops the state — see
+    // the best-effort check in `setup` below.
+    let nonce = util::oauth_state(state.config.preview_id.as_deref());
     let jar = jar.add(cookies::make(&state, SETUP_STATE_COOKIE, nonce.clone()));
 
     let url = match state.config.mode {
@@ -142,7 +147,17 @@ async fn connection(
         .map(|s| s.to_string())
         .collect();
 
-    match installations::get_for_user(&state.db, &user.id).await? {
+    let linked = match installations::get_for_user(&state.db, &user.id).await? {
+        Some(inst) => Some(inst),
+        // Nothing linked locally. That row is only ever written by the Setup URL
+        // callback, so a user who installed the App before this row existed — or
+        // whose callback never landed — reads as "not installed" and gets handed
+        // `installations/new`, which opens a *second* installation instead of the
+        // one they already have. Ask GitHub once and adopt what it reports.
+        None => adopt_existing_installation(&state, &user.id).await,
+    };
+
+    match linked {
         None => Ok(Json(ConnectionView {
             installed: false,
             account: None,
@@ -165,6 +180,57 @@ async fn connection(
             }))
         }
     }
+}
+
+/// Links whatever installations GitHub already reports for this user and returns
+/// the one the screen should render.
+///
+/// Best-effort by design: a GitHub outage, a revoked App, or an OAuth token we can
+/// no longer use should leave S01 reading "not installed" — the same state it had
+/// before — rather than failing the screen. The reverse (claiming installed when
+/// we could not confirm it) would hide the connect button behind an error.
+async fn adopt_existing_installation(state: &AppState, user_id: &str) -> Option<Installation> {
+    let found = match github_app::list_user_installations(state, user_id).await {
+        Ok(found) if !found.is_empty() => found,
+        Ok(_) => return None,
+        Err(e) => {
+            tracing::debug!("installation adoption skipped: {e:?}");
+            return None;
+        }
+    };
+
+    for inst in &found {
+        if let Err(e) = installations::upsert(
+            &state.db,
+            user_id,
+            &installations::NewInstallation {
+                installation_id: inst.installation_id,
+                account_login: inst.account_login.as_deref(),
+                account_type: inst.account_type.as_deref(),
+                repository_selection: inst.repository_selection.as_deref(),
+            },
+        )
+        .await
+        {
+            tracing::debug!("installation adoption failed to persist: {e:?}");
+            return None;
+        }
+    }
+
+    // Distinct from `github.install`: this link was inferred from GitHub's state,
+    // not observed as an install we walked the user through.
+    crate::audit::record(
+        &state.db,
+        Some(user_id),
+        "github.install.adopt",
+        found[0].account_login.as_deref(),
+    )
+    .await;
+
+    installations::get_for_user(&state.db, user_id)
+        .await
+        .ok()
+        .flatten()
 }
 
 /// Deterministic per-user stub installation id (distinct users → distinct ids).

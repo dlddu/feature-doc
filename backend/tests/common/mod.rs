@@ -39,20 +39,32 @@ pub fn temp_db_url() -> (String, PathBuf) {
 }
 
 pub async fn stub_state() -> (AppState, PathBuf) {
+    state_with(Mode::Stub, "https://api.github.com").await
+}
+
+/// Real-mode state whose GitHub API base points wherever the caller says — a local
+/// stand-in server, in tests that exercise the real-mode branches.
+pub async fn real_state(api_base: &str) -> (AppState, PathBuf) {
+    state_with(Mode::Real, api_base).await
+}
+
+async fn state_with(mode: Mode, api_base: &str) -> (AppState, PathBuf) {
     let (url, path) = temp_db_url();
     let pool = db::connect(&url).await.expect("connect + migrate");
     let config = Arc::new(Config {
         database_url: url,
         base_url: "http://localhost:8080".into(),
+        oauth_redirect_base_url: "http://localhost:8080".into(),
+        preview_id: None,
         static_dir: "dist".into(),
         kek: [9u8; 32],
-        mode: Mode::Stub,
+        mode,
         github: GithubConfig {
             app_private_key: String::new(),
             client_id: String::new(),
             client_secret: String::new(),
             app_slug: "featuredoc".into(),
-            api_base: "https://api.github.com".into(),
+            api_base: api_base.into(),
             web_base: "https://github.com".into(),
         },
         cookie_secure: false,
