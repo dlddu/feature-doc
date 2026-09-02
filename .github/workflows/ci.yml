@@ -91,8 +91,9 @@ jobs:
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/featuredoc
           tags: |
+            # 커밋 SHA 하나뿐. `latest`도, 브랜치 롤링 태그도 만들지 않는다.
+            # 운영이 가리키는 태그는 아래 pin job이 커밋으로 옮긴다.
             type=raw,value=${{ github.event.pull_request.head.sha || github.sha }}
-            type=raw,value=latest
 
       - name: Build & push image
         uses: docker/build-push-action@v6
@@ -103,3 +104,53 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  pin:
+    name: pin deployment image (main only)
+    needs: push
+    # main 푸시에서만. PR 빌드는 이미지를 <head sha>로 올려두기만 하고
+    # (preview 환경이 그 태그를 쓴다) 운영 매니페스트는 건드리지 않는다.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
+    permissions:
+      # 이 job만 main에 커밋한다. 워크플로 전체 기본값은 contents: read 유지.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pin deploy/k8s image to ${{ github.sha }}
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          files="deploy/k8s/deployment.yaml deploy/k8s/worker-deployment.yaml"
+          sed -i -E "s#^([[:space:]]*image: ghcr\.io/dlddu/featuredoc):.*#\1:${SHA}#" $files
+
+          # sed가 조용히 빗나가지 않았는지 확인: 두 파일 모두 정확히 1줄씩.
+          for f in $files; do
+            n=$(grep -c "image: ghcr.io/dlddu/featuredoc:${SHA}$" "$f" || true)
+            [ "$n" = "1" ] || { echo "::error::$f: expected 1 pinned image line, got $n"; exit 1; }
+          done
+
+          if git diff --quiet; then
+            echo "이미 ${SHA}로 고정되어 있음 — 커밋할 것 없음(재실행)."
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -am "chore(deploy): featuredoc 이미지를 ${SHA} 로 고정 [skip ci]"
+
+          # 이 push는 기본 GITHUB_TOKEN으로 나가므로 새 워크플로 실행을 트리거하지
+          # 않는다(GitHub 문서화된 동작). 나중에 PAT/App 토큰으로 바꾸더라도
+          # 커밋 메시지의 [skip ci]가 재귀를 한 번 더 막는다.
+          # 머지가 연달아 들어와 main이 앞서 있으면 rebase 후 재시도.
+          for i in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main
+          done
+          exit 1
