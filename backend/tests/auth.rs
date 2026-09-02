@@ -205,8 +205,20 @@ async fn preview_callback_round_trips_the_tagged_state() {
         .await
         .unwrap();
     assert_eq!(ok.status(), StatusCode::SEE_OTHER, "tagged state should be accepted");
-    let session = ok.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap();
-    assert!(session.contains("fd_session="), "no session opened: {session}");
+    // The callback emits two cookies — it clears `fd_oauth_state` and opens
+    // `fd_session` — and their header order is not guaranteed. Reading only the
+    // first one made this assertion fail whenever the removal landed ahead of the
+    // session, so scan every `Set-Cookie` instead.
+    let cookies: Vec<&str> = ok
+        .headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .map(|v| v.to_str().unwrap())
+        .collect();
+    assert!(
+        cookies.iter().any(|c| c.starts_with("fd_session=")),
+        "no session opened: {cookies:?}"
+    );
 
     // Same tag, different nonce: the prefix must not buy anything on its own.
     let forged = format!("/api/auth/callback?code=stub&state=pr-42~{}", "0".repeat(64));
