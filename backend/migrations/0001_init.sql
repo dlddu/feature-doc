@@ -1,5 +1,5 @@
--- FeatureDoc S01 (Credentials Setup) schema.
--- Multi-user: every credential row is owned by a user and queried under that scope (AC4.7).
+-- Credentials and identity schema.
+-- Multi-user: every credential row is owned by a user and queried under that scope.
 -- Timestamps are unix epoch seconds (INTEGER). Ids are opaque TEXT (uuid v4).
 
 CREATE TABLE users (
@@ -22,7 +22,7 @@ CREATE INDEX idx_sessions_user ON sessions(user_id);
 
 -- GitHub App installations linked to a user. We persist only the installation id
 -- and display metadata; short-lived installation access tokens are minted on demand
--- and never stored (AC4.1).
+-- and never stored.
 CREATE TABLE installations (
     id                   TEXT    PRIMARY KEY,
     user_id              TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -55,7 +55,7 @@ CREATE TABLE llm_keys (
 );
 CREATE INDEX idx_llm_keys_user ON llm_keys(user_id);
 
--- Append-only audit trail for credential-touching actions (AC4.3).
+-- Append-only audit trail for credential-touching actions.
 CREATE TABLE audit_log (
     id          TEXT    PRIMARY KEY,
     user_id     TEXT,

@@ -1,16 +1,16 @@
--- Feature candidate extraction and review (AC1.4).
+-- Feature candidate extraction and review.
 --
 -- Stage 4 writes its *generated* candidate list to `analysis_documents` like every
 -- other stage output, so reproducibility (content_hash) keeps working the same way.
--- This table is the other half AC1.4 asks for: the copy the **user** decides on —
+-- This table is the other half: the copy the **user** decides on —
 -- 승인 / 거부(+사유) / 병합 / 이름 변경.
 --
 -- Row per candidate, not one JSON blob like `discovery_strategies` (0006). The two
 -- shapes answer two different questions. A strategy is always read and written as
--- one list (the screen PUTs what it is showing), so JSON is the honest unit there.
--- A candidate is decided **one at a time**, and the query that makes 시나리오 7
--- work — "did the reviewer reject this same candidate in an earlier analysis of the
--- same target?" — selects *rows* by `(repo, branch, key)`. Encoding that as JSON
+-- one list (the client PUTs what it is showing), so JSON is the honest unit there.
+-- A candidate is decided **one at a time**, and the carry-over query — "did the
+-- reviewer reject this same candidate in an earlier analysis of the same target?"
+-- — selects *rows* by `(repo, branch, key)`. Encoding that as JSON
 -- would mean parsing every earlier analysis's blob to answer it.
 --
 -- `key` is the candidate's identity **across analyses**: derived from where it was
@@ -20,7 +20,7 @@
 -- carry-over query cannot disagree about what "the same candidate" means.
 --
 -- `decision` is `undecided` | `approved` | `rejected`. `reject_reason` is NOT NULL
--- whenever `decision = 'rejected'` — AC1.4 requires the reason to be recorded, and
+-- whenever `decision = 'rejected'` — a rejection must record its reason, and
 -- the CHECK is what keeps a reason-less rejection from ever reaching the table
 -- (the route rejects it first; this is the second line).
 --
@@ -49,6 +49,6 @@ CREATE TABLE feature_candidates (
 
 CREATE INDEX idx_feature_candidates_analysis ON feature_candidates(analysis_id);
 
--- The carry-over query (시나리오 7) looks up every earlier rejection of the same
+-- The carry-over query looks up every earlier rejection of the same
 -- key, then filters to the analyses of this repository+branch.
 CREATE INDEX idx_feature_candidates_key ON feature_candidates(key, decision);
