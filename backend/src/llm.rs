@@ -112,7 +112,22 @@ impl Provider {
             Provider::Google => None,
         }
     }
+
+    /// Whether an analysis call is implemented for this provider — AC4.2's
+    /// **supported-provider scope**, and the one place that answers it.
+    ///
+    /// Derived from [`Self::default_model`] rather than kept as its own list so the
+    /// registration gate (`llmkey::register`) and the dispatch in [`ask`] cannot
+    /// drift apart: a provider is registerable exactly when there is a model to call
+    /// it with. Landing a provider is therefore one edit, not two.
+    pub fn supports_analysis(self) -> bool {
+        self.default_model().is_some()
+    }
 }
+
+/// Every provider the registration vocabulary knows, supported or not. Exists so
+/// tests can assert over the whole set instead of restating it and going stale.
+pub const ALL_PROVIDERS: [Provider; 3] = [Provider::Anthropic, Provider::OpenAI, Provider::Google];
 
 /// The provider a call falls back to when the job carries no usable registration.
 ///
@@ -140,9 +155,11 @@ pub async fn ask(
             match provider {
                 Provider::Anthropic => anthropic(http, key, ask).await,
                 Provider::OpenAI => openai(http, key, ask).await,
-                // Google has no call yet. Failing loudly beats quietly producing a
-                // stub document in a real deployment — the stage fails and AC1.5's
-                // per-stage retry picks it up once the provider lands.
+                // No call for this provider yet. Registration refuses these up front
+                // (`llmkey::register`, AC4.2's supported scope), so reaching here means
+                // a key stored before that gate existed. Failing loudly beats quietly
+                // producing a stub document in a real deployment — the stage fails and
+                // AC1.5's per-stage retry picks it up once the provider lands.
                 other => Err(format!(
                     "{} is registered but not yet supported for analysis; register an OpenAI or Anthropic key",
                     other.as_str()
@@ -473,16 +490,50 @@ mod tests {
         assert!(err.contains("no LLM key"), "{err}");
     }
 
-    /// Google parses and stores fine but has no call, so a real analysis under it
-    /// must say so instead of failing somewhere less legible.
+    /// A provider with no call must say so instead of failing somewhere less
+    /// legible. `llmkey::register` now refuses these at the door (AC4.2's supported
+    /// scope), so this arm is the second line: a row stored before that gate existed
+    /// still reaches here, and it fails by name rather than by accident.
+    ///
+    /// Asserted over [`ALL_PROVIDERS`] rather than over `Google` alone so the day
+    /// Google lands, this test keeps passing on whatever is unsupported next.
     #[tokio::test]
-    async fn google_is_registered_but_not_callable() {
+    async fn an_unsupported_provider_is_refused_by_name() {
         let http = reqwest::Client::new();
-        let err = ask(&http, Mode::Real, Provider::Google, Some("k"), an_ask())
-            .await
-            .unwrap_err();
-        assert!(err.contains("google"), "{err}");
-        assert!(err.contains("not yet supported"), "{err}");
+        let unsupported: Vec<Provider> = ALL_PROVIDERS
+            .into_iter()
+            .filter(|p| !p.supports_analysis())
+            .collect();
+        assert!(
+            !unsupported.is_empty(),
+            "nothing unsupported left — fold this test into the registration gate"
+        );
+        for p in unsupported {
+            let err = ask(&http, Mode::Real, p, Some("k"), an_ask())
+                .await
+                .unwrap_err();
+            assert!(err.contains(p.as_str()), "{p:?}: {err}");
+            assert!(err.contains("not yet supported"), "{p:?}: {err}");
+        }
+    }
+
+    /// AC4.2 supported-provider scope: registerable **iff** callable. Both sides read
+    /// this predicate, so the assertion is that it says what the dispatch does.
+    #[test]
+    fn the_supported_scope_is_the_set_of_implemented_calls() {
+        assert!(Provider::OpenAI.supports_analysis());
+        assert!(Provider::Anthropic.supports_analysis());
+        assert!(!Provider::Google.supports_analysis());
+        // A user who never chooses is billed the default, so the default must be
+        // registerable — otherwise the fallback names a provider nobody can hold.
+        assert!(DEFAULT_PROVIDER.supports_analysis());
+        for p in ALL_PROVIDERS {
+            assert_eq!(
+                p.supports_analysis(),
+                p.default_model().is_some(),
+                "{p:?}: scope and model must not be listed apart"
+            );
+        }
     }
 
     #[test]

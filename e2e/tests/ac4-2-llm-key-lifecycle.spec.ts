@@ -12,8 +12,13 @@ import { expect, test } from '@playwright/test';
 
 const ANTHROPIC_KEY = 'sk-ant-api03-aaaaaaaaaaaaaaaaaaaa';
 const OPENAI_KEY = 'sk-proj-bbbbbbbbbbbbbbbbbbbbbb';
+// Shape-valid for the stub validator on purpose: the refusal below has to come from
+// the supported-provider scope, not from key validation.
+const GOOGLE_KEY = 'AIzaSyCcccccccccccccccccccc';
 
-test('AC4.2: 잘못된 키 거부 → 등록 → 교체 → 폐기 후 신규 호출 차단', async ({ page }) => {
+test('AC4.2: 잘못된 키 거부 → 등록 → 미지원 제공자 거부 → 교체 → 폐기 후 신규 호출 차단', async ({
+  page,
+}) => {
   await page.goto('/api/auth/login?as=ac42');
 
   // 키가 실제로 쓰일 수 있는지 확인하려면 App 연결이 선행돼야 한다(AC4.1의 화면을 경유만 한다).
@@ -30,6 +35,23 @@ test('AC4.2: 잘못된 키 거부 → 등록 → 교체 → 폐기 후 신규 �
   // 유효한 키는 등록되고, 자격증명이 준비됐음을 pre-flight가 확인해 준다.
   await page.getByTestId('key-input').fill(ANTHROPIC_KEY);
   await page.getByTestId('register-key').click();
+  await expect(page.getByTestId('active-key')).toBeVisible();
+
+  // 지원 제공자 범위(AC4.2): 분석 호출이 없는 제공자는 **등록 시점에** 거부된다.
+  // 등록해 둔 뒤 분석 도중 실패하는 것이 아니라, 아직 아무것도 맡기지 않은 여기서 알린다.
+  await page.getByTestId('provider-google').click();
+  await expect(page.getByTestId('active-key')).toHaveCount(0);
+  await page.getByTestId('key-input').fill(GOOGLE_KEY);
+  await page.getByTestId('register-key').click();
+  await expect(page.getByTestId('key-error')).toContainText('분석 호출을 지원하지 않아');
+  // 거부됐으므로 저장되지 않는다 — 이 제공자에 활성 키가 생기지 않는다.
+  await expect(page.getByTestId('active-key')).toHaveCount(0);
+
+  // 그리고 이미 쓰던 키의 자리를 빼앗지 않는다: 분석이 쓸 키는 그대로 Anthropic이다.
+  const stillAnthropic = await page.request.get('/api/llm-keys/preflight');
+  expect(stillAnthropic.ok()).toBe(true);
+  expect((await stillAnthropic.json()).provider).toBe('anthropic');
+  await page.getByTestId('provider-anthropic').click();
   await expect(page.getByTestId('active-key')).toBeVisible();
 
   const cont = page.getByTestId('continue');
