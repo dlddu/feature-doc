@@ -118,10 +118,18 @@ struct ClaimView {
     /// This is also where AC1.3's approval gate lives: `feature_candidates` is
     /// **withheld** until the user has approved this analysis's discovery strategy,
     /// so "승인된 전략만 다음 단계의 입력이 된다" is a property of the queue rather
-    /// than a rule each worker is trusted to remember. The stage is not implemented
-    /// yet — naming it here is what makes the gate testable before stage 4 lands,
-    /// and a worker only runs keys it both knows and was offered.
+    /// than a rule each worker is trusted to remember. A worker only runs keys it
+    /// both knows and was offered.
+    ///
+    /// A stage that already **succeeded** is not offered again. That is what makes
+    /// the post-approval re-queue safe: stage 4 opens without stages 2-3 re-running
+    /// their LLM calls and overwriting the very document the user approved. The one
+    /// exception is spelled out in [`offered_stages`].
     executable_stages: Vec<String>,
+    /// The patterns the reviewer approved (AC1.3), when they have. Stage 4's input,
+    /// carried on the claim so the worker needs no second round-trip — and so the
+    /// gate and the input come from the same read of the same row.
+    approved_patterns: Vec<String>,
     lease_expires_at: i64,
     /// Short-lived GitHub installation token for this job's repository. `None` in
     /// stub mode (nothing to call). Never persisted, never logged.
@@ -238,21 +246,8 @@ async fn claim(
     // AC1.3's gate. Read after the claim rather than inside it: the claim is an
     // atomic hand-off of one row and joining a second table into that statement
     // would put the gate inside the concurrency-critical path for no benefit.
-    let strategy_approved: Option<(i64,)> = sqlx::query_as(
-        "SELECT 1 FROM discovery_strategies WHERE analysis_id = ? AND approved_at IS NOT NULL",
-    )
-    .bind(&job.id)
-    .fetch_optional(&state.db)
-    .await?;
-
-    let mut executable_stages = vec![
-        pipeline::FETCH.to_string(),
-        pipeline::CROSS_CUTTING.to_string(),
-        pipeline::DISCOVERY_STRATEGY.to_string(),
-    ];
-    if strategy_approved.is_some() {
-        executable_stages.push(pipeline::FEATURE_CANDIDATES.to_string());
-    }
+    let approved_patterns = approved_patterns(&state, &job.id).await?;
+    let executable_stages = offered_stages(&state, &job.id, approved_patterns.is_some()).await?;
 
     Ok(Json(ClaimView {
         id: job.id,
@@ -260,12 +255,91 @@ async fn claim(
         repo_name: job.repo_name,
         branch: job.branch,
         executable_stages,
+        approved_patterns: approved_patterns.unwrap_or_default(),
         lease_expires_at: lease_until,
         installation_token,
         llm_provider,
         llm_api_key,
     })
     .into_response())
+}
+
+/// The approved strategy's patterns, or `None` when the reviewer has not approved
+/// one — which is also AC1.3's gate value.
+pub async fn approved_patterns(
+    state: &AppState,
+    analysis_id: &str,
+) -> Result<Option<Vec<String>>, AppError> {
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT entries FROM discovery_strategies \
+          WHERE analysis_id = ? AND approved_at IS NOT NULL",
+    )
+    .bind(analysis_id)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some((entries,)) = row else {
+        return Ok(None);
+    };
+    let parsed: Vec<serde_json::Value> = serde_json::from_str(&entries).unwrap_or_default();
+    Ok(Some(
+        parsed
+            .iter()
+            .filter_map(|e| e.get("pattern").and_then(|p| p.as_str()))
+            .map(str::to_string)
+            .collect(),
+    ))
+}
+
+/// Which stages this claim offers.
+///
+/// The rule is "a stage that has not succeeded yet", with one deliberate exception:
+/// `cross_cutting` is offered whenever `discovery_strategy` is still pending, because
+/// stage 3 takes stage 2's document **as an in-pass argument**. Without the
+/// exception, retrying a failed stage 3 would arrive with no landscape to plan over
+/// and silently do nothing — the behaviour before this rule existed (every stage
+/// re-ran, every time) is preserved for exactly that path.
+///
+/// `fetch` is always offered. It is the only non-LLM stage, it is what produces the
+/// path list every later stage reads, and re-measuring the same tree costs a single
+/// API call and yields the same numbers.
+pub async fn offered_stages(
+    state: &AppState,
+    analysis_id: &str,
+    strategy_approved: bool,
+) -> Result<Vec<String>, AppError> {
+    let rows: Vec<(String, String)> =
+        sqlx::query_as("SELECT key, status FROM analysis_stages WHERE analysis_id = ?")
+            .bind(analysis_id)
+            .fetch_all(&state.db)
+            .await?;
+    let done = |key: &str| {
+        rows.iter()
+            .any(|(k, s)| k == key && s == stage_status::SUCCEEDED)
+    };
+
+    let mut offered = vec![pipeline::FETCH.to_string()];
+    if !done(pipeline::CROSS_CUTTING) || !done(pipeline::DISCOVERY_STRATEGY) {
+        offered.push(pipeline::CROSS_CUTTING.to_string());
+    }
+    if !done(pipeline::DISCOVERY_STRATEGY) {
+        offered.push(pipeline::DISCOVERY_STRATEGY.to_string());
+    }
+    if strategy_approved && !done(pipeline::FEATURE_CANDIDATES) {
+        offered.push(pipeline::FEATURE_CANDIDATES.to_string());
+    }
+    Ok(offered)
+}
+
+/// Whether an executable stage is still waiting — i.e. whether handing this job back
+/// to the queue would accomplish anything. Used at [`finish`] to close the one race
+/// the approval re-queue cannot: a strategy approved *while* the worker was running.
+async fn work_remains(state: &AppState, analysis_id: &str) -> Result<bool, AppError> {
+    let approved = approved_patterns(state, analysis_id).await?.is_some();
+    if !approved {
+        return Ok(false);
+    }
+    let offered = offered_stages(state, analysis_id, approved).await?;
+    Ok(offered.iter().any(|k| k == pipeline::FEATURE_CANDIDATES))
 }
 
 // ── lease + progress ──────────────────────────────────────────────────────────
@@ -385,20 +459,35 @@ async fn finish(
     }
     require_lease(&state, &id, &req.worker_id).await?;
 
+    // "Every implemented stage ran" can stop being true between the claim and this
+    // call: approving a strategy opens stage 4, and the user may do it while this
+    // pass is still running — in which case `approve_strategy`'s own re-queue is
+    // refused (it never re-queues a job under a live lease). Landing on `queued`
+    // here is the other half of that pair; without it the approval would open a
+    // stage no claim would ever offer again.
+    let landed = if req.status == status::AWAITING_PIPELINE && work_remains(&state, &id).await? {
+        status::QUEUED
+    } else {
+        req.status.as_str()
+    };
+    let finished_at = (landed != status::QUEUED).then(now_unix);
+
     sqlx::query(
         "UPDATE analyses \
-            SET status = ?, error = ?, finished_at = ?, lease_expires_at = NULL \
+            SET status = ?, error = ?, finished_at = ?, lease_expires_at = NULL, \
+                claimed_by = CASE WHEN ? THEN NULL ELSE claimed_by END \
           WHERE id = ? AND claimed_by = ?",
     )
-    .bind(&req.status)
+    .bind(landed)
     .bind(req.error.as_deref())
-    .bind(now_unix())
+    .bind(finished_at)
+    .bind(landed == status::QUEUED)
     .bind(&id)
     .bind(&req.worker_id)
     .execute(&state.db)
     .await?;
 
-    tracing::info!(analysis_id = %id, worker_id = %req.worker_id, status = %req.status, "analysis finished");
+    tracing::info!(analysis_id = %id, worker_id = %req.worker_id, status = %landed, "analysis finished");
     Ok(StatusCode::NO_CONTENT)
 }
 

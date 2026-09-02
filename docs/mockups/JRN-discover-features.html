@@ -903,6 +903,7 @@ body {
 .cand .cbtns .btn { flex: 1; height: 34px; font-size: 12px; }
 .cand .cstate { display: none; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); }
 .cand.approved .cstate, .cand.rejected .cstate { display: block; }
+.cand .prev .prev-quote { display: block; margin-top: 6px; font-style: italic; }
 .cand .prev { margin-top: 9px; border: 1px solid rgba(201, 168, 104, 0.4); border-radius: 8px; padding: 8px 10px; font-size: 11px; line-height: 1.5; color: var(--warning); }
 .ev { display: flex; gap: 8px; align-items: baseline; }
 .ev + .ev { margin-top: 9px; }
@@ -1156,9 +1157,9 @@ body {
 
       <div id="cand-list" style="margin-top:16px">
         <div class="cand" data-cand="c1">
-          <span class="cname">비밀번호 재설정</span>
-          <span class="cwhere">src/routes/auth.ts:14 · POST /auth/reset</span>
-          <span class="cwhy">메일 템플릿과 만료 토큰 검증이 함께 있어 최종 사용자에게 노출되는 흐름으로 봤어요.</span>
+          <span class="cname" data-sample>비밀번호 재설정</span>
+          <span class="cwhere" data-sample>src/routes/auth.ts:14 · POST /auth/reset</span>
+          <span class="cwhy" data-sample>메일 템플릿과 만료 토큰 검증이 함께 있어 최종 사용자에게 노출되는 흐름으로 봤어요.</span>
           <span class="cstate">결정됨</span>
           <div class="cbtns">
             <button class="btn btn-secondary" data-decide="approve">승인</button>
@@ -1166,9 +1167,9 @@ body {
           </div>
         </div>
         <div class="cand" data-cand="c2">
-          <span class="cname">결제 수단 등록</span>
-          <span class="cwhere">src/routes/billing.ts:52 · POST /billing/methods</span>
-          <span class="cwhy">Stripe SetupIntent 를 만들고 카드 정보를 저장하는 경로입니다.</span>
+          <span class="cname" data-sample>결제 수단 등록</span>
+          <span class="cwhere" data-sample>src/routes/billing.ts:52 · POST /billing/methods</span>
+          <span class="cwhy" data-sample>Stripe SetupIntent 를 만들고 카드 정보를 저장하는 경로입니다.</span>
           <span class="cstate">결정됨</span>
           <div class="cbtns">
             <button class="btn btn-secondary" data-decide="approve">승인</button>
@@ -1176,10 +1177,10 @@ body {
           </div>
         </div>
         <div class="cand" data-cand="c3">
-          <span class="cname">내부 디버그 콘솔</span>
-          <span class="cwhere">src/routes/admin.ts:9 · GET /admin/debug</span>
-          <span class="cwhy">관리자 세션에서만 열리는 라우트예요.</span>
-          <div class="prev" id="prev-reason">이전 분석에서 <strong>거부</strong>한 항목이에요 — “내부 도구라 사용자 기능이 아님” (2026-08-14). 자동으로 다시 채택하지 않았으니 이번에도 직접 결정해 주세요.</div>
+          <span class="cname" data-sample>내부 디버그 콘솔</span>
+          <span class="cwhere" data-sample>src/routes/admin.ts:9 · GET /admin/debug</span>
+          <span class="cwhy" data-sample>관리자 세션에서만 열리는 라우트예요.</span>
+          <div class="prev" id="prev-reason">이전 분석에서 <strong>거부</strong>한 항목이에요. 자동으로 다시 채택하지 않았으니 이번에도 직접 결정해 주세요.<span class="prev-quote" data-sample>“내부 도구라 사용자 기능이 아님” (2026-08-14)</span></div>
           <span class="cstate">결정됨</span>
           <div class="cbtns">
             <button class="btn btn-secondary" data-decide="approve">승인</button>
@@ -1187,9 +1188,9 @@ body {
           </div>
         </div>
         <div class="cand" data-cand="c4">
-          <span class="cname">주문 내역 내려받기</span>
-          <span class="cwhere">src/routes/orders.ts:31 · GET /orders/export.csv</span>
-          <span class="cwhy">CSV 스트림 응답이라 사용자가 직접 받아 가는 기능으로 판단했습니다.</span>
+          <span class="cname" data-sample>주문 내역 내려받기</span>
+          <span class="cwhere" data-sample>src/routes/orders.ts:31 · GET /orders/export.csv</span>
+          <span class="cwhy" data-sample>CSV 스트림 응답이라 사용자가 직접 받아 가는 기능으로 판단했습니다.</span>
           <span class="cstate">결정됨</span>
           <div class="cbtns">
             <button class="btn btn-secondary" data-decide="approve">승인</button>

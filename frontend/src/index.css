@@ -630,3 +630,74 @@ button.ico { cursor: pointer; }
   border-color: rgba(201, 168, 104, 0.4);
   color: var(--warning);
 }
+
+/* feature-candidate cards — S07 (mockups/JRN-discover-features.html#STP-sift-candidates).
+   Copied from the mockup's inline CSS so the screen and the prototype render the
+   same shape; the tokens are the ones §5.2 already defines. */
+.cand {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 13px 14px;
+}
+.cand + .cand {
+  margin-top: 10px;
+}
+.cand.approved {
+  border-color: rgba(134, 184, 154, 0.45);
+}
+.cand.rejected {
+  border-color: rgba(201, 128, 128, 0.4);
+  opacity: 0.72;
+}
+.cand .cname {
+  font-size: 13.5px;
+  color: var(--text-primary);
+}
+.cand .cwhere {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+}
+.cand .cwhy {
+  display: block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.cand .cbtns {
+  display: flex;
+  gap: 8px;
+  margin-top: 11px;
+}
+.cand .cbtns .btn {
+  flex: 1;
+  height: 34px;
+  font-size: 12px;
+}
+.cand .cstate {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.cand .prev .prev-quote {
+  display: block;
+  margin-top: 6px;
+  font-style: italic;
+}
+.cand .prev {
+  margin-top: 9px;
+  border: 1px solid rgba(201, 168, 104, 0.4);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--warning);
+}

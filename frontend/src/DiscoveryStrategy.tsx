@@ -27,9 +27,15 @@ type Props = {
   id: string;
   /** S06 → S04 (back to the run this strategy belongs to). */
   onBack: () => void;
+  /**
+   * S06 → S07 (AC1.4). The mockup's own wiring: `이 전략으로 후보 뽑기` carries
+   * `data-goto="STP-sift-candidates"`, so approving and entering the candidate list
+   * are one button. Before approval it approves; after, it is the way through.
+   */
+  onOpenCandidates: () => void;
 };
 
-export function DiscoveryStrategy({ id, onBack }: Props) {
+export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -188,21 +194,24 @@ export function DiscoveryStrategy({ id, onBack }: Props) {
       )}
 
       <div className="stack" style={{ marginTop: 24 }}>
-        {strategy.approved ? (
+        {strategy.approved && (
           <span className="tag" data-testid="strategy-approved">
             {APPROVED}
           </span>
-        ) : (
-          <button
-            className="btn btn-primary block"
-            type="button"
-            disabled={busy || strategy.entries.length === 0}
-            onClick={() => void mutate(approveDiscoveryStrategy(id))}
-            data-testid="strategy-approve"
-          >
-            이 전략으로 후보 뽑기
-          </button>
         )}
+        <button
+          className="btn btn-primary block"
+          type="button"
+          disabled={busy || strategy.entries.length === 0}
+          onClick={() =>
+            strategy.approved
+              ? onOpenCandidates()
+              : void mutate(approveDiscoveryStrategy(id))
+          }
+          data-testid={strategy.approved ? 'strategy-open-candidates' : 'strategy-approve'}
+        >
+          이 전략으로 후보 뽑기
+        </button>
       </div>
     </main>
   );

@@ -329,3 +329,86 @@ export async function approveDiscoveryStrategy(id: string): Promise<DiscoveryStr
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as DiscoveryStrategy;
 }
+
+/** An earlier analysis of the same target rejected this same candidate (AC1.4). */
+export type PreviousRejection = {
+  reason: string;
+  rejectedAt: number;
+  analysisId: string;
+};
+
+export type FeatureCandidate = {
+  key: string;
+  name: string;
+  location: string;
+  symbol: string | null;
+  rationale: string;
+  decision: 'undecided' | 'approved' | 'rejected';
+  rejectReason: string | null;
+  mergedInto: string | null;
+  previouslyRejected: PreviousRejection | null;
+};
+
+/** The reviewable candidate list for one analysis (AC1.4). */
+export type CandidateList = {
+  candidates: FeatureCandidate[];
+  /** Counted by the server, so the screen and the "결정 끝" gate read one number. */
+  undecided: number;
+  /** Whether stage 4 has produced its document yet. `false` is a state, not an error. */
+  extracted: boolean;
+};
+
+export async function getCandidates(id: string): Promise<CandidateList> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/candidates`, {
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as CandidateList;
+}
+
+async function candidateAction(
+  id: string,
+  action: string,
+  body: Record<string, unknown>,
+): Promise<CandidateList> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/candidates/${action}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: json,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as CandidateList;
+}
+
+/** Approve one candidate (AC1.4). */
+export function approveCandidate(id: string, key: string): Promise<CandidateList> {
+  return candidateAction(id, 'decision', { key, decision: 'approve' });
+}
+
+/** Reject one candidate with the reason AC1.4 requires to be recorded. */
+export function rejectCandidate(
+  id: string,
+  key: string,
+  reason: string,
+): Promise<CandidateList> {
+  return candidateAction(id, 'decision', { key, decision: 'reject', reason });
+}
+
+/** Rename one candidate. Its key does not move — identity is where it was found. */
+export function renameCandidate(
+  id: string,
+  key: string,
+  name: string,
+): Promise<CandidateList> {
+  return candidateAction(id, 'rename', { key, name });
+}
+
+/** Fold candidates into one. The folded rows are kept, marked `mergedInto`. */
+export function mergeCandidates(
+  id: string,
+  into: string,
+  keys: string[],
+): Promise<CandidateList> {
+  return candidateAction(id, 'merge', { into, keys });
+}

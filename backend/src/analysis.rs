@@ -65,6 +65,13 @@ pub fn routes() -> Router<AppState> {
             "/api/analyses/{id}/discovery-strategy/approve",
             post(approve_strategy),
         )
+        // The candidate key carries the path it was found at (`src/routes/auth.ts`),
+        // so it cannot be a path segment — one candidate would span several. It
+        // travels in the body of each action instead.
+        .route("/api/analyses/{id}/candidates", get(candidates))
+        .route("/api/analyses/{id}/candidates/decision", post(decide_candidate))
+        .route("/api/analyses/{id}/candidates/rename", post(rename_candidate))
+        .route("/api/analyses/{id}/candidates/merge", post(merge_candidates))
 }
 
 // ── views / rows ──────────────────────────────────────────────────────────────
@@ -937,13 +944,431 @@ async fn approve_strategy(
         ));
     }
 
+    // Approval and the re-queue are one transaction because they are one fact:
+    // "this analysis may now run stage 4". Stage 3 leaves the job in
+    // `awaiting_pipeline`, and `worker_api::claim` only selects `queued` (or an
+    // expired lease) — so without this write the approved strategy would open a
+    // stage no worker could ever be handed. The `status <> running` guard is
+    // `retry_stage`'s invariant: never re-queue a job underneath its lease holder.
+    // The job finishing under that lease lands on `queued` itself (worker_api::finish).
+    let now = now_unix();
+    let mut tx = state.db.begin().await?;
     sqlx::query("UPDATE discovery_strategies SET approved_at = ?, updated_at = ? WHERE analysis_id = ?")
-        .bind(now_unix())
-        .bind(now_unix())
+        .bind(now)
+        .bind(now)
         .bind(&id)
+        .execute(&mut *tx)
+        .await?;
+    let requeued = sqlx::query(
+        "UPDATE analyses \
+            SET status = ?, error = NULL, claimed_by = NULL, claimed_at = NULL, \
+                lease_expires_at = NULL, finished_at = NULL \
+          WHERE id = ? AND status <> ?",
+    )
+    .bind(pipeline::status::QUEUED)
+    .bind(&id)
+    .bind(pipeline::status::RUNNING)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+
+    tracing::info!(
+        analysis_id = %id,
+        entries = current.entries.len(),
+        requeued = requeued.rows_affected() == 1,
+        "discovery strategy approved"
+    );
+    load_strategy(&state, &id).await?.ok_or(AppError::NotFound).map(Json)
+}
+
+// ── feature candidate review (AC1.4) ──────────────────────────────────────────
+//
+// Stage 4 extracts; this is where a person sifts. Same split as AC1.3: the
+// generated document stays in `analysis_documents` untouched (reproducibility keeps
+// working), and what the user decides lives in `feature_candidates` (migration
+// 0007). AC1.4's 검증 방법 names four actions — 승인 · 거부 · 병합 · 이름 변경 — and
+// requires that a rejection's reason be recorded "다음 분석 시 참고될 수 있도록",
+// which is what [`previous_rejection`] reads back.
+
+const DECISION_UNDECIDED: &str = "undecided";
+const DECISION_APPROVED: &str = "approved";
+const DECISION_REJECTED: &str = "rejected";
+
+/// One candidate as S07 renders it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CandidateView {
+    key: String,
+    name: String,
+    location: String,
+    symbol: Option<String>,
+    rationale: String,
+    decision: String,
+    reject_reason: Option<String>,
+    /// The surviving candidate's key when this one was merged away.
+    merged_into: Option<String>,
+    /// AC1.4's "거부된 후보의 사유는 다음 분석 시 참고될 수 있도록 기록된다", read
+    /// back: an earlier analysis of the same target rejected this same place.
+    /// Present as information, never as an automatic decision — the mockup is
+    /// explicit that the reviewer decides again ("자동으로 다시 채택하지 않았으니").
+    previously_rejected: Option<PreviousRejection>,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct PreviousRejection {
+    reason: String,
+    rejected_at: i64,
+    analysis_id: String,
+}
+
+/// S07's whole payload. `undecided` is a count rather than a client-side filter so
+/// the screen and the "결정 끝" gate read the same number the server does.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CandidateListView {
+    candidates: Vec<CandidateView>,
+    undecided: usize,
+    /// Whether stage 4 has produced its document yet. `false` is not an error —
+    /// it is "this analysis has not got there".
+    extracted: bool,
+}
+
+#[derive(sqlx::FromRow)]
+struct CandidateRow {
+    key: String,
+    name: String,
+    location: String,
+    symbol: Option<String>,
+    rationale: String,
+    decision: String,
+    reject_reason: Option<String>,
+    merged_into: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DecisionReq {
+    /// Which candidate — its [`crate::feature_candidates::candidate_key`].
+    key: String,
+    /// `approve` or `reject`.
+    decision: String,
+    #[serde(default)]
+    reason: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RenameReq {
+    key: String,
+    name: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MergeReq {
+    /// The candidate that survives.
+    into: String,
+    /// The candidates folded into it.
+    keys: Vec<String>,
+}
+
+/// The reviewable candidate list, seeding it from stage 4's document on first read.
+///
+/// Seeded lazily for the same reason the strategy is (AC1.3): the worker protocol
+/// stays unchanged and the seed is idempotent — whoever reads first materialises
+/// the rows, and every later read returns the rows that person decided on.
+async fn candidates(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<CandidateListView>, AppError> {
+    let (owner, name, branch, created_at) = owned_analysis(&state, &user.id, &id).await?;
+    seed_candidates(&state, &id).await?;
+    load_candidates(&state, &user.id, &id, &owner, &name, &branch, created_at)
+        .await
+        .map(Json)
+}
+
+/// Materialises `feature_candidates` rows from stage 4's document, once.
+async fn seed_candidates(state: &AppState, id: &str) -> Result<bool, AppError> {
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",
+    )
+    .bind(id)
+    .bind(pipeline::FEATURE_CANDIDATES)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some((content,)) = row else {
+        return Ok(false);
+    };
+    let doc: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|_| AppError::internal("stored candidate document is unreadable"))?;
+
+    let now = now_unix();
+    for (seq, candidate) in crate::feature_candidates::candidates(&doc).iter().enumerate() {
+        // `INSERT OR IGNORE` on `(analysis_id, key)`: re-running stage 4 (AC1.5's
+        // partial retry) must not erase decisions the reviewer already made.
+        sqlx::query(
+            "INSERT OR IGNORE INTO feature_candidates \
+               (id, analysis_id, key, seq, name, location, symbol, rationale, \
+                decision, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(id)
+        .bind(&candidate.key)
+        .bind(seq as i64)
+        .bind(&candidate.name)
+        .bind(&candidate.location)
+        .bind(candidate.symbol.as_deref())
+        .bind(&candidate.rationale)
+        .bind(DECISION_UNDECIDED)
+        .bind(now)
+        .bind(now)
         .execute(&state.db)
         .await?;
+    }
+    Ok(true)
+}
 
-    tracing::info!(analysis_id = %id, entries = current.entries.len(), "discovery strategy approved");
-    load_strategy(&state, &id).await?.ok_or(AppError::NotFound).map(Json)
+async fn load_candidates(
+    state: &AppState,
+    user_id: &str,
+    id: &str,
+    owner: &str,
+    name: &str,
+    branch: &str,
+    created_at: i64,
+) -> Result<CandidateListView, AppError> {
+    let rows: Vec<CandidateRow> = sqlx::query_as(
+        "SELECT key, name, location, symbol, rationale, decision, reject_reason, merged_into \
+           FROM feature_candidates WHERE analysis_id = ? ORDER BY seq, rowid",
+    )
+    .bind(id)
+    .fetch_all(&state.db)
+    .await?;
+
+    let mut candidates = Vec::with_capacity(rows.len());
+    for row in rows {
+        let previously_rejected =
+            previous_rejection(state, user_id, id, owner, name, branch, created_at, &row.key)
+                .await?;
+        candidates.push(CandidateView {
+            key: row.key,
+            name: row.name,
+            location: row.location,
+            symbol: row.symbol,
+            rationale: row.rationale,
+            decision: row.decision,
+            reject_reason: row.reject_reason,
+            merged_into: row.merged_into,
+            previously_rejected,
+        });
+    }
+    let undecided = candidates
+        .iter()
+        .filter(|c| c.decision == DECISION_UNDECIDED && c.merged_into.is_none())
+        .count();
+    let extracted = !candidates.is_empty();
+    Ok(CandidateListView {
+        candidates,
+        undecided,
+        extracted,
+    })
+}
+
+/// The most recent *earlier* rejection of this same candidate for the same target
+/// (test/01 시나리오 7). Same ordering rule as [`carried_over`]: unix seconds tie for
+/// analyses triggered together, so `rowid` breaks it.
+#[allow(clippy::too_many_arguments)]
+async fn previous_rejection(
+    state: &AppState,
+    user_id: &str,
+    id: &str,
+    owner: &str,
+    name: &str,
+    branch: &str,
+    created_at: i64,
+    key: &str,
+) -> Result<Option<PreviousRejection>, AppError> {
+    let row: Option<(String, i64, String)> = sqlx::query_as(
+        "SELECT c.reject_reason, c.updated_at, prev.id \
+           FROM feature_candidates c \
+           JOIN analyses prev ON prev.id = c.analysis_id \
+          WHERE c.key = ? AND c.decision = ? AND c.reject_reason IS NOT NULL \
+            AND prev.user_id = ? AND prev.repo_owner = ? AND prev.repo_name = ? \
+            AND prev.branch = ? AND prev.id != ? \
+            AND (prev.created_at < ? \
+                 OR (prev.created_at = ? \
+                     AND prev.rowid < (SELECT rowid FROM analyses WHERE id = ?))) \
+          ORDER BY prev.created_at DESC, prev.rowid DESC LIMIT 1",
+    )
+    .bind(key)
+    .bind(DECISION_REJECTED)
+    .bind(user_id)
+    .bind(owner)
+    .bind(name)
+    .bind(branch)
+    .bind(id)
+    .bind(created_at)
+    .bind(created_at)
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    Ok(row.map(|(reason, rejected_at, analysis_id)| PreviousRejection {
+        reason,
+        rejected_at,
+        analysis_id,
+    }))
+}
+
+/// Approve or reject one candidate. A rejection without a reason is refused —
+/// AC1.4 requires the reason, and a reason recorded later is a reason nobody wrote.
+async fn decide_candidate(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Json(req): Json<DecisionReq>,
+) -> Result<Json<CandidateListView>, AppError> {
+    let (owner, name, branch, created_at) = owned_analysis(&state, &user.id, &id).await?;
+    // Same lazy seed as the read: a reviewer who deep-links straight into a decision
+    // must not have to have loaded the list first for it to exist.
+    seed_candidates(&state, &id).await?;
+    let key = req.key;
+
+    let (decision, reason) = match req.decision.as_str() {
+        "approve" => (DECISION_APPROVED, None),
+        "reject" => {
+            let reason = req.reason.unwrap_or_default().trim().to_string();
+            if reason.is_empty() {
+                return Err(AppError::BadRequest(
+                    "사유를 적어야 거부를 확정할 수 있어요. 다음 분석에서 같은 판단을 반복하지 않으려면 한 줄이라도 남겨 주세요.".into(),
+                ));
+            }
+            (DECISION_REJECTED, Some(reason))
+        }
+        _ => return Err(AppError::BadRequest("unknown decision".into())),
+    };
+
+    let res = sqlx::query(
+        "UPDATE feature_candidates SET decision = ?, reject_reason = ?, updated_at = ? \
+          WHERE analysis_id = ? AND key = ? AND merged_into IS NULL",
+    )
+    .bind(decision)
+    .bind(reason.as_deref())
+    .bind(now_unix())
+    .bind(&id)
+    .bind(&key)
+    .execute(&state.db)
+    .await?;
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+
+    crate::audit::record(
+        &state.db,
+        Some(&user.id),
+        "analysis.candidate_decision",
+        Some(decision),
+    )
+    .await;
+
+    load_candidates(&state, &user.id, &id, &owner, &name, &branch, created_at)
+        .await
+        .map(Json)
+}
+
+/// Rename one candidate (AC1.4). The key does not move — identity is where the
+/// candidate was found, not what it is called, which is what lets the next analysis
+/// still recognise a renamed candidate.
+async fn rename_candidate(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Json(req): Json<RenameReq>,
+) -> Result<Json<CandidateListView>, AppError> {
+    let (owner, name, branch, created_at) = owned_analysis(&state, &user.id, &id).await?;
+    seed_candidates(&state, &id).await?;
+    let key = req.key;
+    let renamed = req.name.trim().to_string();
+    if renamed.is_empty() {
+        return Err(AppError::BadRequest("이름을 비워 둘 수 없어요.".into()));
+    }
+
+    let res = sqlx::query(
+        "UPDATE feature_candidates SET name = ?, updated_at = ? \
+          WHERE analysis_id = ? AND key = ? AND merged_into IS NULL",
+    )
+    .bind(&renamed)
+    .bind(now_unix())
+    .bind(&id)
+    .bind(&key)
+    .execute(&state.db)
+    .await?;
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+    load_candidates(&state, &user.id, &id, &owner, &name, &branch, created_at)
+        .await
+        .map(Json)
+}
+
+/// Merge candidates into one (AC1.4). The folded rows are kept, not deleted: the
+/// merge stays visible and reversible, and the next analysis can still see that
+/// those places were looked at.
+async fn merge_candidates(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Json(req): Json<MergeReq>,
+) -> Result<Json<CandidateListView>, AppError> {
+    let (owner, name, branch, created_at) = owned_analysis(&state, &user.id, &id).await?;
+    seed_candidates(&state, &id).await?;
+    let folded: Vec<String> = req.keys.into_iter().filter(|k| *k != req.into).collect();
+    if folded.is_empty() {
+        return Err(AppError::BadRequest(
+            "합칠 후보를 하나 이상 골라 주세요.".into(),
+        ));
+    }
+
+    let survivor: Option<(i64,)> = sqlx::query_as(
+        "SELECT 1 FROM feature_candidates \
+          WHERE analysis_id = ? AND key = ? AND merged_into IS NULL",
+    )
+    .bind(&id)
+    .bind(&req.into)
+    .fetch_optional(&state.db)
+    .await?;
+    if survivor.is_none() {
+        return Err(AppError::NotFound);
+    }
+
+    let mut tx = state.db.begin().await?;
+    for key in &folded {
+        // A folded candidate is no longer a thing to decide, so it stops counting
+        // as undecided; its own decision is cleared to keep the two axes
+        // (decided / merged away) from contradicting each other on the screen.
+        let res = sqlx::query(
+            "UPDATE feature_candidates \
+                SET merged_into = ?, decision = ?, reject_reason = NULL, updated_at = ? \
+              WHERE analysis_id = ? AND key = ? AND merged_into IS NULL",
+        )
+        .bind(&req.into)
+        .bind(DECISION_UNDECIDED)
+        .bind(now_unix())
+        .bind(&id)
+        .bind(key)
+        .execute(&mut *tx)
+        .await?;
+        if res.rows_affected() == 0 {
+            return Err(AppError::NotFound);
+        }
+    }
+    tx.commit().await?;
+
+    load_candidates(&state, &user.id, &id, &owner, &name, &branch, created_at)
+        .await
+        .map(Json)
 }
