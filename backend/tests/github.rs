@@ -8,9 +8,9 @@ use axum::http::{header, Request, StatusCode};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
-use common::{cookie_value, stub_state};
+use common::{cookie_value, real_state, stub_state};
 use featuredoc::github_api::GithubUser;
-use featuredoc::{build_router, github_app, session, users};
+use featuredoc::{build_router, github_app, github_tokens, session, users};
 
 async fn login_user(state: &featuredoc::state::AppState, login: &str, id: i64) -> String {
     let gh = GithubUser {
@@ -203,5 +203,98 @@ async fn github_token_store_load_roundtrips_encrypted() {
         .unwrap();
     assert!(!row.0.windows(9).any(|w| w == b"gho_secre"));
 
+    let _ = std::fs::remove_file(&path);
+}
+
+/// A throwaway stand-in for GitHub's API: answers `GET /user/installations` with
+/// `body` and nothing else. Returns the origin to point `api_base` at.
+async fn fake_github(body: serde_json::Value) -> String {
+    let app = axum::Router::new().route(
+        "/user/installations",
+        axum::routing::get(move || {
+            let body = body.clone();
+            async move { axum::Json(body) }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    format!("http://{addr}")
+}
+
+/// The App is installed on GitHub but nothing links it locally — the state a user
+/// lands in when the Setup URL callback never completed. The screen must report
+/// the installation it already has rather than offering to make a second one.
+#[tokio::test]
+async fn connection_adopts_an_installation_github_already_reports() {
+    let api = fake_github(serde_json::json!({
+        "total_count": 1,
+        "installations": [{
+            "id": 77,
+            "account": { "login": "dlddu", "type": "User" },
+            "repository_selection": "selected"
+        }]
+    }))
+    .await;
+    let (state, path) = real_state(&api).await;
+
+    let gh = GithubUser {
+        id: 1,
+        login: "alice".into(),
+        name: None,
+        avatar_url: None,
+    };
+    let user = users::upsert(&state.db, &gh).await.unwrap();
+    let session = session::create(&state.db, &user.id).await.unwrap();
+    github_tokens::store(&state.db, &state.config.kek, &user.id, "gho_test")
+        .await
+        .unwrap();
+
+    let resp = build_router(state.clone())
+        .oneshot(
+            Request::builder()
+                .uri("/api/github/connection")
+                .header(header::COOKIE, format!("fd_session={session}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    assert_eq!(body["installed"], true);
+    assert_eq!(body["account"]["login"], "dlddu");
+    assert_eq!(body["repositorySelection"], "selected");
+
+    // Adopted for good, not re-fetched on every render.
+    let row: (i64,) = sqlx::query_as("SELECT installation_id FROM installations WHERE user_id = ?")
+        .bind(&user.id)
+        .fetch_one(&state.db)
+        .await
+        .unwrap();
+    assert_eq!(row.0, 77);
+    let _ = std::fs::remove_file(&path);
+}
+
+/// Adoption is best-effort: with no usable OAuth token the lookup fails, and the
+/// screen must fall back to "not installed" rather than erroring out.
+#[tokio::test]
+async fn connection_without_a_usable_token_reports_not_installed() {
+    let api = fake_github(serde_json::json!({ "total_count": 0, "installations": [] })).await;
+    let (state, path) = real_state(&api).await;
+    let token = login_user(&state, "alice", 1).await;
+
+    let resp = build_router(state)
+        .oneshot(
+            Request::builder()
+                .uri("/api/github/connection")
+                .header(header::COOKIE, format!("fd_session={token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(json_body(resp).await["installed"], false);
     let _ = std::fs::remove_file(&path);
 }
