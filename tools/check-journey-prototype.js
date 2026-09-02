@@ -185,6 +185,22 @@ const ARM = {
       for (const b of [...doc.querySelectorAll('.cand [data-decide="approve"]')]) click(win, b);
     },
   },
+  'JRN-understand-feature': {
+    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
+    'STP-open-shared': (win, doc) => {
+      // 링크를 열면 먼저 본인 확인, 그 다음 볼 수 있는 기능 하나를 고른다.
+      click(win, doc.getElementById('btn-signin'));
+      check(win, doc.querySelector('.feat-pick[value="f014"]'), true);
+    },
+    'STP-grasp-behavior': (win, doc) => {
+      // 끝까지 읽지 않으면 다음으로 넘어갈 수 없다(완독이 이 단계의 완료 기준).
+      check(win, doc.getElementById('in-read-done'), true);
+    },
+    'STP-check-scope': () => {},
+    'STP-flag-ambiguity': (win, doc) => {
+      type(win, doc.getElementById('in-note'), '정해진 횟수가 몇 번인지 모르겠어요');
+    },
+  },
 };
 
 /* ── 페이지별 입력 프로브 등록 (P3) ──────────────────────────────
@@ -349,6 +365,71 @@ const INPUT_PROBE = {
     ok(doc.getElementById('keep-preview').style.display === 'block', 'P3',
        `보존을 켰는데 대상 문단이 나타나지 않는다 (토글이 죽어 있다)`);
   },
+  'JRN-understand-feature': (win, doc, at, ok) => {
+    // ① 이상했던 한 줄(textarea) — 비어 있으면 남길 수 없다.
+    at('#STP-flag-ambiguity');
+    const note = doc.getElementById('in-note');
+    ok(note && note.tagName === 'TEXTAREA', 'P3', `남길 한 줄이 실제 <textarea> 가 아니다`);
+    if (!note) return;
+    ok(doc.getElementById('btn-send-note').disabled === true, 'P3',
+       `적은 것이 없는데 남기기 버튼이 살아 있다 (입력 검증이 죽어 있다)`);
+    ok(visible(doc.getElementById('note-error')), 'P3',
+       `빈 한 줄에 대한 검증 표시가 나타나지 않는다`);
+    type(win, note, '정해진 횟수가 몇 번인지 모르겠어요');
+    ok(note.value === '정해진 횟수가 몇 번인지 모르겠어요', 'P3',
+       `입력한 값이 필드에 반영되지 않는다`);
+    ok(doc.getElementById('btn-send-note').disabled === false, 'P3',
+       `한 줄을 적어도 남기기 버튼이 살아나지 않는다`);
+
+    // ② 이상했던 자리(select) — 고른 자리가 실제로 화면에 반영된다.
+    const tgt = doc.getElementById('in-target');
+    ok(tgt && tgt.tagName === 'SELECT', 'P3', `이상했던 자리가 실제 <select> 가 아니다`);
+    const target0 = doc.getElementById('edit-target').textContent;
+    change(win, tgt, 's3');
+    ok(doc.getElementById('edit-target').textContent !== target0, 'P3',
+       `자리를 바꿨는데 화면이 그대로다 (선택이 죽어 있다)`);
+
+    // ③ 완독 체크(checkbox) — 끝까지 읽어야 다음으로 갈 수 있다.
+    at('#STP-grasp-behavior');
+    const read = doc.getElementById('in-read-done');
+    ok(read && read.type === 'checkbox', 'P3', `완독 표시가 실제 체크박스가 아니다`);
+    ok(doc.getElementById('btn-to-scope').disabled === true, 'P3',
+       `아직 다 읽지 않았는데 다음 버튼이 살아 있다`);
+    ok(visible(doc.getElementById('read-hint')), 'P3',
+       `완독 전 안내가 나타나지 않는다`);
+    check(win, read, true);
+    ok(doc.getElementById('btn-to-scope').disabled === false, 'P3',
+       `다 읽었다고 표시해도 다음 버튼이 살아나지 않는다`);
+
+    // ④ 분류(select) — 선택이 실제로 목록을 줄인다.
+    at('#STP-check-scope');
+    const shown = () => [...doc.querySelectorAll('#scope-list .dep')]
+      .filter((r) => r.style.display !== 'none').length;
+    const filt = doc.getElementById('in-scope-filter');
+    ok(filt && filt.tagName === 'SELECT', 'P3', `얽힘 분류가 실제 <select> 가 아니다`);
+    const before = shown();
+    change(win, filt, 'outside');
+    ok(shown() < before, 'P3', `분류를 바꿨는데 목록이 그대로다 (선택이 죽어 있다)`);
+
+    // ⑤ 읽을 기능 고르기(radio) + 권한 없는 링크(select) — 볼 수 없는 저장소는
+    //    목록조차 열리지 않고, 고른 것도 함께 풀린다.
+    at('#STP-open-shared');
+    click(win, doc.getElementById('btn-signin'));
+    const link = doc.getElementById('in-link');
+    ok(link && link.tagName === 'SELECT', 'P3', `열어 본 링크가 실제 <select> 가 아니다`);
+    const pick = doc.querySelector('.feat-pick[value="f014"]');
+    ok(pick && pick.type === 'radio', 'P3', `읽을 기능 고르기가 실제 라디오가 아니다`);
+    ok(doc.getElementById('btn-open-feature').disabled === true, 'P3',
+       `아무것도 고르지 않았는데 열기 버튼이 살아 있다`);
+    check(win, pick, true);
+    ok(doc.getElementById('btn-open-feature').disabled === false, 'P3',
+       `기능을 골라도 열기 버튼이 살아나지 않는다`);
+    change(win, link, 'locked');
+    ok(visible(doc.getElementById('no-access')), 'P3',
+       `권한 없는 링크인데 안내가 나타나지 않는다`);
+    ok(doc.getElementById('btn-open-feature').disabled === true, 'P3',
+       `권한 없는 링크인데 열기 버튼이 살아 있다 (선택이 죽어 있다)`);
+  },
 };
 
 /* ── 페이지별 두 번째 갈래의 끝 등록 (P5) ────────────────────────
@@ -379,6 +460,15 @@ const SECOND_END = {
     const finish = doc.getElementById('btn-finish-diff');
     if (!ok(finish, 'P5', `대안 갈래(확인만으로 종료)의 행동이 없다`)) return;
     click(win, finish);
+  } },
+  // 여정 문서 §4 의 「권한 없는 저장소 링크를 받음 → 여정 종료」 — 이어지는 단계가
+  // 없는 종료라 분기 목록이 아니라 화면 안의 행동과 그 갈래의 끝으로 표현된다.
+  'JRN-understand-feature': { name: '권한 없는 링크로 들어옴', at: '#STP-open-shared', run: (win, doc, ok) => {
+    click(win, doc.getElementById('btn-signin'));
+    change(win, doc.getElementById('in-link'), 'locked');
+    const ask = doc.getElementById('btn-request-access');
+    if (!ok(ask, 'P5', `대안 갈래(권한 없는 링크)의 행동이 없다`)) return;
+    click(win, ask);
   } },
 };
 
@@ -616,6 +706,41 @@ const PRODUCT_PATHS = {
                         doc.getElementById('stage-3').classList.contains('active') &&
                         doc.getElementById('stage-1').classList.contains('done');
         return { landed: active(doc), evidence: failed && onlyThisStage && cleared };
+      } },
+  ],
+  'JRN-understand-feature': [
+    { name: '읽다가 용어에서 막힘', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-grasp-behavior');
+        // 막힌 그 자리에서 바로 넘긴다 — 어디였는지 다시 찾게 하지 않는다.
+        click(win, doc.querySelector('[data-stuck="s3"]'));
+        const carried = visible(doc.getElementById('stuck-note')) &&
+                        doc.getElementById('edit-target').textContent === '셋 · 카드사가 응답하지 않을 때';
+        return { landed: active(doc), evidence: carried };
+      } },
+    { name: 'P2의 제안이 P1 편집과 겹침', run: (win, doc) => {
+        const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
+        at('#STP-flag-ambiguity');
+        change(win, doc.getElementById('in-target'), 's3');   // 지우 님이 고치고 있는 자리
+        type(win, doc.getElementById('in-note'), '몇 번까지 다시 시도하는지 모르겠어요');
+        click(win, doc.getElementById('btn-preview'));
+        // 부딪힌다는 사실이 화면에 뜨고, 그 사이 어느 것도 문서에 반영되지 않는다.
+        const warned = visible(doc.getElementById('overlap-note')) &&
+                       visible(doc.getElementById('proposal')) &&
+                       doc.getElementById('applied-count').textContent === '0';
+        click(win, doc.getElementById('btn-to-conflict'));
+        return { landed: active(doc), evidence: warned };
+      } },
+    { name: '모바일에서 링크가 앱 대신 브라우저로 열림', run: (win, doc) => {
+        // 어디서 열렸는지는 사용자가 정하는 것이 아니다 — 보조 레이어에서 장전한다.
+        click(win, doc.querySelector('[data-scenario="browser"]'));
+        // 같은 화면이 브라우저에서도 그대로 동작한다 — 목록이 줄지도, 막히지도 않는다.
+        const sameScreen = visible(doc.getElementById('browser-bar')) &&
+                           doc.getElementById('feat-count').textContent === '3';
+        click(win, doc.getElementById('btn-signin'));
+        check(win, doc.querySelector('.feat-pick[value="f014"]'), true);
+        const stillWorks = doc.getElementById('btn-open-feature').disabled === false;
+        return { landed: active(doc), evidence: sameScreen && stillWorks };
       } },
   ],
 };

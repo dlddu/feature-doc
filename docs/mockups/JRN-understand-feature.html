@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JRN-understand-feature · 코드를 못 읽는 사람이 기능을 이해하기 — FeatureDoc 여정 프로토타입</title>
+<meta name="description" content="FeatureDoc 여정 프로토타입 — JRN-understand-feature. 흐름의 SSOT는 docs/user-journey/JRN-understand-feature.md.">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+/* ============================================================
+   FeatureDoc — mockup base stylesheet
+   ------------------------------------------------------------
+   docs/design-system.md (v0.1) 를 그대로 CSS 로 인코딩한 파일.
+   모든 sNN-*.html 목업이 <link> 로 이 파일 하나만 공유한다.
+   토큰·컴포넌트·원칙의 단일 진실 원천은 design-system.md 이며,
+   이 파일은 그 결정을 클래스로 옮긴 것일 뿐 — 새 값을 만들지 않는다.
+   ============================================================ */
+
+:root {
+  /* surfaces — 5단계, 그림자 없이 톤 차이로만 elevation */
+  --bg-base:        #0a0a0a;
+  --bg-elevated:    #0f0f0f;
+  --bg-card:        #141414;
+  --bg-input:       #181818;
+  --bg-hover:       #1c1c1c;
+
+  /* borders — 항상 1px, 색의 강약으로만 구분 */
+  --border-subtle:  #1d1d1d;
+  --border-default: #272727;
+  --border-strong:  #333333;
+
+  /* text — 4단계 위계 */
+  --text-primary:    #ededed;
+  --text-secondary:  #9a9a9a;
+  --text-tertiary:   #6a6a6a;
+  --text-quaternary: #454545;
+
+  /* status — 채도 낮춰 거의 무채색, 작은 dot 으로만 신호 */
+  --success:  #86b89a;
+  --warning:  #c9a868;
+  --danger:   #c98080;
+  --info:     #8aa4c4;
+
+  /* accent — 화면당 1~2회, 사실상 표식용 */
+  --accent:        #c8ff5e;
+  --accent-dim:    rgba(200, 255, 94, 0.06);
+  --accent-border: rgba(200, 255, 94, 0.18);
+
+  /* fonts */
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* code surface — design-system 4.8 */
+  --bg-code: #070707;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 40px 16px;
+}
+
+/* ── device frame — 393×844 (iOS), 38px radius ─────────────── */
+.frame {
+  position: relative;
+  width: 393px;
+  height: 844px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 38px;
+  overflow: hidden;
+}
+
+/* status bar */
+.statusbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px 0 30px;
+  z-index: 8;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+.statusbar .ind { display: flex; gap: 5px; align-items: center; }
+.statusbar .ind i { display: block; background: var(--text-primary); border-radius: 1px; }
+.statusbar .ind .sig  { width: 16px; height: 9px; }
+.statusbar .ind .wifi { width: 14px; height: 9px; }
+.statusbar .ind .bat  {
+  width: 21px; height: 10px; background: none;
+  border: 1px solid var(--text-primary); border-radius: 2px;
+  position: relative;
+}
+.statusbar .ind .bat::after {
+  content: ""; position: absolute;
+  top: 2px; bottom: 2px; left: 2px; right: 6px;
+  background: var(--text-primary);
+}
+
+/* home indicator */
+.home-indicator {
+  position: absolute;
+  bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 134px; height: 5px;
+  border-radius: 3px;
+  background: #3a3a3a;
+  z-index: 8;
+}
+
+/* scroll area */
+.screen {
+  position: absolute;
+  top: 54px; bottom: 0; left: 0; right: 0;
+  overflow-y: auto;
+  padding: 0 22px 44px;
+}
+.screen.has-tabbar { bottom: 66px; }
+.screen::-webkit-scrollbar { width: 0; height: 0; }
+.screen { overscroll-behavior: contain; }
+
+/* ── app bar — 3.x layout ──────────────────────────────────── */
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 6px;
+  gap: 12px;
+}
+.appbar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.appbar-title.caps {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.appbar-sub {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* icon button — 36px appbar slot (icon container 3-tier) */
+.icon-btn {
+  flex: none;
+  width: 36px; height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1;
+  cursor: pointer;
+}
+.icon-btn svg { display: block; }
+.icon-btn.ghost { border-color: transparent; background: transparent; }
+
+/* brand mark / step counter row */
+.toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 0;
+}
+.brand {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.brand .mk { color: var(--accent); }
+.stepcount {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── headings — 2.3 hierarchy: one display per screen ──────── */
+.h-display {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.h-display-sub {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.page-h1 {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+/* section title — 11px mono caps */
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.section-title .count { color: var(--text-quaternary); }
+.section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+/* caps label — 10px mono */
+.caps {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+
+/* body text */
+.body  { font-size: 14px; line-height: 1.55; color: var(--text-primary); }
+.body.sm { font-size: 13px; color: var(--text-secondary); }
+.meta  {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.metric {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ── button — primary 1개 원칙 ─────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 9px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: #ededed;
+  color: #0a0a0a;
+}
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-tertiary);
+}
+.btn.block { width: 100%; }
+.btn-row { display: flex; gap: 8px; }
+.btn-row .btn { flex: 1; }
+
+/* ── tag — 모두 동일 회색 outline, dot 색만 변함 ───────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.tag .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex: none;
+}
+.tag.accent  .dot { background: var(--accent); }
+.tag.success .dot { background: var(--success); }
+.tag.warn    .dot { background: var(--warning); }
+.tag.danger  .dot { background: var(--danger); }
+.tag.info    .dot { background: var(--info); }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── card — 모든 카드 동일 스타일 ──────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+/* ── input field — caps mono 라벨 + value ──────────────────── */
+.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  padding: 13px 15px;
+  position: relative;
+}
+.input .lbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.input .val {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.input .val.placeholder { color: var(--text-quaternary); }
+.input .field-action {
+  position: absolute;
+  top: 12px; right: 12px;
+}
+.input-row { display: flex; gap: 8px; }
+.input-row .input { flex: 1; min-width: 0; }
+
+/* status badge inside input / card corner */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.badge .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text-tertiary); flex: none;
+}
+.badge.success .dot { background: var(--success); }
+.badge.warn    .dot { background: var(--warning); }
+.badge.danger  .dot { background: var(--danger); }
+.badge.info    .dot { background: var(--info); }
+.badge.accent  .dot { background: var(--accent); }
+
+/* ── tabs — 활성 탭만 fill + ring ──────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+}
+.tabs .t {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.tabs .t.active {
+  background: var(--bg-base);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── bottom tab bar — 4 슬롯 고정 ──────────────────────────── */
+.tabbar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 66px;
+  display: flex;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  padding-bottom: 14px;
+  z-index: 6;
+}
+.tabbar .tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+  cursor: pointer;
+}
+.tabbar .tab .gl {
+  width: 18px; height: 14px;
+  border: 1.2px solid var(--text-quaternary);
+  border-radius: 3px;
+}
+.tabbar .tab.active { color: var(--text-primary); }
+.tabbar .tab.active .gl { border-color: var(--text-primary); }
+
+/* ── step — 파이프라인 진행 ────────────────────────────────── */
+.step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.step .ic {
+  flex: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.step.done .ic {
+  background: #ededed;
+  color: #0a0a0a;
+}
+.step.active .ic {
+  border: 1.5px solid var(--text-primary);
+}
+.step.active .ic::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px dashed var(--border-strong);
+  animation: spin 3.4s linear infinite;
+}
+.step.todo .ic {
+  border: 1.5px solid var(--border-default);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.step .body-col { flex: 1; min-width: 0; }
+.step .label { font-size: 13.5px; color: var(--text-primary); }
+.step.todo .label { color: var(--text-tertiary); }
+.step .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.step .time {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+/* ── code block — syntax 거의 무채색 ───────────────────────── */
+.code {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.code .ln {
+  display: flex;
+  gap: 12px;
+  white-space: pre;
+}
+.code .ln .n {
+  color: var(--text-quaternary);
+  text-align: right;
+  min-width: 16px;
+  user-select: none;
+}
+.code .kw  { color: var(--text-primary); }
+.code .str { color: var(--text-secondary); }
+.code .com { color: var(--text-quaternary); }
+.code .add { color: var(--success); }
+.code .del { color: var(--danger); }
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  padding: 9px 14px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+}
+.code-header + .code {
+  border-radius: 0 0 12px 12px;
+  border-top: none;
+}
+
+/* ── icon container — 동일 회색 ────────────────────────────── */
+.ico {
+  flex: none;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-tertiary);
+}
+.ico-24 { width: 24px; height: 24px; border-radius: 6px; }
+.ico-28 { width: 28px; height: 28px; border-radius: 7px; }
+.ico-36 { width: 36px; height: 36px; border-radius: 10px; }
+
+/* ── small primitives ──────────────────────────────────────── */
+.divider { height: 1px; background: var(--border-subtle); border: 0; }
+.dot-sep { color: var(--text-quaternary); }
+
+/* progress bar */
+.progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-secondary);
+}
+
+/* segmented selector (provider, etc.) */
+.segment {
+  display: flex;
+  gap: 6px;
+}
+.segment .seg {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-quaternary);
+  cursor: pointer;
+}
+.segment .seg.active {
+  background: var(--bg-input);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* metric grid (bordered, divider lines) */
+.metric-grid {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.metric-grid .cell {
+  flex: 1;
+  padding: 13px 14px;
+}
+.metric-grid .cell + .cell {
+  border-left: 1px solid var(--border-default);
+}
+.metric-grid .cell .k {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+}
+.metric-grid .cell .v {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 8px;
+}
+
+/* layout helpers — spacing is the hierarchy (principle 8) */
+.stack    > * + * { margin-top: 8px; }
+.stack-10 > * + * { margin-top: 10px; }
+.stack-14 > * + * { margin-top: 14px; }
+.stack-18 > * + * { margin-top: 18px; }
+.stack-28 > * + * { margin-top: 28px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row.between { justify-content: space-between; }
+.row.top { align-items: flex-start; }
+.grow { flex: 1; min-width: 0; }
+
+/* footer legend — the one accent use per screen */
+.legend {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-quaternary);
+}
+.legend .mk { color: var(--accent); }
+
+/* subtle page-load reveal — no glow/gradient, opacity only */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen > * { animation: rise 0.4s ease both; }
+.screen > *:nth-child(2) { animation-delay: 0.04s; }
+.screen > *:nth-child(3) { animation-delay: 0.08s; }
+.screen > *:nth-child(4) { animation-delay: 0.12s; }
+.screen > *:nth-child(5) { animation-delay: 0.16s; }
+.screen > *:nth-child(n+6) { animation-delay: 0.2s; }
+/* ── 좁은 화면 (<=460px) ────────────────────────────────────────
+   실기기에서 볼 때. 프레임은 그대로 두되 393x844 고정을 풀어
+   뷰포트 안에 들어오게 한다. 이렇게 하지 않으면 393 + 좌우 패딩 64
+   = 457px 라 가로 스크롤이 생기고 프레임 좌측이 잘린다.
+   높이도 844 고정이면 프레임 안 스크롤과 페이지 스크롤이 겹친다.
+   보조 레이어(.doc-layer)는 아래에 남겨 두어 계속 열람 가능하다. */
+@media (max-width: 460px) {
+  body { padding: 0; }
+
+  .stage { width: 100%; padding: 10px 6px 14px; }
+
+  .frame {
+    width: min(393px, 100vw - 12px);
+    height: min(844px, 100dvh - 104px);
+  }
+
+  .doc-layer { width: min(393px, 100vw - 12px); margin-bottom: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen > *, .step.active .ic::after { animation: none; }
+}
+
+
+/* ── 여정 프로토타입 크롬 ───────────────────────────────────────────
+   규칙 5(b): 문서 메타는 제품 화면과 같은 평면에 두지 않는다. 단계 번호·
+   식별자·터치포인트·연결 AC·행동 서술은 전부 아래 .doc-layer(기본 닫힘)
+   안에만 있고, 스테이지에 보이는 것은 제품 화면뿐이다. 스텝퍼도 두지 않는다 —
+   전진은 화면 안의 행동으로만 한다(규칙 5c).                                */
+.stage {
+  display: flex;
+  justify-content: center;
+  padding: 28px 16px 96px;
+}
+.stp { display: none; }
+.stp.on { display: block; }
+
+/* 실제 폼 요소 (규칙 5d) — .input 의 시각 언어를 그대로 쓰되 안쪽이 진짜
+   <input>/<select> 다. "입력처럼 보이는 비대화형 요소"를 쓰지 않는다.       */
+.field {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  padding: 11px 15px 12px;
+  position: relative;
+}
+.field > label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+}
+.field input[type="text"],
+.field input[type="password"],
+.field select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field input::placeholder { color: var(--text-quaternary); }
+.field select { cursor: pointer; }
+.field select option { background: var(--bg-card); color: var(--text-primary); }
+.field:focus-within { border-color: var(--border-strong); }
+.field.bad { border-color: var(--danger); }
+.field .suffix {
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 13px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.choice input { margin: 2px 0 0; accent-color: var(--accent); cursor: pointer; }
+.choice .ct { font-size: 12.5px; color: var(--text-primary); }
+.choice .cs { display: block; margin-top: 3px; font-size: 11px; color: var(--text-tertiary); }
+.choice:has(input:checked) { border-color: var(--accent-border); background: var(--accent-dim); }
+
+.notice {
+  display: none;
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-card);
+}
+.notice.on { display: block; }
+.notice.err { border-color: rgba(201, 128, 128, 0.4); color: var(--danger); }
+.notice.warn { border-color: rgba(201, 168, 104, 0.4); color: var(--warning); }
+.notice.ok { border-color: rgba(134, 184, 154, 0.4); color: var(--success); }
+.notice .btn { margin-top: 10px; height: 34px; font-size: 12px; }
+
+.btn[disabled] { opacity: 0.38; cursor: not-allowed; }
+.btn-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.repo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 13px 14px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.repo-item:hover { background: var(--bg-hover); }
+.repo-item .rn { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-primary); }
+.repo-item .rm { display: block; margin-top: 4px; font-size: 10.5px; color: var(--text-tertiary); }
+
+.end-card { text-align: center; padding: 30px 18px; }
+.end-card .em { font-size: 26px; }
+
+/* 보조 레이어 — 기본으로 접혀 있다. 연 직후 보이는 것은 제품이어야 하므로
+   <details> 는 스테이지 아래에 두고 open 속성을 달지 않는다.               */
+.doc-layer {
+  max-width: 393px;
+  margin: 0 auto 40px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--bg-card);
+}
+.doc-layer > summary {
+  cursor: pointer;
+  padding: 13px 16px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  list-style: none;
+}
+.doc-layer > summary::-webkit-details-marker { display: none; }
+.doc-layer > summary::after { content: " ▾"; }
+.doc-layer[open] > summary::after { content: " ▴"; }
+.doc-body { padding: 0 16px 18px; border-top: 1px solid var(--border-subtle); }
+.doc-body h3 {
+  margin: 16px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-quaternary);
+  font-weight: 500;
+}
+.doc-body ol, .doc-body ul { margin: 0; padding: 0; list-style: none; }
+.doc-body li + li { margin-top: 7px; }
+.doc-body .sid { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.doc-body .stt { font-size: 12px; color: var(--text-primary); }
+.doc-body .smeta { display: block; margin-top: 3px; font-size: 10.5px; color: var(--text-quaternary); }
+.doc-body .sit { font-size: 11.5px; color: var(--text-secondary); }
+.doc-body .branches li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.doc-body .branches button {
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+.doc-body .branches button:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.doc-body a { color: var(--text-secondary); font-size: 11.5px; }
+.doc-note { margin: 14px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-quaternary); }
+
+/* ── 이 여정에서만 쓰는 요소 ───────────────────────────────────
+   디자인 시스템 토큰(색·radius·타이포)은 위 공용 CSS 를 그대로 쓰고,
+   시나리오 카드·얽힘 줄·제안 조각만 여기서 조합한다.                 */
+.scn { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 13px 14px; }
+.scn + .scn { margin-top: 10px; }
+.scn .sn { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-quaternary); }
+.scn .gwt { display: block; margin-top: 8px; font-size: 12.5px; line-height: 1.6; color: var(--text-primary); }
+.scn .gwt .k { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); }
+.scn .src { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 11px; }
+.scn .btn { height: 30px; padding: 0 11px; font-size: 11.5px; }
+
+.dep { display: flex; align-items: baseline; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border-subtle); }
+.dep:last-child { border-bottom: 0; }
+.dep .dname { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary); }
+.dep .dwhy { display: block; margin-top: 3px; font-size: 11px; line-height: 1.5; color: var(--text-tertiary); }
+
+.ev { display: flex; gap: 8px; align-items: baseline; }
+.ev + .ev { margin-top: 9px; }
+.ev .ename { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary); }
+.ev .esrc { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
+
+.field textarea { display: block; width: 100%; margin-top: 6px; padding: 0; background: transparent; border: 0; outline: none; resize: none; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; color: var(--text-primary); }
+.field textarea::placeholder { color: var(--text-quaternary); }
+</style>
+</head>
+<body data-journey="JRN-understand-feature">
+<div class="stage">
+
+<!-- ══ STP-open-shared ══════════════════════════════════════════════
+     이 여정의 첫 화면은 P2 의 첫 화면이기도 하다. 여정 문서가 명시한
+     이탈 위험대로, 이 평면에는 설치·키 등록 같은 자격증명 경로가
+     한 곳도 나타나지 않는다.                                          -->
+<section id="STP-open-shared" data-step="STP-open-shared" data-screens="S02" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>13:48</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <header class="appbar">
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+        <span class="appbar-title">공유받은 문서</span>
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+      </header>
+
+      <div id="browser-bar" class="notice info" style="margin-top:14px">
+        앱이 아니라 브라우저에서 열렸어요. <strong>이 화면은 여기서도 그대로 동작합니다</strong> — 굳이 앱을 깔지 않아도 됩니다.
+      </div>
+
+      <div class="card row top" style="margin-top:16px;gap:12px">
+        <span class="ico ico-28">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M5.6 8.4 8.4 5.6" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M6.3 3.5 7.7 2.1a2.4 2.4 0 0 1 3.4 3.4L9.7 6.9" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M7.7 10.5 6.3 11.9a2.4 2.4 0 0 1-3.4-3.4L4.3 7.1" stroke="currentColor" stroke-width="1.1"/>
+          </svg>
+        </span>
+        <p class="body sm grow" style="color:var(--text-secondary)"><strong>지우</strong> 님이 회의 전에 보라고 링크를 보냈어요. 읽기만 하면 되고, 준비할 것은 없습니다.</p>
+      </div>
+
+      <div id="signin-card" class="card" style="margin-top:12px">
+        <span class="caps">먼저 본인 확인</span>
+        <p class="body sm" style="margin-top:8px;color:var(--text-secondary)">회사 계정으로 한 번만 확인하면 바로 열려요.</p>
+        <div class="stack" style="margin-top:14px">
+          <button class="btn btn-primary block" id="btn-signin">GitHub 계정으로 계속하기</button>
+        </div>
+      </div>
+
+      <div id="after-signin">
+        <div class="field" style="margin-top:16px">
+          <label for="in-link">열어 본 링크</label>
+          <select id="in-link">
+            <option value="f014">상품팀 저장소 · 결제 처리</option>
+            <option value="locked">물류팀 저장소 · 재고 동기화</option>
+          </select>
+        </div>
+
+        <div id="no-access" class="notice warn" style="margin-top:12px">
+          이 저장소는 아직 볼 수 없어요. 목록에도, 상세에도 나오지 않습니다 — 잘못 보내신 링크일 수도 있어요.
+          <button class="btn btn-secondary" id="btn-request-access">소유자에게 공유 요청 보내기</button>
+        </div>
+
+        <div id="feat-block">
+          <div class="section-title" style="margin-top:20px"><span class="caps">읽을 수 있는 기능</span><span class="section-action" id="feat-count">3</span></div>
+
+          <div class="stack-10" style="margin-top:12px">
+            <label class="choice" for="pick-f014">
+              <input type="radio" class="feat-pick" name="feat" id="pick-f014" value="f014">
+              <span class="ct">결제 처리<span class="cs">고객이 카드로 결제할 때 벌어지는 일 · 4가지 상황</span></span>
+            </label>
+            <label class="choice" for="pick-f022">
+              <input type="radio" class="feat-pick" name="feat" id="pick-f022" value="f022">
+              <span class="ct">결제 실패 안내<span class="cs">결제가 안 됐을 때 고객에게 무엇을 보여주는지 · 3가지 상황</span></span>
+            </label>
+            <label class="choice" for="pick-f031">
+              <input type="radio" class="feat-pick" name="feat" id="pick-f031" value="f031">
+              <span class="ct">영수증 메일<span class="cs">결제가 끝난 뒤 어떤 메일이 언제 나가는지 · 3가지 상황</span></span>
+            </label>
+          </div>
+
+          <p class="meta" style="margin-top:12px">볼 수 있는 저장소의 기능만 보입니다. 설정할 것은 없어요.</p>
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:22px">
+        <button class="btn btn-primary block" data-cta="advance" data-goto="STP-grasp-behavior" id="btn-open-feature" disabled>이 기능 읽어보기</button>
+      </div>
+
+      <p class="legend" style="margin-top:20px"><span class="mk">↳</span> 열쇠를 맡기거나 앱을 설치하는 절차는 이 화면에 없어요</p>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- ══ STP-grasp-behavior ═══════════════════════════════════════════ -->
+<section id="STP-grasp-behavior" data-step="STP-grasp-behavior" data-screens="S08" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>13:50</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <header class="appbar">
+        <button class="icon-btn" data-goto="STP-open-shared" aria-label="back">‹</button>
+        <span class="appbar-title">결제 처리</span>
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+      </header>
+
+      <div style="margin-top:18px">
+        <h1 class="h-display">고객이 카드로 결제할 때</h1>
+        <p class="h-display-sub">어떤 상황에서 무슨 일이 벌어지는지를 순서대로 적었어요. 위에서 아래로 한 번 읽으면 됩니다.</p>
+      </div>
+
+      <div class="section-title" style="margin-top:20px"><span class="caps">이런 상황들이 있어요</span><span class="section-action" id="scn-count">4</span></div>
+
+      <div id="scn-list" style="margin-top:12px">
+        <div class="scn" data-scn="s1">
+          <span class="sn">하나</span>
+          <span class="gwt"><span class="k">이럴 때</span> 고객이 쓸 수 있는 카드로 결제를 누르면<br>
+            <span class="k">이렇게 됩니다</span> 결제가 되고, 결제 내역이 한 건 남습니다</span>
+          <div class="src"><span class="tag success"><span class="dot"></span>확인됨</span><button class="btn btn-ghost" data-stuck="s1">무슨 말인지 모르겠어요</button></div>
+        </div>
+        <div class="scn" data-scn="s2">
+          <span class="sn">둘</span>
+          <span class="gwt"><span class="k">이럴 때</span> 통신이 끊겨 같은 결제를 한 번 더 누르면<br>
+            <span class="k">이렇게 됩니다</span> 두 번 청구하지 않고, 앞서 끝난 결제 결과를 그대로 보여 줍니다</span>
+          <div class="src"><span class="tag success"><span class="dot"></span>확인됨</span><button class="btn btn-ghost" data-stuck="s2">무슨 말인지 모르겠어요</button></div>
+        </div>
+        <div class="scn" data-scn="s3">
+          <span class="sn">셋</span>
+          <span class="gwt"><span class="k">이럴 때</span> 카드사 쪽이 잠깐 응답하지 않으면<br>
+            <span class="k">이렇게 됩니다</span> 정해진 횟수만큼 잠시 기다렸다 다시 시도합니다</span>
+          <div class="src"><span class="tag warn"><span class="dot"></span>확인 필요</span><button class="btn btn-ghost" data-stuck="s3">무슨 말인지 모르겠어요</button></div>
+        </div>
+        <div class="scn" data-scn="s4">
+          <span class="sn">넷</span>
+          <span class="gwt"><span class="k">이럴 때</span> 기한이 지난 카드로 결제를 누르면<br>
+            <span class="k">이렇게 됩니다</span> 결제되지 않고, 왜 안 됐는지 그 자리에서 알려 줍니다</span>
+          <div class="src"><span class="tag success"><span class="dot"></span>확인됨</span><button class="btn btn-ghost" data-stuck="s4">무슨 말인지 모르겠어요</button></div>
+        </div>
+      </div>
+
+      <label class="choice" for="in-read-done" style="margin-top:18px">
+        <input type="checkbox" id="in-read-done">
+        <span class="ct">여기까지 다 읽었어요<span class="cs">중간에 막힌 곳이 있으면 체크하지 말고 그 자리의 「모르겠어요」를 눌러 주세요</span></span>
+      </label>
+
+      <div id="read-hint" class="notice info" style="margin-top:12px">
+        끝까지 읽으셨으면 위를 체크해 주세요. 어디까지 읽혔는지는 표현을 다듬는 데만 씁니다.
+      </div>
+
+      <div class="stack" style="margin-top:20px">
+        <button class="btn btn-primary block" data-cta="advance" data-goto="STP-check-scope" id="btn-to-scope" disabled>무엇에 얽혀 있는지 보기</button>
+      </div>
+
+      <p class="legend" style="margin-top:20px"><span class="mk">↳</span> 읽다가 막히면 그건 읽는 사람 잘못이 아니라 이 문장의 문제예요</p>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- ══ STP-check-scope ══════════════════════════════════════════════ -->
+<section id="STP-check-scope" data-step="STP-check-scope" data-screens="S09" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>13:53</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <header class="appbar">
+        <button class="icon-btn" data-goto="STP-grasp-behavior" aria-label="back">‹</button>
+        <span class="appbar-title">얽혀 있는 것</span>
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+      </header>
+
+      <div style="margin-top:18px">
+        <h1 class="h-display">이걸 건드리면 뭐가 같이 움직이나요</h1>
+        <p class="h-display-sub">분류마다 무슨 뜻인지 한 줄로 붙였어요. 일정이나 위험을 가늠할 때만 필요하니 건너뛰어도 됩니다.</p>
+      </div>
+
+      <div class="field" style="margin-top:18px">
+        <label for="in-scope-filter">분류</label>
+        <select id="in-scope-filter">
+          <option value="all">전체 7가지</option>
+          <option value="outside">밖에서 부르는 곳 — 어디서 이 기능을 호출하는지</option>
+          <option value="store">저장되는 곳 — 무엇이 어디에 남는지</option>
+          <option value="rule">판단 규칙 — 되는지 안 되는지를 정하는 곳</option>
+          <option value="gate">들어올 수 있는 사람 — 누가 쓸 수 있는지</option>
+          <option value="outer">바깥 서비스 — 우리가 만들지 않은 것</option>
+        </select>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div id="scope-list">
+          <div class="dep" data-cat="outside"><span class="dname">결제 화면의 「결제하기」<span class="dwhy">고객이 실제로 누르는 자리예요</span></span></div>
+          <div class="dep" data-cat="outside"><span class="dname">고객센터의 재결제 버튼<span class="dwhy">상담 중에 같은 기능을 다시 부릅니다</span></span></div>
+          <div class="dep" data-cat="store"><span class="dname">결제 내역<span class="dwhy">언제 얼마가 결제됐는지 여기에 남습니다</span></span></div>
+          <div class="dep" data-cat="store"><span class="dname">중복 방지 기록<span class="dwhy">같은 결제를 두 번 청구하지 않게 잠깐 기억해 둡니다</span></span></div>
+          <div class="dep" data-cat="rule"><span class="dname">카드 기한 확인<span class="dwhy">기한이 지난 카드를 걸러 냅니다</span></span></div>
+          <div class="dep" data-cat="gate" id="scope-noevidence"><span class="dname">너무 잦은 요청 막기<span class="dwhy">짧은 시간에 몰리는 요청을 눌러 줍니다</span></span><span class="tag warn"><span class="dot"></span>근거 없음</span></div>
+          <div class="dep" data-cat="outer"><span class="dname">카드사 연동<span class="dwhy">실제 청구는 우리가 아니라 카드사가 합니다</span></span></div>
+        </div>
+        <p class="legend" style="margin-top:12px"><span class="mk">↳</span> 근거를 찾지 못한 항목은 <strong>근거 없음</strong>으로 그대로 두고 임의로 채우지 않아요</p>
+      </div>
+
+      <p class="meta" style="margin-top:12px">보이는 항목 <strong id="scope-count">7</strong>개</p>
+
+      <div class="stack" style="margin-top:20px">
+        <button class="btn btn-primary block" data-cta="advance" data-goto="STP-flag-ambiguity" id="btn-to-flag">이상한 곳 남기기</button>
+        <button class="btn btn-ghost block" id="btn-enough">여기까지면 충분해요</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- ══ STP-flag-ambiguity ═══════════════════════════════════════════ -->
+<section id="STP-flag-ambiguity" data-step="STP-flag-ambiguity" data-screens="S10" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>13:56</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <header class="appbar">
+        <button class="icon-btn" data-goto="STP-check-scope" aria-label="back">‹</button>
+        <span class="appbar-title">한 줄 남기기</span>
+        <button class="icon-btn ghost" aria-hidden="true"></button>
+      </header>
+
+      <div id="stuck-note" class="notice info" style="margin-top:14px">
+        읽다가 막히신 자리를 그대로 가져왔어요. 무엇이 이상했는지만 적으면 됩니다.
+      </div>
+
+      <div style="margin-top:18px">
+        <h1 class="h-display">뭐가 이상한지 그대로</h1>
+        <p class="h-display-sub">고칠 문장을 직접 쓰지 않아도 돼요. 「무슨 뜻인지 모르겠어요」 한 줄이면 충분합니다.</p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="field">
+          <label for="in-target">어느 부분이 이상했나요</label>
+          <select id="in-target">
+            <option value="s1">하나 · 쓸 수 있는 카드로 결제할 때</option>
+            <option value="s2">둘 · 같은 결제를 두 번 눌렀을 때</option>
+            <option value="s3">셋 · 카드사가 응답하지 않을 때</option>
+            <option value="s4">넷 · 기한이 지난 카드일 때</option>
+          </select>
+        </div>
+        <p class="meta" style="margin-top:10px">고를 자리: <strong id="edit-target">하나 · 쓸 수 있는 카드로 결제할 때</strong></p>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="field">
+          <label for="in-note">무엇이 이상했나요</label>
+          <textarea id="in-note" rows="3" placeholder="예: 정해진 횟수가 몇 번인지 모르겠어요"></textarea>
+        </div>
+        <div id="note-error" class="notice warn" style="margin-top:10px">
+          한 줄은 있어야 남길 수 있어요. 정확하지 않아도 괜찮습니다.
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:16px">
+        <button class="btn btn-secondary block" id="btn-preview">어떻게 고칠지 먼저 볼게요</button>
+      </div>
+
+      <div id="proposal" class="card" style="margin-top:12px">
+        <span class="caps">이렇게 고치면 어떨까요</span>
+        <div class="code" style="margin-top:10px">
+          <div class="ln"><span class="del">- 정해진 횟수만큼 잠시 기다렸다 다시 시도합니다</span></div>
+          <div class="ln"><span class="add">+ 최대 세 번까지, 점점 간격을 늘려 가며 다시</span></div>
+          <div class="ln"><span class="add">+ 시도합니다. 세 번 모두 실패하면 결제되지</span></div>
+          <div class="ln"><span class="add">+ 않고 고객에게 다시 시도해 달라고 알립니다</span></div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="ev"><span class="ename">남긴 사람</span><span class="esrc">나 · 읽는 사람</span></div>
+          <div class="ev"><span class="ename">지금까지 반영된 수</span><span class="esrc" id="applied-count">0</span></div>
+        </div>
+      </div>
+
+      <div id="overlap-note" class="notice warn" style="margin-top:12px">
+        마침 <strong>지우</strong> 님이 같은 자리를 고치고 있어요. 두 손질이 부딪히니 <strong>그분이 어느 쪽을 살릴지 정한 뒤</strong> 반영됩니다 — 지금 남기신 의견이 사라지지는 않아요.
+        <button class="btn btn-secondary" id="btn-to-conflict" data-goto="END-to-follow">그분의 결정 화면 열기</button>
+      </div>
+
+      <div class="notice info on" style="margin-top:12px;display:block">
+        남긴 한 줄은 문서를 바로 바꾸지 않아요. 쓴 사람이 확인한 뒤에 반영됩니다.
+      </div>
+
+      <div class="stack" style="margin-top:20px">
+        <button class="btn btn-primary block" data-cta="advance" data-goto="END-understood" id="btn-send-note" disabled>이대로 남기기</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- ══ 갈래의 끝 ════════════════════════════════════════════════════ -->
+<section id="END-understood" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>13:58</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <div class="card end-card" style="margin-top:170px">
+        <div class="em">✓</div>
+        <h1 class="h-display" style="margin-top:14px">이제 설명할 수 있어요</h1>
+        <p class="h-display-sub" style="margin-top:8px">네 가지 상황을 끝까지 읽었고, 남긴 의견은 <span id="end-flagged">1</span>건이에요. <span id="end-tail">이상했던 자리는 그대로 넘겨 두었으니 쓴 사람이 확인할 거예요.</span></p>
+        <span class="badge success" style="margin-top:16px"><span class="dot"></span>읽음 · 의견 접수</span>
+      </div>
+      <div class="stack" style="margin-top:26px">
+        <button class="btn btn-secondary block" data-goto="STP-open-shared">다른 기능도 보기</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<!-- 여정 밖 분기의 끝 — 이 갈래는 다른 여정으로 넘어간다.
+     대상은 여정 문서 §4 가 정한 값이고, 그 선언이 data-goto-journey 다. -->
+<section id="END-to-follow" class="stp" data-goto-journey="JRN-follow-code-change#STP-resolve-conflict">
+  <div class="frame">
+    <div class="statusbar">
+      <span>13:57</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <div class="card end-card" style="margin-top:150px">
+        <div class="em">↪</div>
+        <h1 class="h-display" style="margin-top:14px">여기서 정할 일은 아니었어요</h1>
+        <p class="h-display-sub" style="margin-top:8px" id="handoff-note">같은 자리를 고치던 분이 어느 쪽을 살릴지 정하는 자리로 이어집니다. 남기신 의견은 그대로 전달됐고, 아직 문서에 반영되지는 않았어요.</p>
+        <span class="badge info" style="margin-top:16px"><span class="dot"></span>의견 전달됨 · 반영 대기</span>
+      </div>
+      <div class="stack" style="margin-top:26px">
+        <a class="btn btn-primary block" id="lnk-conflict" href="./JRN-follow-code-change.html#STP-resolve-conflict">그분의 결정 화면 열기</a>
+        <button class="btn btn-ghost block" data-goto="STP-flag-ambiguity">돌아가서 더 남기기</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+<section id="END-no-access" class="stp">
+  <div class="frame">
+    <div class="statusbar">
+      <span>13:49</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <div class="card end-card" style="margin-top:170px">
+        <div class="em">◌</div>
+        <h1 class="h-display" style="margin-top:14px">아직 볼 수 없는 저장소예요</h1>
+        <p class="h-display-sub" style="margin-top:8px">소유자에게 공유 요청을 보냈어요. 허락이 오면 알림이 갑니다 — 그때까지 목록에도 상세에도 나오지 않아요.</p>
+        <span class="badge warn" style="margin-top:16px"><span class="dot"></span>공유 요청 보냄</span>
+      </div>
+      <div class="stack" style="margin-top:26px">
+        <button class="btn btn-secondary block" data-goto="STP-open-shared">다른 링크 열어보기</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
+</div>
+
+<!-- 보조 레이어 (규칙 5b) — 기본으로 접혀 있다. 여기 밖에는 문서 메타가 없다. -->
+<details class="doc-layer" data-meta="doc">
+  <summary>여정 정보 · 시나리오</summary>
+  <div class="doc-body">
+    <h3>단계 (SSOT: 여정 문서)</h3>
+    <ol class="steps">
+      <li>
+        <span class="sid">1 · STP-open-shared</span>
+        <span class="stt">공유받은 기능 열기</span>
+        <span class="smeta">터치포인트: 공유 링크 · 로그인 화면 · S02 저장소·feature 목록 · 연결 AC: AC4.8, AC4.7</span>
+      </li>
+      <li>
+        <span class="sid">2 · STP-grasp-behavior</span>
+        <span class="stt">위에서 아래로 읽어 이해하기</span>
+        <span class="smeta">터치포인트: S08 인수 시나리오 · 연결 AC: AC2.3</span>
+      </li>
+      <li>
+        <span class="sid">3 · STP-check-scope</span>
+        <span class="stt">이 기능이 무엇에 얽혀 있는지 훑기</span>
+        <span class="smeta">터치포인트: S09 종단 의존성(카테고리 목록) · 연결 AC: AC2.4</span>
+      </li>
+      <li>
+        <span class="sid">4 · STP-flag-ambiguity</span>
+        <span class="stt">이상한 부분을 자연어로 넘기기</span>
+        <span class="smeta">터치포인트: S10 LLM 보조 편집 · 연결 AC: AC3.1, AC3.4</span>
+      </li>
+    </ol>
+
+    <h3>분기·예외 흐름</h3>
+    <ul class="branches">
+      <li><span class="sit">읽다가 용어에서 막힘</span><button data-goto="STP-flag-ambiguity" data-scenario="stuck">STP-flag-ambiguity</button></li>
+      <li><span class="sit">P2의 제안이 P1 편집과 겹침</span><button data-goto="END-to-follow" data-scenario="overlap">JRN-follow-code-change#STP-resolve-conflict</button></li>
+      <li><span class="sit">모바일에서 링크가 앱 대신 브라우저로 열림</span><button data-goto="STP-open-shared" data-scenario="browser">STP-open-shared</button></li>
+    </ul>
+
+    <h3>원천 문서</h3>
+    <p><a href="../reader.html?doc=user-journey/JRN-understand-feature.md">사용자 여정: 코드를 못 읽는 사람이 기능을 이해하기</a></p>
+    <p class="doc-note">
+      이 레이어의 내용은 전부 여정 문서에서 인용한 것입니다. 흐름의 SSOT는 여정 문서이고
+      이 페이지는 그 흐름을 써볼 수 있게 만든 프로토타입입니다. 두 번째 분기는 이어지는 단계가
+      <strong>다른 여정</strong>(코드가 바뀐 뒤 문서가 따라왔는지 확인하기)의 단계라, 이 여정의 끝으로
+      표현하고 그 여정의 페이지로 넘깁니다 — 규약은 mockups README 「여정 밖 분기」 절에 있습니다.
+      여정 문서 §4 의 첫 행 「권한 없는 저장소 링크를 받음」과 셋째 행 「의존성 확인 없이 종료」는
+      이어지는 단계가 「여정 종료」라 위 목록에 오르지 않습니다 — 대신 각각 갈래의 끝
+      <code>END-no-access</code> 와 <code>END-understood</code>(「여기까지면 충분해요」)로 표현했습니다.
+    </p>
+  </div>
+</details>
+
+<script>
+/* JRN-understand-feature — 여정 프로토타입.
+ *
+ * 흐름의 SSOT 는 docs/user-journey/JRN-understand-feature.md 다. 이 스크립트는 그
+ * 흐름을 실제로 눌러 볼 수 있게 만든 것이며, 단계 전진은 전부 화면 안의 행동으로
+ * 일어난다 (규칙 5c — 래퍼 네비게이션으로만 넘어가는 단계는 없다).
+ *
+ * 이 여정의 사용자(P2)는 코드를 읽지 않고 모바일로만 들어온다. 그래서 제품 평면에는
+ * 자격증명·설치 경로가 없고, 화면의 말은 전부 그 사람의 말로 쓰여 있다.
+ */
+(function () {
+  'use strict';
+
+  var STEPS = ['STP-open-shared', 'STP-grasp-behavior', 'STP-check-scope',
+               'STP-flag-ambiguity'];
+
+  /* 이상했던 자리 — 고른 값이 편집 요청 화면에 그대로 실린다. */
+  var TARGETS = {
+    s1: '하나 · 쓸 수 있는 카드로 결제할 때',
+    s2: '둘 · 같은 결제를 두 번 눌렀을 때',
+    s3: '셋 · 카드사가 응답하지 않을 때',
+    s4: '넷 · 기한이 지난 카드일 때'
+  };
+
+  /* 지우 님이 지금 고치고 있는 자리. 여기에 의견을 남기면 갈래가 갈린다. */
+  var BEING_EDITED = 's3';
+
+  var state = {
+    signedIn: false,
+    link: 'f014',
+    feat: '',
+    browser: false,
+    readDone: false,
+    filter: 'all',
+    target: 's1',
+    previewed: false,
+    fromStuck: false,
+    skippedScope: false
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function toggle(el, on) { if (el) { el.classList.toggle('on', !!on); el.style.display = on ? 'block' : 'none'; } }
+  function accessible() { return state.link !== 'locked'; }
+
+  /* ── 화면 전환 ─────────────────────────────────────────────────── */
+  var navigating = false;
+
+  function show(id) {
+    var target = document.getElementById(id);
+    if (!target || !target.classList.contains('stp')) return;
+    all('.stp').forEach(function (s) { s.classList.toggle('on', s === target); });
+    document.body.setAttribute('data-active-step', target.hasAttribute('data-step') ? id : '');
+    document.body.setAttribute('data-active-section', id);
+    if (window.location.hash !== '#' + id) {
+      navigating = true;
+      window.location.hash = '#' + id;
+      navigating = false;
+    }
+  }
+
+  window.addEventListener('hashchange', function () {
+    if (navigating) return;
+    var id = window.location.hash.replace(/^#/, '');
+    if (id) show(id);
+  });
+
+  /* ── STP-open-shared ───────────────────────────────────────────── */
+  function syncOpen() {
+    toggle($('browser-bar'), state.browser);
+    $('signin-card').style.display = state.signedIn ? 'none' : 'block';
+    $('after-signin').style.display = state.signedIn ? 'block' : 'none';
+    toggle($('no-access'), state.signedIn && !accessible());
+    // 권한이 없으면 목록 자체가 나타나지 않는다 — 상세만 막는 것이 아니다.
+    $('feat-block').style.display = accessible() ? 'block' : 'none';
+    $('btn-open-feature').disabled = !(state.signedIn && accessible() && state.feat !== '');
+  }
+
+  $('btn-signin').addEventListener('click', function () {
+    state.signedIn = true;
+    syncOpen();
+  });
+
+  $('in-link').addEventListener('change', function () {
+    state.link = $('in-link').value;
+    if (!accessible()) {
+      // 고른 기능도 함께 풀린다 — 볼 수 없는 저장소의 선택이 남아 있으면 안 된다.
+      state.feat = '';
+      all('.feat-pick').forEach(function (r) { r.checked = false; });
+    }
+    syncOpen();
+  });
+
+  all('.feat-pick').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      if (radio.checked) state.feat = radio.value;
+      syncOpen();
+    });
+  });
+
+  $('btn-request-access').addEventListener('click', function () { show('END-no-access'); });
+
+  $('btn-open-feature').addEventListener('click', function () { show('STP-grasp-behavior'); });
+
+  /* ── STP-grasp-behavior ────────────────────────────────────────── */
+  function syncRead() {
+    toggle($('read-hint'), !state.readDone);
+    // 끝까지 읽지 않으면 다음으로 넘어갈 수 없다(읽지 않고 넘기면 이해가 아니다).
+    $('btn-to-scope').disabled = !state.readDone;
+  }
+
+  $('in-read-done').addEventListener('change', function () {
+    state.readDone = $('in-read-done').checked;
+    syncRead();
+  });
+
+  all('[data-stuck]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      // 막힌 자리를 그대로 들고 편집 요청으로 넘어간다 — 다시 찾게 하지 않는다.
+      state.target = btn.getAttribute('data-stuck');
+      state.fromStuck = true;
+      $('in-target').value = state.target;
+      syncFlag();
+      show('STP-flag-ambiguity');
+    });
+  });
+
+  $('btn-to-scope').addEventListener('click', function () { show('STP-check-scope'); });
+
+  /* ── STP-check-scope ───────────────────────────────────────────── */
+  function syncScope() {
+    var shown = 0;
+    all('#scope-list .dep').forEach(function (row) {
+      var on = state.filter === 'all' || row.getAttribute('data-cat') === state.filter;
+      row.style.display = on ? 'flex' : 'none';
+      if (on) shown += 1;
+    });
+    $('scope-count').textContent = String(shown);
+  }
+
+  $('in-scope-filter').addEventListener('change', function () {
+    state.filter = $('in-scope-filter').value;
+    syncScope();
+  });
+
+  $('btn-to-flag').addEventListener('click', function () { show('STP-flag-ambiguity'); });
+
+  $('btn-enough').addEventListener('click', function () {
+    // 선택 단계라 여기서 끝내도 여정은 완료다 — 끝 화면의 말만 달라진다.
+    state.skippedScope = true;
+    syncEnd();
+    show('END-understood');
+  });
+
+  /* ── STP-flag-ambiguity ────────────────────────────────────────── */
+  function syncFlag() {
+    $('edit-target').textContent = TARGETS[state.target];
+    toggle($('stuck-note'), state.fromStuck);
+    var v = $('in-note').value.trim();
+    $('btn-send-note').disabled = v.length === 0;
+    toggle($('note-error'), v.length === 0);
+    toggle($('proposal'), state.previewed);
+    // 부딪히는 편집이 있으면 이 갈래는 여기서 끝나고 그 결정 화면으로 넘어간다.
+    toggle($('overlap-note'), state.previewed && state.target === BEING_EDITED);
+  }
+
+  $('in-target').addEventListener('change', function () {
+    state.target = $('in-target').value;
+    syncFlag();
+  });
+
+  $('in-note').addEventListener('input', syncFlag);
+
+  $('btn-preview').addEventListener('click', function () {
+    state.previewed = true;
+    syncFlag();
+  });
+
+  $('btn-to-conflict').addEventListener('click', function () { show('END-to-follow'); });
+
+  $('btn-send-note').addEventListener('click', function () {
+    state.skippedScope = false;
+    syncEnd();
+    show('END-understood');
+  });
+
+  /* ── 갈래의 끝 ─────────────────────────────────────────────────── */
+  function syncEnd() {
+    $('end-flagged').textContent = state.skippedScope ? '0' : '1';
+    $('end-tail').textContent = state.skippedScope
+      ? '얽힌 것까지는 보지 않았지만, 이 단계는 건너뛰어도 되는 자리였어요.'
+      : '이상했던 자리는 그대로 넘겨 두었으니 쓴 사람이 확인할 거예요.';
+  }
+
+  /* ── 보조 레이어의 시나리오 스위치 ─────────────────────────────
+     사용자가 스스로 일으킬 수 없는 상태(링크가 앱 대신 브라우저로 열렸다,
+     마침 다른 사람이 같은 자리를 고치고 있다)까지 프로토타입 안에서
+     재현하기 위한 것. 각 버튼의 이동 대상은 여정 문서 §4 의 「이어지는
+     단계」이며, 그 단계가 다른 여정의 것이면 이 여정의 끝(handoff)으로 간다. */
+  var SCENARIOS = {
+    stuck: function () {
+      state.target = 's3';
+      state.fromStuck = true;
+      $('in-target').value = 's3';
+    },
+    overlap: function () {
+      state.target = BEING_EDITED;
+      state.previewed = true;
+      $('in-target').value = BEING_EDITED;
+    },
+    browser: function () {
+      state.browser = true;
+    }
+  };
+
+  all('[data-scenario]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var fn = SCENARIOS[btn.getAttribute('data-scenario')];
+      if (fn) fn();
+      syncOpen();
+      syncRead();
+      syncScope();
+      syncFlag();
+      show(btn.getAttribute('data-goto'));
+    });
+  });
+
+  /* ── 그 밖의 이동 버튼 (뒤로 가기, 끝에서 목록으로) ────────────── */
+  var WIRED = ['btn-open-feature', 'btn-to-scope', 'btn-to-flag', 'btn-send-note',
+               'btn-to-conflict'];
+  all('[data-goto]').forEach(function (el) {
+    if (el.hasAttribute('data-scenario')) return;
+    if (el.id && WIRED.indexOf(el.id) !== -1) return;
+    if (el.tagName === 'A') return;                 // 여정 밖으로 나가는 실제 링크
+    el.addEventListener('click', function () { show(el.getAttribute('data-goto')); });
+  });
+
+  /* ── 진입 ──────────────────────────────────────────────────────── */
+  toggle($('browser-bar'), false);
+  toggle($('no-access'), false);
+  toggle($('stuck-note'), false);
+  toggle($('proposal'), false);
+  toggle($('overlap-note'), false);
+  syncOpen();
+  syncRead();
+  syncScope();
+  syncFlag();
+  syncEnd();
+  var initial = window.location.hash.replace(/^#/, '');
+  show(document.getElementById(initial) ? initial : STEPS[0]);
+})();
+</script>
+</body>
+</html>
