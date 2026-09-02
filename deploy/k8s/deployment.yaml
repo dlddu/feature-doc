@@ -22,7 +22,7 @@ spec:
           # ⚙️ CI가 관리하는 줄입니다. main에 푸시가 들어오면 ci.yml의 `pin` job이
           # 이미지 빌드를 마친 뒤 이 태그를 그 커밋의 SHA로 바꿔 다시 커밋합니다.
           # 손으로 고칠 일은 롤백뿐이고, 그때는 되돌릴 커밋의 SHA를 적으면 됩니다.
-          image: ghcr.io/dlddu/featuredoc:f36c94301e5575d1144ccf80705d6f455a9a15e0
+          image: ghcr.io/dlddu/featuredoc:c668d12da99b2882490384916632fa2ac7db1728
           # imagePullPolicy intentionally omitted: the tag is an immutable commit
           # SHA, so the default IfNotPresent is correct — a cached layer can never
           # be stale, and a rollout only happens when the tag above changes.
