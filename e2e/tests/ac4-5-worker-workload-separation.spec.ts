@@ -156,7 +156,7 @@ test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리',
         ).toBe(1);
 
         // And it drained by *doing work*, not by being marked done: the one
-        // implemented stage ran. (Rendering it is S04 / AC1.5.)
+        // implemented stage ran. (Rendering it is Analysis Progress / AC1.5.)
         expect(
           lines.filter((l) => l.includes('fetch stage complete') && l.includes(id)).length,
           `analysis ${id} must have run its fetch stage exactly once`,

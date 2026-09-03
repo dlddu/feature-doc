@@ -1,5 +1,5 @@
-// S07 · Feature Candidates — the real screen behind
-// docs/mockups/JRN-discover-features.html#STP-sift-candidates (S07, AC1.4).
+// Feature Candidates — the real screen behind
+// docs/mockups/JRN-discover-features.html#STP-sift-candidates (Feature Candidates, AC1.4).
 //
 // The mockup is the SSOT for what this screen says, so the copy below is the
 // mockup's copy. What it *does* is AC1.4: stage 4 extracted a list, and the
@@ -44,7 +44,7 @@ type Filter = 'all' | 'undecided' | 'approved' | 'rejected';
 
 type Props = {
   id: string;
-  /** S07 → S04 (back to the run these candidates came out of). */
+  /** Feature Candidates → Analysis Progress (back to the run these candidates came out of). */
   onBack: () => void;
 };
 

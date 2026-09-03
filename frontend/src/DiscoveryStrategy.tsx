@@ -1,5 +1,5 @@
-// S06 · Discovery Strategy — the real screen behind
-// docs/mockups/JRN-discover-features.html#STP-tune-strategy (S06, AC1.3).
+// Discovery Strategy — the real screen behind
+// docs/mockups/JRN-discover-features.html#STP-tune-strategy (Discovery Strategy, AC1.3).
 //
 // The mockup is the SSOT for what this screen says, so the copy below is the
 // mockup's copy. What it *does* is AC1.3: the list stage 3 proposed is a draft the
@@ -25,10 +25,10 @@ function messageOf(e: unknown): string {
 
 type Props = {
   id: string;
-  /** S06 → S04 (back to the run this strategy belongs to). */
+  /** Discovery Strategy → Analysis Progress (back to the run this strategy belongs to). */
   onBack: () => void;
   /**
-   * S06 → S07 (AC1.4). The mockup's own wiring: `이 전략으로 후보 뽑기` carries
+   * Discovery Strategy → Feature Candidates (AC1.4). The mockup's own wiring: `이 전략으로 후보 뽑기` carries
    * `data-goto="STP-sift-candidates"`, so approving and entering the candidate list
    * are one button. Before approval it approves; after, it is the way through.
    */

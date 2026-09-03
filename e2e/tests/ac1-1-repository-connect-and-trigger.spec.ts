@@ -22,7 +22,7 @@ import { expect, test } from '@playwright/test';
 test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ page }) => {
   await page.goto('/api/auth/login?as=ac11');
 
-  // ── S01: install the App and register a key (the S02 pre-condition) ──
+  // ── Credentials Setup: install the App and register a key (the Home pre-condition) ──
   await page.getByTestId('connect-app').click();
   await expect(page.getByTestId('connection')).toBeVisible();
 
@@ -31,13 +31,13 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
   await page.getByTestId('register-key').click();
   await expect(page.getByTestId('active-key')).toBeVisible();
 
-  // Continue confirms readiness, then carries the user into S02.
+  // Continue confirms readiness, then carries the user into Home.
   const cont = page.getByTestId('continue');
   await cont.click();
   await expect(page.getByTestId('ready')).toBeVisible();
   await cont.click();
 
-  // ── S02: the repositories the App can reach, and no analyses yet ──
+  // ── Home: the repositories the App can reach, and no analyses yet ──
   await expect(page.getByTestId('metrics')).toBeVisible();
   await expect(page.getByTestId('metric-repos')).toHaveText('3');
   await expect(page.getByTestId('metric-analyses')).toHaveText('0');
@@ -45,7 +45,7 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
   await expect(cards).toHaveCount(3);
   await expect(cards.filter({ hasText: 'stub-account/payments-api' })).toBeVisible();
 
-  // ── S03: a target outside the App's granted access is refused ──
+  // ── Connect Repository: a target outside the App's granted access is refused ──
   await page.getByTestId('new-repository').click();
   await page.getByTestId('repo-url').fill('github.com/someone-else/private-repo');
   await page.getByTestId('check-access').click();
@@ -60,7 +60,7 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
   await page.getByTestId('back').click();
   await expect(page.getByTestId('metric-analyses')).toHaveText('0');
 
-  // ── S03: an in-scope target shows the pre-flight estimate before triggering ──
+  // ── Connect Repository: an in-scope target shows the pre-flight estimate before triggering ──
   await page.getByTestId('new-repository').click();
   await page.getByTestId('repo-url').fill('stub-account/payments-api');
   await page.getByTestId('check-access').click();

@@ -99,7 +99,7 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
       const first = await enqueue(page, 'payments-api');
 
       // ── before any worker: there is nothing to sift yet ─────────────────
-      // Not a 404 — "아직 추출 전"은 화면이 그릴 수 있는 상태이고, 그 구분이 S07 의
+      // Not a 404 — "아직 추출 전"은 화면이 그릴 수 있는 상태이고, 그 구분이 기능 후보 화면의
       // 빈 상태가 존재하는 이유다.
       const empty = await candidatesOf(page, first);
       expect(empty.extracted).toBe(false);
@@ -115,7 +115,7 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
       // 오래 돌려도 후보는 나오지 않는다(AC1.3 의 게이트를 사용자 쪽에서 본 모습).
       expect((await candidatesOf(page, first)).extracted).toBe(false);
 
-      // ── S06 의 승인 버튼이 곧 S07 로 가는 길이다(목업의 `data-goto`) ─────
+      // ── 탐색 전략 화면의 승인 버튼이 곧 기능 후보 화면으로 가는 길이다(목업의 `data-goto`) ─────
       await page.goto(`/#/analyses/${first}/discovery-strategy`);
       await page.getByTestId('strategy-approve').click();
       await expect(page.getByTestId('strategy-approved')).toBeVisible();
@@ -140,7 +140,7 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
       }
       expect(extracted.undecided).toBe(extracted.candidates.length);
 
-      // ── S07 이 그 목록을 그린다 ─────────────────────────────────────────
+      // ── 기능 후보 화면이 그 목록을 그린다 ─────────────────────────────────────────
       await page.getByTestId('strategy-open-candidates').click();
       await expect(page.getByTestId('candidate')).toHaveCount(extracted.candidates.length);
       await expect(page.getByTestId('undecided-count')).toHaveText(
