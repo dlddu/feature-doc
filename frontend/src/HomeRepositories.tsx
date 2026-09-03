@@ -1,10 +1,10 @@
-// S02 · Home — Repositories — the real, stateful screen behind
-// docs/mockups/JRN-connect-repo.html#STP-pick-target (S02, AC1.1).
+// Home — Repositories — the real, stateful screen behind
+// docs/mockups/JRN-connect-repo.html#STP-pick-target (Home, AC1.1).
 //
 // Reads the slice-2a enqueue contract: the repositories the GitHub App can reach
 // (`GET /api/repositories`) and the analysis jobs the user has triggered
 // (`GET /api/analyses`), which now carries each job's pipeline fraction so a card
-// can say "step 1 of 5" and open S04 (AC1.5). The pipeline *outputs* the mockup's
+// can say "step 1 of 5" and open Analysis Progress (AC1.5). The pipeline *outputs* the mockup's
 // "features / conflicts / spend" figures imply still arrive with later slices
 // (AC1.2~1.4 · AC4.6) — this screen only shows what the API really knows.
 
@@ -82,11 +82,11 @@ function buildRows(repos: Repository[], analyses: Analysis[]): Row[] {
 }
 
 type Props = {
-  /** S02 → S03 ("+ New"). */
+  /** Home → Connect Repository ("+ New"). */
   onConnectRepository: () => void;
-  /** S02 → S01 (settings / Keys tab). */
+  /** Home → Credentials Setup (settings / Keys tab). */
   onOpenCredentials: () => void;
-  /** S02 → S04, for a repository that has been analyzed at least once. */
+  /** Home → Analysis Progress, for a repository that has been analyzed at least once. */
   onOpenAnalysis: (analysisId: string) => void;
 };
 

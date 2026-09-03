@@ -1,4 +1,4 @@
-//! The analysis pipeline's stage list — one place, mirrored by the S04 mockup.
+//! The analysis pipeline's stage list — one place, mirrored by the Analysis Progress mockup.
 //!
 //! `docs/mockups/JRN-discover-features.html#STP-leave-and-return` renders exactly these five steps
 //! ("Pipeline · 3 of 5"), so the screen and the persisted rows cannot drift apart.
@@ -8,13 +8,13 @@
 //! run today. Stage 5 stays `pending` until the rest of the pipeline lands — the
 //! worker never fabricates a result for work that is not implemented.
 
-/// One step of the pipeline as the user sees it on S04.
+/// One step of the pipeline as the user sees it on Analysis Progress.
 pub struct Stage {
     /// 1-based position; also the `analysis_stages.seq` column.
     pub seq: i64,
     /// Stable identifier used on the wire (`/internal/analyses/{id}/stages/{key}`).
     pub key: &'static str,
-    /// Label rendered by S04.
+    /// Label rendered by Analysis Progress.
     pub title: &'static str,
 }
 

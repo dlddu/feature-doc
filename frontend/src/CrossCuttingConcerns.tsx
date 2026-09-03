@@ -1,5 +1,5 @@
-// S05 · Cross-cutting Concerns — the real screen behind
-// docs/mockups/JRN-discover-features.html#STP-review-landscape (S05, AC1.2).
+// Cross-cutting Concerns — the real screen behind
+// docs/mockups/JRN-discover-features.html#STP-review-landscape (Cross-cutting Concerns, AC1.2).
 //
 // Everything here comes from `GET /api/analyses/{id}/documents/cross-cutting`:
 // the document stage 2 produced and stored, never anything derived client-side.
@@ -17,9 +17,9 @@
 // method requires that a re-analysis either reproduce deterministically *or* state
 // the difference, and a screen that never mentions it cannot satisfy that clause.
 //
-// The way out to S06 is the mockup's: this screen does not edit its own result, it
+// The way out to Discovery Strategy is the mockup's: this screen does not edit its own result, it
 // points at the strategy screen where the correction actually lands. It is gated on
-// stage 3 having succeeded — the same rule S04 uses for its per-stage entry points,
+// stage 3 having succeeded — the same rule Analysis Progress uses for its per-stage entry points,
 // so the link never leads to a 404. Stages finish in order but not instantly, so
 // arriving here says nothing about whether the strategy exists yet.
 
@@ -56,9 +56,9 @@ function reproText(doc: CrossCuttingDocument): string {
 
 type Props = {
   id: string;
-  /** S05 → S04 (back to the run this document came from). */
+  /** Cross-cutting Concerns → Analysis Progress (back to the run this document came from). */
   onBack: () => void;
-  /** S05 → S06, offered only once stage 3 has a strategy to review. */
+  /** Cross-cutting Concerns → Discovery Strategy, offered only once stage 3 has a strategy to review. */
   onOpenDiscoveryStrategy: () => void;
 };
 

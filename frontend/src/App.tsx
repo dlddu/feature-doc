@@ -1,7 +1,7 @@
 // Screen routing for the journey the docs describe (user-journey flow 1 → 2):
-// S01 Credentials → S02 Repositories → S03 Connect Repository → S04 Analysis.
+// Credentials → Repositories → Connect Repository → Analysis.
 //
-// Still a state machine rather than a router dependency, with one addition: S04 is
+// Still a state machine rather than a router dependency, with one addition: Analysis Progress is
 // *addressable* (`#/analyses/<id>`). AC1.5 requires that closing the app and coming
 // back shows the same run (test/01 시나리오 5), and a screen you cannot navigate
 // straight to cannot demonstrate that. The hash is enough — no history API, no
@@ -25,12 +25,12 @@ export type AnalysisRoute = {
 };
 
 /**
- * `#/analyses/<id>` → S04, `.../cross-cutting` → S05, `.../discovery-strategy` → S06,
- * `.../candidates` → S07, null otherwise.
+ * `#/analyses/<id>` → Analysis Progress, `.../cross-cutting` → Cross-cutting Concerns, `.../discovery-strategy` → Discovery Strategy,
+ * `.../candidates` → Feature Candidates, null otherwise.
  *
- * All four are addressable for the same reason S04 is (AC1.5): a screen you cannot
- * navigate straight to cannot demonstrate that its content is server state. For S06
- * and S07 it is also what makes the review resumable — a reviewer who leaves
+ * All four are addressable for the same reason Analysis Progress is (AC1.5): a screen you cannot
+ * navigate straight to cannot demonstrate that its content is server state. For Discovery Strategy
+ * and Feature Candidates it is also what makes the review resumable — a reviewer who leaves
  * mid-decision comes back to the list the server has, not to a lost draft, which is
  * the whole of the mockup's "여기까지 저장하고 나가기".
  */
@@ -46,7 +46,7 @@ export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('credentials');
-  // Bumped on returning from S03 so the home list refetches the new job.
+  // Bumped on returning from Connect Repository so the home list refetches the new job.
   const [homeEpoch, setHomeEpoch] = useState(0);
   const [route, setRoute] = useState<AnalysisRoute | null>(() =>
     analysisRouteFromHash(window.location.hash),
@@ -63,7 +63,7 @@ export function App() {
     setScreen('home');
   }
 
-  /** Leaving S04 clears the hash, which is what re-renders the home screen. */
+  /** Leaving Analysis Progress clears the hash, which is what re-renders the home screen. */
   function leaveAnalysis() {
     window.location.hash = '';
     setRoute(null);
@@ -75,28 +75,28 @@ export function App() {
     setRoute({ id, view: 'progress' });
   }
 
-  /** S04 → S05, for a run whose cross-cutting stage has produced its document. */
+  /** Analysis Progress → Cross-cutting Concerns, for a run whose cross-cutting stage has produced its document. */
   function openCrossCutting(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/cross-cutting`;
     setRoute({ id, view: 'cross-cutting' });
   }
 
-  /** S04 → S06, for a run whose discovery-strategy stage has proposed one (AC1.3). */
+  /** Analysis Progress → Discovery Strategy, for a run whose discovery-strategy stage has proposed one (AC1.3). */
   function openDiscoveryStrategy(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/discovery-strategy`;
     setRoute({ id, view: 'discovery-strategy' });
   }
 
-  // S06 → S07. The mockup wires it exactly here: `이 전략으로 후보 뽑기` carries
+  // Discovery Strategy → Feature Candidates. The mockup wires it exactly here: `이 전략으로 후보 뽑기` carries
   // `data-goto="STP-sift-candidates"`, so the button that approves a strategy is
-  // also the way into the list it produces. S04 draws no entry of its own.
-  /** S06 → S07, for a run whose feature-candidates stage has extracted a list (AC1.4). */
+  // also the way into the list it produces. Analysis Progress draws no entry of its own.
+  /** Discovery Strategy → Feature Candidates, for a run whose feature-candidates stage has extracted a list (AC1.4). */
   function openCandidates(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/candidates`;
     setRoute({ id, view: 'candidates' });
   }
 
-  // The hash wins over the state machine: a deep link must land on S04/S05 even on
+  // The hash wins over the state machine: a deep link must land on Analysis Progress or Cross-cutting Concerns even on
   // a cold load, before the user has walked the journey in this session.
   if (route !== null) {
     if (route.view === 'candidates') {

@@ -248,7 +248,7 @@ struct PreflightView {
     fingerprint: String,
 }
 
-/// Confirms the user has a usable key before an LLM-backed action (the seam S03's
+/// Confirms the user has a usable key before an LLM-backed action (the seam Connect Repository's
 /// "분석 시작" preflight will call). Decrypts just-in-time to prove usability, then
 /// drops the plaintext; never returns or logs the key. No active key → blocked with
 /// "키가 없거나 폐기되었습니다" (test#4). Note: full per-call delegation (test#3)
