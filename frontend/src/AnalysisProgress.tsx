@@ -1,4 +1,4 @@
-// S04 · Analysis in Progress — the real, stateful screen behind
+// Analysis in Progress — the real, stateful screen behind
 // docs/mockups/JRN-discover-features.html#STP-leave-and-return (AC1.5). The standalone
 // s04-*.html mockup was absorbed when JRN-follow-code-change migrated (2026-09-01); the
 // journey page's step anchor is the screen's public path now.
@@ -64,11 +64,11 @@ function elapsedOf(stage: Stage, nowSeconds: number): string {
 
 type Props = {
   id: string;
-  /** S04 → S02 (back, close, or "Run in background" — the job keeps running). */
+  /** Analysis Progress → Home (back, close, or "Run in background" — the job keeps running). */
   onBack: () => void;
-  /** S04 → S05, offered once the cross-cutting stage has produced its document. */
+  /** Analysis Progress → Cross-cutting Concerns, offered once the cross-cutting stage has produced its document. */
   onOpenCrossCutting: () => void;
-  /** S04 → S06, offered once stage 3 has proposed a strategy to review (AC1.3). */
+  /** Analysis Progress → Discovery Strategy, offered once stage 3 has proposed a strategy to review (AC1.3). */
   onOpenDiscoveryStrategy: () => void;
 };
 

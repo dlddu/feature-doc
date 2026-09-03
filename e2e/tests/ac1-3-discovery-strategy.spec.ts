@@ -104,7 +104,7 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
         proposal.content.entries.map((e) => e.pattern),
       );
 
-      // ── S06 이 그 전략을 그린다 ─────────────────────────────────────────
+      // ── 탐색 전략 화면이 그 전략을 그린다 ─────────────────────────────────────────
       await page.goto(`/#/analyses/${first}/discovery-strategy`);
       await expect(page.getByTestId('strategy-entry')).toHaveCount(proposed.entries.length);
       await expect(page.getByTestId('strategy-count')).toHaveText(
@@ -156,14 +156,14 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       });
       expect(late.status(), '승인된 전략은 수정할 수 없다').toBe(409);
 
-      // ── S04 → S06 사용자 경로 ───────────────────────────────────────────
+      // ── 분석 진행 → 탐색 전략 사용자 경로 ───────────────────────────────────────────
       await page.goto(`/#/analyses/${first}`);
       await expect(page.locator('[data-stage="discovery_strategy"]')).toContainText('entry points');
       await page.getByTestId('open-discovery-strategy').click();
       await expect(page.getByTestId('strategy-approved')).toBeVisible();
 
       // ── 보탠 항목은 같은 대상의 다음 분석에도 이어진다 ───────────────────
-      // S06 이 그렇게 적어 두었으므로(「여기서 보탠 항목은 다음 분석에서도 그대로
+      // 탐색 전략 화면이 그렇게 적어 두었으므로(「여기서 보탠 항목은 다음 분석에서도 그대로
       // 참조됩니다」) 그 문장이 참인지 실제로 확인한다.
       const second = await enqueue(page, 'payments-api');
       await expect

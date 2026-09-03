@@ -273,7 +273,7 @@ pub struct Candidate {
     pub rationale: String,
 }
 
-/// The one-liner S04 renders under the step, mirroring stages 2 and 3.
+/// The one-liner Analysis Progress renders under the step, mirroring stages 2 and 3.
 pub fn detail(doc: &Value) -> String {
     format!("{} candidates · awaiting review", candidates(doc).len())
 }

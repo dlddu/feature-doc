@@ -18,9 +18,9 @@
 // every queued job, including ones other specs left behind — so every assertion
 // below is about a job this spec created.
 //
-// Like every spec it signs in as its own stub user (`?as=ac12`). Reaching S02
+// Like every spec it signs in as its own stub user (`?as=ac12`). Reaching Home
 // requires an App installation and an active LLM key; those are set up through the
-// API rather than S01's screens, which ac4-1/ac4-2 own — walking another AC's screen
+// API rather than Credentials Setup's screens, which ac4-1/ac4-2 own — walking another AC's screen
 // is setup, not this file's verification target.
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
@@ -118,7 +118,7 @@ test.describe('AC1.2: 횡단 관심사 자동 추출 및 문서화', () => {
       expect(doc.reproducibility.verdict).toBe('first');
       expect(doc.reproducibility.comparedTo).toBeNull();
 
-      // ── S05가 그 문서를 그린다 ──────────────────────────────────────────
+      // ── 횡단 관심사 화면이 그 문서를 그린다 ──────────────────────────────────────────
       // 화면은 API가 내려준 값과 대조한다 — 상수를 박으면 픽스처가 바뀌는 순간
       // 화면이 아니라 이 파일이 틀린다.
       await page.goto(`/#/analyses/${first}/cross-cutting`);
@@ -131,7 +131,7 @@ test.describe('AC1.2: 횡단 관심사 자동 추출 및 문서화', () => {
       await expect(axisCard).toContainText(shownItem.name);
       await expect(axisCard).toContainText(shownItem.evidence[0]);
 
-      // ── S04에서 S05로 가는 사용자 경로 ──────────────────────────────────
+      // ── 분석 진행 화면에서 횡단 관심사 화면으로 가는 사용자 경로 ──────────────────────────────────
       await page.goto(`/#/analyses/${first}`);
       await expect(page.locator('[data-stage="cross_cutting"]')).toContainText('categories');
       await page.getByTestId('open-cross-cutting').click();

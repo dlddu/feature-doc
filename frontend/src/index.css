@@ -5,7 +5,7 @@
    docs/design-system.md (v0.1). Device-frame chrome (frame/statusbar/
    home-indicator) is intentionally dropped — the real app is the screen
    itself. The bottom tab bar is *not* frame chrome: it is design-system
-   §4 navigation, so it is ported (S02 onwards) as a fixed bar pinned to
+   §4 navigation, so it is ported (Home onwards) as a fixed bar pinned to
    the same 420px column. Mockup raw hex is mapped onto the design-system
    tokens below (e.g. btn-primary #ededed/#0a0a0a ->
    --text-primary/--bg-base); no new values are introduced.
@@ -340,7 +340,7 @@ button.ico { cursor: pointer; }
 }
 
 /* ============================================================
-   S02 · S03 components (ported from the S02/S03 screens, which now live as
+   Home · Connect Repository components (ported from those two screens, which now live as
    prototype steps in docs/mockups/JRN-connect-repo.html — design-system §4.6
    app bar, §4.7 bottom
    tab bar, §4.10 segment/§4.11 metric grid/§4.12 progress bar, and the
@@ -445,7 +445,7 @@ button.ico { cursor: pointer; }
   margin-top: 8px;
 }
 
-/* standalone metric readout (S03 estimate card) */
+/* standalone metric readout (Connect Repository estimate card) */
 .metric {
   font-family: var(--font-mono);
   font-size: 18px;
@@ -467,7 +467,7 @@ button.ico { cursor: pointer; }
   background: var(--text-secondary);
 }
 
-/* side-by-side inputs (S03 branch + access) */
+/* side-by-side inputs (Connect Repository branch + access) */
 .input-row { display: flex; gap: 8px; }
 .input-row .input { flex: 1; min-width: 0; }
 
@@ -518,7 +518,7 @@ button.ico { cursor: pointer; }
 /* leave room for the fixed tab bar */
 .screen.has-tabbar { padding-bottom: 90px; }
 
-/* ── step — pipeline progress (§4.5), ported from the S04 screen (now
+/* ── step — pipeline progress (§4.5), ported from the Analysis Progress screen (now
    docs/mockups/JRN-discover-features.html#STP-leave-and-return) ── */
 .step {
   display: flex;
@@ -573,7 +573,7 @@ button.ico { cursor: pointer; }
   to { transform: rotate(360deg); }
 }
 
-/* progress ring — S04's headline figure (mockups/README: §4 외 요소) */
+/* progress ring — Analysis Progress's headline figure (mockups/README: §4 외 요소) */
 .ring {
   position: relative;
   width: 148px;
@@ -593,7 +593,7 @@ button.ico { cursor: pointer; }
   letter-spacing: -0.02em;
 }
 
-/* discovery-strategy list — S06 (mockups/JRN-discover-features.html#STP-tune-strategy).
+/* discovery-strategy list — Discovery Strategy (mockups/JRN-discover-features.html#STP-tune-strategy).
    Copied from the mockup's inline CSS so the screen and the prototype render the
    same shape; the tokens are the ones §5.2 already defines. */
 .strat {
@@ -631,7 +631,7 @@ button.ico { cursor: pointer; }
   color: var(--warning);
 }
 
-/* feature-candidate cards — S07 (mockups/JRN-discover-features.html#STP-sift-candidates).
+/* feature-candidate cards — Feature Candidates (mockups/JRN-discover-features.html#STP-sift-candidates).
    Copied from the mockup's inline CSS so the screen and the prototype render the
    same shape; the tokens are the ones §5.2 already defines. */
 .cand {

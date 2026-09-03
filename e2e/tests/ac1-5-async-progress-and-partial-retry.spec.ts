@@ -7,7 +7,7 @@
 //   시나리오 6 — 실패한 단계에서 "이 단계만 다시 시도"를 누르면 그 단계만 재실행된다.
 //
 // 진행은 서버 상태(`analysis_stages`)이므로 시나리오 5는 "브라우저를 새로고침해도
-// 같은 화면"으로 관측한다 — S04가 클라이언트에 진행을 들고 있다면 이 단정이 깨진다.
+// 같은 화면"으로 관측한다 — 분석 진행 화면이 클라이언트에 진행을 들고 있다면 이 단정이 깨진다.
 //
 // Isolation: this spec *leases* the analysis worker (see `e2e/support/cluster.ts`).
 // It scales the Deployment to 1 inside its own block and returns it to 0 in
@@ -16,9 +16,9 @@
 // every queued job, including ones other specs left behind — so every assertion
 // below is about a job this spec created.
 //
-// Like every spec it signs in as its own stub user (`?as=ac15`). Reaching S02
+// Like every spec it signs in as its own stub user (`?as=ac15`). Reaching Home
 // requires an App installation and an active LLM key; those are set up through the
-// API rather than S01's screens, which ac4-1/ac4-2 own — walking another AC's screen
+// API rather than Credentials Setup's screens, which ac4-1/ac4-2 own — walking another AC's screen
 // is setup, not this file's verification target.
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
@@ -66,7 +66,7 @@ async function stageOf(page: Page, id: string, key: string): Promise<StageRow> {
 test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재시도', () => {
   test.describe.configure({ mode: 'serial', timeout: 300_000 });
 
-  test('S04가 적재된 진행을 보여주고, 복귀 후에도 같으며, 실패 단계만 다시 실행된다', async ({
+  test('분석 진행 화면이 적재된 진행을 보여주고, 복귀 후에도 같으며, 실패 단계만 다시 실행된다', async ({
     page,
   }) => {
     try {
@@ -80,16 +80,16 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
       const key = await page.request.post('/api/llm-keys', {
         data: { provider: 'anthropic', key: 'sk-ant-api03-aaaaaaaaaaaaaaaaaaaa' },
       });
-      expect(key.ok(), 'an active LLM key is S02의 진입 조건').toBeTruthy();
+      expect(key.ok(), 'an active LLM key is 홈 화면의 진입 조건').toBeTruthy();
 
       // Two jobs: one the stub repository can serve, and one pointing at a branch
       // the repository does not have — the fetch stage fails on that one exactly as
       // the real GitHub tree request would (404). The branch is a user-typed field
-      // on S03, so this failure is reachable without any test-only hook.
+      // on Connect Repository, so this failure is reachable without any test-only hook.
       const good = await enqueue(page, 'payments-api', null);
       const failing = await enqueue(page, 'checkout-web', 'no-such-branch');
 
-      // ── before any worker: S04 shows the pipeline waiting, not "done" ───
+      // ── before any worker: Analysis Progress shows the pipeline waiting, not "done" ───
       await page.goto(`/#/analyses/${good}`);
       await expect(page.getByTestId('pipeline-count')).toHaveText('0 of 5');
       await expect(page.getByTestId('progress-percent')).toHaveText('0');
@@ -127,7 +127,7 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
       await expect(page.getByTestId('progress-percent')).toHaveText('60');
       await expect(page.locator('[data-stage="fetch"]')).toContainText('766 files · 2.2 MB');
 
-      // ── the user path into S04: S02 카드 → 진행 상황 ─────────────────────
+      // ── the user path into 분석 진행 화면: 홈 화면 카드 → 진행 상황 ─────────────────────
       await page.goto('/');
       const cont = page.getByTestId('continue');
       await cont.click();

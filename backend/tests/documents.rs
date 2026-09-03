@@ -1,6 +1,6 @@
 //! Pipeline document storage and the reproducibility verdict (AC1.2).
 //!
-//! What S05 needs from the API: read the cross-cutting document one analysis
+//! What Cross-cutting Concerns needs from the API: read the cross-cutting document one analysis
 //! produced, and see whether re-analyzing the same target reproduced it. Both run
 //! against the router in-process, so the contract is gated by `cargo test`; the
 //! screen that renders it is asserted by
@@ -301,7 +301,7 @@ async fn another_users_document_is_not_readable() {
 }
 
 /// A stage that has not produced its document yet is a 404, not an empty document —
-/// S05 must be able to tell "not run" from "ran and found nothing".
+/// Cross-cutting Concerns must be able to tell "not run" from "ran and found nothing".
 #[tokio::test]
 async fn a_document_that_was_never_produced_is_not_found() {
     let (state, _path) = stub_state().await;

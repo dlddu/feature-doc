@@ -2,8 +2,8 @@
 //!
 //! This is the only pipeline stage that needs no LLM, so it is the one the worker
 //! actually executes in this slice. It replaces the size-derived guess used for the
-//! S03 pre-flight with a *measured* file count and byte total — the same pair the
-//! S04 mockup shows under "Fetch repository" ("847 files · 2.3 MB").
+//! Connect Repository pre-flight with a *measured* file count and byte total — the same pair the
+//! Analysis Progress mockup shows under "Fetch repository" ("847 files · 2.3 MB").
 //!
 //! Free functions rather than methods on `AppState`: the worker process has no
 //! database and no `AppState`, only an HTTP client and a mode.
@@ -26,7 +26,7 @@ pub struct ScanResult {
 }
 
 impl ScanResult {
-    /// The one-liner S04 renders under the step ("847 files · 2.3 MB").
+    /// The one-liner Analysis Progress renders under the step ("847 files · 2.3 MB").
     pub fn detail(&self) -> String {
         format!("{} files · {}", self.files, human_size(self.bytes))
     }

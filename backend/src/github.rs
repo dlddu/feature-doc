@@ -1,5 +1,5 @@
 //! GitHub App installation surface: install URL, post-install setup callback, and
-//! the connection status the S01 screen renders.
+//! the connection status the Credentials Setup screen renders.
 
 use axum::extract::{Query, State};
 use axum::response::Redirect;
@@ -137,7 +137,7 @@ struct ConnectionView {
     permissions: Vec<String>,
 }
 
-/// Reports the current user's installation state for the S01 screen.
+/// Reports the current user's installation state for the Credentials Setup screen.
 async fn connection(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -186,7 +186,7 @@ async fn connection(
 /// the one the screen should render.
 ///
 /// Best-effort by design: a GitHub outage, a revoked App, or an OAuth token we can
-/// no longer use should leave S01 reading "not installed" — the same state it had
+/// no longer use should leave Credentials Setup reading "not installed" — the same state it had
 /// before — rather than failing the screen. The reverse (claiming installed when
 /// we could not confirm it) would hide the connect button behind an error.
 async fn adopt_existing_installation(state: &AppState, user_id: &str) -> Option<Installation> {

@@ -4,7 +4,7 @@
 //! The enqueue half (AC1.1):
 //!  - list the repositories the App can access (candidates to analyze),
 //!  - pre-flight an estimated call count / cost so the user sees the scale before
-//!    triggering (S03, journey F2), and
+//!    triggering (Connect Repository, journey F2), and
 //!  - trigger — a user-initiated request lands a `queued` row after the target is
 //!    confirmed within the App's granted access. An out-of-scope target is rejected
 //!    with a clear, actionable message and nothing is queued (test scenario #2).
@@ -14,7 +14,7 @@
 //! job through `/internal/*` (see [`crate::worker_api`]).
 //!
 //! The progress half (AC1.5) reads that same persisted state back:
-//!  - `GET /api/analyses/{id}` — the job and its stages, which is everything S04
+//!  - `GET /api/analyses/{id}` — the job and its stages, which is everything Analysis Progress
 //!    draws. Nothing about the run lives in the client, so closing the app and
 //!    coming back shows the same progress (test/01 시나리오 5).
 //!  - the discovery-strategy review routes (AC1.3) — read the strategy stage 3
@@ -96,7 +96,7 @@ impl From<&RepoRef> for RepoView {
     }
 }
 
-/// What the API exposes for an analysis job (S02 home list).
+/// What the API exposes for an analysis job (the home list).
 #[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisView {
@@ -108,14 +108,14 @@ struct AnalysisView {
     est_llm_calls: i64,
     est_cost_cents: i64,
     created_at: i64,
-    /// Pipeline progress as a fraction, so the S02 card can read "step 2 of 5"
-    /// without one request per row (AC1.5). The stages themselves belong to S04 —
+    /// Pipeline progress as a fraction, so the Home card can read "step 2 of 5"
+    /// without one request per row (AC1.5). The stages themselves belong to Analysis Progress —
     /// see [`detail`].
     stages_total: i64,
     stages_done: i64,
 }
 
-/// One pipeline step as S04 renders it, straight off `analysis_stages`.
+/// One pipeline step as Analysis Progress renders it, straight off `analysis_stages`.
 #[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 struct StageView {
@@ -131,7 +131,7 @@ struct StageView {
     finished_at: Option<i64>,
 }
 
-/// S04's whole payload: the job, its stages, and the run's own timestamps.
+/// The Analysis Progress payload: the job, its stages, and the run's own timestamps.
 ///
 /// Everything on this view is *persisted* state — the screen keeps no progress of
 /// its own, which is what makes "종료 후 복귀 시 동일한 진행률" (test/01 시나리오 5)
@@ -147,7 +147,7 @@ struct AnalysisDetailView {
     stages: Vec<StageView>,
 }
 
-/// The analysis-level columns S04 adds on top of [`AnalysisView`].
+/// The analysis-level columns Analysis Progress adds on top of [`AnalysisView`].
 #[derive(sqlx::FromRow)]
 struct RunRow {
     error: Option<String>,
@@ -174,7 +174,7 @@ fn analysis_columns() -> String {
 // ── handlers ──────────────────────────────────────────────────────────────────
 
 /// The repositories the installation can access (candidates to analyze). Empty when
-/// the user has not connected the App yet — the S02/S03 UI routes those users to S01.
+/// the user has not connected the App yet — the Home and Connect Repository screens route those users to Credentials Setup.
 async fn list_repositories(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -183,7 +183,7 @@ async fn list_repositories(
     Ok(Json(repos.iter().map(RepoView::from).collect()))
 }
 
-/// The user's analysis jobs, newest first (S02 home list). Scoped to the owner (AC4.7).
+/// The user's analysis jobs, newest first (the home list). Scoped to the owner (AC4.7).
 async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -198,7 +198,7 @@ async fn list(
     Ok(Json(rows))
 }
 
-/// One analysis with its pipeline stages — the S04 screen's read (AC1.5).
+/// One analysis with its pipeline stages — the Analysis Progress screen's read (AC1.5).
 ///
 /// Scoped to the owner (AC4.7): another user's id is `404`, not `403`, so the API
 /// does not confirm that the id exists.
@@ -393,7 +393,7 @@ async fn document(
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct TargetReq {
-    /// A GitHub repo URL (or `owner/name`) the user typed on S03.
+    /// A GitHub repo URL (or `owner/name`) the user typed on Connect Repository.
     repo_url: String,
     /// Optional branch override; falls back to the repo's default branch.
     #[serde(default)]
@@ -404,7 +404,7 @@ struct TargetReq {
 #[serde(rename_all = "camelCase")]
 struct PreflightView {
     /// Whether the target is within the App's granted access. `false` is not an
-    /// error — S03 renders the "add this repo to the App" recovery path.
+    /// error — Connect Repository renders the "add this repo to the App" recovery path.
     has_access: bool,
     owner: String,
     name: String,
@@ -417,7 +417,7 @@ struct PreflightView {
     est_duration_min: i64,
 }
 
-/// Pre-flight estimate for S03: resolves the typed target, reports whether it is
+/// Pre-flight estimate for Connect Repository: resolves the typed target, reports whether it is
 /// within the App's granted access, and — when it is — the expected analysis scale
 /// (files, LLM calls, cost, duration) so the user sees the cost before triggering.
 async fn preflight(
@@ -466,7 +466,7 @@ async fn preflight(
     }
 }
 
-/// Explicitly triggers an analysis (S03 "분석 시작"). Confirms the target is within
+/// Explicitly triggers an analysis (Connect Repository "분석 시작"). Confirms the target is within
 /// the App's granted access, then enqueues a `queued` job (201). An out-of-scope
 /// target — or one with no App installed — is rejected with a clear message and
 /// nothing is queued (AC1.1 / test scenario #2). Analysis never starts implicitly.
@@ -619,7 +619,7 @@ fn resolve_branch(requested: Option<String>, repo: &RepoRef) -> String {
 
 /// Parses a repo target. Accepts `owner/name`, `github.com/owner/name`, and full
 /// `https://github.com/owner/name(.git)` URLs. Anything else is a validation error
-/// (S03 URL typo → immediate feedback).
+/// (Connect Repository URL typo → immediate feedback).
 fn parse_repo(input: &str) -> Result<(String, String), AppError> {
     let s = input.trim();
     if s.is_empty() {
@@ -643,7 +643,7 @@ fn parse_repo(input: &str) -> Result<(String, String), AppError> {
 
 /// Deterministic pre-flight heuristic (AC1.1: show the expected scale before the user
 /// triggers). Derived only from the repo's reported size — an order-of-magnitude the
-/// user sees on S03, never a hard cost. Real per-call accounting lands with AC4.6.
+/// user sees on Connect Repository, never a hard cost. Real per-call accounting lands with AC4.6.
 struct Estimate {
     files: i64,
     llm_calls: i64,
@@ -994,7 +994,7 @@ const DECISION_UNDECIDED: &str = "undecided";
 const DECISION_APPROVED: &str = "approved";
 const DECISION_REJECTED: &str = "rejected";
 
-/// One candidate as S07 renders it.
+/// One candidate as Feature Candidates renders it.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CandidateView {
@@ -1022,7 +1022,7 @@ struct PreviousRejection {
     analysis_id: String,
 }
 
-/// S07's whole payload. `undecided` is a count rather than a client-side filter so
+/// The Feature Candidates payload. `undecided` is a count rather than a client-side filter so
 /// the screen and the "결정 끝" gate read the same number the server does.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
