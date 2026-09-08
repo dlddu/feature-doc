@@ -45,7 +45,8 @@ docs/
 tools/                     # 문서 정합성 게이트가 쓰는 체커
 ├── check-journey-mockup.py    # 여정 목업 정적 규약 (R0~R10)
 ├── check-journey-prototype.js # 여정 프로토타입 DOM 하네스 (P1~P7, jsdom)
-└── check-mockup-render.py     # 목업 ↔ 구현 카피 대조 (M0~M6)
+├── check-mockup-render.py     # 목업 ↔ 구현 카피 대조 (M0~M6)
+└── check-scenario-e2e.py      # 테스트 시나리오 ↔ e2e spec 1:1 (선언·등재·집계·래칫)
 
 backend/                   # axum 0.8 — /hello + 자격증명 API(GitHub App·LLM Key, 봉투 암호화) + SQLite + dist 정적 서빙
 ├── Cargo.toml             # [[bin]] 2개: featuredoc(API) · featuredoc-worker(분석 워커)
@@ -70,21 +71,31 @@ deploy/
     ├── kustomization.yaml
     └── kind-cluster.yaml
 
-e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 포함) + Playwright spec (AC 1개당 1파일)
+e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 포함) + Playwright spec (테스트 시나리오 1개당 1파일)
 ├── smoke.sh
-└── tests/                 # 각 spec 첫 줄에 `// 검증 AC: ACx.y` 를 정확히 1개 선언 (docs/doc-tracker.md "e2e 매핑")
-    ├── ac1-1-repository-connect-and-trigger.spec.ts
-    ├── ac4-1-github-app-connection.spec.ts
-    ├── ac4-2-llm-key-lifecycle.spec.ts
-    ├── ac4-3-credential-safety.spec.ts
-    ├── ac4-5-worker-workload-separation.spec.ts  # kubectl로 워커를 0·2로 스케일해 API 가용성·드레인 확인
-    └── ac4-8-signin-and-session.spec.ts
+├── support/               # 매칭 단위가 아님 — 배포 전역 상태(워커 replica) 임대 핸들
+└── tests/                 # 각 spec 첫 줄에 `// 검증 시나리오: <문서>#시나리오 <N>` 을 정확히 1개 선언
+    │                      # 파일명 `sc<문서번호>-<시나리오번호>-<slug>.spec.ts` 가 그 선언과 교차 확인된다
+    │                      # (규약·매핑 표: docs/doc-tracker.md "e2e 매핑" / 게이트: tools/check-scenario-e2e.py)
+    ├── sc01-02-repo-out-of-scope.spec.ts
+    ├── sc01-03-cross-cutting-determinism.spec.ts
+    ├── sc01-04-strategy-edit-and-approve.spec.ts
+    ├── sc01-05-resume-after-app-exit.spec.ts
+    ├── sc01-07-candidate-rejection-carryover.spec.ts
+    ├── sc04-01-app-install-and-scope.spec.ts
+    ├── sc04-03-llm-key-registration.spec.ts
+    ├── sc04-05-credential-log-exposure.spec.ts
+    ├── sc04-07-api-availability-without-workers.spec.ts  # kubectl로 워커를 0·2로 스케일해 API 가용성·드레인 확인
+    └── sc04-11-unauthenticated-block-and-signin.spec.ts
 
 scripts/
 └── e2e.sh                 # kind 생성 → build → load → apply → port-forward → e2e
 
-.github/workflows/
-└── ci.yml                 # 단일 워크플로 (ARM runner) — test + e2e + ghcr 푸시
+.github/workflows/      # ARM runner. ci.yml 은 무겁고(cargo + kind), 문서 게이트는 각자 분리돼 있다
+├── ci.yml                 # test + e2e + ghcr 푸시
+├── docs-journey-mockup.yml
+├── docs-mockup-render.yml
+└── docs-scenario-e2e.yml  # tools/check-scenario-e2e.py
 
 Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debian slim
 ```

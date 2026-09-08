@@ -1,6 +1,6 @@
-// 검증 AC: AC4.1
+// 검증 시나리오: 04-platform.md#시나리오 1
 //
-// AC4.1 (GitHub App 설치를 통한 저장소 접근 연결) 전용 spec.
+// 「GitHub App 설치와 권한 범위 안내」 전용 spec (AC4.1·AC4.3).
 //
 // Runs against the stub-mode deployment (FEATUREDOC_MODE=stub): the App install
 // round-trip bounces through our own setup callback instead of GitHub, and the
