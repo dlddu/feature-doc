@@ -1,12 +1,12 @@
 # Mockups
 
-FeatureDoc 의 **목업** — 색·타이포·인터랙션·디자인 톤이 모두 결정된 최종 형태. [`design-system.md`](../design-system.md)의 토큰·컴포넌트·원칙을 그대로 표현한 결과물이에요. 같은 화면의 정보 구조 합의는 [`wireframes/`](../wireframes/)에 있습니다.
+FeatureDoc 의 **목업** — 색·타이포·인터랙션·디자인 톤이 모두 결정된 최종 형태. [`design-system.md`](../design-system.md)의 토큰·컴포넌트·원칙을 그대로 표현한 결과물이에요. 각 화면이 어떤 흐름의 어느 자리에 놓이는지는 [`user-journey/`](../user-journey/)의 여정 문서가 정합니다.
 
 이 폴더에는 **여정 페이지**(`JRN-<슬러그>.html`)만 있습니다 — 사용자 여정 하나를 한 페이지에서 걸어보게 만든 것입니다. 한때 함께 있던 **화면 단위 파일**(`sNN-*.html`)은 아직 여정 페이지로 이관되지 않은 화면이었고, 2026-09-02 마지막 여정 이관으로 전부 흡수·삭제됐습니다. 목표 상태였던 「여정 페이지만 남는 것」에 도달했으며, 그 상태는 아래 [여정 페이지 규약](#여정-페이지-규약)의 상한 0 두 개로 붙들려 있습니다.
 
 - **Format** — HTML, 393 × 844 (iOS 모바일 viewport), 다크 테마. 393 × 844 는 **상한**입니다 — 460px 이하 뷰포트에서는 프레임(보더·38px radius·상태바·홈 인디케이터)을 유지한 채 `min()` 으로 뷰포트에 맞춰 줄어듭니다. 실기기에서 열었을 때 가로 스크롤이 생기거나 프레임 안 스크롤과 페이지 스크롤이 겹치지 않게 하기 위한 것이고, 새 목업도 이 블록을 그대로 포함해야 합니다.
 - **Style** — `design-system.md` v0.1 그대로: 5단계 표면, 1px hairline, shadow·gradient 없음, 액센트 최소
-- **Self-contained** — 각 파일은 디자인 시스템을 인코딩한 CSS 를 파일 안에 인라인으로 담은 단독 파일. 의존성 없이 브라우저로 바로 열면 그대로 렌더링됩니다 (와이어프레임 SVG 가 각각 단독 파일인 것과 동일).
+- **Self-contained** — 각 파일은 디자인 시스템을 인코딩한 CSS 를 파일 안에 인라인으로 담은 단독 파일. 의존성 없이 브라우저로 바로 열면 그대로 렌더링됩니다.
 - **Fonts** — Geist (본문) · JetBrains Mono (메타·코드), Google Fonts CDN. 오프라인일 때는 시스템 sans/mono 로 폴백됩니다.
 
 ## 여정 페이지 규약
@@ -21,9 +21,9 @@ FeatureDoc 의 **목업** — 색·타이포·인터랙션·디자인 톤이 모
 
 **③ 식별자는 여기서 정의하지 않습니다** — 여정 `JRN-*` 와 단계 `STP-*` 의 원천은 [`user-journey/`](../user-journey/) 의 여정 문서이고(각 문서의 `### \`STP-…\`` 헤딩), 이 README 와 여정 페이지는 그 값을 **인용**할 뿐입니다. 식별자 표를 여기에 따로 두면 SSOT 가 둘이 되어 조용히 어긋납니다. 기존 식별자는 바꾸지 않고, 단계가 사라져도 재사용하지 않습니다.
 
-**④ 단계 → 화면 매핑은 파싱합니다** — 한 단계가 어떤 화면을 보여줄지는 창작하지 않고 그 단계의 `- **터치포인트**:` 줄에 등장하는 `S01`~`S10` 토큰을 그대로 씁니다. 화면이 0개인 단계(아직 시각화가 없는 단계)는 화면을 지어내지 않고 "시각화 없음" 자리로 남기며, 사유는 [`doc-tracker.md`](../doc-tracker.md) 「수용된 위험」에 등재합니다.
+**④ 화면은 이름을 갖지 않습니다** — 한 단계가 무엇을 보여줄지는 그 단계의 `- **터치포인트**:` 줄이 산문으로 적습니다. 화면에 `S01` 같은 식별자를 붙이던 층은 2026-09-03 에 폐지했습니다(이유는 아래 [화면 ID 를 폐지한 이유](#화면-id-를-폐지한-이유)). 화면을 가리키는 유일한 주소는 **단계 앵커**(`JRN-<슬러그>.html#STP-<슬러그>`)이며, 같은 UI 가 여러 여정에 등장하면 그 여정 수만큼 앵커를 갖습니다 — 그것이 중복이 아니라 정상입니다.
 
-**⑤ 화면은 그 자체가 원본입니다** — 여정 페이지의 화면은 어딘가에서 복제해 온 스냅샷이 아닙니다. 원본 `sNN-*.html` 의 `<body>` 를 바이트 동일하게 옮기고 지문(`data-sha256`)으로 못 박는 방식은 **쓰지 않습니다** — 지문으로 화면을 고정하면 아래 ⑥(d) 의 실제 입력 요소와 ⑥(e) 의 상태 변형을 넣을 길이 구조적으로 막히기 때문입니다. 화면 단위 파일에서 이관할 때는 디자인 시스템 CSS 1벌과 시각 언어를 잇되, 본문은 **프로토타입으로 다시 씁니다**. 이관으로 흡수된 원본은 삭제되고 git 이력에 남습니다.
+**⑤ 화면은 그 자체가 원본입니다** — 여정 페이지의 화면은 어딘가에서 복제해 온 스냅샷이 아닙니다. 다른 파일의 `<body>` 를 바이트 동일하게 옮기고 지문(`data-sha256`)으로 못 박는 방식은 **쓰지 않습니다** — 지문으로 화면을 고정하면 아래 ⑥(d) 의 실제 입력 요소와 ⑥(e) 의 상태 변형을 넣을 길이 구조적으로 막히기 때문입니다. 화면을 옮겨올 때는 디자인 시스템 CSS 1벌과 시각 언어를 잇되, 본문은 **프로토타입으로 다시 씁니다**.
 
 **⑥ 여정 페이지는 클릭되는 제품 프로토타입이어야 합니다** — 단계 메타를 늘어놓고 이전/다음으로 넘기는 문서 뷰어는 이 규약을 충족하지 않습니다.
 
@@ -134,118 +134,107 @@ FeatureDoc 의 **목업** — 색·타이포·인터랙션·디자인 톤이 모
 
 ### 이관 완료 — `JRN-connect-repo`
 
-단계와 화면은 여정 문서에서 파싱한 것입니다. 화면 열은 그 단계의 터치포인트 줄에 등장하는 화면 ID 이며, 페이지의 `data-screens` 선언과 대조됩니다(R6).
+단계 순서와 식별자는 여정 문서에서 파싱한 것입니다(R9).
 
 <!-- steps:JRN-connect-repo:begin -->
-| # | 단계 | 화면 | 공개 경로 |
-| --- | --- | --- | --- |
-| 1 | `STP-sign-in` 본인 확인하고 들어오기 | — (시각화 없음 · 수용된 위험) | [#STP-sign-in](./JRN-connect-repo.html#STP-sign-in) |
-| 2 | `STP-grant-repo-access` 들여다볼 범위를 내가 정하기 | S01 | [#STP-grant-repo-access](./JRN-connect-repo.html#STP-grant-repo-access) |
-| 3 | `STP-register-llm-key` 분석 비용을 낼 키 맡기기 | S01 | [#STP-register-llm-key](./JRN-connect-repo.html#STP-register-llm-key) |
-| 4 | `STP-pick-target` 분석할 저장소와 브랜치 고르기 | S02 · S03 | [#STP-pick-target](./JRN-connect-repo.html#STP-pick-target) |
-| 5 | `STP-confirm-cost` 비용을 확인하고 시작 누르기 | S03 | [#STP-confirm-cost](./JRN-connect-repo.html#STP-confirm-cost) |
+| # | 단계 | 공개 경로 |
+| --- | --- | --- |
+| 1 | `STP-sign-in` 본인 확인하고 들어오기 | [#STP-sign-in](./JRN-connect-repo.html#STP-sign-in) |
+| 2 | `STP-grant-repo-access` 들여다볼 범위를 내가 정하기 | [#STP-grant-repo-access](./JRN-connect-repo.html#STP-grant-repo-access) |
+| 3 | `STP-register-llm-key` 분석 비용을 낼 키 맡기기 | [#STP-register-llm-key](./JRN-connect-repo.html#STP-register-llm-key) |
+| 4 | `STP-pick-target` 분석할 저장소와 브랜치 고르기 | [#STP-pick-target](./JRN-connect-repo.html#STP-pick-target) |
+| 5 | `STP-confirm-cost` 비용을 확인하고 시작 누르기 | [#STP-confirm-cost](./JRN-connect-repo.html#STP-confirm-cost) |
 <!-- steps:JRN-connect-repo:end -->
 
 ### 이관 완료 — `JRN-discover-features`
 
 <!-- steps:JRN-discover-features:begin -->
-| # | 단계 | 화면 | 공개 경로 |
-| --- | --- | --- | --- |
-| 1 | `STP-leave-and-return` 맡겨두고 떠났다가 돌아오기 | S04 | [#STP-leave-and-return](./JRN-discover-features.html#STP-leave-and-return) |
-| 2 | `STP-review-landscape` 내 코드가 무엇 위에 서 있는지 확인하기 | S05 | [#STP-review-landscape](./JRN-discover-features.html#STP-review-landscape) |
-| 3 | `STP-tune-strategy` 내가 아는 코드 구조를 전략에 보태기 | S06 | [#STP-tune-strategy](./JRN-discover-features.html#STP-tune-strategy) |
-| 4 | `STP-sift-candidates` 진짜 기능과 아닌 것 가르기 | S07 | [#STP-sift-candidates](./JRN-discover-features.html#STP-sift-candidates) |
-| 5 | `STP-add-missing` 빠진 기능 직접 추가하기 | S07 | [#STP-add-missing](./JRN-discover-features.html#STP-add-missing) |
+| # | 단계 | 공개 경로 |
+| --- | --- | --- |
+| 1 | `STP-leave-and-return` 맡겨두고 떠났다가 돌아오기 | [#STP-leave-and-return](./JRN-discover-features.html#STP-leave-and-return) |
+| 2 | `STP-review-landscape` 내 코드가 무엇 위에 서 있는지 확인하기 | [#STP-review-landscape](./JRN-discover-features.html#STP-review-landscape) |
+| 3 | `STP-tune-strategy` 내가 아는 코드 구조를 전략에 보태기 | [#STP-tune-strategy](./JRN-discover-features.html#STP-tune-strategy) |
+| 4 | `STP-sift-candidates` 진짜 기능과 아닌 것 가르기 | [#STP-sift-candidates](./JRN-discover-features.html#STP-sift-candidates) |
+| 5 | `STP-add-missing` 빠진 기능 직접 추가하기 | [#STP-add-missing](./JRN-discover-features.html#STP-add-missing) |
 <!-- steps:JRN-discover-features:end -->
 
 ### 이관 완료 — `JRN-follow-code-change`
 
 <!-- steps:JRN-follow-code-change:begin -->
-| # | 단계 | 화면 | 공개 경로 |
-| --- | --- | --- | --- |
-| 1 | `STP-notice-change` 무엇이 바뀌었는지 알기 | S04 | [#STP-notice-change](./JRN-follow-code-change.html#STP-notice-change) |
-| 2 | `STP-scan-diff` 어느 기능의 무엇이 달라졌는지 훑기 | S07 · S08 · S09 | [#STP-scan-diff](./JRN-follow-code-change.html#STP-scan-diff) |
-| 3 | `STP-resolve-conflict` 내 편집과 자동 결과 중 무엇을 살릴지 정하기 | S08 · S10 | [#STP-resolve-conflict](./JRN-follow-code-change.html#STP-resolve-conflict) |
-| 4 | `STP-recheck-candidates` 후보 목록의 변화 확인하기 | S07 | [#STP-recheck-candidates](./JRN-follow-code-change.html#STP-recheck-candidates) |
+| # | 단계 | 공개 경로 |
+| --- | --- | --- |
+| 1 | `STP-notice-change` 무엇이 바뀌었는지 알기 | [#STP-notice-change](./JRN-follow-code-change.html#STP-notice-change) |
+| 2 | `STP-scan-diff` 어느 기능의 무엇이 달라졌는지 훑기 | [#STP-scan-diff](./JRN-follow-code-change.html#STP-scan-diff) |
+| 3 | `STP-resolve-conflict` 내 편집과 자동 결과 중 무엇을 살릴지 정하기 | [#STP-resolve-conflict](./JRN-follow-code-change.html#STP-resolve-conflict) |
+| 4 | `STP-recheck-candidates` 후보 목록의 변화 확인하기 | [#STP-recheck-candidates](./JRN-follow-code-change.html#STP-recheck-candidates) |
 <!-- steps:JRN-follow-code-change:end -->
 
 ### 이관 완료 — `JRN-review-feature`
 
 <!-- steps:JRN-review-feature:begin -->
-| # | 단계 | 화면 | 공개 경로 |
-| --- | --- | --- | --- |
-| 1 | `STP-read-scenarios` 사용자에게 무슨 일이 벌어지는지 읽기 | S08 | [#STP-read-scenarios](./JRN-review-feature.html#STP-read-scenarios) |
-| 2 | `STP-verify-evidence` 근거 코드가 진짜 출처인지 확인하기 | S08 | [#STP-verify-evidence](./JRN-review-feature.html#STP-verify-evidence) |
-| 3 | `STP-trace-dependencies` 이 기능이 무엇에 기대고 있는지 보기 | S09 | [#STP-trace-dependencies](./JRN-review-feature.html#STP-trace-dependencies) |
-| 4 | `STP-request-edit` 어색한 표현을 자연어로 고쳐달라 하기 | S10 | [#STP-request-edit](./JRN-review-feature.html#STP-request-edit) |
-| 5 | `STP-decide-diff` 제안된 변경을 승인하거나 버리기 | S10 | [#STP-decide-diff](./JRN-review-feature.html#STP-decide-diff) |
+| # | 단계 | 공개 경로 |
+| --- | --- | --- |
+| 1 | `STP-read-scenarios` 사용자에게 무슨 일이 벌어지는지 읽기 | [#STP-read-scenarios](./JRN-review-feature.html#STP-read-scenarios) |
+| 2 | `STP-verify-evidence` 근거 코드가 진짜 출처인지 확인하기 | [#STP-verify-evidence](./JRN-review-feature.html#STP-verify-evidence) |
+| 3 | `STP-trace-dependencies` 이 기능이 무엇에 기대고 있는지 보기 | [#STP-trace-dependencies](./JRN-review-feature.html#STP-trace-dependencies) |
+| 4 | `STP-request-edit` 어색한 표현을 자연어로 고쳐달라 하기 | [#STP-request-edit](./JRN-review-feature.html#STP-request-edit) |
+| 5 | `STP-decide-diff` 제안된 변경을 승인하거나 버리기 | [#STP-decide-diff](./JRN-review-feature.html#STP-decide-diff) |
 <!-- steps:JRN-review-feature:end -->
 
 ### 이관 완료 — `JRN-understand-feature`
 
 <!-- steps:JRN-understand-feature:begin -->
-| # | 단계 | 화면 | 공개 경로 |
-| --- | --- | --- | --- |
-| 1 | `STP-open-shared` 공유받은 기능 열기 | S02 | [#STP-open-shared](./JRN-understand-feature.html#STP-open-shared) |
-| 2 | `STP-grasp-behavior` 위에서 아래로 읽어 이해하기 | S08 | [#STP-grasp-behavior](./JRN-understand-feature.html#STP-grasp-behavior) |
-| 3 | `STP-check-scope` 이 기능이 무엇에 얽혀 있는지 훑기 | S09 | [#STP-check-scope](./JRN-understand-feature.html#STP-check-scope) |
-| 4 | `STP-flag-ambiguity` 이상한 부분을 자연어로 넘기기 | S10 | [#STP-flag-ambiguity](./JRN-understand-feature.html#STP-flag-ambiguity) |
+| # | 단계 | 공개 경로 |
+| --- | --- | --- |
+| 1 | `STP-open-shared` 공유받은 기능 열기 | [#STP-open-shared](./JRN-understand-feature.html#STP-open-shared) |
+| 2 | `STP-grasp-behavior` 위에서 아래로 읽어 이해하기 | [#STP-grasp-behavior](./JRN-understand-feature.html#STP-grasp-behavior) |
+| 3 | `STP-check-scope` 이 기능이 무엇에 얽혀 있는지 훑기 | [#STP-check-scope](./JRN-understand-feature.html#STP-check-scope) |
+| 4 | `STP-flag-ambiguity` 이상한 부분을 자연어로 넘기기 | [#STP-flag-ambiguity](./JRN-understand-feature.html#STP-flag-ambiguity) |
 <!-- steps:JRN-understand-feature:end -->
 
-## 화면 단위 잔여 — 이관 대기 원장
+## 화면 ID 를 폐지한 이유
 
-아직 여정 페이지로 이관되지 않은 화면 단위 파일입니다. **면제가 아니라 래칫입니다** — 체커는 (a) 이 원장에 없는 새 미선언 파일 (b) 이미 이관됐는데 원장에 남아 있는 공전 행 (c) 아래 상한 초과를 전부 실패로 만듭니다.
+`S01`~`S10` 이라는 화면 식별자는 와이어프레임 시절의 유산이었습니다. 그때는 화면 하나가 파일 하나(`s01-*.svg`)였고, ID 는 그 파일의 이름이었습니다. 2026-09-02 여정 이관이 끝나면서 그 대응이 끊겼습니다 — 화면은 더 이상 자기 파일을 갖지 않고 여정 페이지 안의 단계가 됐고, ID 는 **아무 산출물도 가리키지 않는 이름**으로 남았습니다.
 
-**원장은 2026-09-02 에 비었습니다.** 판정 대상 여정 5개가 모두 여정 페이지를 가지면서 `S01`~`S10` 전부의 마지막 소비 여정이 이관됐고, 화면 단위 파일은 하나도 남지 않았습니다. 아래 표가 빈 것과 상한이 0 인 것은 같은 사실의 두 표현입니다.
+남겨 둘 수도 있었고 그 편이 짧게 쓰이긴 했습니다. 화면 10개 중 6개를 여정 2~3개가 공유하므로, ID 하나가 단계 앵커 여러 개를 대신해 주기 때문입니다. 폐지를 택한 근거는 **두 이름이 서로를 검증하지 못한다**는 쪽이었습니다.
 
-**화면 공유는 이관을 막지 않았습니다 — 원본 삭제만 미뤘습니다.** 공유가 실제로 가로막은 것은 *그 여정의 이관*이 아니라 *원본 `sNN` 파일의 삭제*뿐입니다 — 위 규약 ⑤ 대로 여정 페이지의 화면은 복제본이 아니라 그 자체가 원본이고, 「같은 화면이 여러 여정에 등장하는 것은 중복이 아니다」(여정마다 그 화면의 데이터와 다음 행동이 다르므로 각 여정 페이지에 그 여정의 맥락으로 각각 존재하는 것이 정상)가 이미 규약이기 때문입니다.
+- ID 의 정의를 담은 곳이 사라졌습니다. 이름·목적·AC 를 적어 두던 표는 와이어프레임 README 였고, 그 파일과 함께 없어졌습니다.
+- ID 는 기계가 붙들지 못합니다. 단계 앵커는 `id` 속성으로 실재해 링크가 깨지면 체커가 잡지만, `S08` 이 무엇인지는 산문만 압니다.
+- 그래서 같은 화면을 두 이름으로 부르는 상태가 됐고, 둘이 어긋나도 아무 게이트도 울리지 않았습니다.
 
-그래서 규칙은 이랬습니다 (확정: 2026-08-31, reconciler `rct_20260831-0001`). 원장이 빈 지금도 규칙 자체는 살아 있습니다 — 새 화면 단위 파일이 생기면 다시 여기에 등재하고 상한을 올려야 하며, 그 순간 CI 가 그 사실을 드러냅니다.
+**지금 화면을 가리키는 유일한 주소는 단계 앵커입니다.** 같은 UI 가 여러 여정에 등장하면 앵커도 그 수만큼 있고, 그것이 중복이 아니라 정상입니다 — 같은 화면이라도 여정마다 데이터와 다음 행동이 다르기 때문입니다(규약 ⑤).
 
-- **이관은 여정 단위로 진행합니다.** 공유 화면을 쓰는 여정도 다른 여정을 기다리지 않고, 그 화면을 자기 맥락으로 새로 써서 이관합니다.
-- **원본 `sNN` 삭제는 마지막 소비 여정이 이관될 때 합니다.** 그때까지 원본은 아래 원장에 남고, 「쓰는 여정」 칸에서 이미 이관된 여정을 지워 남은 소비자가 몇인지 드러냅니다.
+## 여정 페이지 ↔ 디자인 시스템 §4 사용 매핑
 
-`S01`~`S03` 은 `JRN-connect-repo` 전용이라 그 여정을 이관하면서 함께 지웠고, `S05`·`S06` 은 `JRN-discover-features` 전용이라 같은 방식으로 지웠습니다. `JRN-review-feature` 이관(2026-08-31)으로는 **한 파일도 지우지 못했습니다** — `S08`~`S10` 을 다른 두 여정이 아직 쓰고 있었기 때문이고, 「쓰는 여정」 칸에서 소비자가 셋에서 둘로 줄어든 것이 그때의 진척이었습니다. `JRN-follow-code-change` 이관(2026-09-01)으로 `S04`·`S07` 의 마지막 소비자가 사라져 **두 파일을 지웠고**, `JRN-understand-feature` 이관(2026-09-02)으로 `S08`~`S10` 의 마지막 소비자까지 사라져 **남은 세 파일을 지웠습니다**.
+각 여정 페이지가 [`design-system.md`](../design-system.md)의 어떤 §4 컴포넌트를 쓰는지. 모든 페이지는 인라인 CSS 로 §1 Foundations(토큰)와 §6 Principles(원칙)를 공통으로 따르므로, 아래는 두드러지게 쓰인 §4 항목만 적습니다. §4 컴포넌트가 아닌 요소(§2 타이포 역할이나 화면 전용 일회성 요소)는 **§4 외 요소** 열에 따로 두며, 커버리지 검증 대상이 아닙니다.
 
-**「쓰는 여정」 칸은 손으로 적는 값이 아닙니다** — 그 화면을 터치포인트로 쓰는 여정(여정 문서에서 파싱) 중 아직 이관되지 않고 규칙 8 예외도 아닌 것들이며, 체커가 그 파생을 실측과 대조합니다. 이 칸이 비면(= 소비자 0) 그 파일은 흡수·삭제할 차례이고, 남겨 두면 CI 가 실패합니다.
+| 여정 페이지 | 사용 §4 컴포넌트 | §4 외 요소 |
+| --- | --- | --- |
+| [`JRN-connect-repo`](./JRN-connect-repo.html) | Input field · Button(primary·secondary·ghost) · Tag(status badge 포함) · Card · Icon container · Segment selector · Bottom tab bar · Metric grid · Progress bar | Section title (§2.2 타이포 역할) |
+| [`JRN-discover-features`](./JRN-discover-features.html) | Step(done·active·todo — active 의 회전 ring 포함) · Card · Button(primary·secondary·ghost) · Tag(status badge) · Input field · Code block(kw) · Metric grid · Progress bar | Section title · 근거 줄 · 전략 항목 줄 · 후보 카드 (모두 화면 전용) |
+| [`JRN-review-feature`](./JRN-review-feature.html) | Card · Tag · Button(primary·secondary·ghost) · Input field · Code block(diff add·del 포함) | Section title · 시나리오 카드 · 의존성 그래프(화면 전용 inline SVG) · 의존성 줄 |
+| [`JRN-follow-code-change`](./JRN-follow-code-change.html) | Step · Card · Tag(status) · Button(primary·secondary·ghost) · Input field · Code block(kw · diff) · Metric grid · Progress bar | Section title · 후보 카드 · 시나리오 카드 · 의존성 그래프 |
+| [`JRN-understand-feature`](./JRN-understand-feature.html) | Card · Tag(status badge) · Button(primary·secondary·ghost) · Input field · Code block(diff) · Bottom tab bar · Metric grid · Progress bar | Section title · 시나리오 카드 · 의존성 그래프 · 의존성 줄 |
 
-<!-- ledger:begin -->
-| 파일 | 화면 | 쓰는 여정 | 해소 조건 |
-| --- | --- | --- | --- |
-<!-- ledger:end -->
+> 이 표는 화면 단위(`S01`~`S10`) 매핑을 여정 페이지 단위로 접은 것입니다. 화면 ID 폐지 전의 값을 합집합으로 옮겼을 뿐, 새로 판정하지 않았습니다.
+>
+> **커버리지: §4 컴포넌트 12개 중 11개 사용 · 미사용 1개(`Tabs` §4.6).** `Tabs` 는 전 목업의 인라인 CSS 에 정의만 있고 마크업에서 한 번도 쓰이지 않습니다. 화면 단위 매핑 표에도 처음부터 등장한 적이 없었고, 2026-09-03 폐지 작업에서 드러났습니다. [`doc-tracker.md`](../doc-tracker.md) 「위험 진단」 참조.
 
-**상한: 0** — 화면 단위 잔여 파일은 0개를 넘을 수 없습니다. 이관이 끝날 때마다 이 숫자를 함께 내렸고, 이제 바닥입니다. 새 화면을 화면 단위 파일로 추가하려면 이 숫자를 먼저 올려야 하며, 그 변경이 곧 「왜 여정 페이지가 아닌가」를 설명해야 하는 자리입니다.
+## 흐름의 합의는 어디서 하나
 
-## Mockup index — 디자인 시스템 사용 매핑
+정보 구조를 무채색 SVG 로 먼저 합의하던 와이어프레임 층은 2026-09-03 에 제거됐습니다. 여정 페이지가 그 역할을 흡수했기 때문입니다 — 화면 하나를 따로 놓고 보는 대신, 그 화면이 실제로 놓이는 여정 안에서 눌러 보며 흐름을 확인합니다.
 
-각 목업이 [`design-system.md`](../design-system.md)의 어떤 항목을 쓰는지. 모든 화면은 인라인 CSS를 통해 §1 Foundations(토큰)와 §6 Principles(원칙)를 공통으로 따르므로, 아래 **§4 컴포넌트** 열은 화면별로 두드러지게 쓰인 §4 Components 항목만 적습니다. §4 컴포넌트가 아닌 요소(§2 타이포 역할이나 화면 전용 일회성 요소)는 **§4 외 요소** 열에 따로 둡니다 — 이쪽은 디자인 시스템 §4 컴포넌트 커버리지 검증 대상이 아닙니다.
+그래서 합의의 순서가 이렇게 바뀌었습니다.
 
-| ID  | 공개 경로 | 사용 §4 컴포넌트 | §4 외 요소 |
-| --- | --------- | ---------------- | ---------- |
-| S01 | [JRN-connect-repo #STP-grant-repo-access](./JRN-connect-repo.html#STP-grant-repo-access) | Input field · Button(primary·secondary) · Tag · Card · Icon container · Segment selector | — |
-| S02 | [JRN-connect-repo #STP-pick-target](./JRN-connect-repo.html#STP-pick-target) · [JRN-understand-feature #STP-open-shared](./JRN-understand-feature.html#STP-open-shared) | Card · Tag(status badge) · Bottom tab bar · Metric grid · Progress bar | Section title (§2.2 타이포 역할) |
-| S03 | [JRN-connect-repo #STP-confirm-cost](./JRN-connect-repo.html#STP-confirm-cost) | Input field · Card · Button(primary·ghost) · Tag(status badge) | — |
-| S04 | [JRN-discover-features #STP-leave-and-return](./JRN-discover-features.html#STP-leave-and-return) · [JRN-follow-code-change #STP-notice-change](./JRN-follow-code-change.html#STP-notice-change) | Step(done·active·todo — active의 회전 ring 포함) · Card · Button(secondary) · Metric grid · Progress bar | Section title (§2.2 타이포 역할) |
-| S05 | [JRN-discover-features #STP-review-landscape](./JRN-discover-features.html#STP-review-landscape) | Card · Tag(status badge) | Section title (§2.2 타이포 역할) · 근거 줄 (화면 전용) |
-| S06 | [JRN-discover-features #STP-tune-strategy](./JRN-discover-features.html#STP-tune-strategy) | Input field · Card · Button(primary·secondary·ghost) | 전략 항목 줄 (화면 전용) |
-| S07 | [JRN-discover-features #STP-sift-candidates](./JRN-discover-features.html#STP-sift-candidates) · [JRN-follow-code-change #STP-scan-diff](./JRN-follow-code-change.html#STP-scan-diff) | Input field · Card · Tag(status) · Button(primary·secondary·ghost) · Code block(kw) | 후보 카드 (화면 전용) |
-| S08 | [JRN-review-feature #STP-read-scenarios](./JRN-review-feature.html#STP-read-scenarios) · [JRN-follow-code-change #STP-scan-diff](./JRN-follow-code-change.html#STP-scan-diff) · [JRN-understand-feature #STP-grasp-behavior](./JRN-understand-feature.html#STP-grasp-behavior) | Card · Tag · Button(primary·secondary·ghost) · Input field · Code block | Section title (§2.2 타이포 역할) · 시나리오 카드 (화면 전용) |
-| S09 | [JRN-review-feature #STP-trace-dependencies](./JRN-review-feature.html#STP-trace-dependencies) · [JRN-understand-feature #STP-check-scope](./JRN-understand-feature.html#STP-check-scope) | Card · Tag · Input field · Button(primary) | 의존성 그래프 (화면 전용 inline SVG — 디자인 시스템 컴포넌트 아님) · 의존성 줄 (화면 전용) |
-| S10 | [JRN-review-feature #STP-request-edit](./JRN-review-feature.html#STP-request-edit) · [JRN-understand-feature #STP-flag-ambiguity](./JRN-understand-feature.html#STP-flag-ambiguity) | Code block(diff add·del) · Card · Tag · Button(primary·secondary) · Input field | — |
+- **흐름** — [`user-journey/`](../user-journey/) 의 여정 문서에서 단계와 터치포인트로 합의합니다.
+- **화면** — 이 폴더의 여정 페이지에서 `design-system.md` 토큰을 입혀 그립니다.
 
-> 이 표는 `doc-tracker.md` 검증의 입력입니다. 목업이 추가/변경되면 이 표와 위 Flows 표를 함께 갱신해야 연결 검증이 유효합니다. **§4 외 요소** 열의 항목은 §4 컴포넌트 커버리지(사용처 없는 컴포넌트 / 미정의 항목 사용) 검증에서 제외됩니다.
-
-## Mockup vs Wireframe
-
-- **Wireframe** ([`wireframes/`](../wireframes/)) — 정보 구조와 화면 흐름의 합의. SVG, 무채색, 디자인 톤 없음.
-- **Mockup** (이 폴더) — 디자인 톤·색·폰트·인터랙션이 결정된 최종 형태. HTML, `design-system.md` 적용.
-
-PRD가 변경되거나 화면 흐름을 재검토할 때는 와이어프레임을 먼저 갱신하고, 그 다음 이 목업을 디자인 시스템 토큰으로 다시 그립니다.
+PRD가 변경되거나 화면 흐름을 재검토할 때는 여정 문서의 단계·터치포인트를 먼저 갱신하고, 그 다음 해당 여정 페이지를 디자인 시스템 토큰으로 다시 그립니다.
 
 ## 화면·여정을 추가할 때
 
 **여정 페이지가 있는 여정에 단계를 추가하면** — 여정 문서에 `STP-<슬러그>` 헤딩과 터치포인트를 먼저 쓰고, 그 다음 여정 페이지에 같은 `data-step` 섹션을 더합니다. 순서를 지켜야 문서가 SSOT 로 남습니다.
 
-**새 화면을 추가하면** — ① 같은 ID 의 와이어프레임이 먼저 있어야 합니다 (`wireframes/`) ② 기존 파일의 인라인 CSS 를 복사해 씁니다 — 임의의 색·radius·폰트를 새로 만들지 않습니다. 디자인 시스템이 바뀌면 모든 목업의 인라인 CSS 를 함께 갱신합니다 ③ 그 화면을 터치포인트로 쓰는 단계의 여정 페이지에 임베드하거나, 아직 이관 전이면 위 **이관 대기 원장**과 **화면별 매핑** 표에 행을 추가하고 상한을 올립니다 ④ 위 **Mockup index** 표에 행을 추가합니다 ⑤ [`doc-tracker.md`](../doc-tracker.md)의 연결 매트릭스와 변경 이력, 허브 [`../index.html`](../index.html)의 링크를 함께 갱신합니다.
+**새 화면을 추가하면** — ① 그 화면을 터치포인트로 쓰는 단계가 여정 문서([`user-journey/`](../user-journey/))에 먼저 있어야 합니다 ② 기존 파일의 인라인 CSS 를 복사해 씁니다 — 임의의 색·radius·폰트를 새로 만들지 않습니다. 디자인 시스템이 바뀌면 모든 목업의 인라인 CSS 를 함께 갱신합니다 ③ 그 화면을 터치포인트로 쓰는 단계의 여정 페이지에 임베드하거나, 아직 이관 전이면 위 **이관 대기 원장**과 **화면별 매핑** 표에 행을 추가하고 상한을 올립니다 ④ 위 **Mockup index** 표에 행을 추가합니다 ⑤ [`doc-tracker.md`](../doc-tracker.md)의 연결 매트릭스와 변경 이력, 허브 [`../index.html`](../index.html)의 링크를 함께 갱신합니다.
 
 **여정을 이관하면** — 여정 페이지를 만들고, 흡수한 화면 파일을 삭제하고, 위 **Journeys** 표·**이관 대기 원장**·상한·허브·`doc-tracker.md` 를 함께 갱신합니다. 체커가 넷의 불일치를 잡습니다.

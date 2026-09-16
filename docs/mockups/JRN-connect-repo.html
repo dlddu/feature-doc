@@ -936,7 +936,7 @@ body {
 <div class="stage">
 
 <!-- ══ STP-sign-in ══════════════════════════════════════════════════ -->
-<section id="STP-sign-in" data-step="STP-sign-in" data-screens="" class="stp">
+<section id="STP-sign-in" data-step="STP-sign-in" class="stp">
   <div class="frame">
     <div class="statusbar">
       <span>9:41</span>
@@ -978,7 +978,7 @@ body {
 </section>
 
 <!-- ══ STP-grant-repo-access ════════════════════════════════════════ -->
-<section id="STP-grant-repo-access" data-step="STP-grant-repo-access" data-screens="S01" data-owner="github.com" class="stp">
+<section id="STP-grant-repo-access" data-step="STP-grant-repo-access" data-owner="github.com" class="stp">
   <div class="frame">
     <div class="statusbar">
       <span>9:41</span>
@@ -1054,7 +1054,7 @@ body {
 </section>
 
 <!-- ══ STP-register-llm-key ═════════════════════════════════════════ -->
-<section id="STP-register-llm-key" data-step="STP-register-llm-key" data-screens="S01" class="stp">
+<section id="STP-register-llm-key" data-step="STP-register-llm-key" class="stp">
   <div class="frame">
     <div class="statusbar">
       <span>9:41</span>
@@ -1115,7 +1115,7 @@ body {
 </section>
 
 <!-- ══ STP-pick-target ══════════════════════════════════════════════ -->
-<section id="STP-pick-target" data-step="STP-pick-target" data-screens="S02 S03" class="stp">
+<section id="STP-pick-target" data-step="STP-pick-target" class="stp">
   <div class="frame">
     <div class="statusbar">
       <span>9:41</span>
@@ -1182,7 +1182,7 @@ body {
 </section>
 
 <!-- ══ STP-confirm-cost ═════════════════════════════════════════════ -->
-<section id="STP-confirm-cost" data-step="STP-confirm-cost" data-screens="S03" class="stp">
+<section id="STP-confirm-cost" data-step="STP-confirm-cost" class="stp">
   <div class="frame">
     <div class="statusbar">
       <span>9:41</span>
@@ -1312,22 +1312,22 @@ body {
       <li>
         <span class="sid">2 · STP-grant-repo-access</span>
         <span class="stt">들여다볼 범위를 내가 정하기</span>
-        <span class="smeta">터치포인트: S01 자격증명 등록 · GitHub App 설치 · 연결 AC: AC4.1, AC4.3</span>
+        <span class="smeta">터치포인트: 자격증명 등록 · GitHub App 설치 · 연결 AC: AC4.1, AC4.3</span>
       </li>
       <li>
         <span class="sid">3 · STP-register-llm-key</span>
         <span class="stt">분석 비용을 낼 키 맡기기</span>
-        <span class="smeta">터치포인트: S01 자격증명 등록 · 연결 AC: AC4.2, AC4.3</span>
+        <span class="smeta">터치포인트: 자격증명 등록 · 연결 AC: AC4.2, AC4.3</span>
       </li>
       <li>
         <span class="sid">4 · STP-pick-target</span>
         <span class="stt">분석할 저장소와 브랜치 고르기</span>
-        <span class="smeta">터치포인트: S02 저장소 목록 · S03 저장소 연결 · 연결 AC: AC1.1</span>
+        <span class="smeta">터치포인트: 저장소 목록 · 저장소 연결 · 연결 AC: AC1.1</span>
       </li>
       <li>
         <span class="sid">5 · STP-confirm-cost</span>
         <span class="stt">비용을 확인하고 시작 누르기</span>
-        <span class="smeta">터치포인트: S03 저장소 연결 · 연결 AC: AC1.1, AC4.6</span>
+        <span class="smeta">터치포인트: 저장소 연결 · 연결 AC: AC1.1, AC4.6</span>
       </li>
     </ol>
 
@@ -1411,7 +1411,7 @@ body {
     if (id) show(id);
   });
 
-  /* ── 홈(S02) 저장소 목록 ───────────────────────────────────────── */
+  /* ── 홈 저장소 목록 ───────────────────────────────────────── */
   function renderHome() {
     var list = $('home-list');
     list.innerHTML = '';

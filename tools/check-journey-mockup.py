@@ -11,7 +11,7 @@ SSOT 방향:
 문서가 원천이고 나머지는 반영물이다. 어긋나면 반영물을 고친다.
 
 규칙
-  R0 마커 무결성 — README 의 기계 판독 구간(jmap/steps/ledger)이 열리고 닫힌다
+  R0 마커 무결성 — README 의 기계 판독 구간(jmap/steps)이 열리고 닫힌다
   R1 여정 → 목업 페이지 — README 가 선언한 여정별 상태가 실제 페이지 수와 일치
   R2 목업 페이지 → 여정 — 모든 docs/mockups/*.html 이 data-journey 를 정확히 1개
                           선언하거나, 이관 대기 원장에 등재되어 있다
@@ -19,9 +19,9 @@ SSOT 방향:
   R4 분기 대응 — 여정 문서 §4 분기표의 모든 "이어지는 단계"가 페이지에서 이동 가능
                  (다른 여정의 단계로 이어지는 갈래는 handoff 선언으로 해소한다)
   R5 앵커 무결성 — 페이지 안의 이동 대상이 전부 실재 섹션 id · 여정 밖 분기 규약
-  R6 화면 대조 — 단계 섹션이 선언한 data-screens 집합 == 여정 문서의 그 단계
-                 터치포인트 줄에서 파싱한 S01~S10 집합
-  R7 원장 래칫 — 원장 밖 위반 · 이미 해소됐는데 남은 공전 행 · 상한 초과 ·
+  R6 원본성 — 여정 페이지의 화면에 바이트 동일 임베드 흔적이 없다
+                 터치포인트 줄에서 파싱한 화면 집합(2026-09-03 폐지)
+  R7 이관 래칫 — 이관 대기 여정의 상한 초과 · 목업 페이지는 전부 여정 페이지 ·
                  「쓰는 여정」 칸이 여정 문서에서 파생한 실측과 일치
   R8 링크 무결성 — docs/ 안의 상대 링크가 전부 실재 파일
   R9 집계 일치 — README·허브·doc-tracker 가 선언한 숫자가 실측과 같다
@@ -106,9 +106,7 @@ def parse_journeys():
         for i, m in enumerate(marks):
             end = marks[i + 1].start() if i + 1 < len(marks) else cut
             block = doc[m.end():end]
-            t = re.search(r"^- \*\*터치포인트\*\*: (.+)$", block, re.M)
-            screens = sorted(set(re.findall(r"\bS(?:0[1-9]|10)\b", t.group(1)))) if t else []
-            steps.append({"id": m.group(1), "title": m.group(2).strip(), "screens": screens})
+            steps.append({"id": m.group(1), "title": m.group(2).strip()})
         branch_to = []
         if "\n## 4." in doc and "\n## 5." in doc:
             blk = doc[doc.index("\n## 4."):doc.index("\n## 5.")]
@@ -160,13 +158,8 @@ def parse_pages():
                 handoffs[sid.group(1)] = hj.group(1)
         steps = re.findall(r'\bdata-step="([^"]+)"', s)
         gotos = set(re.findall(r'\bdata-goto(?:-next|-prev)?="([^"]+)"', s))
-        # 단계 섹션이 선언한 화면. 원본을 복제하지 않으므로 지문 대신 이 선언을
-        # 여정 문서의 터치포인트와 대조한다(R6).
-        step_screens = {}
-        for m in re.finditer(r'<section [^>]*\bdata-step="([^"]+)"[^>]*\bdata-screens="([^"]*)"', s):
-            step_screens[m.group(1)] = sorted(set(re.findall(r"\bS(?:0[1-9]|10)\b", m.group(2))))
         out[p.name] = {"path": p, "text": s, "journeys": journeys, "sections": sections,
-                       "steps": steps, "gotos": gotos, "step_screens": step_screens,
+                       "steps": steps, "gotos": gotos,
                        "handoffs": handoffs, "section_html": section_html}
     return out
 
@@ -186,7 +179,6 @@ TRACKER = read(DOCS / "doc-tracker.md")
 
 # ── R0 · README 기계 판독 구간 ────────────────────────────────────
 jmap_block = marked(README, "jmap")
-ledger_block = marked(README, "ledger")
 
 # ── 예외 등재 (규칙 8) — SSOT 는 doc-tracker 「수용된 위험」 ──────
 accepted = TRACKER[TRACKER.index("## 수용된 위험"):TRACKER.index("## 변경 이력")] if "## 수용된 위험" in TRACKER else ""
@@ -252,70 +244,18 @@ for jid in sorted(owners):
     elif len(owners[jid]) > 1:
         fail("R1", "`%s` 를 선언한 목업 페이지가 %d개다 (%s) — 여정당 1개여야 한다" % (jid, len(owners[jid]), owners[jid]))
 
-# ── R7 · 이관 대기 원장 (화면 단위 잔여) ─────────────────────────
-ledger_files = []
-ledger_rows = []
-if ledger_block:
-    for cells in table_rows(ledger_block):
-        if len(cells) != 4:
-            fail("R7", "원장 행 형식이 4칸이 아니다: %s" % cells)
-            continue
-        g = re.search(r"\((?:\./)?([a-z0-9._-]+\.html)\)", cells[0])
-        if not g:
-            fail("R7", "원장 행에서 파일명을 읽을 수 없다: %s" % cells[0])
-            continue
-        ledger_files.append(g.group(1))
-        ledger_rows.append((g.group(1), cells[1], cells[2]))
-
-cap = re.search(r"\*\*상한: (\d+)\*\*", README)
-cap_n = int(cap.group(1)) if cap else None
-if cap_n is None:
-    fail("R7", "README 에 화면 단위 잔여 상한(`**상한: N**`) 선언이 없다")
-
+# ── R7 · 이관 래칫 ───────────────────────────────────────────────
+# 화면 단위 목업(`sNN-*.html`)과 그 이관 대기 원장은 2026-09-03 화면 ID 폐지로
+# 함께 사라졌다. 화면은 더 이상 이름을 가진 단위가 아니라 여정 단계 안의 자리이므로,
+# 목업 페이지는 전부 여정 페이지여야 한다. 남은 래칫은 이관 대기 상한 하나다.
 wait_cap = re.search(r"\*\*이관 대기 상한: (\d+)\*\*", README)
 wait_cap_n = int(wait_cap.group(1)) if wait_cap else None
 if wait_cap_n is None:
     fail("R7", "README 에 이관 대기 상한(`**이관 대기 상한: N**`) 선언이 없다")
 
-screen_files = sorted(n for n in PAGES if re.fullmatch(r"s\d\d-.+\.html", n))
 journey_files = sorted(n for n in PAGES if n.startswith("JRN-"))
-
-for f in ledger_files:
-    if f not in PAGES:
-        fail("R7", "원장에 있는 `%s` 가 실제로 없다 — 이관·삭제됐다면 원장 행을 지울 것(공전)" % f)
-for f in screen_files:
-    if f not in ledger_files:
-        fail("R7", "화면 단위 파일 `%s` 가 이관 대기 원장에 없다 — 등재하거나 이관할 것" % f)
-if cap_n is not None and len(screen_files) > cap_n:
-    fail("R7", "화면 단위 잔여 %d개가 상한 %d을 넘는다" % (len(screen_files), cap_n))
-
-# ── R7 · 원장 「쓰는 여정」 칸은 파생이다 ────────────────────────
-# 손으로 적은 목록은 이관이 진행되면 조용히 낡는다. 그 칸의 원천은 여정 문서의
-# 터치포인트이며, 남은 소비자 = {그 화면을 쓰는 여정} − {이미 이관된 여정}
-# − {규칙 8 예외 여정}. 예외 여정은 페이지를 갖지 않기로 등재된 것이라 원본
-# 삭제를 영원히 막지 않는다. 소비자가 0이 되면 그 파일은 흡수·삭제할 차례다.
-def screen_users(screen):
-    out = set()
-    for j, jr in JOURNEYS.items():
-        if any(screen in st["screens"] for st in jr["steps"]):
-            out.add(j)
-    return out
-
-
-for fname, screen_cell, users_cell in ledger_rows:
-    sg = re.search(r"\bS(?:0[1-9]|10)\b", screen_cell)
-    if not sg:
-        fail("R7", "원장 행 `%s` 의 화면 칸에서 화면 ID 를 읽을 수 없다: %r" % (fname, screen_cell))
-        continue
-    screen = sg.group(0)
-    want_users = screen_users(screen) - set(owners) - exempt_journeys
-    got_users = set(re.findall(r"JRN-[a-z0-9-]+", users_cell))
-    if not want_users:
-        fail("R7", "`%s`(%s) 를 쓰는 여정이 전부 이관됐다 — 흡수·삭제하고 원장 행을 지울 것"
-             % (fname, screen))
-    elif got_users != want_users:
-        fail("R7", "원장 `%s`(%s) 의 「쓰는 여정」 %s 이 여정 문서에서 파생한 실측 %s 과 다르다"
-             % (fname, screen, sorted(got_users), sorted(want_users)))
+for name in sorted(set(PAGES) - set(journey_files)):
+    fail("R7", "`%s` 는 여정 페이지가 아니다 — 목업은 여정 하나 = 페이지 하나여야 한다" % name)
 
 waiting = [j for j, st in declared.items() if "이관 대기" in st]
 if wait_cap_n is not None and len(waiting) > wait_cap_n:
@@ -327,8 +267,7 @@ for name, pg in sorted(PAGES.items()):
     if n == 1:
         continue
     if n == 0:
-        if name not in ledger_files:
-            fail("R2", "`%s` 이 data-journey 를 선언하지 않고 원장에도 없다 (고아 목업)" % name)
+        fail("R2", "`%s` 이 data-journey 를 선언하지 않는다 (고아 목업)" % name)
     else:
         fail("R2", "`%s` 이 data-journey 를 %d개 선언한다 — 정확히 1개여야 한다 (%s)" % (name, n, pg["journeys"]))
 
@@ -424,20 +363,7 @@ for name in journey_files:
                        "(대상 여정에 페이지가 %s)" % (name, sec_id, want,
                                                     "있다" if target_pages else "아직 없다"))
 
-    # R6 화면 대조 — 단계 섹션이 선언한 data-screens 가 여정 문서의 터치포인트와 같은가.
-    # 기대값의 원천은 페이지가 아니라 여정 문서다(자기참조면 무엇을 바꿔도 통과한다).
-    for st in jr["steps"]:
-        if st["id"] not in pg["step_screens"]:
-            fail("R6", "`%s` 의 `%s` 섹션에 data-screens 선언이 없다 "
-                       "(터치포인트가 없는 단계도 data-screens=\"\" 로 명시할 것)" % (name, st["id"]))
-            continue
-        got = pg["step_screens"][st["id"]]
-        want = sorted(st["screens"])
-        if got != want:
-            fail("R6", "`%s` 의 `%s` 선언 화면 %s 이 여정 문서 터치포인트 %s 와 다르다"
-                 % (name, st["id"], got, want))
-
-    # 금지된 기법이 되살아나지 않았는지 — 화면을 원본과 바이트 동일하게 못 박는 방식은
+    # R6 원본성 — 금지된 기법이 되살아나지 않았는지 — 화면을 원본과 바이트 동일하게 못 박는 방식은
     # 실제 입력 요소·상태 변형을 넣을 길을 구조적으로 막는다(모델 규칙 5).
     if re.search(r"\bdata-sha256=", pg["text"]) or "<!--embed:" in pg["text"]:
         fail("R6", "`%s` 에 바이트 동일 임베드 흔적(data-sha256 / <!--embed:)이 있다 — "
@@ -552,12 +478,6 @@ for jid in sorted(declared):
         if not g or g.group(1) != st["id"]:
             fail("R9", "README 의 `%s` 단계 표 순서/식별자가 문서와 다르다: %r vs %s" % (jid, row[1], st["id"]))
             continue
-        want_sc = " · ".join(st["screens"]) if st["screens"] else None
-        if want_sc is None:
-            if "시각화 없음" not in row[2]:
-                fail("R9", "`%s`/%s 는 터치포인트 화면이 없는데 README 가 %r 라고 적었다" % (jid, st["id"], row[2]))
-        elif row[2] != want_sc:
-            fail("R9", "`%s`/%s 의 README 임베드 화면 %r 이 문서 터치포인트 %r 와 다르다" % (jid, st["id"], row[2], want_sc))
 
 # 허브 요약 수치
 def hub_summary(label):
@@ -586,18 +506,18 @@ if hub_mockups != set(PAGES):
     fail("R9", "허브의 목업 링크가 docs/mockups 의 파일 집합과 다르다: 허브에만 %s / 파일에만 %s"
          % (sorted(hub_mockups - set(PAGES)), sorted(set(PAGES) - hub_mockups)))
 
-tm = re.search(r"- 목업: \*\*(\d+)개 페이지\*\* — 여정 페이지 \*\*(\d+)개\*\*.*?화면 단위 \*\*(\d+)개\*\*", TRACKER, re.S)
+tm = re.search(r"- 목업: \*\*(\d+)개 페이지\*\* — 여정 페이지 \*\*(\d+)개\*\*", TRACKER, re.S)
 if not tm:
     fail("R9", "doc-tracker 「현재 상태 요약」의 목업 집계 문장을 찾을 수 없다")
 else:
     got = tuple(int(x) for x in tm.groups())
-    want = (len(PAGES), len(journey_files), len(screen_files))
+    want = (len(PAGES), len(journey_files))
     if got != want:
-        fail("R9", "doc-tracker 목업 집계 %s 이 실측 %s 과 다르다 (총 · 여정 페이지 · 화면 단위)" % (got, want))
+        fail("R9", "doc-tracker 목업 집계 %s 이 실측 %s 과 다르다 (총 · 여정 페이지)" % (got, want))
 
 # ── 보고 ─────────────────────────────────────────────────────────
-print("여정 %d (예외 %d · 이관 완료 %d · 이관 대기 %d) · 목업 페이지 %d (여정 %d + 화면 %d) · 문서 %d"
-      % (n_j, n_ex, n_done, n_wait, len(PAGES), len(journey_files), len(screen_files), n_docs))
+print("여정 %d (예외 %d · 이관 완료 %d · 이관 대기 %d) · 목업 페이지 %d · 문서 %d"
+      % (n_j, n_ex, n_done, n_wait, len(PAGES), n_docs))
 for n in notes:
     print("  ·", n)
 

@@ -186,7 +186,7 @@ pub fn patterns(doc: &Value) -> Vec<String> {
         .collect()
 }
 
-/// The one-liner S04 renders under the step, mirroring stage 2's "5 categories · 3 items".
+/// The one-liner Analysis Progress renders under the step, mirroring stage 2's "5 categories · 3 items".
 pub fn detail(doc: &Value) -> String {
     format!("{} entry points · awaiting approval", patterns(doc).len())
 }

@@ -1,6 +1,6 @@
 //! Async progress and partial retry (AC1.5).
 //!
-//! The two things S04 needs from the API: read the persisted progress of one
+//! The two things Analysis Progress needs from the API: read the persisted progress of one
 //! analysis, and re-run a single failed stage. Both run against the router
 //! in-process, so the contract is gated by `cargo test`; the screen that renders it
 //! is asserted by `e2e/tests/ac1-5-async-progress-and-partial-retry.spec.ts`.
@@ -168,7 +168,7 @@ async fn run_until_second_stage_fails(state: &AppState, id: &str) {
     finish(state, id, "failed", Some("llm call limit exceeded")).await;
 }
 
-// ── read: S04's progress ──────────────────────────────────────────────────────
+// ── read: Analysis Progress's progress ──────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn detail_reports_every_pipeline_stage_of_the_owner_s_analysis() {
@@ -182,7 +182,7 @@ async fn detail_reports_every_pipeline_stage_of_the_owner_s_analysis() {
     assert_eq!(body["stagesDone"], 0);
 
     let stages = body["stages"].as_array().unwrap();
-    assert_eq!(stages.len(), 5, "S04 renders one card per pipeline stage");
+    assert_eq!(stages.len(), 5, "Analysis Progress renders one card per pipeline stage");
     assert_eq!(stages[0]["seq"], 1);
     assert_eq!(stages[0]["key"], "fetch");
     assert_eq!(stages[0]["title"], "Fetch repository");
@@ -244,7 +244,7 @@ async fn progress_is_persisted_so_a_later_read_sees_the_same_run() {
     let again = detail(&state, &token, &id).await;
     assert_eq!(again, reopened, "a re-entry must show the same progress");
 
-    // And the home list carries the same fraction, so S02 can say "1 of 5".
+    // And the home list carries the same fraction, so Home can say "1 of 5".
     let list = json_body(
         build_router(state.clone())
             .oneshot(get("/api/analyses", &token))

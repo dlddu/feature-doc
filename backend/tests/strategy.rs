@@ -9,7 +9,7 @@
 //!     until approval. That is the one clause that would otherwise be a promise in
 //!     prose, so it is asserted against `/internal/analyses/claim` directly.
 //!
-//! Plus the carry-over the S06 mockup promises in as many words ("여기서 보탠 항목은
+//! Plus the carry-over the Discovery Strategy mockup promises in as many words ("여기서 보탠 항목은
 //! 다음 분석에서도 그대로 참조됩니다"): a copy that a screen renders and nothing
 //! enforces is a copy that will quietly become false.
 //!
@@ -315,7 +315,7 @@ async fn an_approved_strategy_is_frozen_and_an_empty_one_cannot_be_approved() {
     );
 }
 
-/// The S06 mockup tells the reviewer their additions carry forward. This is that
+/// The Discovery Strategy mockup tells the reviewer their additions carry forward. This is that
 /// sentence, enforced.
 #[tokio::test]
 async fn the_reviewers_own_entries_carry_into_the_next_analysis_of_the_same_target() {
