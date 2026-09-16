@@ -2,7 +2,7 @@
 
 > FeatureDoc 사용자가 겪는 **행동의 흐름**을 여정 단위로 정리한 문서 묶음.
 >
-> [`values.md`](../values.md)가 *왜* 만드는지를, [`prd/`](../prd/)가 *무엇을* 만드는지를, [`wireframes/`](../wireframes/)가 *어떻게 보여줄지*를 다룬다면, 이 묶음은 **사용자가 무엇을 하려고 하는지**를 다룹니다.
+> [`values.md`](../values.md)가 *왜* 만드는지를, [`prd/`](../prd/)가 *무엇을* 만드는지를, [`mockups/`](../mockups/)가 *어떻게 보여줄지*를 다룬다면, 이 묶음은 **사용자가 무엇을 하려고 하는지**를 다룹니다.
 
 ## 이 묶음의 원칙
 
@@ -112,16 +112,16 @@ JRN-follow-code-change ──(자동 갱신이 틀렸을 때)──> JRN-restore
 
 > 이 표는 `doc-tracker.md`의 위험 진단과 별개입니다. 그쪽은 *문서 체계의 위험*을, 이 표는 *사용자 행동상의 마찰*을 다룹니다.
 
-## 5. 연결 매트릭스 — 여정 ↔ 가치 ↔ AC ↔ 와이어프레임
+## 5. 연결 매트릭스 — 여정 ↔ 가치 ↔ AC
 
-| 여정 | 가치 | AC | 와이어프레임 |
-|---|---|---|---|
-| [`JRN-connect-repo`](./JRN-connect-repo.md) | V1, V6, V8 | AC1.1, AC4.1, AC4.2, AC4.3, AC4.6, AC4.8 | S01, S02, S03 |
-| [`JRN-discover-features`](./JRN-discover-features.md) | V1, V2, V4, V8 | AC1.2, AC1.3, AC1.4, AC1.5, AC3.2, AC4.6 | S04, S05, S06, S07 |
-| [`JRN-review-feature`](./JRN-review-feature.md) | V3, V4, V5, V7 | AC2.1, AC2.2, AC2.3, AC2.4, AC2.5, AC3.1, AC3.4, AC4.4 | S08, S09, S10 |
-| [`JRN-understand-feature`](./JRN-understand-feature.md) | V3, V5, V7 | AC2.3, AC2.4, AC3.1, AC3.4, AC4.7, AC4.8 | S08, S09, S10 |
-| [`JRN-follow-code-change`](./JRN-follow-code-change.md) | V4, V5, V7 | AC1.4, AC2.6, AC3.3, AC3.5 | S04, S07, S08, S09, S10 (재진입) |
-| [`JRN-restore-history`](./JRN-restore-history.md) | V4, V7 | AC3.4 | **없음 (S11 후보 미제작)** |
+| 여정 | 가치 | AC |
+|---|---|---|
+| [`JRN-connect-repo`](./JRN-connect-repo.md) | V1, V6, V8 | AC1.1, AC4.1, AC4.2, AC4.3, AC4.6, AC4.8 |
+| [`JRN-discover-features`](./JRN-discover-features.md) | V1, V2, V4, V8 | AC1.2, AC1.3, AC1.4, AC1.5, AC3.2, AC4.6 |
+| [`JRN-review-feature`](./JRN-review-feature.md) | V3, V4, V5, V7 | AC2.1, AC2.2, AC2.3, AC2.4, AC2.5, AC3.1, AC3.4, AC4.4 |
+| [`JRN-understand-feature`](./JRN-understand-feature.md) | V3, V5, V7 | AC2.3, AC2.4, AC3.1, AC3.4, AC4.7, AC4.8 |
+| [`JRN-follow-code-change`](./JRN-follow-code-change.md) | V4, V5, V7 | AC1.4, AC2.6, AC3.3, AC3.5 |
+| [`JRN-restore-history`](./JRN-restore-history.md) | V4, V7 | AC3.4 |
 
 표의 AC 열은 각 여정의 **단계에 `연결 AC`로 붙은 것**만 적습니다. 분기·예외표에서 다른 여정 소유의 AC를 참조하는 경우(예: `JRN-connect-repo` 분기표의 AC1.5)는 세지 않습니다 — 한 AC가 여러 여정에 흩어져 보이면 어느 여정이 그 AC를 책임지는지 흐려지기 때문입니다.
 
@@ -129,18 +129,17 @@ JRN-follow-code-change ──(자동 갱신이 틀렸을 때)──> JRN-restore
 
 - 가치 8개 중 등장: **8개** ✅ (V1~V8)
 - AC 24개 중 등장: **23개**. 미등장 1개는 **AC4.5**(k8s 배포·워크로드 분리) — 사용자에게 보이지 않는 운영 배경이라 어느 행동에도 붙지 않습니다. AC4.4(모바일 우선)는 모든 여정에 깔리는 횡단 약속이지만, 3탭 룰이라는 관찰 가능한 형태로 `STP-decide-diff`에 앵커했습니다
-- 와이어프레임 10개 중 등장: **10개** ✅
-- **시각화 공백 2건**: ① `JRN-restore-history` 전체 (이력 화면 미제작, S11 후보) ② `JRN-connect-repo` / `STP-sign-in`의 미인증 상태 (S01은 로그인 후 상태만 표현). 둘 다 [`doc-tracker.md`](../doc-tracker.md)에 수용된 위험으로 등재되어 있습니다
-- **목업 연결 0건**: 목업이 아직 화면 단위(S01~S10)라 "여정 하나 = 목업 페이지 하나"가 성립하지 않습니다. 여정 단위 전환 시 각 여정 문서의 `연결 문서` 칸과 이 표를 함께 갱신합니다
+- **시각화 공백 1건**: `JRN-restore-history` 전체 (이력 화면 미제작). [`doc-tracker.md`](../doc-tracker.md)에 수용된 위험으로 등재되어 있습니다. `JRN-connect-repo` / `STP-sign-in`의 미인증 상태는 여정 페이지가 실제 로그인 화면을 가지면서 해소됐습니다
+- **목업 연결 5건**: 판정 대상 여정 5개가 각각 목업 페이지 하나(`mockups/JRN-<슬러그>.html`)를 갖습니다. `JRN-restore-history`는 위 공백 1건으로 예외 등재. 매핑의 단일 소스는 [`mockups/README.md`](../mockups/README.md)입니다
 
 ## 6. 갱신 정책
 
 다음 경우에 이 묶음을 함께 갱신합니다.
 
 1. **새 AC 추가로 사용자 행동이 늘거나 바뀜** → 해당 여정에 단계를 추가하고(새 `STP-` 부여) §5 매트릭스 갱신. 어느 여정에도 안 붙으면 새 여정이 필요하다는 신호
-2. **와이어프레임 추가·제거** → 영향받는 단계의 터치포인트와 §5 매트릭스 갱신. 여정 문서의 구조는 바뀌지 않습니다 (화면은 단계가 아니므로)
+2. **화면 추가·제거** → 영향받는 단계의 터치포인트를 갱신. 화면은 이름을 가진 단위가 아니라 단계 안의 자리이므로 여정 문서의 구조는 바뀌지 않습니다
 3. **새 페르소나 정의** → §1과, 그 페르소나의 목표에 해당하는 새 여정 문서 추가
-4. **목업의 여정 단위 전환** → 각 여정의 `연결 문서` 칸에 목업 식별자 기입, §5의 "목업 연결 0건" 해제
+4. **새 여정 추가** → 여정 문서와 같은 PR에서 목업 페이지(`mockups/JRN-<슬러그>.html`)까지 만들고, 각 여정의 `연결 문서` 칸과 §5 매트릭스를 함께 갱신 (이관 대기 상한이 0이라 페이지 없는 여정은 CI를 통과하지 못합니다)
 
 문서를 고칠 때는 기존 식별자를 유지한 채 해당 섹션만 바꾸고, 그 문서의 변경 이력에 한 줄을 추가하며 버전을 올립니다(내용 변경 0.1 단위, 팀 확정 시 1.0). 단계를 추가·삭제했다면 목업 연결이 깨질 수 있으므로 `doc-tracker.md`에도 남깁니다.
 

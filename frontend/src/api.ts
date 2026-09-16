@@ -101,7 +101,7 @@ export async function preflight(): Promise<{ provider: string; fingerprint: stri
 
 // ── analyses (AC1.1) ─────────────────────────────────────────────────────────
 
-/** A repository the installation can access — a candidate to analyze (S02 · S03). */
+/** A repository the installation can access — a candidate to analyze (Home · Connect Repository). */
 export type Repository = {
   owner: string;
   name: string;
@@ -109,7 +109,7 @@ export type Repository = {
   defaultBranch: string;
 };
 
-/** An analysis job as the home list shows it (S02). */
+/** An analysis job as the home list shows it (Home). */
 export type Analysis = {
   id: string;
   repoOwner: string;
@@ -124,7 +124,7 @@ export type Analysis = {
   stagesTotal: number;
 };
 
-/** One pipeline step of an analysis (S04). `pending` until a worker runs it. */
+/** One pipeline step of an analysis (Analysis Progress). `pending` until a worker runs it. */
 export type Stage = {
   seq: number;
   key: string;
@@ -137,7 +137,7 @@ export type Stage = {
   finishedAt: number | null;
 };
 
-/** Everything S04 draws — all of it persisted server-side (AC1.5). */
+/** Everything Analysis Progress draws — all of it persisted server-side (AC1.5). */
 export type AnalysisDetail = Analysis & {
   error: string | null;
   startedAt: number | null;
@@ -146,7 +146,7 @@ export type AnalysisDetail = Analysis & {
 };
 
 /**
- * Pre-flight estimate for a typed target (S03). `hasAccess: false` is not an error —
+ * Pre-flight estimate for a typed target (Connect Repository). `hasAccess: false` is not an error —
  * the screen renders the "add this repo to the App" recovery path instead.
  */
 export type Preflight = {
@@ -188,7 +188,7 @@ export async function preflightAnalysis(repoUrl: string, branch: string): Promis
   return (await res.json()) as Preflight;
 }
 
-/** One analysis with its pipeline stages — the S04 read (AC1.5). */
+/** One analysis with its pipeline stages — the Analysis Progress read (AC1.5). */
 export async function getAnalysis(id: string): Promise<AnalysisDetail> {
   const res = await fetch(`/api/analyses/${encodeURIComponent(id)}`, {
     credentials: 'same-origin',
@@ -246,7 +246,7 @@ export type Reproducibility = {
   comparedTo: string | null;
 };
 
-/** Everything S05 draws (AC1.2). */
+/** Everything Cross-cutting Concerns draws (AC1.2). */
 export type CrossCuttingDocument = {
   kind: string;
   content: { categories: CrossCuttingCategory[] };
@@ -462,7 +462,7 @@ export type AcceptanceDocument = {
  * The acceptance scenarios stage 5 wrote for this analysis, or `null` when it has
  * not run yet.
  *
- * `null` rather than a thrown 404: "아직 만들어지지 않았다" is a state S08 draws (the
+ * `null` rather than a thrown 404: "아직 만들어지지 않았다" is a state Feature Acceptance draws (the
  * reviewer confirms a feature and comes here while the stage is still queued), not
  * an error to report. The distinction from "ran and found nothing" survives — that
  * case is a document with an empty feature list, which the stage refuses to write.

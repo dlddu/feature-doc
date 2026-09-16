@@ -1,9 +1,9 @@
-// S01 · Credentials Setup — the real, stateful screen behind
+// Credentials Setup — the real, stateful screen behind
 // docs/mockups/JRN-connect-repo.html#STP-grant-repo-access and #STP-register-llm-key
-// (S01, AC4.1 · AC4.2 · AC4.3).
+// (Credentials Setup, AC4.1 · AC4.2 · AC4.3).
 //
 // Once pre-flight confirms the credentials are usable, the primary action becomes
-// the hand-off into S02 (journey flow 1: S01 → S02 → S03).
+// the hand-off into Home (journey flow 1: Credentials Setup → Home → Connect Repository).
 
 import { useEffect, useState } from 'react';
 import {
@@ -52,7 +52,7 @@ function messageOf(e: unknown): string {
 }
 
 type Props = {
-  /** Continue into S02 once the credentials are confirmed ready. */
+  /** Continue into Home once the credentials are confirmed ready. */
   onReady?: () => void;
 };
 
@@ -149,7 +149,7 @@ export function CredentialsSetup({ onReady }: Props = {}) {
   }
 
   async function onContinue() {
-    // Already confirmed: the same button now carries the user into S02.
+    // Already confirmed: the same button now carries the user into Home.
     if (continueState === 'done') {
       onReady?.();
       return;

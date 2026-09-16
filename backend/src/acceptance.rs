@@ -24,7 +24,7 @@
 //!
 //! What this stage does **not** do: dependencies. `acceptance_dependencies` is the
 //! wire key the roadmap picked when AC2.1~AC2.6 were one slice; AC2.4~AC2.6 are a
-//! per-feature action (`docs/test/02` 시나리오 5), not a pipeline step, and the S04
+//! per-feature action (`docs/test/02` 시나리오 5), not a pipeline step, and the Analysis Progress
 //! mockup already draws this step as 「인수 시나리오 생성」.
 
 use serde_json::{json, Value};
@@ -496,7 +496,7 @@ pub fn features(doc: &Value) -> Vec<Feature> {
         .collect()
 }
 
-/// The one-liner S04 renders under the step, mirroring stages 1-4.
+/// The one-liner Analysis Progress renders under the step, mirroring stages 1-4.
 pub fn detail(doc: &Value) -> String {
     let found = features(doc);
     let scenarios: usize = found.iter().map(|f| f.scenarios).sum();

@@ -59,7 +59,7 @@ test.describe('AC2.3: 확정된 기능마다 최종 사용자의 언어로 된 �
         }
       }
 
-      // ── S08: 기능을 고르면 그 기능의 문서만 그린다 ──────────────────────
+      // ── 인수 시나리오 화면: 기능을 고르면 그 기능의 문서만 그린다 ──────────────────────
       await page.goto(`/#/analyses/${id}/acceptance`);
       const select = page.getByTestId('feature-select');
       await expect(select.locator('option')).toHaveCount(features.length);

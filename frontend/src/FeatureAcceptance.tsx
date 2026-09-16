@@ -1,4 +1,4 @@
-// S08 · Feature · Acceptance — the real screen behind
+// Feature Acceptance — the real screen behind
 // docs/mockups/JRN-review-feature.html#STP-read-scenarios (AC2.1 · AC2.2 · AC2.3).
 //
 // The mockup is the SSOT for what this screen says, so the copy below is the
@@ -43,9 +43,9 @@ function evidenceOf(scenario: AcceptanceScenario): string {
 
 type Props = {
   id: string;
-  /** S08 → S04 (back to the run this feature came out of). */
+  /** Feature Acceptance → Analysis Progress (back to the run this feature came out of). */
   onBack: () => void;
-  /** S08 → S07 — the mockup's cross-journey exit when the *finding* was wrong. */
+  /** Feature Acceptance → Feature Candidates — the mockup's cross-journey exit when the *finding* was wrong. */
   onOpenCandidates: () => void;
 };
 

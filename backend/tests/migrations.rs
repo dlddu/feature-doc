@@ -4,7 +4,7 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha384};
 
 fn temp_db_url() -> (String, std::path::PathBuf) {
     let nanos = SystemTime::now()
@@ -62,34 +62,17 @@ async fn migrations_create_expected_tables() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// The SHA-256 of every migration that has been applied to a running deployment.
-///
-/// `sqlx` records a checksum of each migration **file** when it applies it, and
-/// refuses to migrate — refuses to *start* — if the file it finds later differs:
-///
-/// ```text
-/// migration 4 was previously applied but has been modified
-/// ```
-///
-/// The checksum covers the whole file, not the SQL, so a comment or a stray
-/// whitespace change is enough. On 2026-09-02 exactly that happened to
-/// `0004_analysis_stages.sql` and the API could not start for 6h41m; the fix was to
-/// restore the file byte for byte, which is why that file still carries a comment
-/// pointing at a mockup that no longer exists. It is a deliberate revert, not a
-/// loose end — see `migrations/README.md`.
-///
-/// Without this test the violation is invisible until the image pin rolls out and a
-/// new pod tries to start, i.e. until it is already an outage. Here it is a red PR.
-///
-/// Adding a migration means adding a line: `sha256sum backend/migrations/00NN_*.sql`.
+// Pins the file bytes accepted by main at PR #44 (4aa5590b6af1c0476a7c52d11065c86daf545ab5).
+// This SHA-256 guard is not evidence of deployed DB repair; sqlx stores SHA-384.
+// See migrations/README.md for provenance and the release preflight.
 const APPLIED: [(&str, &str); 7] = [
-    ("0001_init.sql", "ef20c326ad47e185d9a15b76a9a004daee6ce3eb2d54707afe3dff9446d6e95e"),
+    ("0001_init.sql", "26be98f6ae14fc837a05149f7d1c56af2ff3963a7ab6c4951a57accc48edf864"),
     ("0002_github_tokens.sql", "a62a0ecb0a7cdd303a1e06bc2420d7ab9a853836af36db9aabc6a35caa05514b"),
-    ("0003_analyses.sql", "7ef7cce91e984e53ed4be299fe84e6c90c4169cbd38940a50bb1c743fd424969"),
-    ("0004_analysis_stages.sql", "476e3e735173ed6354c88cca4af733dad728af02eb80e5f4bf738d4a17c2aa0e"),
-    ("0005_analysis_documents.sql", "77f2787ee57cf7e9b23e5a7c05589e2523edea1ae176702dadc6e4457a691fd2"),
-    ("0006_discovery_strategies.sql", "14d91b58df7d3e2f881b9048e2f50f805c402621e75be0b45d192ac625c4925d"),
-    ("0007_feature_candidates.sql", "024e2b6a65ea0299ab6482f1a933889b9592475643e7c4b213a0775a73c07ff4"),
+    ("0003_analyses.sql", "f54521bba0ecbc3ea480821a89c6abbc0a52a2a3dc17b6be8b5655ff5a548800"),
+    ("0004_analysis_stages.sql", "51fd924b91ed5828e2378a3244323c5d29d833dfa4f89a29356721f5102372e9"),
+    ("0005_analysis_documents.sql", "6d2c9aad99ad8175ae2bbc9526a4e40cf34daa7b16282859fe38fb14b7862afd"),
+    ("0006_discovery_strategies.sql", "b61a51b87b03ae7523ecc8e5c0199b8a6b44abf9b91d3522f75dc72a8f96e6b9"),
+    ("0007_feature_candidates.sql", "17fa78ff03cffcd3160e13f41b931f2fc574077234500271ff17b4cad7eaf6b5"),
 ];
 
 fn migrations_dir() -> std::path::PathBuf {
@@ -132,4 +115,84 @@ fn every_migration_file_is_pinned() {
         "\nevery migration must be listed in APPLIED (backend/tests/migrations.rs).\n\
          Add the new file with `sha256sum backend/migrations/00NN_*.sql`."
     );
+}
+
+async fn migration_checksums(pool: &sqlx::SqlitePool) -> Vec<(i64, Vec<u8>)> {
+    sqlx::query_as("SELECT version, checksum FROM _sqlx_migrations ORDER BY version")
+        .fetch_all(pool)
+        .await
+        .expect("read migration history")
+}
+
+#[tokio::test]
+async fn current_migration_history_survives_reconnect() {
+    let (url, path) = temp_db_url();
+    let pool = featuredoc::db::connect(&url).await.expect("initial migration");
+    let before = migration_checksums(&pool).await;
+    assert_eq!(before.len(), APPLIED.len());
+    for ((version, checksum), (name, _)) in before.iter().zip(APPLIED) {
+        let expected_version: i64 = name.split('_').next().unwrap().parse().unwrap();
+        assert_eq!(*version, expected_version);
+        let bytes = std::fs::read(migrations_dir().join(name)).expect("migration bytes");
+        assert_eq!(*checksum, Sha384::digest(bytes).to_vec(), "{name}");
+    }
+    pool.close().await;
+
+    let pool = featuredoc::db::connect(&url).await.expect("matching history can restart");
+    assert_eq!(migration_checksums(&pool).await, before);
+    pool.close().await;
+    std::fs::remove_file(path).expect("remove temporary database");
+}
+
+// SHA-384 of the six files changed by PR #44, from its parent
+// 636ee771dd404ad7cf383d1bfadcc5036ab7fac6. These are source fixtures, not
+// observations of a production database. Migration 0002 did not change.
+const PRE_CLEANUP: [(i64, &str); 6] = [
+    (1, "032f48530ee375551f2f229919ca3d77b77718bc3003121623a4d85f1fcee73048bf711725af980717a56692bdc73232"),
+    (3, "848f967794d8e9e7965d454e52b4067c6c688b1db332d1e40a9a292606b8f5282d8596518b5fc64305e1b4611c73cf3b"),
+    (4, "5af1095a2b17034bcaed34e42037a9d0d83e69d98bcc1067e0a9d0b40f8599f6eda14b109ed78c5421c0bb6efe8e5d1e"),
+    (5, "43e1c1fe38d37bae84b4edd579818667c854b79ac46abc56a5be774dfc8c4662cb7e93f8659260166741de884fa3d620"),
+    (6, "a4dec3f3e3c97bb3b872bb4797895783b71583dc2b396da080f0c1058d12ef801ed4dcdef99eaf4782c16ac81841263e"),
+    (7, "5341110d7e138be0c74c046e514041ef60b45a210b426b80e401861bb845a2d22df0171d8fdc2283f326f9b7d63b2b26"),
+];
+
+#[tokio::test]
+async fn pre_cleanup_checksums_are_rejected_without_repair() {
+    for (version, old_hex) in PRE_CLEANUP {
+        let (url, path) = temp_db_url();
+        let pool = featuredoc::db::connect(&url).await.expect("initial migration");
+        let current = migration_checksums(&pool).await;
+        let old_checksum = hex::decode(old_hex).expect("historical SHA-384");
+        assert_eq!(old_checksum.len(), 48);
+        assert_ne!(
+            &current.iter().find(|(v, _)| *v == version).unwrap().1,
+            &old_checksum,
+            "fixture must differ from the current file for migration {version}"
+        );
+        let changed = sqlx::query("UPDATE _sqlx_migrations SET checksum = ? WHERE version = ?")
+            .bind(old_checksum)
+            .bind(version)
+            .execute(&pool)
+            .await
+            .expect("inject historical checksum into temporary database");
+        assert_eq!(changed.rows_affected(), 1);
+        let before = migration_checksums(&pool).await;
+        pool.close().await;
+
+        let error = featuredoc::db::connect(&url)
+            .await
+            .expect_err("historical mismatch must prevent startup");
+        assert!(
+            matches!(
+                error.downcast_ref::<sqlx::migrate::MigrateError>(),
+                Some(sqlx::migrate::MigrateError::VersionMismatch(actual)) if *actual == version
+            ),
+            "expected VersionMismatch({version}), got {error:#}"
+        );
+
+        let pool = sqlx::SqlitePool::connect(&url).await.expect("inspect without migrating");
+        assert_eq!(migration_checksums(&pool).await, before, "no automatic repair");
+        pool.close().await;
+        std::fs::remove_file(path).expect("remove temporary database");
+    }
 }

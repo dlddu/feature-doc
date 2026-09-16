@@ -1,4 +1,4 @@
-//! The analysis pipeline's stage list — one place, mirrored by the S04 mockup.
+//! The analysis pipeline's stage list — one place, mirrored by the Analysis Progress mockup.
 //!
 //! `docs/mockups/JRN-discover-features.html#STP-leave-and-return` renders exactly these five steps
 //! ("Pipeline · 3 of 5"), so the screen and the persisted rows cannot drift apart.
@@ -8,17 +8,17 @@
 //! whose wire key still names the two halves of PRD-2 that the roadmap once put in
 //! one slice. Only the acceptance half is implemented (AC2.1~AC2.3); the dependency
 //! half (AC2.4~AC2.6) is a *per-feature* action in `docs/test/02` 시나리오 5, not a
-//! pipeline step, which is also why the S04 mockup draws this step as
+//! pipeline step, which is also why the Analysis Progress mockup draws this step as
 //! 「인수 시나리오 생성」. The key is a wire contract (`/internal/.../stages/{key}`,
 //! `analysis_documents.kind`) and stays; the title says what actually runs.
 
-/// One step of the pipeline as the user sees it on S04.
+/// One step of the pipeline as the user sees it on Analysis Progress.
 pub struct Stage {
     /// 1-based position; also the `analysis_stages.seq` column.
     pub seq: i64,
     /// Stable identifier used on the wire (`/internal/analyses/{id}/stages/{key}`).
     pub key: &'static str,
-    /// Label rendered by S04.
+    /// Label rendered by Analysis Progress.
     pub title: &'static str,
 }
 
@@ -36,7 +36,7 @@ pub const DISCOVERY_STRATEGY: &str = "discovery_strategy";
 /// expressed as a property of the queue, not a rule each worker remembers.
 pub const FEATURE_CANDIDATES: &str = "feature_candidates";
 
-/// Stage 5 (AC2.1~AC2.3): the acceptance scenarios a reviewer reads on S08.
+/// Stage 5 (AC2.1~AC2.3): the acceptance scenarios a reviewer reads on Feature Acceptance.
 ///
 /// Gated one step further along than stage 4: a scenario is *about a feature*, so
 /// this stage is withheld until the reviewer has approved at least one candidate.

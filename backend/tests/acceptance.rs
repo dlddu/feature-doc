@@ -432,7 +432,7 @@ async fn confirming_a_second_feature_reopens_the_stage() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// What the reviewer reads on S08, and who may read it (AC4.7).
+/// What the reviewer reads on Feature Acceptance, and who may read it (AC4.7).
 #[tokio::test]
 async fn the_document_is_readable_by_its_owner_and_nobody_else() {
     let (state, path) = stub_state().await;

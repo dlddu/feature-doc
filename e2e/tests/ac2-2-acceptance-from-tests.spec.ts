@@ -89,7 +89,7 @@ test.describe('AC2.2: 테스트 코드가 인수 기준을 보강하고, 모순�
         ).toBe(true);
       }
 
-      // ── S08 이 그 섹션을 그린다 ─────────────────────────────────────────
+      // ── 인수 시나리오 화면이 그 섹션을 그린다 ─────────────────────────────────────────
       await page.goto(`/#/analyses/${id}/acceptance`);
       const box = page.getByTestId('contradictions');
       await expect(box).toBeVisible();

@@ -62,7 +62,7 @@ async function statusOf(page: Page, id: string): Promise<string> {
 }
 
 /** Signs in as this spec's own stub user and gives it the App install and LLM key
- *  every analysis needs. Set up through the API, not through S01's screens — walking
+ *  every analysis needs. Set up through the API, not through the Credentials Setup screen — walking
  *  another AC's screen is setup, not verification. */
 export async function signInWithCredentials(page: Page, handle: string): Promise<void> {
   await page.goto(`/api/auth/login?as=${handle}`);

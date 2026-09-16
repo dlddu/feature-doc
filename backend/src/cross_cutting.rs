@@ -2,7 +2,7 @@
 //!
 //! AC1.2 names five axes — 인프라, 저장소 구조, 아키텍처, 프레임워크/런타임,
 //! 미들웨어 — and requires that every extracted item carry the file path or symbol
-//! it was inferred from. Those five are the contract this module encodes; the S05
+//! it was inferred from. Those five are the contract this module encodes; the Cross-cutting Concerns
 //! mockup draws four of them (it omits 저장소 구조), and the PRD is the SSOT, so the
 //! extra axis is implemented and the difference is registered as a known
 //! mockup↔implementation deviation rather than silently dropped.
@@ -158,7 +158,7 @@ pub async fn extract(
     .await
 }
 
-/// The one-liner S04 renders under the step, mirroring stage 1's "766 files · 2.2 MB".
+/// The one-liner Analysis Progress renders under the step, mirroring stage 1's "766 files · 2.2 MB".
 pub fn detail(doc: &Value) -> String {
     let items: usize = doc
         .get("categories")

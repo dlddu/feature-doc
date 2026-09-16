@@ -1,5 +1,5 @@
-// S03 · Connect Repository — the real, stateful screen behind
-// docs/mockups/JRN-connect-repo.html#STP-confirm-cost (S03, AC1.1 · AC4.6 pre-flight).
+// Connect Repository — the real, stateful screen behind
+// docs/mockups/JRN-connect-repo.html#STP-confirm-cost (Connect Repository, AC1.1 · AC4.6 pre-flight).
 //
 // The single primary action is deliberately two-phase: a target must pass
 // pre-flight (`POST /api/analyses/preflight`) before it can be triggered, so the
@@ -20,7 +20,7 @@ function messageOf(e: unknown): string {
 }
 
 type Props = {
-  /** S03 → S02, after a successful trigger or a back tap. */
+  /** Connect Repository → Home, after a successful trigger or a back tap. */
   onDone: () => void;
 };
 

@@ -70,7 +70,7 @@ test.describe('AC2.1: 확정된 feature 의 로직에서 인수 기준을 뽑는
         );
       }
 
-      // ── S08 이 그 문서를 그린다 ─────────────────────────────────────────
+      // ── 인수 시나리오 화면이 그 문서를 그린다 ─────────────────────────────────────────
       await page.goto(`/#/analyses/${id}/acceptance`);
       await expect(page.getByTestId('feature-title')).toHaveText(features[0].name);
       await expect(page.getByTestId('scenario')).toHaveCount(features[0].scenarios.length);

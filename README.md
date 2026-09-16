@@ -38,24 +38,22 @@ docs/
 │   ├── JRN-understand-feature.md     # P2 — 코드를 못 읽는 사람이 기능을 이해하기
 │   ├── JRN-follow-code-change.md     # P1 — 코드가 바뀐 뒤 문서가 따라왔는지 확인하기
 │   └── JRN-restore-history.md        # P1 — 잘못된 변경을 되짚어 되돌리기
-├── wireframes/            # 10개 모바일 화면 정보 구조 (SVG)
-│   ├── README.md
-│   └── s01 ~ s10 *.svg
 └── mockups/               # 목업 — 디자인 시스템 적용 HTML (단독 파일)
-    ├── README.md                      # 여정 페이지 규약 · 매핑 · 이관 대기 원장
-    ├── JRN-connect-repo.html          # 여정 목업 (S01~S03 흡수) — 5단계를 눌러 걸어본다
-    └── s04 ~ s10 *.html               # 화면 단위 — 여정 페이지로 이관 대기
+    ├── README.md                      # 여정 페이지 규약 · 여정↔목업 매핑 · §4 컴포넌트 사용
+    └── JRN-*.html                     # 여정 목업 5개 — 여정 하나를 한 페이지에서 눌러 걸어본다
 
-tools/
-└── gen-wireframes.js      # wireframe SVG 일괄 생성 스크립트
+tools/                     # 문서 정합성 게이트가 쓰는 체커
+├── check-journey-mockup.py    # 여정 목업 정적 규약 (R0~R10)
+├── check-journey-prototype.js # 여정 프로토타입 DOM 하네스 (P1~P7, jsdom)
+└── check-mockup-render.py     # 목업 ↔ 구현 카피 대조 (M0~M6)
 
-backend/                   # axum 0.8 — /hello + S01 자격증명 API(GitHub App·LLM Key, 봉투 암호화) + SQLite + dist 정적 서빙
+backend/                   # axum 0.8 — /hello + 자격증명 API(GitHub App·LLM Key, 봉투 암호화) + SQLite + dist 정적 서빙
 ├── Cargo.toml             # [[bin]] 2개: featuredoc(API) · featuredoc-worker(분석 워커)
 ├── migrations/            # SQLite 스키마 (sqlx migrate — 바이너리에 임베드)
 └── src/                   # lib(config·db·auth·github·llmkey·crypto·audit·pipeline·worker_api…) + main
     └── bin/worker.rs      # 분석 워커 — DB를 열지 않고 API의 /internal 큐로 claim·보고 (AC4.5)
 
-frontend/                  # Vite 8 + React 19 — S01 Credentials Setup 화면 (디자인 시스템 토큰)
+frontend/                  # Vite 8 + React 19 — Credentials Setup 화면 (디자인 시스템 토큰)
 ├── package.json
 ├── index.html
 └── src/{App.tsx, CredentialsSetup.tsx, api.ts, main.tsx, index.css}
@@ -91,7 +89,7 @@ scripts/
 Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debian slim
 ```
 
-각 PRD에는 동일 번호의 테스트 문서가 1:1로 대응합니다. UX 디자인 산출물(`design-system.md`, `wireframes/`, `mockups/`)은 PRD가 정의한 acceptance criteria를 어떻게 화면으로 전달할지 결정하며, PRD가 변경되면 wireframe을 먼저 갱신하고 디자인 시스템 토큰으로 mockup을 다시 그리는 순서를 따릅니다.
+각 PRD에는 동일 번호의 테스트 문서가 1:1로 대응합니다. UX 디자인 산출물(`design-system.md`, `mockups/`)은 PRD가 정의한 acceptance criteria를 어떻게 화면으로 전달할지 결정하며, PRD가 변경되면 그 화면을 터치포인트로 쓰는 여정 문서를 먼저 갱신하고 해당 여정의 목업 페이지를 디자인 시스템 토큰으로 다시 그리는 순서를 따릅니다.
 
 ## PRD ↔ 다루는 문제
 
@@ -104,7 +102,7 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 
 ## Walking skeleton 실행
 
-문서 외에 동작하는 수직 슬라이스가 함께 있습니다. axum API가 `/hello`(프로브) + 자격증명 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 그 옆에서 **별도 워크로드인 분석 워커**가 큐를 비웁니다(AC4.5 — 워커는 데이터베이스를 열지 않고 API의 `/internal` 라우트로 작업을 claim 하므로, SQLite는 계속 writer가 하나입니다). 프론트는 디자인 시스템 토큰으로 S01 Credentials Setup 화면을 그립니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
+문서 외에 동작하는 수직 슬라이스가 함께 있습니다. axum API가 `/hello`(프로브) + 자격증명 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 그 옆에서 **별도 워크로드인 분석 워커**가 큐를 비웁니다(AC4.5 — 워커는 데이터베이스를 열지 않고 API의 `/internal` 라우트로 작업을 claim 하므로, SQLite는 계속 writer가 하나입니다). 프론트는 디자인 시스템 토큰으로 Credentials Setup 화면을 그립니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
 
 ### 로컬 (k8s 없이)
 
@@ -112,7 +110,7 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 # 1) 프론트 빌드
 ( cd frontend && npm install && npm run build )
 
-# 2) 백엔드 실행 (frontend/dist 서빙) — S01 흐름을 외부 연동 없이 보려면 stub 모드
+# 2) 백엔드 실행 (frontend/dist 서빙) — 자격증명 흐름을 외부 연동 없이 보려면 stub 모드
 ( cd backend && STATIC_DIR=../frontend/dist FEATUREDOC_MODE=stub cargo run --release )
 
 # 3) 확인
@@ -157,6 +155,16 @@ kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로
 - **`pin`** — `needs: push`, **main 푸시에서만**. `deploy/k8s/deployment.yaml`과 `worker-deployment.yaml`의 이미지 태그를 방금 빌드한 커밋 SHA로 바꿔 `chore(deploy): ... [skip ci]` 커밋으로 main에 되돌려 놓습니다(`contents: write`는 이 job에만 부여). 기본 `GITHUB_TOKEN`으로 나가는 푸시는 새 워크플로를 트리거하지 않으므로 재귀 빌드가 생기지 않고, `[skip ci]`가 이중 안전장치입니다.
 
 > **태그 = 배포 상태.** 지금 운영에 무엇이 떠 있는지는 `deploy/k8s/deployment.yaml`의 태그 한 줄이 그대로 말해줍니다. PR 빌드도 이미지는 `<head sha>`로 올라가지만(preview 환경이 이 태그를 씁니다) 매니페스트를 건드리지 않으므로 **머지 전에는 운영에 닿을 수 없습니다.** 롤백은 그 줄을 되돌릴 커밋 SHA로 바꾸는 것이고, 이미지는 이미 GHCR에 있으니 재빌드가 필요 없습니다.
+
+## 마이그레이션 규칙
+
+**한 번 배포된 `backend/migrations/*.sql`은 한 글자도 고치지 않습니다 — 주석도 포함해서.** sqlx가 파일 전체 바이트를 SHA-384로 해싱해 `_sqlx_migrations.checksum`에 저장하고 부팅 때마다 대조하므로, 주석 한 글자만 달라져도 `VersionMismatch`로 부팅이 실패합니다. sqlx에는 Flyway `repair`에 해당하는 명령이 없습니다.
+
+CI는 이 사고를 잡지 못합니다 — `cargo test`도 kind e2e도 매번 새 DB에서 돌아 체크섬 대조가 아예 일어나지 않기 때문입니다. 실패는 운영 볼륨에 롤아웃될 때 처음 드러납니다.
+
+그래서 마이그레이션 주석에는 **그 시점의 기록**만 남기고, 나중에 바뀔 이름은 쓰지 않습니다. 파일 경로·목업 이름은 물론이고 AC 번호·화면 ID·여정 ID 처럼 **제품 문서 쪽에 사는 식별자도 넣지 않습니다** — 문서는 언제든 개편되는데 마이그레이션 파일만 따라갈 수 없기 때문입니다. 번호를 가리키는 대신 그 번호가 요구하는 바를 자체 완결적으로 서술합니다. 컬럼의 *현재* 의미는 코드 옆 rustdoc에 둡니다.
+
+전체 규칙과 부득이한 repair 절차는 [`backend/migrations/README.md`](backend/migrations/README.md)에 있습니다.
 
 ## 문서 작성 원칙
 
