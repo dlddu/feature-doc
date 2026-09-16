@@ -1,9 +1,13 @@
-// 검증 AC: AC4.5
+// 검증 시나리오: 04-platform.md#시나리오 7
 //
-// AC4.5 (k8s 배포 및 워크로드 분리) 전용 spec.
+// 「워커 다운 시 API 가용성」 전용 spec (AC4.5).
 //
 // AC4.5 is the one AC whose verification lives *below* the browser: its two
 // scenarios in docs/test/04-platform.md are stated in terms of pods, not pages.
+//
+// ⚠️ 이 파일은 아직 그 두 시나리오를 함께 단정한다 — 선언한 시나리오 7 외에
+// 시나리오 8(워커의 수평 확장)도 여기 남아 있다. 규칙 2 상 분리 대상이며, 분리는
+// doc-tracker 「e2e 매핑」의 미매핑 잔여 표에 등재돼 후속 슬라이스가 닫는다.
 //
 //   시나리오 7 — 워커 파드를 모두 강제 종료해도 API는 정상 응답하고, 신규 분석 요청은
 //                큐에 적재되어 워커 복구 후 처리된다.

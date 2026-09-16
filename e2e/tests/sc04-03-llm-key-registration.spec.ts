@@ -1,6 +1,12 @@
-// 검증 AC: AC4.2
+// 검증 시나리오: 04-platform.md#시나리오 3
 //
-// AC4.2 (사용자 LLM API Key 등록·교체·폐기 및 호출 위임) 전용 spec.
+// 「LLM API Key 등록 후 호출 위임」 전용 spec (AC4.2).
+//
+// ⚠️ 이 파일은 아직 세 시나리오를 함께 단정한다 — 선언한 시나리오 3 외에
+//   시나리오 4  — 키 폐기 후 신규 호출 차단
+//   시나리오 13 — 미지원 제공자의 키 등록 거부
+// 도 여기 남아 있다. 규칙 2 상 분리 대상이며, 분리는 doc-tracker 「e2e 매핑」의
+// 미매핑 잔여 표에 등재돼 후속 슬라이스가 닫는다.
 //
 // Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), where key validation
 // is a deterministic shape check instead of a provider round-trip. Signs in as its own

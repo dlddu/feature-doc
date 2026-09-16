@@ -1,6 +1,11 @@
-// 검증 AC: AC1.1
+// 검증 시나리오: 01-analysis-pipeline.md#시나리오 2
 //
-// AC1.1 (저장소 연결 및 분석 트리거) 전용 spec.
+// 「접근 범위 밖 저장소 접근 시도」 전용 spec (AC1.1 의 거부 절반).
+//
+// 앞부분의 홈 목록 → pre-flight → `Queued` 는 거부를 대비시키기 위한 정상 경로이자
+// 셋업이며, 선언 대상이 아니다 — 그 절반의 기대 결과(세 산출물의 단계별 제시)는
+// `01-analysis-pipeline.md#시나리오 1` 의 것이고, 그 전용 spec 이 신설될 때
+// 이어받는다(doc-tracker 「e2e 매핑」의 미매핑 잔여 표 참조).
 //
 // Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), whose GitHub App
 // installation can reach exactly three deterministic repositories
