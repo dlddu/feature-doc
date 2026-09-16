@@ -31,6 +31,18 @@
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
 
+type StageRow = {
+  key: string;
+  status: string;
+  detail: string | null;
+};
+
+async function analysisOf(page: Page, id: string): Promise<{ status: string; stages: StageRow[] }> {
+  const res = await page.request.get(`/api/analyses/${id}`);
+  expect(res.ok()).toBeTruthy();
+  return await res.json();
+}
+
 type Candidate = {
   key: string;
   name: string;
@@ -185,14 +197,24 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       }
 
       // ── 산출물이 파이프라인 순서로 단계별 제시됐다 ──────────────────────
-      // 진행 화면의 단계 행이 파이프라인 순서를 그대로 나열하고, 걸은 네 단계는
-      // succeeded, 아직 열리지 않은 5단계는 대기다. 문서 → 전략 → 후보의 순서는
-      // 위의 화면 경로(문서 화면 → 전략 화면 → 후보 화면)와 함께 여기서 닫힌다.
+      // 성공 단계의 행은 상태 단어가 아니라 **측정값**(detail)으로 그려진다 — 선례:
+      // sc01-03의 `categories`, sc01-04의 `entry points`. 그래서 행↔API의 detail을
+      // 대조한다(상수를 박지 않는다). 파이프라인 순서 자체는 행의 나열 순서이고,
+      // 「문서 → 전략 → 후보」의 제시 순서는 위의 화면 경로가 이미 관측했다.
       await page.goto(`/#/analyses/${id}`);
+      await expect(page.getByTestId('pipeline-count')).toHaveText('4 of 5');
+      const stages = (await analysisOf(page, id!)).stages;
       const walked = ['fetch', 'cross_cutting', 'discovery_strategy', 'feature_candidates'];
-      for (const stage of walked) {
-        await expect(page.locator(`[data-stage="${stage}"]`)).toContainText('succeeded');
+      for (const key of walked) {
+        const row = stages.find((s) => s.key === key);
+        expect(row, `${key} stage row exists`).toBeTruthy();
+        expect(row!.status, `${key} succeeded`).toBe('succeeded');
+        expect(row!.detail, `${key} has a measured detail`).toBeTruthy();
+        await expect(page.locator(`[data-stage="${key}"]`)).toContainText(row!.detail!);
       }
+      // 아직 열리지 않은 5단계는 대기다 — 확정된 후보 결정이 5단계의 몫이다.
+      const stage5 = stages.find((s) => s.key === 'acceptance_dependencies');
+      expect(stage5?.status, 'stage 5 is pending').toBe('pending');
       await expect(page.locator('[data-stage="acceptance_dependencies"]')).toContainText('대기 중');
     } finally {
       // Back to the overlay's resting state, whatever happened above.
