@@ -77,16 +77,22 @@ e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 �
 └── tests/                 # 각 spec 첫 줄에 `// 검증 시나리오: <문서>#시나리오 <N>` 을 정확히 1개 선언
     │                      # 파일명 `sc<문서번호>-<시나리오번호>-<slug>.spec.ts` 가 그 선언과 교차 확인된다
     │                      # (규약·매핑 표: docs/doc-tracker.md "e2e 매핑" / 게이트: tools/check-scenario-e2e.py)
+    ├── sc01-01-full-pipeline-run.spec.ts              # 전체 파이프라인을 한 바퀴 걷는 중량 spec
     ├── sc01-02-repo-out-of-scope.spec.ts
     ├── sc01-03-cross-cutting-determinism.spec.ts
     ├── sc01-04-strategy-edit-and-approve.spec.ts
     ├── sc01-05-resume-after-app-exit.spec.ts
+    ├── sc01-06-partial-retry.spec.ts
     ├── sc01-07-candidate-rejection-carryover.spec.ts
     ├── sc04-01-app-install-and-scope.spec.ts
     ├── sc04-03-llm-key-registration.spec.ts
+    ├── sc04-04-revoked-key-blocks-calls.spec.ts
     ├── sc04-05-credential-log-exposure.spec.ts
-    ├── sc04-07-api-availability-without-workers.spec.ts  # kubectl로 워커를 0·2로 스케일해 API 가용성·드레인 확인
-    └── sc04-11-unauthenticated-block-and-signin.spec.ts
+    ├── sc04-07-api-availability-without-workers.spec.ts  # kubectl로 워커를 0·1로 스케일해 가용성·큐 보존·복구 확인
+    ├── sc04-08-worker-horizontal-scale.spec.ts        # kubectl로 워커를 0·2로 스케일해 확장·exactly-once 확인
+    ├── sc04-11-unauthenticated-block-and-signin.spec.ts
+    ├── sc04-12-logout-session-invalidation.spec.ts
+    └── sc04-13-unsupported-provider-rejection.spec.ts
 
 scripts/
 └── e2e.sh                 # kind 생성 → build → load → apply → port-forward → e2e
