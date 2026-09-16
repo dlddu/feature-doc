@@ -2,11 +2,8 @@
 //
 // 「분석 중 앱 종료 후 복귀」 전용 spec (AC1.5).
 //
-// ⚠️ 이 파일은 아직 두 시나리오를 함께 단정한다 — 선언한 시나리오 5 외에
-//   시나리오 6 — 실패한 단계에서 "이 단계만 다시 시도"를 누르면 그 단계만 재실행된다.
-// 도 여기 남아 있다. 규칙 2 상 분리 대상이며, 분리는 doc-tracker 「e2e 매핑」의
-// 미매핑 잔여 표에 등재돼 후속 슬라이스가 닫는다. 선언은 실제로 이 파일의 이름이
-// 걸린 것 하나에만 붙인다.
+// 시나리오 6(부분 재시도)의 단정은 `sc01-06-partial-retry.spec.ts`가 지킨다 —
+// 한 파일에 있던 두 시나리오를 분리한 것은 `rct_20260916-0002`가 닫았다.
 //
 // 진행은 서버 상태(`analysis_stages`)이므로 시나리오 5는 "브라우저를 새로고침해도
 // 같은 화면"으로 관측한다 — 분석 진행 화면이 클라이언트에 진행을 들고 있다면 이 단정이 깨진다.
@@ -24,14 +21,6 @@
 // is setup, not this file's verification target.
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
-
-/** Stage keys seeded at enqueue, in pipeline order (backend/src/pipeline.rs). */
-const LATER_STAGES = [
-  'cross_cutting',
-  'discovery_strategy',
-  'feature_candidates',
-  'acceptance_dependencies',
-];
 
 type StageRow = {
   key: string;
@@ -59,16 +48,10 @@ async function statusOf(page: Page, id: string): Promise<string> {
   return (await analysisOf(page, id)).status;
 }
 
-async function stageOf(page: Page, id: string, key: string): Promise<StageRow> {
-  const stage = (await analysisOf(page, id)).stages.find((s) => s.key === key);
-  expect(stage, `analysis ${id} has no ${key} stage`).toBeTruthy();
-  return stage!;
-}
-
-test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재시도', () => {
+test.describe('AC1.5: 비동기 진행 가시성과 복귀', () => {
   test.describe.configure({ mode: 'serial', timeout: 300_000 });
 
-  test('분석 진행 화면이 적재된 진행을 보여주고, 복귀 후에도 같으며, 실패 단계만 다시 실행된다', async ({
+  test('분석 진행 화면이 적재된 진행을 보여주고, 앱을 닫았다 다시 열어도 같다', async ({
     page,
   }) => {
     try {
@@ -84,12 +67,9 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
       });
       expect(key.ok(), 'an active LLM key is 홈 화면의 진입 조건').toBeTruthy();
 
-      // Two jobs: one the stub repository can serve, and one pointing at a branch
-      // the repository does not have — the fetch stage fails on that one exactly as
-      // the real GitHub tree request would (404). The branch is a user-typed field
-      // on Connect Repository, so this failure is reachable without any test-only hook.
+      // One job the stub repository can serve. (The failing-stage half that used to
+      // share this file now lives in sc01-06-partial-retry.spec.ts.)
       const good = await enqueue(page, 'payments-api', null);
-      const failing = await enqueue(page, 'checkout-web', 'no-such-branch');
 
       // ── before any worker: Analysis Progress shows the pipeline waiting, not "done" ───
       await page.goto(`/#/analyses/${good}`);
@@ -99,14 +79,11 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
       await expect(page.locator('[data-stage="fetch"]')).toContainText('Fetch repository');
       await expect(page.locator('[data-stage="fetch"]')).toContainText('대기 중');
 
-      // ── let one worker run both jobs ────────────────────────────────────
+      // ── let one worker run the job ──────────────────────────────────────
       await scaleWorkers(1);
       await expect
         .poll(() => statusOf(page, good), { timeout: 120_000, intervals: [1_000] })
         .toBe('awaiting_pipeline');
-      await expect
-        .poll(() => statusOf(page, failing), { timeout: 120_000, intervals: [1_000] })
-        .toBe('failed');
 
       // ── 진행 가시성: the finished stage reports what it measured ────────
       // Three stages are implemented as of slice 4b-1 (fetch + cross_cutting, AC1.2 +
@@ -139,55 +116,6 @@ test.describe('AC1.5: 비동기 진행 가시성과 실패 단계의 부분 재�
       await expect(card).toContainText('step 3 of 5');
       await card.getByTestId('open-progress').click();
       await expect(page.getByTestId('pipeline-count')).toHaveText('3 of 5');
-
-      // ── 시나리오 6: 실패한 단계와 그 사유, 그리고 그 단계만의 재시도 ────
-      await page.goto(`/#/analyses/${failing}`);
-      const failedStage = page.locator('[data-stage="fetch"]');
-      await expect(failedStage).toContainText('github tree rejected (404)');
-      await expect(page.getByTestId('pipeline-count')).toHaveText('0 of 5');
-
-      const beforeRetry = await stageOf(page, failing, 'fetch');
-      expect(beforeRetry.startedAt).not.toBeNull();
-
-      await failedStage.getByTestId('retry').click();
-
-      // The reset is observed through the API rather than the DOM on purpose: a
-      // worker is running, so the "waiting" render lasts only until it re-claims
-      // (~2s) — asserting on that frame would be a race. What matters is below.
-
-      // The job really re-runs: a *new* attempt, with the same deterministic cause
-      // (the branch still does not exist), not the old record left in place.
-      //
-      // Both halves are polled together on purpose. `startedAt` alone is not the
-      // signal: the retry *clears* it, so "changed from the old value" is satisfied
-      // by the reset itself, a second before a worker has touched the job.
-      await expect
-        .poll(
-          async () => {
-            const s = await stageOf(page, failing, 'fetch');
-            const reran = s.startedAt !== null && s.startedAt !== beforeRetry.startedAt;
-            return `${s.status}${reran ? ' (reran)' : ''}`;
-          },
-          {
-            message: 'the retried stage should run again and fail on the same cause',
-            timeout: 120_000,
-            intervals: [1_000],
-          },
-        )
-        .toBe('failed (reran)');
-      const afterRetry = await stageOf(page, failing, 'fetch');
-      expect(afterRetry.error).toContain('404');
-
-      // Only that stage moved: the ones that never ran are still waiting…
-      const stages = (await analysisOf(page, failing)).stages;
-      for (const key of LATER_STAGES) {
-        expect(stages.find((s) => s.key === key)?.status, `${key} must be untouched`).toBe(
-          'pending',
-        );
-      }
-      // …and the other analysis is not disturbed by a retry on this one.
-      expect((await stageOf(page, good, 'fetch')).status).toBe('succeeded');
-      expect((await stageOf(page, good, 'fetch')).detail).toBe('766 files · 2.2 MB');
     } finally {
       // Back to the overlay's resting state, whatever happened above, so a later
       // spec never finds a worker quietly draining its queue.

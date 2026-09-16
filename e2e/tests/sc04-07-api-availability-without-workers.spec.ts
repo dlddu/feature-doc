@@ -5,13 +5,12 @@
 // AC4.5 is the one AC whose verification lives *below* the browser: its two
 // scenarios in docs/test/04-platform.md are stated in terms of pods, not pages.
 //
-// ⚠️ 이 파일은 아직 그 두 시나리오를 함께 단정한다 — 선언한 시나리오 7 외에
-// 시나리오 8(워커의 수평 확장)도 여기 남아 있다. 규칙 2 상 분리 대상이며, 분리는
-// doc-tracker 「e2e 매핑」의 미매핑 잔여 표에 등재돼 후속 슬라이스가 닫는다.
+// 시나리오 8(워커의 수평 확장)의 단정은
+// `sc04-08-worker-horizontal-scale.spec.ts`가 지킨다 — 한 파일에 있던 두 시나리오를
+// 분리한 것은 `rct_20260916-0002`가 닫았다.
 //
 //   시나리오 7 — 워커 파드를 모두 강제 종료해도 API는 정상 응답하고, 신규 분석 요청은
 //                큐에 적재되어 워커 복구 후 처리된다.
-//   시나리오 8 — 워커 replica를 늘리면 처리량이 늘고, API/워커 간 결합 없이 확장된다.
 //
 // So this file drives `kubectl` against the same kind cluster scripts/e2e.sh
 // created, and observes the effect through the public API. That is deliberate:
@@ -31,7 +30,7 @@
 // Like every spec it signs in as its own stub user (`?as=ac45`); App installation
 // is per-user state and sharing an identity would let specs clobber each other.
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { desiredWorkerReplicas, scaleWorkers, workerLogs } from '../support/cluster';
+import { scaleWorkers } from '../support/cluster';
 
 /**
  * Signs in as this spec's stub user and links a (stub) App installation — the
@@ -71,7 +70,7 @@ async function statusOf(request: APIRequestContext, id: string): Promise<string>
 test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리', () => {
   test.describe.configure({ mode: 'serial', timeout: 300_000 });
 
-  test('워커 0개에서도 API는 응답하고 큐는 보존되며, 워커를 늘리면 중복 없이 드레인된다', async ({
+  test('워커가 모두 내려가도 API는 응답하고 큐는 보존되며, 복구하면 대기 job이 처리된다', async ({
     request,
   }) => {
     try {
@@ -100,72 +99,25 @@ test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리',
         expect(await statusOf(request, id), 'no worker ⇒ the job waits').toBe('queued');
       }
 
-      // ── 시나리오 8: 워커를 2개로 늘린다 ─────────────────────────────────
-      const alsoQueued = [
-        await enqueue(request, 'notif-worker'),
-        await enqueue(request, 'payments-api'),
-      ];
-      const allIds = [...queuedIds, ...alsoQueued];
+      // ── 복구: 워커가 돌아오면 대기 job이 처리된다 ────────────────────────
+      // (확장의 성질 — 두 replica가 같은 큐를 청구하고 아무 job도 두 번 처리되지
+      // 않음 — 은 sc04-08-worker-horizontal-scale.spec.ts의 몫이다.)
+      await scaleWorkers(1);
 
-      await scaleWorkers(2);
-
-      // Every job the queue held — including the ones enqueued while no worker
-      // existed — drains once workers exist again.
+      // The jobs that waited while no worker existed drain once the worker is back.
       await expect
         .poll(
           async () => {
-            const statuses = await Promise.all(allIds.map((id) => statusOf(request, id)));
+            const statuses = await Promise.all(queuedIds.map((id) => statusOf(request, id)));
             return statuses.filter((s) => s === 'awaiting_pipeline').length;
           },
           {
-            message: '4 queued analyses should drain once 2 workers run',
+            message: 'queued analyses should drain once the worker recovers',
             timeout: 120_000,
             intervals: [1_000],
           },
         )
-        .toBe(allIds.length);
-
-      // Scaling out is unconditional: two replicas both reach Ready and both poll
-      // the same queue. There is no leader election or exclusive resource that
-      // would make the second one a no-op — which is what "API/워커 간 결합 없이
-      // 확장된다" asks for.
-      expect(desiredWorkerReplicas()).toBe('2');
-
-      // Every line, not the default --tail=10: the claims are counted below.
-      const logs = workerLogs();
-      const podNames = new Set(
-        logs
-          .split('\n')
-          .map((l) => l.match(/^\[pod\/([^/]+)\//)?.[1])
-          .filter(Boolean),
-      );
-      expect(podNames.size, `two worker pods should be live; saw ${[...podNames]}`).toBe(2);
-      const started = logs.split('\n').filter((l) => l.includes('featuredoc worker started'));
-      expect(started.length, 'both replicas start and poll, neither crash-loops').toBe(2);
-
-      // No job is processed twice. This is the property that makes scaling *safe*
-      // — and unlike "each pod claimed at least one", it does not depend on which
-      // pod happened to win the race, so it is deterministic in CI. (A fast pod
-      // legitimately drains the whole burst before its sibling finishes booting;
-      // the disjointness of concurrent claims is gated by
-      // backend/tests/worker.rs::many_workers_racing_never_claim_the_same_job_twice.)
-      // Note both checks match on the analysis id rather than counting lines. The
-      // queue is global — a job another spec left `queued` (ac1-1 does) is drained
-      // by these same workers, so a bare line count is not this spec's to assert.
-      const lines = logs.split('\n');
-      for (const id of allIds) {
-        expect(
-          lines.filter((l) => l.includes('claimed analysis') && l.includes(id)).length,
-          `analysis ${id} must be claimed exactly once`,
-        ).toBe(1);
-
-        // And it drained by *doing work*, not by being marked done: the one
-        // implemented stage ran. (Rendering it is Analysis Progress / AC1.5.)
-        expect(
-          lines.filter((l) => l.includes('fetch stage complete') && l.includes(id)).length,
-          `analysis ${id} must have run its fetch stage exactly once`,
-        ).toBe(1);
-      }
+        .toBe(queuedIds.length);
     } finally {
       // Back to the overlay's resting state (0), whatever happened above, so a
       // later spec never finds a worker quietly draining its queue.

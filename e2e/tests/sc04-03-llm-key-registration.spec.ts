@@ -2,11 +2,10 @@
 //
 // 「LLM API Key 등록 후 호출 위임」 전용 spec (AC4.2).
 //
-// ⚠️ 이 파일은 아직 세 시나리오를 함께 단정한다 — 선언한 시나리오 3 외에
-//   시나리오 4  — 키 폐기 후 신규 호출 차단
-//   시나리오 13 — 미지원 제공자의 키 등록 거부
-// 도 여기 남아 있다. 규칙 2 상 분리 대상이며, 분리는 doc-tracker 「e2e 매핑」의
-// 미매핑 잔여 표에 등재돼 후속 슬라이스가 닫는다.
+// 시나리오 4(폐기 후 신규 호출 차단)의 단정은 `sc04-04-revoked-key-blocks-calls.spec.ts`
+// 가, 시나리오 13(미지원 제공자의 키 등록 거부)의 단정은
+// `sc04-13-unsupported-provider-rejection.spec.ts`가 지킨다 — 한 파일에 있던 셋을
+// 분리한 것은 `rct_20260916-0002`가 닫았다.
 //
 // Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), where key validation
 // is a deterministic shape check instead of a provider round-trip. Signs in as its own
@@ -18,11 +17,8 @@ import { expect, test } from '@playwright/test';
 
 const ANTHROPIC_KEY = 'sk-ant-api03-aaaaaaaaaaaaaaaaaaaa';
 const OPENAI_KEY = 'sk-proj-bbbbbbbbbbbbbbbbbbbbbb';
-// Shape-valid for the stub validator on purpose: the refusal below has to come from
-// the supported-provider scope, not from key validation.
-const GOOGLE_KEY = 'AIzaSyCcccccccccccccccccccc';
 
-test('AC4.2: 잘못된 키 거부 → 등록 → 미지원 제공자 거부 → 교체 → 폐기 후 신규 호출 차단', async ({
+test('AC4.2: 잘못된 키 거부 → 등록 → 교체 → 등록된 키가 분석 호출의 위임 대상이 된다', async ({
   page,
 }) => {
   await page.goto('/api/auth/login?as=ac42');
@@ -43,28 +39,6 @@ test('AC4.2: 잘못된 키 거부 → 등록 → 미지원 제공자 거부 → 
   await page.getByTestId('register-key').click();
   await expect(page.getByTestId('active-key')).toBeVisible();
 
-  // 지원 제공자 범위(AC4.2): 분석 호출이 없는 제공자는 **등록 시점에** 거부된다.
-  // 등록해 둔 뒤 분석 도중 실패하는 것이 아니라, 아직 아무것도 맡기지 않은 여기서 알린다.
-  await page.getByTestId('provider-google').click();
-  await expect(page.getByTestId('active-key')).toHaveCount(0);
-  await page.getByTestId('key-input').fill(GOOGLE_KEY);
-  await page.getByTestId('register-key').click();
-  await expect(page.getByTestId('key-error')).toContainText('분석 호출을 지원하지 않아');
-  // 거부됐으므로 저장되지 않는다 — 이 제공자에 활성 키가 생기지 않는다.
-  await expect(page.getByTestId('active-key')).toHaveCount(0);
-
-  // 그리고 이미 쓰던 키의 자리를 빼앗지 않는다: 분석이 쓸 키는 그대로 Anthropic이다.
-  const stillAnthropic = await page.request.get('/api/llm-keys/preflight');
-  expect(stillAnthropic.ok()).toBe(true);
-  expect((await stillAnthropic.json()).provider).toBe('anthropic');
-  await page.getByTestId('provider-anthropic').click();
-  await expect(page.getByTestId('active-key')).toBeVisible();
-
-  const cont = page.getByTestId('continue');
-  await expect(cont).toBeEnabled();
-  await cont.click();
-  await expect(page.getByTestId('ready')).toBeVisible();
-
   // 교체: 다른 제공자의 키를 등록하면 그 제공자의 활성 키가 된다.
   await page.getByTestId('provider-openai').click();
   await expect(page.getByTestId('active-key')).toHaveCount(0);
@@ -72,14 +46,14 @@ test('AC4.2: 잘못된 키 거부 → 등록 → 미지원 제공자 거부 → 
   await page.getByTestId('register-key').click();
   await expect(page.getByTestId('active-key')).toContainText('openai');
 
-  // 폐기: 등록된 키를 모두 회수하면 신규 LLM 호출이 차단된다.
-  await page.getByTestId('remove-key').click();
-  await expect(page.getByTestId('key-input')).toBeVisible();
-  await page.getByTestId('provider-anthropic').click();
-  await page.getByTestId('remove-key').click();
-  await expect(page.getByTestId('key-input')).toBeVisible();
+  // 시나리오의 임의 분석 트리거: 준비됐음을 확인하고 진행한다.
+  const cont = page.getByTestId('continue');
+  await expect(cont).toBeEnabled();
+  await cont.click();
+  await expect(page.getByTestId('ready')).toBeVisible();
 
-  const blocked = await page.request.get('/api/llm-keys/preflight');
-  expect(blocked.ok()).toBe(false);
-  await expect(page.getByTestId('continue')).toBeDisabled();
+  // 등록된 키가 분석 호출의 위임 대상이 됨 — pre-flight가 교체된 제공자를 가리킨다.
+  const delegated = await page.request.get('/api/llm-keys/preflight');
+  expect(delegated.ok()).toBe(true);
+  expect((await delegated.json()).provider).toBe('openai');
 });
