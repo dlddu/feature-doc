@@ -1,4 +1,4 @@
-// 검증 AC: AC2.3
+// 검증 시나리오: 02-feature-representation.md#시나리오 4
 //
 // AC2.3 (최종 사용자 관점의 인수 테스트 문서 생성) 전용 spec.
 //

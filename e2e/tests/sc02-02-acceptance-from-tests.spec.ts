@@ -1,4 +1,4 @@
-// 검증 AC: AC2.2
+// 검증 시나리오: 02-feature-representation.md#시나리오 2
 //
 // AC2.2 (테스트 코드로부터 인수 기준 보강) 전용 spec.
 //

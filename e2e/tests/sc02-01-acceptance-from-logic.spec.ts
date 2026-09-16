@@ -1,4 +1,4 @@
-// 검증 AC: AC2.1
+// 검증 시나리오: 02-feature-representation.md#시나리오 1
 //
 // AC2.1 (로직 코드로부터 인수 기준 도출) 전용 spec.
 //
