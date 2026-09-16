@@ -72,7 +72,14 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
 
       // ── 시나리오 단계 1~2: 저장소 URL·브랜치 입력 → 분석 시작 ───────────
       // Connect Repository 화면(Home → new repository)에서 사용자가 실제로 입력한다.
+      // 화면 라우팅은 서버 게이트가 아니라 상태 머신이라, 셋업이 API로 됐어도 로드는
+      // 자격증명 화면에서 시작한다 — continue 두 번이 실제 홈 진입 경로다(선례: sc01-05).
       await page.goto('/');
+      const cont = page.getByTestId('continue');
+      await expect(cont).toBeEnabled();
+      await cont.click();
+      await expect(page.getByTestId('ready')).toBeVisible();
+      await cont.click();
       await expect(page.getByTestId('metrics')).toBeVisible();
       await expect(page.getByTestId('metric-analyses')).toHaveText('0');
       await page.getByTestId('new-repository').click();
