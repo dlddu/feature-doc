@@ -4,7 +4,7 @@
 //! These run against the router in-process, so the safety properties that make
 //! horizontal scaling correct are gated by `cargo test` — no cluster required.
 //! The cluster-level half (worker pods actually scaled to 0 and to 2) is asserted
-//! by `e2e/tests/ac4-5-worker-workload-separation.spec.ts`.
+//! by `e2e/tests/sc04-07-api-availability-without-workers.spec.ts`.
 
 mod common;
 

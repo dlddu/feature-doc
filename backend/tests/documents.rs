@@ -4,7 +4,7 @@
 //! produced, and see whether re-analyzing the same target reproduced it. Both run
 //! against the router in-process, so the contract is gated by `cargo test`; the
 //! screen that renders it is asserted by
-//! `e2e/tests/ac1-2-cross-cutting-concerns.spec.ts`.
+//! `e2e/tests/sc01-03-cross-cutting-determinism.spec.ts`.
 //!
 //! Documents are written through the worker's own `/internal` route rather than by
 //! inserting rows directly — a hand-written fixture could drift from what a worker

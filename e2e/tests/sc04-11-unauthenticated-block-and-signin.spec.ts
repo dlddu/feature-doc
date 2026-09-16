@@ -1,6 +1,10 @@
-// 검증 AC: AC4.8
+// 검증 시나리오: 04-platform.md#시나리오 11
 //
-// AC4.8 (GitHub OAuth 기반 사용자 본인 인증과 세션) 전용 spec.
+// 「미인증 접근 차단과 GitHub 로그인」 전용 spec (AC4.8).
+//
+// ⚠️ 이 파일은 아직 두 시나리오를 함께 단정한다 — 선언한 시나리오 11 외에
+// 시나리오 12(로그아웃 후 세션 무효화)도 여기 남아 있다. 규칙 2 상 분리 대상이며,
+// 분리는 doc-tracker 「e2e 매핑」의 미매핑 잔여 표에 등재돼 후속 슬라이스가 닫는다.
 //
 // Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), so the GitHub OAuth
 // boundary is answered by an in-process test double — no network. This spec owns the

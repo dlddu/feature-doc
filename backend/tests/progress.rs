@@ -3,7 +3,7 @@
 //! The two things Analysis Progress needs from the API: read the persisted progress of one
 //! analysis, and re-run a single failed stage. Both run against the router
 //! in-process, so the contract is gated by `cargo test`; the screen that renders it
-//! is asserted by `e2e/tests/ac1-5-async-progress-and-partial-retry.spec.ts`.
+//! is asserted by `e2e/tests/sc01-05-resume-after-app-exit.spec.ts`.
 //!
 //! Stage transitions here are driven through the worker's own `/internal` routes
 //! rather than by writing rows directly — a fixture that hand-wrote
