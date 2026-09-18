@@ -170,9 +170,9 @@ kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로
 - **`cargo`** — `cargo test --release`. `Swatinem/rust-cache`가 registry와 target/의 의존성 빌드를 캐시합니다(저장은 main에서만, PR은 main 캐시를 읽기만). main 푸시·모든 PR에서 실행.
 - **`e2e`** — kind+kubectl 설치 → `docker/build-push-action`(`load: true`, GHA 캐시)으로 `featuredoc:dev` 빌드 → `SKIP_BUILD=1 scripts/e2e.sh`(클러스터 e2e). `cargo`와 나란히 돕니다.
 - **`push`** — `needs: [cargo, e2e]`로 둘 다 그린 후에만. `docker/setup-buildx-action` + `docker/login-action` + `docker/metadata-action` + `docker/build-push-action@v6`(GHA 캐시) 조합으로 `ghcr.io/<owner>/featuredoc`에 푸시. **태그는 커밋 SHA 하나뿐입니다** — `latest`도, 브랜치 롤링 태그도 만들지 않습니다.
-- **`pin`** — `needs: push`, **main 푸시에서만**. `deploy/k8s/deployment.yaml`과 `worker-deployment.yaml`의 이미지 태그를 방금 빌드한 커밋 SHA로 바꿔 `chore(deploy): ... [skip ci]` 커밋으로 main에 되돌려 놓습니다(`contents: write`는 이 job에만 부여). 기본 `GITHUB_TOKEN`으로 나가는 푸시는 새 워크플로를 트리거하지 않으므로 재귀 빌드가 생기지 않고, `[skip ci]`가 이중 안전장치입니다.
+- **`pin`** — `needs: push`, **main 푸시에서만**. `deploy/k8s/deployment.yaml`과 `worker-deployment.yaml`의 이미지 태그를 방금 빌드한 커밋 SHA로 바꾼 커밋을 **`deploy` 브랜치**로 force-push합니다(= `main@SHA` + 고정 커밋 하나, `Source-Commit: <sha>` 트레일러). main은 ruleset(필수 체크 `ci-gate`)으로 보호되어 되커밋하지 않으며, Flux는 `deploy`를 추적합니다. `contents: write`는 이 job에만 부여하고 기본 `GITHUB_TOKEN`만 쓰므로 장기 크레덴셜이 없습니다. 늦게 끝난 옛 실행은 deploy가 이미 더 새 커밋을 가리키면 건너뜁니다.
 
-> **태그 = 배포 상태.** 지금 운영에 무엇이 떠 있는지는 `deploy/k8s/deployment.yaml`의 태그 한 줄이 그대로 말해줍니다. PR 빌드도 이미지는 `<head sha>`로 올라가지만(preview 환경이 이 태그를 씁니다) 매니페스트를 건드리지 않으므로 **머지 전에는 운영에 닿을 수 없습니다.** 롤백은 그 줄을 되돌릴 커밋 SHA로 바꾸는 것이고, 이미지는 이미 GHCR에 있으니 재빌드가 필요 없습니다.
+> **태그 = 배포 상태.** 지금 운영에 무엇이 떠 있는지는 **`deploy` 브랜치**의 `deploy/k8s/deployment.yaml` 태그 한 줄이 그대로 말해줍니다(main에 남은 값은 운영과 무관). PR 빌드도 이미지는 `<head sha>`로 올라가지만(preview 환경이 이 태그를 씁니다) 매니페스트를 건드리지 않으므로 **머지 전에는 운영에 닿을 수 없습니다.** 롤백은 main에 revert PR을 올리는 것입니다 — 머지되면 그 커밋으로 다시 빌드·고정됩니다(소스가 같으면 빌드 캐시가 통째로 히트).
 
 ## 마이그레이션 규칙
 
