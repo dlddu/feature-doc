@@ -4,14 +4,12 @@
 // Everything here comes from `GET /api/analyses/{id}/documents/cross-cutting`:
 // the document stage 2 produced and stored, never anything derived client-side.
 //
-// Two deliberate differences from the mockup as drawn:
-//   · The mockup groups items under **four** headings (Infrastructure,
-//     Architecture, Framework, Middleware). AC1.2 names **five** axes — it also
-//     requires 저장소 구조 (monorepo 여부 · 모듈 구분). The PRD is the SSOT, so the
-//     fifth axis is rendered; the mockup is the thing that is behind.
+// One deliberate difference from the mockup as drawn:
 //   · The mockup's per-item evidence is a single path. AC1.2 says "파일 경로/심볼
 //     참조" without capping it at one, so an item renders every path it cites.
-// The first is registered in docs/doc-tracker.md "알려진 목업↔구현 편차".
+// The axis headings are no longer one: the mockup caught up to AC1.2's five axes on
+// 2026-09-18 (#57) and this screen took its Korean captions in the convergence slice
+// that followed, so the two sides read the same now.
 //
 // The reproducibility line has no mockup counterpart at all: AC1.2's verification
 // method requires that a re-analysis either reproduce deterministically *or* state
@@ -29,11 +27,11 @@ import type { CrossCuttingDocument } from './api';
 
 /** AC1.2's five axes, in PRD order, with the label each one renders under. */
 const AXIS_LABELS: Record<string, string> = {
-  infrastructure: 'Infrastructure',
-  repository_structure: 'Repository structure',
-  architecture: 'Architecture',
-  framework: 'Framework · runtime',
-  middleware: 'Middleware',
+  infrastructure: '인프라',
+  repository_structure: '저장소 구조',
+  architecture: '아키텍처',
+  framework: '프레임워크 · 런타임',
+  middleware: '미들웨어',
 };
 
 const AXIS_ORDER = Object.keys(AXIS_LABELS);
@@ -113,9 +111,9 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
     return (
       <main className="screen">
         <Appbar onBack={onBack} sub="" />
-        <p className="body sm" style={{ marginTop: 22 }} data-testid="concerns-loading">
-          불러오는 중…
-        </p>
+        {/* The mockup draws no waiting copy, so the wait is an empty place rather than
+            a sentence this screen invented (docs/doc-tracker.md 문서 권위 순서). */}
+        <div style={{ marginTop: 22 }} data-testid="concerns-loading" />
       </main>
     );
   }

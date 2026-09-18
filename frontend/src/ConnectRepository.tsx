@@ -149,6 +149,9 @@ export function ConnectRepository({ onDone }: Props) {
               Ready
             </span>
           </div>
+          <p className="body sm" data-testid="access-ok">
+            접근 가능한 저장소예요. 비용을 확인하고 시작할 수 있습니다.
+          </p>
           <div className="stack">
             <div className="row between">
               <span className="body sm" style={{ color: 'var(--text-primary)' }}>
@@ -246,22 +249,14 @@ export function ConnectRepository({ onDone }: Props) {
           disabled={busy || repoUrl.trim() === ''}
           data-testid={ready ? 'start-analysis' : 'check-access'}
         >
-          {phase === 'checking'
-            ? '확인 중…'
-            : phase === 'starting'
-              ? '시작하는 중…'
-              : ready
-                ? 'Start Analysis →'
-                : '비용 확인하기'}
+          {/* In-flight is shown by the disabled button alone — the mockup draws no
+              waiting copy, so none is invented here (docs/doc-tracker.md 문서 권위 순서). */}
+          {ready ? 'Start Analysis →' : '비용 확인하기'}
         </button>
         <button className="btn btn-ghost block" type="button" onClick={onDone} data-testid="cancel">
           취소
         </button>
       </div>
-
-      <p className="legend" style={{ marginTop: 28 }}>
-        <span className="mk">03</span> — discovery · connect repository
-      </p>
     </main>
   );
 }

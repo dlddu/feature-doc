@@ -214,7 +214,9 @@ export function AnalysisProgress({
                 onClick={() => void retry(stage.key)}
                 data-testid="retry"
               >
-                {retrying === stage.key ? '다시 시도하는 중…' : '이 단계만 다시 시도'}
+                {/* Retrying is shown by the disabled button alone — the mockup draws no
+                    waiting copy (docs/doc-tracker.md 문서 권위 순서). */}
+                이 단계만 다시 시도
               </button>
             )}
           </div>
@@ -263,12 +265,12 @@ export function AnalysisProgress({
           onClick={onBack}
           data-testid="run-in-background"
         >
-          Run in background
+          앱 닫고 나가기
         </button>
       </div>
 
       <p className="legend" style={{ marginTop: 24 }}>
-        <span className="mk">02</span> — discovery · async progress
+        <span className="mk">↳</span> 실패한 단계는 그 단계만 재시도합니다 · 누적 비용은 항상 표시
       </p>
     </main>
   );
