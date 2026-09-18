@@ -957,8 +957,7 @@ async fn approve_strategy(
 /// Never touches a job under a live lease (`status <> running`): re-queueing
 /// underneath its holder is exactly what `retry_stage`'s invariant forbids, and
 /// `worker_api::finish` lands such a job on `queued` itself when it sees that work
-/// remains. Both approvals (strategy, candidate) go through here so there is one
-/// answer to "what does approving do to the queue".
+/// remains.
 async fn requeue(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     id: &str,
@@ -1242,10 +1241,8 @@ async fn decide_candidate(
         _ => return Err(AppError::BadRequest("unknown decision".into())),
     };
 
-    // Approving is what opens stage 5, so the decision and the re-queue are one
-    // transaction for the same reason `approve_strategy`'s pair is: they are one
-    // fact ("this analysis may now write acceptance scenarios for this feature").
-    // A rejection opens nothing, so it re-queues nothing — an analysis whose every
+    // The decision and the re-queue are one transaction: they are one fact. A
+    // rejection opens nothing, so it re-queues nothing — an analysis whose every
     // candidate was rejected must not spin.
     let now = now_unix();
     let mut tx = state.db.begin().await?;

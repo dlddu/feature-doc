@@ -1,43 +1,24 @@
-//! Stage 5 (`acceptance_dependencies`): what happens to the person using this
-//! feature? (AC2.1 · AC2.2 · AC2.3)
+//! Stage 5: acceptance scenarios for a confirmed feature.
 //!
-//! PRD-2 asks for three things about one **confirmed** feature, in order:
+//! Two calls rather than one, because "보강" is only observable against a *before*:
+//! a single call would produce a list with nothing to compare it to.
 //!
-//!   * **AC2.1** — read the feature's *logic* and say what a user experiences, as
-//!     인수 기준 ("주어진 ~ / ~ 했을 때 / ~ 해야 한다"). Every criterion carries the
-//!     code location it came from; that attachment is the AC, not a nicety.
-//!   * **AC2.2** — read the feature's *test* code as well and **보강**: add the
-//!     error cases and boundaries the logic pass missed. Where the two disagree,
-//!     say so **separately** rather than merging one into the other.
-//!   * **AC2.3** — hand back one document per feature, in end-user language.
+//! **The contradiction rule is code, not judgment** ([`merge`]) — a rule the model
+//! cannot bend, and one that behaves the same on a real answer as on the stub.
 //!
-//! So this module makes **two** calls, not one: a logic pass over the repository's
-//! paths and a test pass over the test files among them. Two passes are what make
-//! AC2.2's property ("보강 후의 시나리오 수가 보강 전보다 같거나 많다") a thing that
-//! can be observed at all — with a single call there is no "before" to compare to.
-//!
-//! **The contradiction rule is code, not judgment.** [`merge`] calls two scenarios
-//! contradictory when they describe the same situation (`given` + `when`) and end
-//! differently (`then`). That is a rule the model cannot bend, it works the same on
-//! a real answer as on the stub, and it is the reason a contradiction never leaks
-//! into the scenario list — test/02 시나리오 3 requires the separation.
-//!
-//! What this stage does **not** do: dependencies. `acceptance_dependencies` is the
-//! wire key the roadmap picked when AC2.1~AC2.6 were one slice; AC2.4~AC2.6 are a
-//! per-feature action (`docs/test/02` 시나리오 5), not a pipeline step, and the Analysis Progress
-//! mockup already draws this step as 「인수 시나리오 생성」.
+//! The wire key is `acceptance_dependencies`, but this stage does no dependency
+//! work; the key predates the split and stayed for compatibility.
 
 use serde_json::{json, Value};
 
 use crate::llm::{self, Ask};
 
-/// How many confirmed features one run writes documents for. A reviewer opens
-/// these one at a time on a phone (`JRN-review-feature`: "12개 feature가 있으면 12번
-/// 반복된다"), so the cap is about the run's cost, not the screen's length.
+/// How many confirmed features one run writes documents for. The cap is about the
+/// run's cost, not the screen's length — the reviewer opens these one at a time.
 const MAX_FEATURES: usize = 12;
 
 /// Scenarios kept per feature, after 보강. Past this the document stops being
-/// something a non-developer reads end to end, which is AC2.3's whole point.
+/// something a non-developer reads end to end.
 const MAX_SCENARIOS: usize = 12;
 
 const SYSTEM_LOGIC: &str = "\
@@ -109,10 +90,8 @@ pub struct Subject {
 
 /// Whether a repository path is test code.
 ///
-/// Deliberately conventional rather than clever: a `test`/`tests`/`spec` directory
-/// segment, or a file named like a test. AC2.2 says "동일 feature와 연관된 **테스트
-/// 코드**"; this is the one place that answers "which of these paths is that", so
-/// the prompt, the answer validation and the e2e cannot disagree about it.
+/// Deliberately conventional rather than clever. This is the one place that answers
+/// it, so the prompt, the answer validation and the e2e cannot disagree about it.
 pub fn is_test_path(path: &str) -> bool {
     let (dirs, file) = match path.rsplit_once('/') {
         Some((dirs, file)) => (dirs, file),
@@ -142,9 +121,7 @@ pub struct Scenario {
     pub symbol: Option<String>,
 }
 
-/// Whitespace-insensitive identity of the *situation* a scenario describes. Two
-/// scenarios with the same situation and different endings are the contradiction
-/// AC2.2 asks to surface.
+/// Whitespace-insensitive identity of the *situation* a scenario describes.
 fn situation(s: &Scenario) -> (String, String) {
     (norm(&s.given), norm(&s.when))
 }
@@ -156,9 +133,8 @@ fn norm(text: &str) -> String {
 /// Reads the scenarios a single answer proposed for one feature key, dropping any
 /// whose evidence is not a path this analysis actually saw.
 ///
-/// The check is on the *answer*, not on trust in the instruction: a fabricated
-/// location is exactly the failure AC2.1's "근거가 된 코드 위치가 첨부된다" exists to
-/// prevent, and it is the same guard stage 4 puts on candidate locations.
+/// The check is on the *answer*, not on trust in the instruction — the same guard
+/// stage 4 puts on candidate locations.
 fn scenarios_for(doc: &Value, key: &str, allowed: &[String]) -> Vec<Scenario> {
     doc.get("features")
         .and_then(Value::as_array)
@@ -203,18 +179,11 @@ fn scenario_json(s: &Scenario, source: &str) -> Value {
     })
 }
 
-/// Folds the two passes into one document per feature (AC2.3).
+/// Folds the two passes into one document per feature.
 ///
-/// Order is the approved features, then their logic scenarios, then the test
-/// scenarios that **added something new**. A test scenario about a situation the
-/// logic pass already covered is either a confirmation (same ending — dropped; it is
-/// not a second thing to read) or a disagreement (different ending — lifted into
-/// `contradictions` with both sides named, and never appended to the list).
-///
-/// The logic scenario itself always stays. It is what the code says, and dropping it
-/// would leave the contested situation described nowhere in the document a
-/// non-developer reads. Deciding which side is right is the reviewer's job — the
-/// mockup says so out loud ("어느 쪽이 맞는지는 이 코드를 쓰신 분만 판단할 수 있어요").
+/// The logic scenario always stays, even when contested. It is what the code says,
+/// and dropping it would leave the contested situation described nowhere in the
+/// document a non-developer reads; deciding which side is right is the reviewer's job.
 fn merge(subjects: &[Subject], logic: &Value, tests: &Value, allowed_tests: &[String], allowed: &[String]) -> Value {
     let mut features = Vec::new();
     for subject in subjects.iter().take(MAX_FEATURES) {
@@ -265,8 +234,8 @@ fn merge(subjects: &[Subject], logic: &Value, tests: &Value, allowed_tests: &[St
 }
 
 /// Where a scenario came from. Kept on every scenario rather than as two lists: the
-/// document is read as one narrative (AC2.3), and "which pass found this" is an
-/// attribute of the sentence, not a section.
+/// document is read as one narrative, and "which pass found this" is an attribute of
+/// the sentence, not a section.
 pub const SOURCE_LOGIC: &str = "logic";
 pub const SOURCE_TEST: &str = "test";
 
@@ -306,10 +275,8 @@ fn prompt(
 /// Deterministic stand-in for the logic pass.
 ///
 /// Derived from the approved feature and the tree it was found in, never a fixed
-/// string — the same reason stages 2-4 do it. The e2e can then assert AC2.1's real
-/// property (every criterion cites a path this analysis saw, and the feature's own
-/// location is one of them) instead of a constant that would still match if the
-/// wiring were cut.
+/// string — the same reason stages 2-4 do it. A constant would still match if the
+/// wiring were cut, so the e2e would keep passing over a dead stage.
 fn stub_logic(subjects: &[Subject], paths: &[String]) -> Value {
     let features: Vec<Value> = subjects
         .iter()
@@ -340,11 +307,10 @@ fn stub_logic(subjects: &[Subject], paths: &[String]) -> Value {
 
 /// Deterministic stand-in for the test pass.
 ///
-/// Two shapes, both cited from an actual test file: one criterion the logic pass
-/// did not have (보강) and one that repeats the *first* logic situation with a
-/// different ending, so the separation test/02 시나리오 3 asks for is observable
-/// end to end. It answers only when the repository has test files — a repository
-/// without them gets no test pass at all, which is the honest reading of AC2.2.
+/// Two shapes, both cited from an actual test file: one criterion the logic pass did
+/// not have, and one that repeats the *first* logic situation with a different ending
+/// so that the separation is observable end to end. A repository without test files
+/// gets no test pass at all rather than an empty one.
 fn stub_tests(subjects: &[Subject], test_paths: &[String]) -> Value {
     let Some(first_test) = test_paths.first() else {
         return json!({ "features": [] });
@@ -401,7 +367,6 @@ pub async fn derive(
         .cloned()
         .collect();
 
-    // AC2.1 — the logic pass.
     let logic = llm::ask(
         http,
         mode,
@@ -417,7 +382,6 @@ pub async fn derive(
     )
     .await?;
 
-    // AC2.2 — the test pass, skipped outright when the repository has no test code.
     // "보강할 것이 없다"와 "보강에 실패했다"는 다르고, 없는 입력으로 모델을 부르는 것은
     // 사용자 돈을 쓰는 일이다.
     let tests = if test_paths.is_empty() {
@@ -548,7 +512,6 @@ mod tests {
         assert!(is_test_path("api/handler_test.go"));
         assert!(is_test_path("api/test_handler.py"));
         assert!(!is_test_path("payments-api/src/api/routes.rs"));
-        // A directory that merely *starts* with "test" is not a test directory.
         assert!(!is_test_path("payments-api/testimonials/page.tsx"));
     }
 
@@ -592,8 +555,6 @@ mod tests {
         let scenarios = feature["scenarios"].as_array().unwrap();
         let contradictions = feature["contradictions"].as_array().unwrap();
 
-        // 보강: nothing the logic pass found is lost, and the test pass could only
-        // add to it (AC2.2's 검증 방법 — "시나리오 수가 같거나 많다").
         let logic_only = scenarios_for(
             &stub_logic(&subjects(), &tree()),
             &subjects()[0].key,
@@ -609,7 +570,6 @@ mod tests {
             );
         }
 
-        // 분리: the disagreeing sentence goes to its own section and nowhere else.
         assert_eq!(contradictions.len(), 1, "the stub disagrees exactly once");
         let clash = &contradictions[0];
         assert_ne!(clash["codeSays"], clash["testSays"]);
@@ -620,7 +580,6 @@ mod tests {
                 "the test's version of a contradicted situation must not be read as a scenario"
             );
         }
-        // The test pass's *other* criterion is in the list, marked as its own source.
         assert!(scenarios
             .iter()
             .any(|s| s["source"] == SOURCE_TEST && is_test_path(s["evidence"].as_str().unwrap())));

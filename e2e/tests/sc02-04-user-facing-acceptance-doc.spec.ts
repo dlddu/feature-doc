@@ -1,14 +1,8 @@
 // 검증 시나리오: 02-feature-representation.md#시나리오 4
 //
-// AC2.3 (최종 사용자 관점의 인수 테스트 문서 생성) 전용 spec.
-//
-// AC2.3 이 요구하는 것은 셋이다: **feature 1개당 1개 문서**, **개발자 용어가 아닌 최종
-// 사용자의 언어**, **모든 시나리오에 근거 코드/테스트 위치가 링크**.
-//
-// "비개발자가 읽고 설명할 수 있는가"는 사람이 하는 판정이라 자동화 밖이다(그 사실은
-// doc-tracker 의 「자동화 밖 잔여」에 남는다). 여기서 기계로 지킬 수 있는 것은 그 판정의
-// **필요조건** — 문서에 HTTP 메서드·라우트 경로·함수 호출 같은 개발자 어휘가 남아 있지
-// 않다는 것이다. 근거 칸은 이 검사에서 뺀다: 거기는 일부러 코드 위치를 적는 자리다.
+// "비개발자가 읽고 설명할 수 있는가"는 사람이 하는 판정이라 자동화 밖이다. 여기서 기계로
+// 지킬 수 있는 것은 그 판정의 **필요조건** — 문서에 개발자 어휘가 남아 있지 않다는 것이다.
+// 근거 칸은 이 검사에서 뺀다: 거기는 일부러 코드 위치를 적는 자리다.
 //
 // Isolation: this spec *leases* the analysis worker (see `e2e/support/cluster.ts`).
 // It scales the Deployment to 1 inside its own block and returns it to 0 in
@@ -18,8 +12,7 @@ import { expect, test } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
 import { runToAcceptance, signInWithCredentials } from '../support/acceptance';
 
-/** 최종 사용자가 쓰지 않는 어휘. 하나라도 남아 있으면 이 문서는 P2 에게 공유할 수 없다
- *  (`JRN-review-feature` 의 페인포인트: "개발자 용어가 남아 있으면 V3 가 무너진다"). */
+/** 최종 사용자가 쓰지 않는 어휘. */
 const DEVELOPER_VOCABULARY = /\b(GET|POST|PUT|PATCH|DELETE|HTTP|API|SQL|null|undefined)\b|\/api\/|\(\)|=>|;/;
 
 test.describe('AC2.3: 확정된 기능마다 최종 사용자의 언어로 된 문서 하나', () => {
@@ -47,19 +40,16 @@ test.describe('AC2.3: 확정된 기능마다 최종 사용자의 언어로 된 �
         expect(doc.name.trim().length).toBeGreaterThan(0);
         expect(doc.scenarios.length, `${doc.name} 에 시나리오가 없다`).toBeGreaterThan(0);
         for (const scenario of doc.scenarios) {
-          // 최종 사용자의 언어: 시나리오 본문에 개발자 어휘가 없다.
           for (const part of [scenario.given, scenario.when, scenario.then]) {
             expect(
               DEVELOPER_VOCABULARY.test(part),
               `개발자 용어가 남아 있다: ${part}`,
             ).toBe(false);
           }
-          // 모든 시나리오에 근거 위치가 붙는다.
           expect(scenario.evidence.trim().length, '근거 없는 시나리오').toBeGreaterThan(0);
         }
       }
 
-      // ── 인수 시나리오 화면: 기능을 고르면 그 기능의 문서만 그린다 ──────────────────────
       await page.goto(`/#/analyses/${id}/acceptance`);
       const select = page.getByTestId('feature-select');
       await expect(select.locator('option')).toHaveCount(features.length);
@@ -69,7 +59,6 @@ test.describe('AC2.3: 확정된 기능마다 최종 사용자의 언어로 된 �
         await expect(page.getByTestId('feature-title')).toHaveText(doc.name);
         await expect(page.getByTestId('scenario')).toHaveCount(doc.scenarios.length);
         await expect(page.getByTestId('scenario-list')).toContainText(doc.scenarios[0].then);
-        // 다른 기능의 문장이 섞여 들지 않는다.
         const other = features.find((f) => f.key !== doc.key);
         if (other && other.scenarios[0].then !== doc.scenarios[0].then) {
           await expect(page.getByTestId('scenario-list')).not.toContainText(
@@ -78,7 +67,6 @@ test.describe('AC2.3: 확정된 기능마다 최종 사용자의 언어로 된 �
         }
       }
 
-      // 표현이 아니라 발견 자체가 틀렸다면, 이 화면은 후보 결정으로 돌려보낸다.
       await page.getByTestId('not-a-feature').click();
       await expect(page.getByTestId('not-a-feature-confirm')).toBeVisible();
       await page.getByTestId('back-to-candidates').click();

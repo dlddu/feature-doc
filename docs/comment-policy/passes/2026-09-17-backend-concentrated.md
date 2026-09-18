@@ -168,3 +168,54 @@
 **그럼에도 이번에 지우지 않은 이유는 판정이 아니라 경합이다**: `backend/src/llm.rs`는 열린 draft
 PR **#49**가 건드리는 파일이고, 이 축은 「열린 통합 차량의 충돌 면적을 넓히지 않는다」를 방침으로
 두고 있다. #49가 머지·폐기된 뒤 이 범위를 다시 열 때 **이 3행이 첫 항목**이다.
+
+## 증분 재판정 ② — `#43`이 더한 40행 (2026-09-18 · `rct_20260918-0004`)
+
+`#43`(`6484e21`, 슬라이스 5a)이 이 범위의 `backend/src/analysis.rs`·`backend/src/worker_api.rs`에
+주석 **40행**을 더해 범위 지문이 다시 움직였다. 직전 패스(`rct_20260918-0003`)가 「1행은 그만큼
+증분 재판정 대상이며 이 패스의 범위 밖」이라고 넘긴 바로 그 40행이다. 규칙대로 새 패스 파일을
+만들지 않고 여기에 절을 더한다.
+
+- **범위 지문**: `83758c06…`(507행) → `2c4f8e1623bb0890559eb9314d652b462520b1744aaa492d93fd4b1e98e7d961`
+  (547행, #43 머지 후) → **`60954a7f865e9449bfe9a367cebbe0400ccf8f86f52358a7d22eb3edaffad401`(537행)**.
+- **판정 결과**: **순 제거 10행**(`analysis.rs` 3 · `worker_api.rs` 7) · 유지 30행.
+- `llm.rs`·`llmkey.rs`는 이번 창에서 주석 변화 0이다(`#60`이 `llmkey.rs`의 코드를 고쳤지만
+  주석 줄은 건드리지 않았다 — 지문으로 확인).
+
+### 제거한 것 (10행)
+
+| 자리 | 지운 문장 | 복원 경로 |
+|---|---|---|
+| `analysis.rs` `requeue` doc | 「Both approvals (strategy, candidate) go through here so there is one answer to "what does approving do to the queue".」 | ① — 호출자가 둘뿐이고 둘 다 이 함수를 부른다 |
+| `analysis.rs` `decide_candidate` | 「Approving is what opens stage 5 … for the same reason `approve_strategy`'s pair is」 | ① — 같은 파일 위쪽의 그 쌍이 보인다 |
+| `worker_api.rs` `executable_stages` doc | AC1.3·AC1.4→AC2.1 조항 재진술 + `「승인된 전략만 다음 단계의 입력이 된다」`·`「확정된 feature 에 대해서만 표현을 만든다」` 인용 | ② — `docs/prd/01`·`docs/prd/02`와 `doc-tracker` 5a 행 |
+| `worker_api.rs` `approved_candidates` 필드 doc | 「(AC1.4)」 라벨 | ② |
+| `worker_api.rs` `CandidateRef` doc | 「the same four fields `feature_candidates::Subject` needs, named as they are stored」 | ① — 구조체 본문이 그 네 필드다 |
+| `worker_api.rs` `approved_candidates()` doc | 「(AC2.1~AC2.3 are about a **confirmed** feature …)」 · 「which is exactly what `merged_into` records」 | ②·① — 뒤는 바로 아래 `WHERE … merged_into IS NULL` |
+| `worker_api.rs` `offered_stages` 본문 | 「// Stage 5's predicate is coverage, not success — see [`acceptance_pending`].」 | ① — 링크 대상의 doc이 그 말을 한다. 본문 「rustdoc 링크만으로 이루어진 교차 참조는 링크를 위해 문장을 남기지 않는다」 |
+
+### 유지한 것 (30행) — 이유
+
+- `requeue`의 **리스 계약**: 「살아 있는 리스 아래의 잡은 건드리지 않는다(`status <> running`) —
+  점유자 밑에서 재큐잉하는 것은 `retry_stage`의 불변식이 금지하는 바로 그것이고,
+  `worker_api::finish`가 할 일이 남았음을 보면 스스로 `queued`로 내려놓는다」. 정책이 유지
+  대상으로 이름 붙인 **동시성 계약**이다.
+- `decide_candidate`의 **트랜잭션 원자성**과 「거부는 아무것도 열지 않으므로 재큐잉하지
+  않는다 — 전부 거부된 분석이 돌면 안 된다」.
+- `executable_stages`의 「게이트는 큐의 성질이지 워커가 기억하기로 한 규칙이 아니다 / 워커는
+  자기가 아는 키 중 제안받은 것만 실행한다」와 「이미 성공한 단계는 다시 제안하지 않는다 —
+  그래야 승인 후 재큐잉이 2·3단계의 LLM 호출을 다시 돌려 승인된 문서를 덮어쓰지 않는다」.
+- `acceptance_pending` doc **전문**: 「술어는 「단계가 성공했는가」가 아니다 … 검수자는 후보를
+  한 번에 하나씩 결정하므로 두 번째 확정이 단계를 다시 열어야 하고, 아니면 그 feature는 영영
+  문서를 못 갖는다 … 재실행은 문서를 통째로 다시 쓴다(`(analysis_id, kind)` upsert)」. 술어를
+  잘못 고르면 **조용히** 문서 하나가 사라지는 함정이라, doc-tracker에 같은 서술이 있어도
+  코드 옆의 이 사본을 남긴다(판단이 갈린 항목 — 이번 패스 상세의 「판단이 갈려 남긴 것」 3번).
+- `work_remains` doc **전문**: 「승인이 워커 실행 *중에* 도착해 리스 때문에 재큐잉이 거부되는
+  단 하나의 경합을 `finish`에서 닫는다 / 게이트 뒤 단계만 센다 — `fetch`는 항상 제안되므로
+  「제안된 것이 있는가」로 물으면 모든 잡을 영원히 재큐잉한다」. 실패 모드의 함정이다.
+
+### 검증
+
+주석·빈 줄을 걷어낸 나머지가 부모 `ebe8657`과 **바이트 동일**이고, 두 파일 diff의 주석 아닌
+`+`/`-` 행은 0건이다. 자세한 대조는 [2026-09-18-acceptance-axis.md](2026-09-18-acceptance-axis.md)
+「검증」 절에 함께 적었다.
