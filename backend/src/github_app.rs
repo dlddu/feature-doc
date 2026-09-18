@@ -34,7 +34,7 @@ pub async fn mint_installation_token(
     state: &AppState,
     installation_id: i64,
 ) -> Result<InstallationToken, AppError> {
-    match state.config.mode {
+    match state.config.doubles.github_app {
         // mock-exception: EXT-02 — App JWT 서명·실제 설치 토큰 발급은 실제 App 개인키가 필요
         Mode::Stub => Ok(InstallationToken {
             token: format!("ghs_stub_{installation_id}_{}", crate::util::random_token()),
@@ -81,7 +81,7 @@ pub async fn fetch_installation(
     state: &AppState,
     installation_id: i64,
 ) -> Result<InstallationInfo, AppError> {
-    match state.config.mode {
+    match state.config.doubles.github_app {
         // mock-exception: EXT-02 — 설치 메타 조회는 실제 App 설치를 요구
         Mode::Stub => Ok(InstallationInfo {
             account_login: Some("stub-account".to_string()),
@@ -149,7 +149,7 @@ pub async fn list_repositories(
     state: &AppState,
     installation_id: i64,
 ) -> Result<Vec<RepoRef>, AppError> {
-    match state.config.mode {
+    match state.config.doubles.github_app {
         // mock-exception: EXT-02 — 접근 가능 저장소 목록은 실제 설치 토큰이 필요
         Mode::Stub => Ok(stub_repositories()),
         Mode::Real => {
@@ -237,7 +237,7 @@ fn stub_repositories() -> Vec<RepoRef> {
 
 /// Best-effort count of repositories the installation can access (for display).
 pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<i64> {
-    match state.config.mode {
+    match state.config.doubles.github_app {
         // mock-exception: EXT-02 — 저장소 개수 조회는 실제 설치 토큰이 필요
         Mode::Stub => Some(3),
         Mode::Real => {
@@ -284,7 +284,7 @@ pub async fn list_user_installations(
     state: &AppState,
     user_id: &str,
 ) -> Result<Vec<UserInstallation>, AppError> {
-    if state.config.mode == Mode::Stub {
+    if state.config.doubles.github_app == Mode::Stub {
         return Ok(Vec::new());
     }
 
@@ -352,7 +352,7 @@ pub async fn verify_user_owns_installation(
     user_id: &str,
     installation_id: i64,
 ) -> Result<(), AppError> {
-    if state.config.mode == Mode::Stub {
+    if state.config.doubles.github_app == Mode::Stub {
         return Ok(());
     }
 

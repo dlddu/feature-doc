@@ -8,15 +8,49 @@ use std::sync::Arc;
 
 use sha2::{Digest, Sha256};
 
-/// Selects real external integrations vs. deterministic in-process test doubles.
+/// Selects a real external integration vs. its deterministic in-process test
+/// double — for **one** boundary.
 ///
-/// `real` (default) talks to GitHub and the LLM providers over the network.
-/// `stub` short-circuits those boundaries with canned, deterministic behaviour so
-/// the kind-based e2e and unit tests stay hermetic.
+/// `Real` (default) talks to GitHub or the LLM provider over the network. `Stub`
+/// short-circuits that one boundary with canned, deterministic behaviour so the
+/// kind-based e2e and unit tests stay hermetic.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Mode {
     Real,
     Stub,
+}
+
+/// Which external boundaries this process answers with a test double.
+///
+/// Doubles are selected *per boundary* rather than by one process-wide switch, so
+/// nothing can turn on a double the running process does not itself own: the API
+/// holds the three boundaries below and the analysis worker holds its own two (see
+/// `WorkerDoubles` in `bin/worker.rs`). Each is opt-in — the default everywhere is
+/// the real integration.
+///
+/// The allow-list for these doubles is `docs/e2e-mocking-policy.md`; every branch
+/// they select carries a matching `mock-exception:` comment.
+#[derive(Clone, Copy, Debug)]
+pub struct Doubles {
+    /// EXT-01 — GitHub login identity (`auth.rs`, `github_api.rs`).
+    pub github_auth: Mode,
+    /// EXT-02 — App installation, installation tokens, repository list
+    /// (`github.rs`, `github_app.rs`).
+    pub github_app: Mode,
+    /// EXT-04 — LLM key live validation (`llmkey.rs`).
+    pub llm_key: Mode,
+}
+
+impl Doubles {
+    /// Every boundary at the same setting. For tests, which want one hermetic
+    /// state rather than a per-boundary mix.
+    pub fn all(mode: Mode) -> Self {
+        Self {
+            github_auth: mode,
+            github_app: mode,
+            llm_key: mode,
+        }
+    }
 }
 
 /// Single GitHub App used for both user-authorization (login) and installation
@@ -54,7 +88,7 @@ pub struct Config {
     pub static_dir: String,
     /// 32-byte key-encryption-key that wraps per-record DEKs. Secret.
     pub kek: [u8; 32],
-    pub mode: Mode,
+    pub doubles: Doubles,
     pub github: GithubConfig,
     /// Emit the session cookie with `Secure` (true behind HTTPS). Off for local/e2e http.
     pub cookie_secure: bool,
@@ -66,10 +100,13 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> anyhow::Result<Arc<Self>> {
+        // Bridged from the process-wide switch for now; the next commit reads one
+        // env per boundary and drops the switch.
         let mode = match env_or("FEATUREDOC_MODE", "real").to_ascii_lowercase().as_str() {
             "stub" => Mode::Stub,
             _ => Mode::Real,
         };
+        let doubles = Doubles::all(mode);
 
         let kek_secret = std::env::var("FEATUREDOC_KEK").ok();
         if kek_secret.is_none() {
@@ -106,7 +143,7 @@ impl Config {
             preview_id,
             static_dir: env_or("STATIC_DIR", "dist"),
             kek,
-            mode,
+            doubles,
             github,
             cookie_secure: env_or("COOKIE_SECURE", "").eq_ignore_ascii_case("true"),
             worker_token: env_or("FEATUREDOC_WORKER_TOKEN", ""),
@@ -182,7 +219,7 @@ impl std::fmt::Debug for Config {
             .field("preview_id", &self.preview_id)
             .field("static_dir", &self.static_dir)
             .field("kek", &"[REDACTED]")
-            .field("mode", &self.mode)
+            .field("doubles", &self.doubles)
             .field("github", &self.github)
             .field("cookie_secure", &self.cookie_secure)
             .field("worker_token", &"[REDACTED]")

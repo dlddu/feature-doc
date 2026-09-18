@@ -75,12 +75,24 @@ struct ApprovedCandidate {
     symbol: Option<String>,
 }
 
+/// Which external boundaries this worker answers with a test double.
+///
+/// The worker owns exactly two — the API owns the other three (see
+/// `config::Doubles`). Selecting them separately is what keeps one process from
+/// being able to enable a double it does not itself run.
+struct WorkerDoubles {
+    /// EXT-03 — repository tree scan (`repo_scan.rs`).
+    repo_scan: Mode,
+    /// LLM-01 — provider calls behind every LLM-backed stage (`llm.rs`).
+    llm: Mode,
+}
+
 struct Worker {
     http: reqwest::Client,
     api_base: String,
     token: String,
     worker_id: String,
-    mode: Mode,
+    doubles: WorkerDoubles,
     github_api_base: String,
 }
 
@@ -109,9 +121,17 @@ async fn main() -> anyhow::Result<()> {
                     .map(|s| s.trim().to_string())
                     .unwrap_or_else(|_| "worker".to_string())
             }),
-        mode: match env_or("FEATUREDOC_MODE", "real").to_ascii_lowercase().as_str() {
-            "stub" => Mode::Stub,
-            _ => Mode::Real,
+        // Bridged from the process-wide switch for now; the next commit reads one
+        // env per boundary and drops the switch.
+        doubles: {
+            let mode = match env_or("FEATUREDOC_MODE", "real").to_ascii_lowercase().as_str() {
+                "stub" => Mode::Stub,
+                _ => Mode::Real,
+            };
+            WorkerDoubles {
+                repo_scan: mode,
+                llm: mode,
+            }
         },
         github_api_base: trim_slash(&env_or("GITHUB_API_BASE", "https://api.github.com")),
     };
@@ -211,7 +231,7 @@ impl Worker {
 
         let scanned = repo_scan::scan(
             &self.http,
-            self.mode,
+            self.doubles.repo_scan,
             &self.github_api_base,
             &job.repo_owner,
             &job.repo_name,
@@ -422,7 +442,7 @@ impl Worker {
 
         let answer = feature_candidates::extract(
             &self.http,
-            self.mode,
+            self.doubles.llm,
             self.provider_for(job)?,
             job.llm_api_key.as_deref(),
             &job.repo_owner,
@@ -471,7 +491,7 @@ impl Worker {
 
         let answer = discovery_strategy::propose(
             &self.http,
-            self.mode,
+            self.doubles.llm,
             self.provider_for(job)?,
             job.llm_api_key.as_deref(),
             &job.repo_owner,
@@ -506,7 +526,7 @@ impl Worker {
     /// Which provider this job's key belongs to. Shared by every LLM-backed stage so
     /// they cannot disagree about it mid-job.
     fn provider_for(&self, job: &Claim) -> Result<llm::Provider, String> {
-        match (self.mode, job.llm_provider.as_deref()) {
+        match (self.doubles.llm, job.llm_provider.as_deref()) {
             // Stub mode never reaches a provider, so an absent key is not a failure.
             (Mode::Stub, other) => Ok(other
                 .and_then(llm::Provider::parse)
@@ -537,7 +557,7 @@ impl Worker {
 
         let answer = cross_cutting::extract(
             &self.http,
-            self.mode,
+            self.doubles.llm,
             self.provider_for(job)?,
             job.llm_api_key.as_deref(),
             &job.repo_owner,
