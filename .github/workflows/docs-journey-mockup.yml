@@ -1,8 +1,8 @@
 # 사용자 여정 ↔ 목업 1:1 정합성 게이트.
 #
-# ci.yml 에 얹지 않고 별도 워크플로로 둔다 — ci.yml 은 cargo + kind e2e 를 돌고
-# 그 뒤에 ghcr 이미지를 밀기 때문에, 문서 정합성 하나 때문에 그 파이프라인을
-# 건드리고 싶지 않다.
+# 별도 파일로 두되 스스로 트리거되지 않고 ci.yml 이 workflow_call 로 부른다 — PR 의
+# 필수 상태 체크를 ci.yml 의 `ci-gate` 하나로 모으기 위해서다. 이미지 push 는 여전히
+# cargo + kind e2e 에만 걸려 있어서, 문서 정합성이 이미지 파이프라인을 막지는 않는다.
 #
 # 두 검사가 있다.
 #   1) 정적 체커 (파이썬 stdlib, 의존성 0) — 매핑·집계·링크·마커 무결성 R0~R10
@@ -17,16 +17,11 @@
 name: docs — journey ↔ mockup
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  # ci.yml 에서만 호출된다(단독 트리거 없음).
+  workflow_call:
 
 permissions:
   contents: read
-
-concurrency:
-  group: docs-journey-mockup-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   check:
