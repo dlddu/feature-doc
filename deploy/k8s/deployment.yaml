@@ -27,7 +27,6 @@ spec:
           # imagePullPolicy intentionally omitted: the tag is an immutable commit
           # SHA, so the default IfNotPresent is correct — a cached layer can never
           # be stale, and a rollout only happens when the tag above changes.
-          # (The e2e overlay in deploy/e2e/ retags this to featuredoc:dev.)
           ports:
             - containerPort: 8080
               name: http
@@ -35,7 +34,6 @@ spec:
             # SQLite lives on the mounted PVC; created + migrated on first boot.
             - name: DATABASE_URL
               value: "sqlite:///data/featuredoc.db?mode=rwc"
-            # Non-secret runtime config (the e2e overlay patches these).
             # Every external boundary runs for real here: the test doubles are
             # opt-in per boundary (FEATUREDOC_DOUBLE_*, set only by the e2e
             # overlay), so a production deployment enables none by saying nothing.
@@ -44,7 +42,6 @@ spec:
             - name: COOKIE_SECURE
               value: "true"
           envFrom:
-            # Secrets only: KEK + GitHub App credentials.
             - secretRef:
                 name: featuredoc-secrets
           volumeMounts:

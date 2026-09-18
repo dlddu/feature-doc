@@ -1,30 +1,14 @@
-//! The analysis worker (AC4.5) — a *separate workload* from the API.
+//! The analysis worker — a *separate workload* from the API.
 //!
-//! It owns no database and no volume: it polls the API's `/internal/*` queue
-//! routes for a job, runs the stages that are implemented, reports each transition
-//! back, and moves on. That is what lets it be scaled to zero (the API keeps
-//! serving; jobs simply accumulate in the queue) and scaled out (SQLite serialises
-//! the claim, so N workers take disjoint jobs) — test/04 scenarios 7 and 8.
+//! It owns no database and no volume, which is what lets it be scaled to zero (the
+//! API keeps serving; jobs simply accumulate in the queue) and scaled out: SQLite
+//! serialises the claim, so N workers take disjoint jobs.
 //!
-//! All five stages are implemented: `fetch` (measure the repository tree),
-//! `cross_cutting` (AC1.2 — extract the repository's cross-cutting concerns with
-//! the owner's LLM key), `discovery_strategy` (AC1.3 — propose where features can
-//! be found), `feature_candidates` (AC1.4 — extract the candidates the approved
-//! strategy points at) and `acceptance_dependencies` (AC2.1~AC2.3 — write the
-//! acceptance scenarios for the features the reviewer confirmed). A job still lands
-//! in `awaiting_pipeline` rather than `succeeded` whenever a stage behind a human
-//! gate has not had its turn yet, because calling a half-run analysis complete would
-//! be a lie the user reads as progress.
-//!
-//! Stages 3 and 4 only *propose*. AC1.3 requires that the user review, edit and
-//! approve the strategy before it feeds the next stage, and AC2.1 is about a
-//! **confirmed** feature — so both approvals are user actions on the API side and
-//! the worker is never the thing that decides they are final. Each approval
-//! re-queues the job, which is how the next stage gets its turn: this worker sees a
-//! second claim of the same analysis whose `executableStages` no longer contain the
-//! stages that already succeeded. It runs what it is offered and nothing else —
-//! re-running stage 2 or 3 there would spend the owner's LLM budget again and
-//! replace the very proposal the reviewer approved.
+//! Every approval re-queues the job, and this worker then sees a second claim of the
+//! same analysis whose `executableStages` no longer contain the stages that already
+//! succeeded. It runs what it is offered and nothing else — re-running an earlier
+//! stage there would spend the owner's LLM budget again and replace the very
+//! proposal the reviewer approved.
 
 use std::time::Duration;
 
@@ -40,7 +24,6 @@ use serde::Deserialize;
 use serde_json::json;
 use tokio::signal::unix::{signal, SignalKind};
 
-/// Wait between polls when the queue is empty.
 const IDLE_POLL: Duration = Duration::from_secs(2);
 /// Back-off when the API is unreachable, so a restarting API is not hammered.
 const ERROR_BACKOFF: Duration = Duration::from_secs(5);
@@ -53,12 +36,10 @@ struct Claim {
     repo_name: String,
     branch: String,
     executable_stages: Vec<String>,
-    /// Stage 4's input: the patterns the reviewer approved (AC1.3). Empty until
-    /// they have, which is also when stage 4 is not offered.
+    /// Empty until the reviewer approves — which is also when stage 4 is not offered.
     #[serde(default)]
     approved_patterns: Vec<String>,
-    /// Stage 5's input: the candidates the reviewer approved (AC1.4). Empty until
-    /// they have, which is also when stage 5 is not offered.
+    /// Empty until the reviewer approves — which is also when stage 5 is not offered.
     #[serde(default)]
     approved_candidates: Vec<ApprovedCandidate>,
     installation_token: Option<String>,
@@ -77,13 +58,10 @@ struct ApprovedCandidate {
 
 /// Which external boundaries this worker answers with a test double.
 ///
-/// The worker owns exactly two — the API owns the other three (see
-/// `config::Doubles`). Selecting them separately is what keeps one process from
-/// being able to enable a double it does not itself run.
+/// Selected here rather than shared with `config::Doubles`, which is what keeps one
+/// process from being able to enable a double it does not itself run.
 struct WorkerDoubles {
-    /// EXT-03 — repository tree scan (`repo_scan.rs`).
     repo_scan: Mode,
-    /// LLM-01 — provider calls behind every LLM-backed stage (`llm.rs`).
     llm: Mode,
 }
 
@@ -112,7 +90,6 @@ async fn main() -> anyhow::Result<()> {
             .build()?,
         api_base: trim_slash(&env_or("FEATUREDOC_API_BASE", "http://featuredoc:8080")),
         token,
-        // k8s projects the pod name here; falls back to the hostname.
         worker_id: std::env::var("WORKER_ID")
             .ok()
             .filter(|s| !s.is_empty())
@@ -199,7 +176,6 @@ impl Worker {
         Ok(Some(resp.json::<Claim>().await?))
     }
 
-    /// Runs the implemented stages of one claimed job.
     async fn run(&self, job: &Claim) -> anyhow::Result<()> {
         tracing::info!(
             analysis_id = %job.id,
@@ -271,8 +247,8 @@ impl Worker {
                 Ok(doc) => cross_cutting_doc = Some(doc),
                 Err(reason) => {
                     // The failure is this stage's, not the job's: `fetch` keeps its
-                    // measured detail, and AC1.5's per-stage retry can re-run just
-                    // this one once the cause (usually a missing key) is fixed.
+                    // measured detail, so a per-stage retry can re-run just this one
+                    // once the cause (usually a missing key) is fixed.
                     self.stage(
                         &job.id,
                         pipeline::CROSS_CUTTING,
@@ -287,8 +263,6 @@ impl Worker {
             }
         }
 
-        // Stage 3 (AC1.3) needs stage 2's document as its input, so it runs only
-        // when stage 2 actually produced one in this pass.
         if job
             .executable_stages
             .iter()
@@ -313,11 +287,9 @@ impl Worker {
             }
         }
 
-        // Stage 4 (AC1.4). Offered only when the reviewer approved a strategy *and*
-        // the stage has not already succeeded, so this arm runs on the claim that
-        // follows approval. Its inputs are this pass's path list and the approved
-        // patterns the claim carried — never an in-pass product of stages 2-3,
-        // which is what lets those stages stay untouched here.
+        // The inputs here are this pass's path list and the approved patterns the
+        // claim carried — never an in-pass product of the earlier stages, which is
+        // what lets those stay untouched on the claim that follows an approval.
         if job
             .executable_stages
             .iter()
@@ -337,10 +309,6 @@ impl Worker {
             }
         }
 
-        // Stage 5 (AC2.1~AC2.3). Offered only when the reviewer approved at least one
-        // feature candidate *and* the stage has not already succeeded, so this arm
-        // runs on the claim that follows that approval — the same shape as stage 4,
-        // one gate further along.
         if job
             .executable_stages
             .iter()
@@ -367,8 +335,6 @@ impl Worker {
         Ok(())
     }
 
-    /// Stage 5 (AC2.1~AC2.3). Same shape as stages 2-4: the caller owns the
-    /// reporting so the "which stage failed" decision stays in one place.
     async fn run_acceptance(&self, job: &Claim, paths: &[String]) -> Result<(), String> {
         self.stage(&job.id, pipeline::ACCEPTANCE_DEPENDENCIES, "running", None, None)
             .await
@@ -422,8 +388,6 @@ impl Worker {
         Ok(())
     }
 
-    /// Stage 4 (AC1.4). Same shape as stages 2 and 3: the caller owns the reporting
-    /// so the "which stage failed" decision stays in one place.
     async fn run_feature_candidates(&self, job: &Claim, paths: &[String]) -> Result<(), String> {
         self.stage(&job.id, pipeline::FEATURE_CANDIDATES, "running", None, None)
             .await
@@ -466,8 +430,6 @@ impl Worker {
         Ok(())
     }
 
-    /// Stage 3 (AC1.3). Same shape as stage 2: the caller owns the reporting so the
-    /// "which stage failed" decision stays in one place.
     async fn run_discovery_strategy(
         &self,
         job: &Claim,
@@ -519,13 +481,8 @@ impl Worker {
     /// they cannot disagree about it mid-job.
     ///
     /// An active key is the product's entry condition for an analysis, and it stays
-    /// the entry condition when the LLM double is on. This used to fall back to a
-    /// default provider whenever the double was active, which made the stubbed path
-    /// *more permissive than the real one* — a job with no key ran to completion in
-    /// e2e and failed in production. `docs/e2e-mocking-policy.md` treats that
-    /// asymmetry as drift to fix in code rather than an exception to register
-    /// (an LLM-category exception may not cover key selection at all), so the
-    /// fallback is gone and both paths refuse the same way.
+    /// the entry condition when the LLM double is on — refusing here is what keeps
+    /// the stubbed path from being more permissive than the real one.
     fn provider_for(&self, job: &Claim) -> Result<llm::Provider, String> {
         match job.llm_provider.as_deref() {
             Some(p) => llm::Provider::parse(p)
@@ -534,8 +491,7 @@ impl Worker {
         }
     }
 
-    /// Stage 2 (AC1.2). Returns the extracted document (stage 3's input) on success
-    /// and the reason string on failure, so the caller owns the reporting and the
+    /// Like every stage runner here, it leaves failure reporting to the caller so the
     /// "which stage failed" decision stays in one place.
     async fn run_cross_cutting(
         &self,
