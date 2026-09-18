@@ -1,8 +1,7 @@
 name: CI
 
+# PR 에서만 돈다. main push 는 image.yml 이 단독으로 받아 빌드·pin 만 한다.
 on:
-  push:
-    branches: [main]
   pull_request:
 
 permissions:
@@ -15,7 +14,7 @@ concurrency:
 
 jobs:
   # cargo test 와 kind e2e 는 서로를 기다릴 이유가 없어 두 job 으로 나란히 돈다.
-  # push 는 둘 다 그린일 때만 이미지를 올린다.
+  # push(image.yml 호출)는 둘 다 그린일 때만 이미지를 올린다.
   #
   # PR 의 필수 상태 체크는 맨 아래 `ci-gate` 하나뿐이다. 새 검사를 추가할 때는
   # branch protection 을 건드리지 말고 그 job 의 needs 에만 넣는다.
@@ -87,50 +86,15 @@ jobs:
           SKIP_BUILD: '1'
         run: bash scripts/e2e.sh
 
+  # 이미지 빌드·push 는 image.yml 에 있다(main push 때 단독으로도 돈다).
+  # image.yml 의 pin job 이 contents: write 를 선언하므로 호출하는 쪽도 그만큼
+  # 허용해야 워크플로가 유효하다. pin 자체는 PR 에서 조건상 skip 된다.
   push:
-    name: build & push image (ghcr)
     needs: [cargo, e2e]
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
-    steps:
-      # PR에서는 기본값이 refs/pull/N/merge(임시 머지 커밋)라 이미지 내용이
-      # 태그(head SHA)와 어긋난다. 태그가 가리키는 커밋을 그대로 빌드한다.
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Lowercase owner
-        run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
-
-      - name: Image metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ env.OWNER_LC }}/featuredoc
-          tags: |
-            # 커밋 SHA 하나뿐. `latest`도, 브랜치 롤링 태그도 만들지 않는다.
-            # 운영이 가리키는 태그는 아래 pin job이 커밋으로 옮긴다.
-            type=raw,value=${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Build & push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/image.yml
 
   # 문서 정합성 게이트 3종. 각자 파일에 있고 여기서 부른다 — 실패하면 체크 이름
   # (`docs-… / …`)만으로 어느 칸이 깨졌는지 드러난다. push 는 이들을 기다리지 않는다.
@@ -160,53 +124,3 @@ jobs:
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.value.result)\t\(.key)"'
           echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' > /dev/null \
             || { echo "::error::success 가 아닌 job 이 있다(위 목록)."; exit 1; }
-
-  pin:
-    name: pin deployment image (main only)
-    needs: push
-    # main 푸시에서만. PR 빌드는 이미지를 <head sha>로 올려두기만 하고
-    # (preview 환경이 그 태그를 쓴다) 운영 매니페스트는 건드리지 않는다.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 5
-    permissions:
-      # 이 job만 main에 커밋한다. 워크플로 전체 기본값은 contents: read 유지.
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Pin deploy/k8s image to ${{ github.sha }}
-        env:
-          SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-
-          files="deploy/k8s/deployment.yaml deploy/k8s/worker-deployment.yaml"
-          sed -i -E "s#^([[:space:]]*image: ghcr\.io/dlddu/featuredoc):.*#\1:${SHA}#" $files
-
-          # sed가 조용히 빗나가지 않았는지 확인: 두 파일 모두 정확히 1줄씩.
-          for f in $files; do
-            n=$(grep -c "image: ghcr.io/dlddu/featuredoc:${SHA}$" "$f" || true)
-            [ "$n" = "1" ] || { echo "::error::$f: expected 1 pinned image line, got $n"; exit 1; }
-          done
-
-          if git diff --quiet; then
-            echo "이미 ${SHA}로 고정되어 있음 — 커밋할 것 없음(재실행)."
-            exit 0
-          fi
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -am "chore(deploy): featuredoc 이미지를 ${SHA} 로 고정 [skip ci]"
-
-          # 이 push는 기본 GITHUB_TOKEN으로 나가므로 새 워크플로 실행을 트리거하지
-          # 않는다(GitHub 문서화된 동작). 나중에 PAT/App 토큰으로 바꾸더라도
-          # 커밋 메시지의 [skip ci]가 재귀를 한 번 더 막는다.
-          # 머지가 연달아 들어와 main이 앞서 있으면 rebase 후 재시도.
-          for i in 1 2 3; do
-            git push origin HEAD:main && exit 0
-            git pull --rebase origin main
-          done
-          exit 1
