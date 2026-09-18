@@ -1,5 +1,5 @@
 // Cluster handles shared by the specs that need the analysis worker to actually
-// run (AC4.5 topology, AC1.5 progress).
+// run.
 //
 // The worker replica count is *deployment-wide* state: unlike App installs and LLM
 // keys, no per-user handle isolates it, and a running worker drains the global
@@ -9,10 +9,6 @@
 // sibling spec file is ever in flight while it is up. The residual effect a lessee
 // must accept: while the worker runs it drains *every* queued job, including ones
 // other specs left behind — so no spec may assert on a job it did not create.
-// (docs/doc-tracker.md "e2e 매핑" states the same rule in prose.)
-//
-// This file lives outside `testDir` (`e2e/tests`), so it is neither collected as a
-// test nor counted as an AC↔spec matching unit.
 
 import { execFileSync } from 'node:child_process';
 

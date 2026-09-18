@@ -1,17 +1,9 @@
 // 검증 시나리오: 01-analysis-pipeline.md#시나리오 1
 //
-// 「정상 저장소 연결 및 전체 파이프라인 실행」 전용 spec (AC1.1·AC1.2·AC1.3·AC1.4).
-//
 // 이 파일은 산출물의 **순서·제시·코드 근거 부착**을 한 바퀴 걷는다 — 단계별 세부
 // 정합성은 각자의 전용 spec이 지킨다(sc01-02 트리거·범위, sc01-03 문서 내용,
 // sc01-04 전략 편집, sc01-07 후보 결정). 여기서 그 세부를 다시 단정하면 같은 행동이
 // 여러 파일의 검증으로 이중 계상되므로, 이 파일은 걷는 것 자체만 검증한다.
-//
-// docs/test/01-analysis-pipeline.md 시나리오 1을 그대로 따라간다:
-//   저장소 URL·브랜치 입력 → 분석 시작 → 횡단 분석 단계 완료 대기 → 자동 생성된
-//   탐색 전략 검토 후 승인 → feature 후보 목록 확인.
-//   기대: 횡단 관심사 문서, 탐색 전략, feature 후보 목록 순서로 산출물이 단계별로
-//   제시되며, 각 산출물에 코드 근거가 첨부된다.
 //
 // 「모바일에서」라는 서술은 AC4.4(모바일 폭 규칙 — 구현 대기)의 몫이 아니라 이
 // 시나리오의 서술 배경이다. 화면 경로는 기존 spec과 같은 데스크톱 chromium
@@ -74,7 +66,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       // job cannot drain before this spec starts walking.
       await scaleWorkers(0);
 
-      // ── 사전 조건: App 설치·LLM 키는 API로 셋업한다 ─────────────────────
       await page.goto('/api/auth/login?as=sc0101');
       expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
       const key = await page.request.post('/api/llm-keys', {
@@ -82,7 +73,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       });
       expect(key.ok(), 'an active LLM key is the entry condition').toBeTruthy();
 
-      // ── 시나리오 단계 1~2: 저장소 URL·브랜치 입력 → 분석 시작 ───────────
       // Connect Repository 화면(Home → new repository)에서 사용자가 실제로 입력한다.
       // 화면 라우팅은 서버 게이트가 아니라 상태 머신이라, 셋업이 API로 됐어도 로드는
       // 자격증명 화면에서 시작한다 — continue 두 번이 실제 홈 진입 경로다(선례: sc01-05).
@@ -114,7 +104,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       const id = page.url().match(/#\/analyses\/([^/?#]+)/)?.[1];
       expect(id, '진행 화면 주소에서 분석 id를 얻는다').toBeTruthy();
 
-      // ── 워커가 1~3단계를 실행한다 ──────────────────────────────────────
       await scaleWorkers(1);
       await expect
         .poll(() => statusOf(page, id!), { timeout: 120_000, intervals: [1_000] })
@@ -125,7 +114,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       // 규약은 /internal — backend/tests/worker.rs가 지킨다). 화면의 관측은:
       await expect(page.getByTestId('pipeline-count')).toHaveText('3 of 5');
 
-      // ── 시나리오 단계 3: 횡단 분석 단계 완료 — 문서가 근거와 함께 제시된다 ──
       // 근거의 유효성은 화면 자신이 아니라 분석된 저장소 기준으로 본다(선례: sc01-03).
       await expect(page.locator('[data-stage="cross_cutting"]')).toContainText('categories');
       await page.getByTestId('open-cross-cutting').click();
@@ -148,7 +136,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       await expect(axisCard).toContainText(shown.items[0].name);
       await expect(axisCard).toContainText(shown.items[0].evidence[0]);
 
-      // ── 시나리오 단계 4: 자동 생성된 탐색 전략 검토 후 승인 ──────────────
       // 화면 진입 자체가 reviewable 전략을 materialise한다(AC1.3의 lazy seed).
       await page.goto(`/#/analyses/${id}`);
       await page.getByTestId('open-discovery-strategy').click();
@@ -171,8 +158,7 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       await expect(page.getByTestId('strategy-approved')).toBeVisible();
 
       // 승인이 분석을 재큐잉해 4단계(feature_candidates)를 실행한다 — 워커는
-      // 임대 중이라 재청구한다. 이 순서(승인 → 재큐잉 → 4단계)가 시나리오 1이
-      // 말하는 「단계별 제시」의 후반부다.
+      // 임대 중이라 재청구한다.
       await expect
         .poll(() => candidatesOf(page, id!).then((l) => l.extracted), {
           timeout: 120_000,
@@ -180,7 +166,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
         })
         .toBe(true);
 
-      // ── 시나리오 단계 5: feature 후보 목록 확인 ─────────────────────────
       // 화면에서 자연스러운 다음 CTA로 간다 — 「순서대로 제시」는 이 경로로 관측한다.
       await page.getByTestId('strategy-open-candidates').click();
       const list = await candidatesOf(page, id!);
@@ -196,7 +181,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
         ).toContain('payments-api/');
       }
 
-      // ── 산출물이 파이프라인 순서로 단계별 제시됐다 ──────────────────────
       // 성공 단계의 행은 상태 단어가 아니라 **측정값**(detail)으로 그려진다 — 선례:
       // sc01-03의 `categories`, sc01-04의 `entry points`. 그래서 행↔API의 detail을
       // 대조한다(상수를 박지 않는다). 파이프라인 순서 자체는 행의 나열 순서이고,
@@ -217,7 +201,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       expect(stage5?.status, 'stage 5 is pending').toBe('pending');
       await expect(page.locator('[data-stage="acceptance_dependencies"]')).toContainText('대기 중');
     } finally {
-      // Back to the overlay's resting state, whatever happened above.
       await scaleWorkers(0);
     }
   });
