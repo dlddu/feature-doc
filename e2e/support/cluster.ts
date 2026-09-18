@@ -75,3 +75,24 @@ export async function scaleWorkers(replicas: number): Promise<void> {
     `worker pods did not settle at ${replicas}; still see ${workerPods().join(', ') || '(none)'}`,
   );
 }
+
+/**
+ * Sets (or clears, with `value = null`) one env var on the worker Deployment.
+ *
+ * Like the replica count this is deployment-wide state, so the same lease rule
+ * applies: a spec sets the var *after* `scaleWorkers(0)` and clears it *after*
+ * scaling back down. The pods that start inside the lease window carry it, and
+ * nothing outside that window ever sees it. Env edits rewrite the pod template,
+ * which restarts pods on their own — keeping the ordering above means that
+ * restart happens at a moment no pod is running.
+ *
+ * Used by sc01-06's LLM failure arc (blocker-ledger R1 in
+ * docs/e2e-mocking-policy.md — `FEATUREDOC_STUB_LLM_FAIL`).
+ */
+export function setWorkerEnv(key: string, value: string | null): void {
+  if (value === null) {
+    kubectl('set', 'env', WORKER_DEPLOY, `${key}-`);
+  } else {
+    kubectl('set', 'env', WORKER_DEPLOY, `${key}=${value}`);
+  }
+}
