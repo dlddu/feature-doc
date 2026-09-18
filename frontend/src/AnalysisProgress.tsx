@@ -223,7 +223,7 @@ export function AnalysisProgress({
 
       {analysis.status === 'awaiting_pipeline' && (
         <p className="body sm" style={{ marginTop: 14 }} data-testid="awaiting-pipeline">
-          구현된 단계는 모두 끝났어요. 남은 단계는 분석 파이프라인 슬라이스에서 실행됩니다.
+          여기까지는 끝났어요. 남은 단계는 검토가 필요해서 기다리고 있습니다.
         </p>
       )}
 

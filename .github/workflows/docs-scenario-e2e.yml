@@ -5,8 +5,8 @@
 # 「테스트 시나리오 ↔ e2e spec」을 본다. 셋을 한 잡에 합치지 않는 이유는 실패했을 때
 # 어느 칸이 깨졌는지가 잡 이름만으로 드러나게 하기 위해서다.
 #
-# ci.yml 에 얹지 않는 이유도 형제들과 같다 — ci.yml 은 cargo + kind e2e 를 돌고 그 뒤에
-# ghcr 이미지를 밀기 때문에, 문서 정합성 하나 때문에 그 파이프라인을 건드리지 않는다.
+# 형제들과 같이 스스로 트리거되지 않고 ci.yml 이 workflow_call 로 부른다 — 필수 체크를
+# `ci-gate` 하나로 모으기 위해서다. 이미지 push 는 이 검사를 기다리지 않는다.
 # 이 게이트는 e2e 를 **실행하지 않는다**. spec 이 무엇을 선언하는지만 읽으므로
 # 클러스터도 node 도 필요 없다(python3 stdlib 만).
 #
@@ -15,16 +15,11 @@
 name: docs — scenario ↔ e2e
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  # ci.yml 에서만 호출된다(단독 트리거 없음).
+  workflow_call:
 
 permissions:
   contents: read
-
-concurrency:
-  group: docs-scenario-e2e-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   check:
