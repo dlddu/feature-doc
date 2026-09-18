@@ -45,6 +45,7 @@ async fn login(
     let jar = jar.add(cookies::make(&state, STATE_COOKIE, nonce.clone()));
 
     let location = match state.config.mode {
+        // mock-exception: EXT-01 — 실제 GitHub OAuth 동의 화면·계정은 kind CI에서 왕복 불가
         Mode::Stub => {
             let code = sanitize_handle(params.as_user.as_deref().unwrap_or("stub"));
             format!("/api/auth/callback?code={code}&state={nonce}")
