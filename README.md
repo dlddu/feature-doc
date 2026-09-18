@@ -46,7 +46,8 @@ tools/                     # 문서 정합성 게이트가 쓰는 체커
 ├── check-journey-mockup.py    # 여정 목업 정적 규약 (R0~R10)
 ├── check-journey-prototype.js # 여정 프로토타입 DOM 하네스 (P1~P7, jsdom)
 ├── check-mockup-render.py     # 목업 ↔ 구현 카피 대조 (M0~M6)
-└── check-scenario-e2e.py      # 테스트 시나리오 ↔ e2e spec 1:1 (선언·등재·집계·래칫)
+├── check-scenario-e2e.py      # 테스트 시나리오 ↔ e2e spec 1:1 (선언·등재·집계·래칫)
+└── check-data-format-change.py # PR 이 DB 스키마·저장 형식에 닿는지 판정 (D1~D6) → 리뷰 라우팅
 
 backend/                   # axum 0.8 — /hello + 자격증명 API(GitHub App·LLM Key, 봉투 암호화) + SQLite + dist 정적 서빙
 ├── Cargo.toml             # [[bin]] 2개: featuredoc(API) · featuredoc-worker(분석 워커)
@@ -101,7 +102,8 @@ scripts/
 ├── ci.yml                 # test + e2e + ghcr 푸시
 ├── docs-journey-mockup.yml
 ├── docs-mockup-render.yml
-└── docs-scenario-e2e.yml  # tools/check-scenario-e2e.py
+├── docs-scenario-e2e.yml  # tools/check-scenario-e2e.py
+└── data-format-review.yml # 저장 형식 무변경이면 commit status `review/data-format`=success (pull_request_target)
 
 Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debian slim
 ```
