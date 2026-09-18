@@ -3,6 +3,7 @@
 //! The binary (`main.rs`) is a thin wrapper that loads [`config::Config`],
 //! connects the database, and serves [`build_router`].
 
+pub mod acceptance;
 pub mod analysis;
 pub mod audit;
 pub mod auth;
