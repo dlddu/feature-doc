@@ -37,6 +37,13 @@
 #    (`letterSpacing: '0.1em'`)은 `=` 앞이 아니라 `:` 앞이라 속성 값 필터에 걸리지
 #    않고 카피로 새어 들었다. 길이 리터럴은 제품 카피일 수 없으므로 TECHNICAL 이
 #    거른다(2026-09-02, Analysis Progress 승격이 드러냈다 — 원장에 넣었으면 거짓 부채였다).
+#    두 방향의 **접근성 이름**은 2026-09-18 에 대칭을 맞췄다. 구현측(M3B)은 한글이 든
+#    문자열 리터럴을 속성 값이어도 카피로 세므로 `aria-label="나가기"` 를 집는데,
+#    목업측은 태그를 통째로 지워 같은 `aria-label` 을 못 봤다 — 그래서 목업을 그대로
+#    옮긴 구현이 「목업에 없는 카피」로 몰렸다(가짜 양성). 목업측도 `placeholder` 처럼
+#    `aria-label` 을 뽑아 대조 집합에 넣는다. 이것은 규칙 5 의 사각지대를 닫는 것이
+#    **아니다** — M3A 의 건초더미는 화면 전체를 이어 붙인 부분 문자열 검색이라
+#    (`앱 닫고 나가기` 가 `나가기` 를 덮는다) 여전히 관대한 쪽으로 튄다.
 #  추출 결과는 `--verbose` 로 전부 출력된다. 무엇이 비교됐는지 눈으로 확인할 것.
 
 import html
@@ -175,8 +182,9 @@ def mockup_steps(path: Path) -> dict[str, list[str]]:
         body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
         body = drop_samples(body)
         placeholders = re.findall(r'placeholder="([^"]*)"', body)
+        aria = re.findall(r'aria-label="([^"]*)"', body)
         text = re.sub(r"<[^>]+>", "\x00", body).split("\x00")
-        chunks = [norm(html.unescape(t)) for t in text + placeholders]
+        chunks = [norm(html.unescape(t)) for t in text + placeholders + aria]
         steps[head.group(1)] = [c for c in chunks if c]
     return steps
 
