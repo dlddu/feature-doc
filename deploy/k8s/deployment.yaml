@@ -19,9 +19,10 @@ spec:
     spec:
       containers:
         - name: app
-          # ⚙️ CI가 관리하는 줄입니다. main에 푸시가 들어오면 ci.yml의 `pin` job이
-          # 이미지 빌드를 마친 뒤 이 태그를 그 커밋의 SHA로 바꿔 다시 커밋합니다.
-          # 손으로 고칠 일은 롤백뿐이고, 그때는 되돌릴 커밋의 SHA를 적으면 됩니다.
+          # ⚙️ CI가 관리하는 줄입니다. 운영 값은 **deploy 브랜치**의 이 줄입니다 —
+          # main에 푸시가 들어오면 image.yml의 `pin` job이 이 태그를 그 커밋의 SHA로
+          # 바꾼 커밋을 deploy로 발행하고, Flux는 deploy를 추적합니다. main에 남은 값은
+          # 운영과 무관합니다. 손으로 고칠 일은 없습니다(롤백은 main에 revert PR).
           image: ghcr.io/dlddu/featuredoc:1c39ba2566dcd8a4ff5f18c1ec90dea4601e9922
           # imagePullPolicy intentionally omitted: the tag is an immutable commit
           # SHA, so the default IfNotPresent is correct — a cached layer can never
