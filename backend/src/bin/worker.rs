@@ -121,17 +121,9 @@ async fn main() -> anyhow::Result<()> {
                     .map(|s| s.trim().to_string())
                     .unwrap_or_else(|_| "worker".to_string())
             }),
-        // Bridged from the process-wide switch for now; the next commit reads one
-        // env per boundary and drops the switch.
-        doubles: {
-            let mode = match env_or("FEATUREDOC_MODE", "real").to_ascii_lowercase().as_str() {
-                "stub" => Mode::Stub,
-                _ => Mode::Real,
-            };
-            WorkerDoubles {
-                repo_scan: mode,
-                llm: mode,
-            }
+        doubles: WorkerDoubles {
+            repo_scan: Mode::from_env("FEATUREDOC_DOUBLE_REPO_SCAN"),
+            llm: Mode::from_env("FEATUREDOC_DOUBLE_LLM"),
         },
         github_api_base: trim_slash(&env_or("GITHUB_API_BASE", "https://api.github.com")),
     };
@@ -398,7 +390,7 @@ impl Worker {
 
         let answer = acceptance::derive(
             &self.http,
-            self.mode,
+            self.doubles.llm,
             self.provider_for(job)?,
             job.llm_api_key.as_deref(),
             &job.repo_owner,
@@ -525,17 +517,20 @@ impl Worker {
 
     /// Which provider this job's key belongs to. Shared by every LLM-backed stage so
     /// they cannot disagree about it mid-job.
+    ///
+    /// An active key is the product's entry condition for an analysis, and it stays
+    /// the entry condition when the LLM double is on. This used to fall back to a
+    /// default provider whenever the double was active, which made the stubbed path
+    /// *more permissive than the real one* — a job with no key ran to completion in
+    /// e2e and failed in production. `docs/e2e-mocking-policy.md` treats that
+    /// asymmetry as drift to fix in code rather than an exception to register
+    /// (an LLM-category exception may not cover key selection at all), so the
+    /// fallback is gone and both paths refuse the same way.
     fn provider_for(&self, job: &Claim) -> Result<llm::Provider, String> {
-        match (self.doubles.llm, job.llm_provider.as_deref()) {
-            // Stub mode never reaches a provider, so an absent key is not a failure.
-            (Mode::Stub, other) => Ok(other
-                .and_then(llm::Provider::parse)
-                .unwrap_or(llm::DEFAULT_PROVIDER)),
-            (Mode::Real, Some(p)) => llm::Provider::parse(p)
+        match job.llm_provider.as_deref() {
+            Some(p) => llm::Provider::parse(p)
                 .ok_or_else(|| format!("unsupported LLM provider registered: {p}")),
-            (Mode::Real, None) => {
-                Err("no active LLM key for this user; register one to analyze".to_string())
-            }
+            None => Err("no active LLM key for this user; register one to analyze".to_string()),
         }
     }
 

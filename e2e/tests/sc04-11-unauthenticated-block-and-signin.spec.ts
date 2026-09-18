@@ -6,7 +6,7 @@
 // `sc04-12-logout-session-invalidation.spec.ts`가 지킨다 — 한 파일에 있던 두
 // 시나리오를 분리한 것은 `rct_20260916-0002`가 닫았다.
 //
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), so the GitHub OAuth
+// Runs against the e2e deployment (FEATUREDOC_DOUBLE_GITHUB_AUTH=stub), so the GitHub OAuth
 // boundary is answered by an in-process test double — no network. This spec owns the
 // *default* stub user, because it is the only one that drives the real UI entry point
 // ("Sign in with GitHub"); every other spec signs in through `?as=<handle>` with its

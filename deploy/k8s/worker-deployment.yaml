@@ -35,8 +35,6 @@ spec:
             # database keeps exactly one writer (see backend/src/db.rs).
             - name: FEATUREDOC_API_BASE
               value: "http://featuredoc:8080"
-            - name: FEATUREDOC_MODE
-              value: "real"
             # Recorded on each claimed job so an operator can tell which worker
             # holds it.
             - name: WORKER_ID

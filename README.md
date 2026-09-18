@@ -119,7 +119,7 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 
 ## Walking skeleton 실행
 
-문서 외에 동작하는 수직 슬라이스가 함께 있습니다. axum API가 `/hello`(프로브) + 자격증명 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 그 옆에서 **별도 워크로드인 분석 워커**가 큐를 비웁니다(AC4.5 — 워커는 데이터베이스를 열지 않고 API의 `/internal` 라우트로 작업을 claim 하므로, SQLite는 계속 writer가 하나입니다). 프론트는 디자인 시스템 토큰으로 Credentials Setup 화면을 그립니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 `FEATUREDOC_MODE=stub`에서 테스트 더블로 대체됩니다.
+문서 외에 동작하는 수직 슬라이스가 함께 있습니다. axum API가 `/hello`(프로브) + 자격증명 API(`/api/*`) + `dist/`(SPA)를 같은 오리진에서 서빙하고, 그 옆에서 **별도 워크로드인 분석 워커**가 큐를 비웁니다(AC4.5 — 워커는 데이터베이스를 열지 않고 API의 `/internal` 라우트로 작업을 claim 하므로, SQLite는 계속 writer가 하나입니다). 프론트는 디자인 시스템 토큰으로 Credentials Setup 화면을 그립니다. 자격증명은 SQLite(PVC)에 봉투 암호화로 저장되고, GitHub/LLM 외부 경계는 경계별 `FEATUREDOC_DOUBLE_*` 환경변수로 하나씩 테스트 더블로 대체할 수 있습니다(기본값은 전부 실연동 — 허용 목록과 사유는 `docs/e2e-mocking-policy.md`).
 
 ### 로컬 (k8s 없이)
 
@@ -127,8 +127,11 @@ Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debia
 # 1) 프론트 빌드
 ( cd frontend && npm install && npm run build )
 
-# 2) 백엔드 실행 (frontend/dist 서빙) — 자격증명 흐름을 외부 연동 없이 보려면 stub 모드
-( cd backend && STATIC_DIR=../frontend/dist FEATUREDOC_MODE=stub cargo run --release )
+# 2) 백엔드 실행 (frontend/dist 서빙)
+#    자격증명 흐름을 외부 연동 없이 보려면 API가 소유한 세 경계의 더블을 켭니다.
+( cd backend && STATIC_DIR=../frontend/dist \
+    FEATUREDOC_DOUBLE_GITHUB_AUTH=stub FEATUREDOC_DOUBLE_GITHUB_APP=stub \
+    FEATUREDOC_DOUBLE_LLM_KEY=stub cargo run --release )
 
 # 3) 확인
 curl http://localhost:8080/hello
@@ -142,11 +145,14 @@ dev 모드(`cd frontend && npm run dev`)는 `/hello`를 `localhost:8080`으로 �
 
 ```bash
 # 터미널 1 — API (위 2번 명령에 워커 토큰을 더한 것)
-( cd backend && STATIC_DIR=../frontend/dist FEATUREDOC_MODE=stub \
+( cd backend && STATIC_DIR=../frontend/dist \
+    FEATUREDOC_DOUBLE_GITHUB_AUTH=stub FEATUREDOC_DOUBLE_GITHUB_APP=stub \
+    FEATUREDOC_DOUBLE_LLM_KEY=stub \
     FEATUREDOC_WORKER_TOKEN=dev-token cargo run --release )
 
-# 터미널 2 — 분석 워커
-( cd backend && FEATUREDOC_MODE=stub FEATUREDOC_WORKER_TOKEN=dev-token \
+# 터미널 2 — 분석 워커 (워커가 소유한 두 경계의 더블)
+( cd backend && FEATUREDOC_DOUBLE_REPO_SCAN=stub FEATUREDOC_DOUBLE_LLM=stub \
+    FEATUREDOC_WORKER_TOKEN=dev-token \
     FEATUREDOC_API_BASE=http://127.0.0.1:8080 WORKER_ID=dev-worker \
     cargo run --release --bin featuredoc-worker )
 ```

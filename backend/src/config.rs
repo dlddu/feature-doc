@@ -41,6 +41,22 @@ pub struct Doubles {
     pub llm_key: Mode,
 }
 
+impl Mode {
+    /// Reads one boundary's setting from its own environment variable.
+    ///
+    /// `stub` selects the double; anything else — including an unset variable —
+    /// is the real integration, so a deployment that says nothing gets nothing
+    /// stubbed. Deliberately not one shared name for every boundary: a value read
+    /// here can only ever reach the single boundary its caller names.
+    pub fn from_env(key: &str) -> Self {
+        if env_or(key, "").trim().eq_ignore_ascii_case("stub") {
+            Self::Stub
+        } else {
+            Self::Real
+        }
+    }
+}
+
 impl Doubles {
     /// Every boundary at the same setting. For tests, which want one hermetic
     /// state rather than a per-boundary mix.
@@ -49,6 +65,15 @@ impl Doubles {
             github_auth: mode,
             github_app: mode,
             llm_key: mode,
+        }
+    }
+
+    /// One environment variable per boundary — the API's three.
+    fn from_env() -> Self {
+        Self {
+            github_auth: Mode::from_env("FEATUREDOC_DOUBLE_GITHUB_AUTH"),
+            github_app: Mode::from_env("FEATUREDOC_DOUBLE_GITHUB_APP"),
+            llm_key: Mode::from_env("FEATUREDOC_DOUBLE_LLM_KEY"),
         }
     }
 }
@@ -100,13 +125,7 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> anyhow::Result<Arc<Self>> {
-        // Bridged from the process-wide switch for now; the next commit reads one
-        // env per boundary and drops the switch.
-        let mode = match env_or("FEATUREDOC_MODE", "real").to_ascii_lowercase().as_str() {
-            "stub" => Mode::Stub,
-            _ => Mode::Real,
-        };
-        let doubles = Doubles::all(mode);
+        let doubles = Doubles::from_env();
 
         let kek_secret = std::env::var("FEATUREDOC_KEK").ok();
         if kek_secret.is_none() {

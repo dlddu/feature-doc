@@ -12,7 +12,7 @@
 // `backend/src/llmkey.rs`가 시나리오 4(test#4)로 귀속해 둔 응답이므로, 응답 본문에서
 // 그 메시지를 실측한다(기존 단정은 실패 여부와 트리거 차단만 봤다).
 //
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub). Signs in as its own
+// Runs against the e2e deployment (FEATUREDOC_DOUBLE_LLM_KEY=stub). Signs in as its own
 // stub identity (`?as=sc0404`); keys are per-user state.
 //
 // 자동화 밖 잔여: 실제 제공자에 대한 호출 차단은 stub 경로 밖이다(doc-tracker "e2e 매핑").

@@ -4,7 +4,7 @@
 // 등록한 키의 평문은 화면·API 어디에도 다시 나타나지 않고(식별자만), 자격증명을
 // 다루는 경로는 사용자가 조회할 수 있는 감사 이력으로 남는다.
 //
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub) and signs in as its own
+// Runs against the e2e deployment (FEATUREDOC_DOUBLE_GITHUB_AUTH=stub) and signs in as its own
 // stub identity (`?as=ac43`) so the sentinel key it registers belongs to no other spec.
 //
 // 자동화 밖 잔여: 운영 로그·오류 메시지의 평문 노출 점검은 클러스터 로그 수집에

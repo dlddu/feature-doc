@@ -35,8 +35,9 @@ spec:
             - name: DATABASE_URL
               value: "sqlite:///data/featuredoc.db?mode=rwc"
             # Non-secret runtime config (the e2e overlay patches these).
-            - name: FEATUREDOC_MODE
-              value: "real"
+            # Every external boundary runs for real here: the test doubles are
+            # opt-in per boundary (FEATUREDOC_DOUBLE_*, set only by the e2e
+            # overlay), so a production deployment enables none by saying nothing.
             - name: BASE_URL
               value: "https://featuredoc.example.com"
             - name: COOKIE_SECURE

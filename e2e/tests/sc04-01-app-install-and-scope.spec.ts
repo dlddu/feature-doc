@@ -2,7 +2,7 @@
 //
 // 「GitHub App 설치와 권한 범위 안내」 전용 spec (AC4.1·AC4.3).
 //
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub): the App install
+// Runs against the e2e deployment (FEATUREDOC_DOUBLE_GITHUB_APP=stub): the App install
 // round-trip bounces through our own setup callback instead of GitHub, and the
 // installation resolves to the deterministic `stub-account` with three repositories.
 // Signs in as its own stub identity (`?as=ac41`) so the installation it creates
