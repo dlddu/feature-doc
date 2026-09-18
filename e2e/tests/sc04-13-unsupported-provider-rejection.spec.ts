@@ -15,7 +15,7 @@
 // 시나리오 3·4와 같은 AC를 보지만 뒤에 붙은 시나리오다(문서 자신의 주석 참조 —
 // 기존 번호가 다른 AC의 자동화·문서에 인용돼 재배치하지 않기로 했다).
 //
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), where key validation
+// Runs against the e2e deployment (FEATUREDOC_DOUBLE_LLM_KEY=stub), where key validation
 // is a deterministic shape check instead of a provider round-trip. Signs in as its own
 // stub identity (`?as=sc0413`); keys are per-user state.
 //

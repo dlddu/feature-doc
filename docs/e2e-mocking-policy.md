@@ -5,14 +5,24 @@
 
 ## 목적과 적용 범위
 
-이 레포의 E2E는 **kind 실클러스터에 로컬 빌드 이미지로 API와 분석 워커(별도 Deployment)를 배포하고, 실 SQLite(PVC)·실 봉투 암호화·실 워커 큐를 그대로 구동하는 하네스**(`scripts/e2e.sh` → `deploy/e2e/` 오버레이 → `e2e/smoke.sh` + Playwright)가 기본이다. `FEATUREDOC_MODE=stub` 스위치가 켜는 인프로세스 테스트 더블(`Mode::Stub` 분기)과 브라우저 네트워크 인터셉트는 **실환경으로 재현이 불가능한 경우에 한해서만** 허용하고, 그 예외는 이 문서에 등재된 것만 인정한다. 편의(실환경 준비 회피, 어서션 단순화, 플레이키 무마)를 위한 모킹은 drift다.
+이 레포의 E2E는 **kind 실클러스터에 로컬 빌드 이미지로 API와 분석 워커(별도 Deployment)를 배포하고, 실 SQLite(PVC)·실 봉투 암호화·실 워커 큐를 그대로 구동하는 하네스**(`scripts/e2e.sh` → `deploy/e2e/` 오버레이 → `e2e/smoke.sh` + Playwright)가 기본이다. 경계별 `FEATUREDOC_DOUBLE_*` env가 켜는 인프로세스 테스트 더블(`Mode::Stub` 분기)과 브라우저 네트워크 인터셉트는 **실환경으로 재현이 불가능한 경우에 한해서만** 허용하고, 그 예외는 이 문서에 등재된 것만 인정한다. 편의(실환경 준비 회피, 어서션 단순화, 플레이키 무마)를 위한 모킹은 drift다.
 
 ## 모킹으로 세는 것 (범위 경계)
 
 이 레포의 치환은 네트워크 층이 아니라 **제품 바이너리 안**에 있다. 다음 셋을 모킹으로 센다:
 
-1. **모드 스위치** — `FEATUREDOC_MODE=stub`을 켜는 자리(`backend/src/config.rs`·`backend/src/bin/worker.rs`의 env 파싱, `deploy/e2e/kustomization.yaml`의 API·워커 패치).
-2. **stub 분기** — `Mode::Stub` 분기가 외부 경계를 결정적 더블로 대신하는 자리(GitHub 로그인 신원 · App 설치와 설치 토큰 · 접근 가능 저장소 목록 · 저장소 트리 스캔 · LLM 호출 · LLM 키 실검증), 그리고 LLM 단계가 고정 답을 공급하는 자리(`stub: stub_answer(...)`).
+1. **더블 활성 배선** — 아래 5개 env 중 하나를 `stub`으로 켜는 자리(`deploy/e2e/kustomization.yaml`의 API·워커 패치). 전역 모드 스위치는 2026-09-18 제거됐다(아래 「stub mode 제거 — 완료 기록」). 배선은 **모킹 지점이 아니다**: 등재 대상은 그것이 선택하는 코드 분기이고, 표기 규약대로 활성 지점에는 예외 주석을 달지 않는다.
+
+   | env | 경계 | CODE | 읽는 프로세스 |
+   |-----|------|------|---------------|
+   | `FEATUREDOC_DOUBLE_GITHUB_AUTH` | 로그인 신원 | EXT-01 | API |
+   | `FEATUREDOC_DOUBLE_GITHUB_APP` | App 설치·설치 토큰·저장소 목록 | EXT-02 | API |
+   | `FEATUREDOC_DOUBLE_LLM_KEY` | LLM 키 라이브 검증 | EXT-04 | API |
+   | `FEATUREDOC_DOUBLE_REPO_SCAN` | 저장소 트리 스캔 | EXT-03 | 워커 |
+   | `FEATUREDOC_DOUBLE_LLM` | LLM 호출·고정 답 공급 | LLM-01 | 워커 |
+
+   각 env는 **그 경계를 소유한 프로세스만** 읽는다. API Deployment에는 워커 더블을 켤 수단이 없고 그 역도 같아서, 「하나를 켜면 전부 켜진다」는 성질이 배선 수준에서 사라졌다. 미설정은 언제나 실연동이므로 아무 말도 하지 않는 배포는 아무것도 stub하지 않는다.
+2. **stub 분기** — `Mode::Stub` 분기가 외부 경계를 결정적 더블로 대신하는 자리(GitHub 로그인 신원 · App 설치와 설치 토큰 · 접근 가능 저장소 목록 · 저장소 트리 스캔 · LLM 호출 · LLM 키 실검증), 그리고 LLM 단계가 고정 답을 공급하는 자리(`Ask { stub: stub_*(...) }` — 현재 `stub_answer` · `stub_logic` · `stub_tests`).
 3. **브라우저 네트워크 인터셉트** — Playwright `page.route`·`route.fulfill` 계열(현재 0건).
 
 SQLite·봉투 암호화·세션·워커 큐·워커 replica 임대(`e2e/support/cluster.ts`의 `kubectl scale`)는 **실제 구현이 도는 것**이라 모킹이 아니다. stub 신원 선택(`/api/auth/login?as=<handle>`)은 로그인 분기의 입력이라 별도 지점으로 세지 않는다.
@@ -29,6 +39,7 @@ SQLite·봉투 암호화·세션·워커 큐·워커 replica 임대(`e2e/support
 - `repo_scan::stub_scan`은 스텁 저장소 집합에 없는 브랜치를 real과 같은 `github tree rejected (404)`로 거부한다(2026-08-13 수정).
 - `llmkey` stub 검증은 길이 ≥ 20 **그리고** `provider.prefix()` 시작 형식만 받아들여, 미지원 제공자 키를 real과 같은 거부 사유로 막는다(2026-09-02 수정).
 - `llm::stub_answer`는 `FEATUREDOC_STUB_LLM_FAIL`이 지정한 프롬프트 부분열이 ask 입력에 실재할 때 real과 같은 한도 초과 오류(`LLM rejected the request (429)`)로 실패하고, 그 밖의 입력은 결정적 답을 유지한다 — stub은 실 LLM의 실패(한도 초과·시간 초과)를 표현하지 못했던 원장 R1을 충실도 확장으로 닫은 것(2026-09-18, `rct_20260918-0001`).
+- `bin/worker.rs`의 `provider_for`는 활성 LLM 키가 없는 job을 더블 활성 여부와 무관하게 real과 같은 사유(`no active LLM key for this user; register one to analyze`)로 거부한다. 이전에는 LLM 더블이 켜져 있으면 키 없는 job을 기본 제공자로 진행시켜, **분석의 진입 조건이 e2e에서만 느슨했다** — real보다 관대한 분기이므로 등재가 아니라 제거로 닫았다(2026-09-18, `rct_20260918-0002`). LLM 카테고리가 「키 선택」 경로를 덮을 수 없다는 조항과도 같은 결론이다. 이에 기대고 있던 `sc04-07`·`sc04-08`은 다른 분석 spec과 같은 키 등록 셋업을 갖췄다.
 
 ## 표기 규약
 
@@ -43,24 +54,26 @@ SQLite·봉투 암호화·세션·워커 큐·워커 replica 임대(`e2e/support
 
 주석은 **등재된 지점에만** 붙인다 — 미등재 지점(stub mode 제거 계획의 스위치 5쌍)에는 주석을 붙이지 않는다.
 
-## 허용목록 (등재 집합 — 2026-09-18 재등재, 12쌍 / 10파일)
+## 허용목록 (등재 집합 — 2026-09-18 재등재, 14쌍 / 11파일)
 
-지점은 **파일 × 토큰 쌍** 단위로 등재한다. 아래 표가 등재 집합이며, 각 행의 CODE는 코드 주석에 동일하게 부착된다. 코드 실재 지점은 17쌍이지만 등재 집합은 그중 **카테고리(EXT·LLM)가 성립하는 12쌍**으로 한정한다 — 남는 5쌍(모드 스위치)은 의도적으로 미등재로 둔다(아래 「stub mode 제거 계획」). 미등재 5쌍은 불변식 1의 drift 신호로 계속 보고되며, 그것이 해소 압력으로 남는 것이 이 문서의 설계다.
+지점은 **파일 × 토큰 쌍** 단위로 등재한다. 아래 표가 등재 집합이며, 각 행의 CODE는 코드 주석에 동일하게 부착된다. 2026-09-18 전역 모드 스위치가 제거된 뒤로 **코드 실재 지점 14쌍 == 등재 14쌍**이다(미등재 0 · 고아 0). 「활성 env」 열은 그 행의 더블을 켜는 배선이며, 배선 자체는 등재 대상이 아니다.
 
-| # | 파일 | 토큰 | CODE | 지점 내용 |
-|---|------|------|------|-----------|
-| 1 | `backend/src/auth.rs` | `Mode::Stub` | EXT-01 | 로그인 authorize가 코드 콜백 리다이렉트로 바로 답하는 분기 |
-| 2 | `backend/src/github_api.rs` | `Mode::Stub` | EXT-01 | 코드 교환·GitHub 사용자 조회의 결정적 더블 |
-| 3 | `backend/src/github.rs` | `Mode::Stub` | EXT-02 | App 설치 유입 URL 대체(설치 완료 콜백 재현) |
-| 4 | `backend/src/github_app.rs` | `Mode::Stub` | EXT-02 | 설치 토큰 발급 · 설치 메타 · 접근 가능 저장소 목록 · 저장소 개수 (4곳) |
-| 5 | `backend/src/repo_scan.rs` | `Mode::Stub` | EXT-03 | 저장소 트리 스캔의 결정적 더블 |
-| 6 | `backend/src/llm.rs` | `Mode::Stub` | LLM-01 | `ask`의 stub 응답 디스패치(워커 런타임 경로) |
-| 7 | `backend/src/cross_cutting.rs` | `stub: stub_answer` | LLM-01 | 횡단 추출 Ask의 고정 답 공급(제품 경로) |
-| 8 | `backend/src/cross_cutting.rs` | `Mode::Stub` | LLM-01 | `#[cfg(test)]` 단위 테스트 모듈 내 사용 (3곳) |
-| 9 | `backend/src/discovery_strategy.rs` | `stub: stub_answer` | LLM-01 | 탐색 전략 Ask의 고정 답 공급(제품 경로) |
-| 10 | `backend/src/discovery_strategy.rs` | `Mode::Stub` | LLM-01 | `#[cfg(test)]` 단위 테스트 모듈 내 사용 (2곳) |
-| 11 | `backend/src/feature_candidates.rs` | `stub: stub_answer` | LLM-01 | feature 후보 Ask의 고정 답 공급(제품 경로) |
-| 12 | `backend/src/llmkey.rs` | `Mode::Stub` | EXT-04 | LLM 키 라이브 검증의 형식 기반 더블 |
+| # | 파일 | 토큰 | CODE | 활성 env | 지점 내용 |
+|---|------|------|------|----------|-----------|
+| 1 | `backend/src/auth.rs` | `Mode::Stub` | EXT-01 | `FEATUREDOC_DOUBLE_GITHUB_AUTH` | 로그인 authorize가 코드 콜백 리다이렉트로 바로 답하는 분기 |
+| 2 | `backend/src/github_api.rs` | `Mode::Stub` | EXT-01 | `FEATUREDOC_DOUBLE_GITHUB_AUTH` | 코드 교환·GitHub 사용자 조회의 결정적 더블 |
+| 3 | `backend/src/github.rs` | `Mode::Stub` | EXT-02 | `FEATUREDOC_DOUBLE_GITHUB_APP` | App 설치 유입 URL 대체(설치 완료 콜백 재현) |
+| 4 | `backend/src/github_app.rs` | `Mode::Stub` | EXT-02 | `FEATUREDOC_DOUBLE_GITHUB_APP` | 설치 토큰 발급 · 설치 메타 · 접근 가능 저장소 목록 · 저장소 개수 (4곳) |
+| 5 | `backend/src/repo_scan.rs` | `Mode::Stub` | EXT-03 | `FEATUREDOC_DOUBLE_REPO_SCAN` | 저장소 트리 스캔의 결정적 더블 |
+| 6 | `backend/src/llm.rs` | `Mode::Stub` | LLM-01 | `FEATUREDOC_DOUBLE_LLM` | `ask`의 stub 응답 디스패치(워커 런타임 경로) |
+| 7 | `backend/src/cross_cutting.rs` | `stub: stub_answer` | LLM-01 | `FEATUREDOC_DOUBLE_LLM` | 횡단 추출 Ask의 고정 답 공급(제품 경로) |
+| 8 | `backend/src/cross_cutting.rs` | `Mode::Stub` | LLM-01 | —(테스트가 직접 지정) | `#[cfg(test)]` 단위 테스트 모듈 내 사용 (3곳) |
+| 9 | `backend/src/discovery_strategy.rs` | `stub: stub_answer` | LLM-01 | `FEATUREDOC_DOUBLE_LLM` | 탐색 전략 Ask의 고정 답 공급(제품 경로) |
+| 10 | `backend/src/discovery_strategy.rs` | `Mode::Stub` | LLM-01 | —(테스트가 직접 지정) | `#[cfg(test)]` 단위 테스트 모듈 내 사용 (2곳) |
+| 11 | `backend/src/feature_candidates.rs` | `stub: stub_answer` | LLM-01 | `FEATUREDOC_DOUBLE_LLM` | feature 후보 Ask의 고정 답 공급(제품 경로) |
+| 12 | `backend/src/llmkey.rs` | `Mode::Stub` | EXT-04 | `FEATUREDOC_DOUBLE_LLM_KEY` | LLM 키 라이브 검증의 형식 기반 더블 |
+| 13 | `backend/src/acceptance.rs` | `stub: stub_logic` | LLM-01 | `FEATUREDOC_DOUBLE_LLM` | 인수 기준 로직 패스(AC2.1) Ask의 고정 답 공급(제품 경로) |
+| 14 | `backend/src/acceptance.rs` | `stub: stub_tests` | LLM-01 | `FEATUREDOC_DOUBLE_LLM` | 인수 기준 테스트 패스(AC2.2) Ask의 고정 답 공급(제품 경로) |
 
 ### 등재 사유
 
@@ -70,23 +83,40 @@ SQLite·봉투 암호화·세션·워커 큐·워커 replica 임대(`e2e/support
 | EXT-02 | EXT | 실제 GitHub App 설치(계정·동의)와 App JWT 서명용 실제 개인키가 필요 | sc04-01, sc01-01 |
 | EXT-03 | EXT | 트리 스캔은 실 설치 토큰으로 실 저장소의 recursive git tree를 읽어야 한다 | sc01-01, sc01-06 |
 | EXT-04 | EXT | 키 라이브 검증은 실 프로바이더 키(과금 자격)로 인증된 요청을 해야 한다 | sc04-03, sc04-04, sc04-13 |
-| LLM-01 | LLM | 실 LLM 응답은 비결정적·과금 — 시나리오 3의 결정성 조항(재분석 시 `unchanged`, 항목이 분석 트리의 경로를 근거로 듦)이 고정 답을 요구 | sc01-01, sc01-03, sc01-04, sc01-07 |
+| LLM-01 | LLM | 실 LLM 응답은 비결정적·과금 — 시나리오 3의 결정성 조항(재분석 시 `unchanged`, 항목이 분석 트리의 경로를 근거로 듦)이 고정 답을 요구. AC2.x는 한 걸음 더 나아가 **인수 기준 문장마다 근거 코드 위치가 분석 트리 안에 있는지**를 단정하므로, 근거가 결정적이지 않으면 단정 자체가 성립하지 않는다 | sc01-01, sc01-03, sc01-04, sc01-07, sc02-01, sc02-02, sc02-04 |
 
 **단위 테스트 쌍(8·10행)에 관하여**: `#[cfg(test)]` 모듈의 `Mode::Stub` 사용은 E2E 예외가 아니라(cargo test의 모킹은 정상) 지문-등재 1:1 유지를 위해 같이 등재한다. 주석은 각 테스트 모듈 선언 위 1건으로 모듈 안 사용을 덮는다.
 
-## stub mode 제거 계획 (미등재 drift — 차단 요인 원장과 별개)
+## stub mode 제거 — 완료 기록 (2026-09-18, `rct_20260918-0002`)
 
-모드 스위치 5쌍은 허용 카테고리(EXT·LLM)에 해당하지 않아 등재하지 않는다. 사용자 판정(2026-09-18 검토 거부 원문 — 「stub mode는 drift 해소 대상」): 예외 유형으로 굳히지 않고, 실환경으로 좁혀 **제거**한다. 미등재인 한 불변식 1은 이 5쌍을 미등재 drift로 계속 보고한다 — 그것이 의도된 해소 압력이며, 이 표는 그 해소 방향을 후속 task가 읽게 하는 자리다. 이 표는 차단 요인 원장과 별개다: 차단 요인은 E2E가 밟지 못하는 경로의 원인이고, 모드 스위치는 현재 E2E가 밟고 있는 활성 스위치라 B1/B2/B3 판정 대상이 아니다.
+전역 `FEATUREDOC_MODE` 스위치와 그 파싱·오버레이 패치 **5쌍은 제거됐다.** 이 절은 그것이 어떻게
+사라졌는지를 남기는 기록이며, 더 이상 미등재 drift를 기술하지 않는다(불변식 1: 코드 14쌍 == 등재 14쌍 —
+스위치 5쌍이 빠지고 #43이 들여온 인수 기준 단계의 고정 답 2쌍이 등재로 들어온 결과다).
 
-**원칙**: E2E의 기본은 실환경 하네스(kind 실클러스터 + 실 SQLite·봉투 암호화·워커)다. 등재된 EXT·LLM 더블은 경계별로 선택 활성화되는 배선으로 좁히고, 전역 스위치(`FEATUREDOC_MODE` env와 그 파싱·오버레이 패치)는 그 재배선이 착지하면 제거한다. 더블별 활성 방식의 구체 설계는 후속 task가 판정한다. 스위치 지점에 주석을 붙이거나 SW 유형을 다시 만드는 것은 반쪽짜리 등재라 하지 않는다.
+사용자 판정(2026-09-18 검토 거부 원문 — 「stub mode는 drift 해소 대상」)에 따라 예외 유형으로 굳히지
+않고 제거했고, 앞선 문면이 후속 task에 위임했던 **「더블별 활성 방식의 구체 설계」**는 다음과 같이
+판정됐다 — **경계마다 전용 env 하나를, 그 경계를 소유한 프로세스만 읽는다**(표는 「모킹으로 세는 것」 1번).
 
-| 파일 | 토큰 | 지점 내용 | 해소 방향 | 소관 | 선행 | 재검토 시점 |
-|------|------|-----------|-----------|------|------|-------------|
-| `backend/src/config.rs` | `FEATUREDOC_MODE` | API 모드 env 파싱 | EXT·LLM 더블 선택 활성화 배선 착지 후 전역 스위치 제거 | feature-doc 백엔드·e2e 배선 | 없음(후속 task 착수 가능) | 2026-12-16 |
-| `backend/src/config.rs` | `Mode::Stub` | 위 파싱의 `"stub"` 매핑 | 같은 제거 방향(위 행과 동일) | feature-doc 백엔드·e2e 배선 | 없음(후속 task 착수 가능) | 2026-12-16 |
-| `backend/src/bin/worker.rs` | `FEATUREDOC_MODE` | 워커 모드 env 파싱 | 같은 제거 방향 | feature-doc 백엔드·e2e 배선 | 없음(후속 task 착수 가능) | 2026-12-16 |
-| `backend/src/bin/worker.rs` | `Mode::Stub` | env 파싱 매핑 + `provider_for`의 stub 모드 키 생략 허용 | 같은 제거 방향 | feature-doc 백엔드·e2e 배선 | 없음(후속 task 착수 가능) | 2026-12-16 |
-| `deploy/e2e/kustomization.yaml` | `FEATUREDOC_MODE` | e2e 오버레이가 API·워커 Deployment에 stub 모드를 켠다 | 같은 제거 방향 | feature-doc 백엔드·e2e 배선 | 없음(후속 task 착수 가능) | 2026-12-16 |
+| 제거된 지점 | 무엇으로 대체됐나 |
+|-------------|-------------------|
+| `backend/src/config.rs` · `FEATUREDOC_MODE` | `Doubles::from_env()` — API가 소유한 세 경계를 각자의 env에서 읽는다 |
+| `backend/src/config.rs` · `Mode::Stub` | 스위치 파싱이 사라져 남지 않는다. 값 해석은 `Mode::from_env`가 타입 자신의 생성자로 수행한다 |
+| `backend/src/bin/worker.rs` · `FEATUREDOC_MODE` | `WorkerDoubles` — 워커가 소유한 두 경계를 각자의 env에서 읽는다 |
+| `backend/src/bin/worker.rs` · `Mode::Stub` | env 파싱 매핑 소멸 + `provider_for`의 키 생략 허용은 **충실도 결함으로 제거**(위 「충실도 보증」 4번) |
+| `deploy/e2e/kustomization.yaml` · `FEATUREDOC_MODE` | API 패치가 EXT-01·02·04 env를, 워커 패치가 EXT-03·LLM-01 env를 켠다 |
+
+운영 매니페스트(`deploy/k8s/`)의 `FEATUREDOC_MODE: "real"` 두 줄도 같이 지웠다 — 더블이 opt-in이 되어
+아무 말도 하지 않는 배포가 곧 전 경계 실연동이고, 파서가 없어진 뒤로는 죽은 설정이기 때문이다.
+
+### 지문 사각지대 고지 (모델 소유자에게)
+
+새 env 이름 `FEATUREDOC_DOUBLE_*`는 이 모델의 현행 as-is 지문 패턴(`Mode::Stub` · `stub: stub_*` ·
+**`FEATUREDOC_MODE` 리터럴** · 표기 주석)에 **걸리지 않는다.** 즉 이번 변경으로 배선이 실제로 좁아진
+것과, 배선이 지문에서 보이지 않게 된 것은 **다른 사실이며 섞으면 안 된다.** 불변식 1이 닫힌 근거는
+「스위치가 사라져서」이지 「스위치가 안 보여서」가 아니지만, 앞으로 새 `FEATUREDOC_DOUBLE_*`가 추가돼도
+지문은 침묵한다. 패턴을 `FEATUREDOC_(MODE|DOUBLE_[A-Z_]+)`로 넓히는 것은 **모델 정의(가변부) 개정이라
+reconciler-tobe-modeler 소관**이므로 이 task가 처리하지 않고 여기 남긴다. 그때까지의 안전망은 표기 규약과
+이 절이다.
 
 ## 차단 요인 원장
 
@@ -112,4 +142,6 @@ SQLite·봉투 암호화·세션·워커 큐·워커 replica 임대(`e2e/support
 |------|------|------|
 | 2026-09-17 | rct_20260917-0001 | 문서 신설: 정책·허용목록 17쌍(EXT 4종·LLM 1종·스위치 유형)·원장 R1·가림 기록·충실도 보증 2건 확정 |
 | 2026-09-18 | rct_20260917-0001 | 검토 반영 재작업: SW-01 유형 등재 철회(사용자 지시 — stub mode는 drift 해소 대상), 허용목록 17→12쌍, 스위치 지점 주석 제거, stub mode 제거 계획 표 신설, 허브 등록 |
+| 2026-09-18 | rct_20260918-0002 | 전역 `FEATUREDOC_MODE` 스위치 제거(미등재 5쌍 소멸): 경계별 `FEATUREDOC_DOUBLE_*` 활성 배선 도입, `provider_for`의 키 생략 허용을 충실도 결함으로 제거(+ `sc04-07`·`sc04-08` 키 셋업 보강), 허용목록에 「활성 env」 열 추가, 제거 계획 표를 완료 기록으로 전환, 지문 사각지대 고지 신설 |
+| 2026-09-18 | rct_20260918-0002 | 위 재계획 중 main에 착지한 #43(AC2.1~2.3 인수 기준 단계)이 `backend/src/acceptance.rs`에 고정 답 공급 2쌍을 **미등재·무주석으로** 들여왔다. 기존 LLM 단계 3쌍(7·9·11행)과 같은 경계·같은 메커니즘이므로 LLM-01로 등재하고 표기 주석을 달았다 — 허용목록 12→14쌍(10→11파일). 불변식 1은 이 등재까지 포함해야 닫힌다 |
 | 2026-09-18 | rct_20260918-0001 | 원장 R1 해소(충실도 확장): `llm::stub_answer`에 결정적 실패 트리거 착지(`FEATUREDOC_STUB_LLM_FAIL` — 프롬프트 부분열 일치 시 real과 같은 `LLM rejected the request (429)`), sc01-06이 시나리오 6 원문의 사전 조건(LLM 한도 초과로 실패한 feature 추출 단계)을 직접 재현. 트리 404 우회 arc는 기존 단정으로 유지하고 doc-tracker 비고를 갱신 |

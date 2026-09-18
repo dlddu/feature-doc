@@ -9,7 +9,7 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 use common::stub_state;
-use featuredoc::config::{Config, GithubConfig, Mode};
+use featuredoc::config::{Config, Doubles, GithubConfig, Mode};
 use featuredoc::github_api::GithubUser;
 use featuredoc::state::AppState;
 use featuredoc::{build_router, installations, session, users};
@@ -65,7 +65,7 @@ fn config_debug_redacts_secrets() {
         preview_id: None,
         static_dir: "dist".into(),
         kek: [0xAB; 32],
-        mode: Mode::Real,
+        doubles: Doubles::all(Mode::Real),
         github: GithubConfig {
             app_private_key: "-----BEGIN RSA PRIVATE KEY-----secretpem".into(),
             client_id: "Iv1.public".into(),

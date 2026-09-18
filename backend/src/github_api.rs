@@ -32,7 +32,7 @@ pub async fn exchange_code_for_user(
     state: &AppState,
     code: &str,
 ) -> Result<AuthOutcome, AppError> {
-    match state.config.mode {
+    match state.config.doubles.github_auth {
         // mock-exception: EXT-01 — 실제 GitHub OAuth 동의 화면·계정은 kind CI에서 왕복 불가
         Mode::Stub => Ok(AuthOutcome {
             user: stub_user_from_code(code),

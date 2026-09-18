@@ -18,7 +18,7 @@
 // 운영 로그 절반은 클러스터 로그 수집이 필요해 선례(sc04-05)와 같이 등재 SSOT의
 // 「자동화 밖 잔여」에 남는다.
 //
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), so the GitHub OAuth
+// Runs against the e2e deployment (FEATUREDOC_DOUBLE_GITHUB_AUTH=stub), so the GitHub OAuth
 // boundary is answered by an in-process test double — no network. The *default*
 // stub user belongs to sc04-11 (it is the only one driving the real UI entry
 // point); this spec signs in as its own identity (`?as=sc0412`) so that per-user

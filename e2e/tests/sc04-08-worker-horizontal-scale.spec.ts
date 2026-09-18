@@ -34,10 +34,11 @@ import { expect, test, type APIRequestContext } from '@playwright/test';
 import { desiredWorkerReplicas, scaleWorkers, workerLogs } from '../support/cluster';
 
 /**
- * Signs in as this spec's stub user and links a (stub) App installation — the
- * pre-condition for enqueuing anything. Both are the same endpoints the UI drives;
- * this spec calls them directly because its subject is the cluster topology, not
- * the screens (which sc01-02 / sc04-01 own).
+ * Signs in as this spec's stub user, links a (stub) App installation and registers
+ * an LLM key — the pre-conditions for enqueuing anything that will actually run.
+ * All three are the same endpoints the UI drives; this spec calls them directly
+ * because its subject is the cluster topology, not the screens (which sc01-02 /
+ * sc04-01 / sc04-03 own).
  */
 async function signInWithApp(request: APIRequestContext): Promise<void> {
   const login = await request.get('/api/auth/login?as=sc0408');
@@ -49,6 +50,17 @@ async function signInWithApp(request: APIRequestContext): Promise<void> {
   const connection = await request.get('/api/github/connection');
   expect(connection.ok()).toBeTruthy();
   expect((await connection.json()).installed, 'App must be linked before enqueuing').toBe(true);
+
+  // Same entry condition every other analysis-running spec sets up. This file used
+  // to skip it and still drain, because the worker let a keyless job fall back to
+  // a default provider whenever the LLM double was on — a stub path more permissive
+  // than the real one. That leniency is gone (backend/src/bin/worker.rs
+  // `provider_for`), so the topology under test now runs the same jobs production
+  // would.
+  const key = await request.post('/api/llm-keys', {
+    data: { provider: 'openai', key: 'sk-proj-8888888888888888888888' },
+  });
+  expect(key.ok(), 'an active LLM key is 분석의 진입 조건').toBeTruthy();
 }
 
 async function enqueue(request: APIRequestContext, repo: string): Promise<string> {

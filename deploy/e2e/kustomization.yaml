@@ -15,9 +15,10 @@ images:
     newName: featuredoc
     newTag: dev
 
-# Generate the stub-mode secret (the base provides none — see secret.yaml.example):
-# a deterministic e2e KEK; GitHub creds stay empty since stub mode never calls
-# GitHub. Run mode + base URL + cookie flag are non-secret env, overridden below.
+# Generate the e2e secret (the base provides none — see secret.yaml.example): a
+# deterministic e2e KEK; GitHub creds stay empty since the GitHub doubles enabled
+# below never call GitHub. Double selection + base URL + cookie flag are
+# non-secret env, overridden below.
 secretGenerator:
   - name: featuredoc-secrets
     literals:
@@ -47,9 +48,20 @@ patches:
             containers:
               - name: app
                 imagePullPolicy: IfNotPresent
-                # Stub mode, http cookies, local base URL (merged by env name).
+                # Enables the three doubles this process owns (EXT-01 · EXT-02 ·
+                # EXT-04), plus http cookies and the local base URL (merged by env
+                # name). The worker's two are on its own Deployment below — neither
+                # workload can enable the other's doubles. These are activation
+                # wiring, not mocking sites: the registered sites are the code
+                # branches they select, listed in docs/e2e-mocking-policy.md, and
+                # the policy is explicit that switch points carry no exception
+                # comment of their own.
                 env:
-                  - name: FEATUREDOC_MODE
+                  - name: FEATUREDOC_DOUBLE_GITHUB_AUTH
+                    value: "stub"
+                  - name: FEATUREDOC_DOUBLE_GITHUB_APP
+                    value: "stub"
+                  - name: FEATUREDOC_DOUBLE_LLM_KEY
                     value: "stub"
                   - name: BASE_URL
                     value: "http://localhost:8080"
@@ -77,8 +89,17 @@ patches:
             containers:
               - name: worker
                 imagePullPolicy: IfNotPresent
-                # Stub mode: repo_scan answers from the deterministic stub set, so
-                # the worker never reaches GitHub from kind.
+                # The two doubles this process owns. EXT-03: repo_scan answers from
+                # the deterministic stub set, so the worker never reaches GitHub
+                # from kind. LLM-01: the analysis stages answer from the canned
+                # documents the determinism assertions need. Activation wiring, not
+                # mocking sites — see the API patch above.
+                #
+                # FEATUREDOC_STUB_LLM_FAIL is deliberately NOT set here: sc01-06
+                # injects it onto this Deployment inside its own worker lease and
+                # removes it afterwards (e2e/support/cluster.ts setWorkerEnv).
                 env:
-                  - name: FEATUREDOC_MODE
+                  - name: FEATUREDOC_DOUBLE_REPO_SCAN
+                    value: "stub"
+                  - name: FEATUREDOC_DOUBLE_LLM
                     value: "stub"

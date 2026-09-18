@@ -7,7 +7,7 @@
 // `01-analysis-pipeline.md#시나리오 1` 의 것이고, 그 전용 spec 이 신설될 때
 // 이어받는다(doc-tracker 「e2e 매핑」의 미매핑 잔여 표 참조).
 //
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), whose GitHub App
+// Runs against the e2e deployment (FEATUREDOC_DOUBLE_GITHUB_APP=stub), whose GitHub App
 // installation can reach exactly three deterministic repositories
 // (stub-account/{payments-api,checkout-web,notif-worker}).
 //

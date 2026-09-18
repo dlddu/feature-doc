@@ -10,7 +10,7 @@ use axum::http::{header, Request, StatusCode};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
-use featuredoc::config::{Config, GithubConfig, Mode};
+use featuredoc::config::{Config, Doubles, GithubConfig, Mode};
 use featuredoc::github_api::GithubUser;
 use featuredoc::state::AppState;
 use featuredoc::{build_router, db, session, users};
@@ -39,7 +39,7 @@ async fn stub_state_for_preview(preview_id: Option<&str>) -> (AppState, PathBuf)
         preview_id: preview_id.map(String::from),
         static_dir: "dist".into(),
         kek: [7u8; 32],
-        mode: Mode::Stub,
+        doubles: Doubles::all(Mode::Stub),
         github: GithubConfig {
             app_private_key: String::new(),
             client_id: String::new(),

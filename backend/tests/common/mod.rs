@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use featuredoc::config::{Config, GithubConfig, Mode};
+use featuredoc::config::{Config, Doubles, GithubConfig, Mode};
 use featuredoc::db;
 use featuredoc::state::AppState;
 
@@ -58,7 +58,7 @@ async fn state_with(mode: Mode, api_base: &str) -> (AppState, PathBuf) {
         preview_id: None,
         static_dir: "dist".into(),
         kek: [9u8; 32],
-        mode,
+        doubles: Doubles::all(mode),
         github: GithubConfig {
             app_private_key: String::new(),
             client_id: String::new(),

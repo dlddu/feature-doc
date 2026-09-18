@@ -7,7 +7,7 @@
 // `sc04-13-unsupported-provider-rejection.spec.ts`가 지킨다 — 한 파일에 있던 셋을
 // 분리한 것은 `rct_20260916-0002`가 닫았다.
 //
-// Runs against the stub-mode deployment (FEATUREDOC_MODE=stub), where key validation
+// Runs against the e2e deployment (FEATUREDOC_DOUBLE_LLM_KEY=stub), where key validation
 // is a deterministic shape check instead of a provider round-trip. Signs in as its own
 // stub identity (`?as=ac42`); keys are per-user state.
 //
