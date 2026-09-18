@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 ///
 /// `real` (default) talks to GitHub and the LLM providers over the network.
 /// `stub` short-circuits those boundaries with canned, deterministic behaviour so
-/// the kind-based e2e and unit tests stay hermetic (plan: "테스트 더블로 모킹").
+/// the kind-based e2e and unit tests stay hermetic.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Mode {
     Real,
@@ -20,7 +20,7 @@ pub enum Mode {
 }
 
 /// Single GitHub App used for both user-authorization (login) and installation
-/// (repository access). See plan: "로그인·설치를 단일 GitHub App으로 통합".
+/// (repository access).
 #[derive(Clone)]
 pub struct GithubConfig {
     /// PEM-encoded RSA private key used to mint short-lived App JWTs. Secret.
@@ -30,16 +30,13 @@ pub struct GithubConfig {
     /// OAuth client secret for the user-authorization code exchange. Secret.
     pub client_secret: String,
     pub app_slug: String,
-    /// API origin, e.g. `https://api.github.com`. Overridable for tests.
     pub api_base: String,
-    /// Web origin, e.g. `https://github.com`. Overridable for tests.
     pub web_base: String,
 }
 
 #[derive(Clone)]
 pub struct Config {
     pub database_url: String,
-    /// Public origin this service is reached at.
     pub base_url: String,
     /// Origin the GitHub App's callback URL is registered at. Normally the same
     /// as [`Self::base_url`].
@@ -61,7 +58,7 @@ pub struct Config {
     pub github: GithubConfig,
     /// Emit the session cookie with `Secure` (true behind HTTPS). Off for local/e2e http.
     pub cookie_secure: bool,
-    /// Shared secret the analysis worker presents on `/internal/*` (AC4.5). Secret.
+    /// Shared secret the analysis worker presents on `/internal/*`. Secret.
     /// Empty means "this deployment has no worker" — the internal routes then
     /// reject every caller rather than falling open.
     pub worker_token: String,
@@ -93,8 +90,6 @@ impl Config {
         };
 
         let base_url = trim_trailing_slash(&env_or("BASE_URL", "http://localhost:8080"));
-        // Unset (the normal case, including production) means "callbacks come
-        // back to me", which is exactly base_url.
         let oauth_redirect_base_url = match env_or("OAUTH_REDIRECT_BASE_URL", "") {
             v if v.trim().is_empty() => base_url.clone(),
             v => trim_trailing_slash(v.trim()),
@@ -165,9 +160,6 @@ fn sanitize_preview_id(raw: &str) -> Option<String> {
     }
 }
 
-// Redacting Debug: secrets (KEK, App private key, client secret) render as
-// [REDACTED] so a `{:?}` of the config can never leak them (AC4.3). client_id is
-// a public identifier and is shown.
 impl std::fmt::Debug for GithubConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GithubConfig")
@@ -198,7 +190,6 @@ impl std::fmt::Debug for Config {
     }
 }
 
-/// Derives a stable 32-byte KEK from an arbitrary secret string via domain-separated SHA-256.
 fn derive_kek(secret: &str) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update(b"featuredoc-kek-v1");

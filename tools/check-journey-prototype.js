@@ -54,7 +54,6 @@ function ok(cond, rule, msg) {
   return !!cond;
 }
 
-/* ── 여정 문서 파싱 (기대값의 원천) ─────────────────────────────── */
 function parseJourney(file) {
   const doc = fs.readFileSync(file, 'utf8');
   const stepRe = /^### `(STP-[a-z0-9-]+)` (.+)$/gm;
@@ -79,7 +78,6 @@ function parseJourney(file) {
   return { steps, branches };
 }
 
-/* ── 페이지 로드 ────────────────────────────────────────────────── */
 function load(file, hash) {
   const html = fs.readFileSync(file, 'utf8');
   const dom = new JSDOM(html, {
@@ -117,14 +115,8 @@ function visible(el) {
   return !!el && el.classList.contains('on') && el.style.display !== 'none';
 }
 
-/* ── 페이지별 제품 경로 등록 ─────────────────────────────────────
-   (c) 는 "각 단계 화면 안의 주요 행동을 눌러 다음 단계에 도달" 이라, 그 단계에서
-   무엇을 입력해야 CTA 가 살아나는지는 화면마다 다르다. 그 최소 입력을 여기에
-   등록한다. 등록이 없는 여정 페이지는 통과시키지 않는다 — 새 여정이 이관될 때
-   하네스가 조용히 공허해지는 것을 막는다.                                       */
 const ARM = {
   'JRN-connect-repo': {
-    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
     'STP-sign-in': () => {},
     'STP-grant-repo-access': (win, doc) => {
       check(win, doc.querySelector('.repo-check[value="dlddu/payments-api"]'), true);
@@ -140,7 +132,6 @@ const ARM = {
     'STP-confirm-cost': () => {},
   },
   'JRN-discover-features': {
-    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
     'STP-leave-and-return': () => {},
     'STP-review-landscape': () => {},
     'STP-tune-strategy': (win, doc) => {
@@ -157,7 +148,6 @@ const ARM = {
     },
   },
   'JRN-review-feature': {
-    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
     'STP-read-scenarios': () => {},
     'STP-verify-evidence': (win, doc) => {
       // 근거를 한 건도 열지 않으면 다음으로 넘어갈 수 없다(읽지 않고 넘기면 검수가 아니다).
@@ -171,7 +161,6 @@ const ARM = {
     'STP-decide-diff': () => {},
   },
   'JRN-follow-code-change': {
-    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
     'STP-notice-change': () => {},
     'STP-scan-diff': (win, doc) => {
       // 한 곳도 열어 보지 않으면 다음으로 넘어갈 수 없다(보지 않고 넘기면 확인이 아니다).
@@ -186,7 +175,6 @@ const ARM = {
     },
   },
   'JRN-understand-feature': {
-    // 단계별로 "그 화면 안에서 실제 사용자가 하는 최소 입력"
     'STP-open-shared': (win, doc) => {
       // 링크를 열면 먼저 본인 확인, 그 다음 볼 수 있는 기능 하나를 고른다.
       click(win, doc.getElementById('btn-signin'));
@@ -203,13 +191,7 @@ const ARM = {
   },
 };
 
-/* ── 페이지별 입력 프로브 등록 (P3) ──────────────────────────────
-   "타이핑·선택이 관측 가능한 상태 변화를 일으키는가"는 그 여정의 어떤 필드가
-   무엇을 검증하는지에 달려 있어 여정마다 다르다. 여정 무관한 부분(폼 요소가
-   0개가 아닌가 · 가짜 필드 패턴이 없는가)만 공통으로 두고, 나머지는 여기에
-   등록한다. 등록이 없으면 P0 가 실패시킨다.
-
-   ⚠️ 이 등록부가 없던 시절, P3 는 `JRN-connect-repo` 전용 id(`#in-key` 등)를
+/* ⚠️ 이 등록부가 없던 시절, P3 는 `JRN-connect-repo` 전용 id(`#in-key` 등)를
    여정 조건 없이 만졌다 — 두 번째 여정 페이지가 생기는 순간 null 에 `.value` 를
    대입해 하네스가 uncaught TypeError 로 통째 죽었다(단언 보고조차 못 한다).   */
 const INPUT_PROBE = {
@@ -228,7 +210,6 @@ const INPUT_PROBE = {
     ok(doc.getElementById('btn-savekey').disabled === false, 'P3',
        `올바른 키를 입력해도 저장 버튼이 살아나지 않는다`);
 
-    // 선택(select)도 동작하는가
     const prov = doc.getElementById('in-provider');
     ok(prov && prov.tagName === 'SELECT', 'P3', `Provider 가 실제 <select> 가 아니다`);
     // google 키는 `AIza` 로 시작하므로 위의 anthropic 키와 접두사가 겹치지 않는다.
@@ -432,10 +413,6 @@ const INPUT_PROBE = {
   },
 };
 
-/* ── 페이지별 두 번째 갈래의 끝 등록 (P5) ────────────────────────
-   정상 경로의 끝은 P2 가 마지막 단계의 전진으로 확인한다. 그 밖에 최소 하나의
-   **다른** 갈래가 END-* 로 끝나는지를 여기서 본다 — 갈래가 하나뿐인 프로토타입은
-   규칙 5(g) 의 "각 갈래의 끝이 표현된다"를 충족하지 못한다.                     */
 const SECOND_END = {
   'JRN-connect-repo': { name: '저장 후 종료', at: '#STP-confirm-cost', run: (win, doc, ok) => {
     const later = doc.getElementById('btn-later');
@@ -472,8 +449,6 @@ const SECOND_END = {
   } },
 };
 
-/* 분기 상황이 화면에 실제로 나타나는지 — 제품 화면 안의 경로로 확인한다.
-   각 항목은 여정 문서 §4 의 행 순서에 대응하며, 기대 도착 단계는 문서에서 온다. */
 const PRODUCT_PATHS = {
   'JRN-connect-repo': [
     { name: '재방문 사용자', run: (win, doc) => {
@@ -745,9 +720,6 @@ const PRODUCT_PATHS = {
   ],
 };
 
-/* ── 단계 → 소유 여정 (여정 밖 분기 판정의 근거) ──────────────────
-   전부 여정 문서에서 파생한다. §4 의 「이어지는 단계」가 이 인덱스에서 다른
-   여정으로 나오면 그 갈래는 이 여정의 끝(handoff)이다.                        */
 const STEP_OWNER = {};
 for (const f of fs.readdirSync(UJ).filter((n) => /^JRN-[a-z0-9-]+\.md$/.test(n)).sort()) {
   const owner = f.replace(/\.md$/, '');
@@ -756,8 +728,6 @@ for (const f of fs.readdirSync(UJ).filter((n) => /^JRN-[a-z0-9-]+\.md$/.test(n))
   }
 }
 
-/* 분기 i 의 기대 도착 지점. 같은 여정이면 그 단계, 다른 여정이면 그 대상을
-   선언한 END-* 블록이다. 선언을 페이지에서 찾되 키(여정#단계)는 문서에서 온다. */
 function expectedTarget(d, jid, to) {
   const owner = STEP_OWNER[to];
   if (!owner || owner === jid) return to;
@@ -765,7 +735,6 @@ function expectedTarget(d, jid, to) {
   return sec ? sec.id : null;
 }
 
-/* ── 본 검사 ────────────────────────────────────────────────────── */
 const pages = fs.readdirSync(MK).filter((f) => /^JRN-[a-z0-9-]+\.html$/.test(f)).sort();
 if (pages.length === 0) failures.push('P0: docs/mockups/JRN-*.html 여정 페이지를 하나도 찾지 못했다');
 
@@ -789,7 +758,6 @@ for (const file of pages) {
     continue;
   }
 
-  /* P6 (b) 보조 레이어가 기본으로 닫혀 있다 */
   {
     const { window } = load(pagePath);
     const doc = window.document;
@@ -801,7 +769,6 @@ for (const file of pages) {
     window.close();
   }
 
-  /* P7 (h) 외부 자원은 폰트뿐 */
   {
     const html = fs.readFileSync(pagePath, 'utf8');
     const ext = [...html.matchAll(/(?:src|href)="(https?:\/\/[^"]+)"/g)].map((m) => m[1]);
@@ -810,7 +777,6 @@ for (const file of pages) {
     ok(!/<script\s[^>]*src=/i.test(html), 'P7', `${file}: 외부 스크립트를 불러온다 (정적 동작 위반)`);
   }
 
-  /* P1 (f) 딥링크 — 문서의 각 단계로 바로 진입 */
   for (const st of jr.steps) {
     const { window } = load(pagePath, '#' + st.id);
     const doc = window.document;
@@ -836,7 +802,6 @@ for (const file of pages) {
     window.close();
   }
 
-  /* P3 (d) 실제 입력 요소 — 가짜 필드 금지 + 타이핑이 상태를 바꾼다 */
   {
     const { window } = load(pagePath);
     const doc = window.document;
@@ -845,8 +810,6 @@ for (const file of pages) {
     ok(doc.querySelectorAll('.input .val').length === 0, 'P3',
        `${file}: "입력처럼 보이는 비대화형 요소"(.input > .val) 패턴이 남아 있다 (규칙 5d)`);
 
-    // 타이핑·선택이 실제로 관측 가능한 상태 변화를 만드는가 — 어떤 필드가 무엇을
-    // 검증하는지는 여정마다 다르므로 등록된 프로브가 굴린다.
     const at = (hash) => {
       window.location.hash = hash;
       window.dispatchEvent(new window.HashChangeEvent('hashchange'));
@@ -855,7 +818,6 @@ for (const file of pages) {
     window.close();
   }
 
-  /* P2 (c) 모든 단계가 화면 안의 행동으로 전진한다 */
   {
     const { window } = load(pagePath);
     const doc = window.document;
@@ -880,7 +842,6 @@ for (const file of pages) {
         ok(active(doc) === next, 'P2',
            `${file}: ${cur} 의 화면 내 행동으로 ${next} 에 도달하지 못했다 (도착: ${active(doc)})`);
       } else {
-        /* P5 (g) 마지막 단계의 전진은 갈래의 끝으로 */
         ok(/^END-/.test(active(doc) || ''), 'P5',
            `${file}: 마지막 단계의 행동이 갈래의 끝(END-*)으로 이어지지 않는다 (도착: ${active(doc)})`);
       }
@@ -888,7 +849,6 @@ for (const file of pages) {
     window.close();
   }
 
-  /* P4 (e) 여정 문서 §4 의 각 분기가 선언된 단계로 실제 이동한다 */
   {
     ok(jr.branches.length > 0, 'P4', `${jid}.md §4 분기표를 읽지 못했다`);
     const { window } = load(pagePath);
@@ -913,7 +873,6 @@ for (const file of pages) {
       w.close();
     }
 
-    /* 그리고 그 상황이 제품 화면 안에서 실제로 재현되는가 */
     const paths = PRODUCT_PATHS[jid];
     ok(paths.length === jr.branches.length, 'P4',
        `${file}: 등록된 제품 경로 ${paths.length}개가 여정 문서 §4 의 ${jr.branches.length}행과 다르다`);
@@ -929,7 +888,6 @@ for (const file of pages) {
     }
   }
 
-  /* P5 (g) 두 번째 갈래의 끝 — 어떤 행동이 대안 갈래인지는 여정마다 다르다 */
   {
     const spec = SECOND_END[jid];
     const { window } = load(pagePath, spec.at);
@@ -941,7 +899,6 @@ for (const file of pages) {
   }
 }
 
-/* ── 보고 ───────────────────────────────────────────────────────── */
 console.log(`여정 프로토타입 ${pages.length}개 · 단언 ${checks}건 실행`);
 if (checks === 0) {
   console.error('\n실패: 단언을 하나도 실행하지 않았다 — 게이트가 공허하다');
