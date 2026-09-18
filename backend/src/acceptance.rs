@@ -411,6 +411,7 @@ pub async fn derive(
             system: SYSTEM_LOGIC,
             user: prompt(owner, name, branch, subjects, &paths, "Files"),
             schema: schema(),
+            // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
             stub: stub_logic(subjects, &paths),
         },
     )
@@ -432,6 +433,7 @@ pub async fn derive(
                     system: SYSTEM_TESTS,
                     user: prompt(owner, name, branch, subjects, &test_paths, "Test files"),
                     schema: schema(),
+                    // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
                     stub: stub_tests(subjects, &test_paths),
                 },
             )
