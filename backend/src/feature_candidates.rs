@@ -202,6 +202,7 @@ pub async fn extract(
             system: SYSTEM,
             user: prompt(owner, name, branch, &paths, patterns),
             schema: schema(),
+            // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
             stub: stub_answer(&paths, patterns),
         },
     )

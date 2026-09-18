@@ -152,6 +152,7 @@ pub async fn extract(
             system: SYSTEM,
             user: prompt(owner, name, branch, &paths),
             schema: schema(),
+            // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
             stub: stub_answer(&paths),
         },
     )
@@ -173,6 +174,7 @@ pub fn detail(doc: &Value) -> String {
     format!("{} categories · {} items", AXES.len(), items)
 }
 
+// mock-exception: LLM-01 — 단위 테스트 모듈: 결정적 더블로 검증(E2E 예외가 아닌 지문 등재 — 정책: docs/e2e-mocking-policy.md)
 #[cfg(test)]
 mod tests {
     use super::*;

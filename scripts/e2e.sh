@@ -7,6 +7,9 @@ CLUSTER_NAME="${CLUSTER_NAME:-featuredoc}"
 IMAGE="${IMAGE:-featuredoc:dev}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
+# CI builds ${IMAGE} beforehand through the buildx cache and sets SKIP_BUILD=1;
+# a local run builds it here.
+SKIP_BUILD="${SKIP_BUILD:-0}"
 
 PF_PID=""
 
@@ -36,8 +39,16 @@ if ! kind get clusters 2>/dev/null | grep -qx "${CLUSTER_NAME}"; then
   kind create cluster --name "${CLUSTER_NAME}" --config "${ROOT}/deploy/e2e/kind-cluster.yaml"
 fi
 
-echo "[2/7] docker build → ${IMAGE}"
-docker build -t "${IMAGE}" "${ROOT}"
+if [ "${SKIP_BUILD}" = "1" ]; then
+  echo "[2/7] docker build — skipped (SKIP_BUILD=1, using prebuilt ${IMAGE})"
+  docker image inspect "${IMAGE}" >/dev/null 2>&1 || {
+    echo "SKIP_BUILD=1 but ${IMAGE} is not in the local docker image store" >&2
+    exit 1
+  }
+else
+  echo "[2/7] docker build → ${IMAGE}"
+  docker build -t "${IMAGE}" "${ROOT}"
+fi
 
 echo "[3/7] kind load docker-image"
 kind load docker-image "${IMAGE}" --name "${CLUSTER_NAME}"

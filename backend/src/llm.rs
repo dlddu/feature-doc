@@ -149,6 +149,7 @@ pub async fn ask(
     ask: Ask<'_>,
 ) -> Result<Answer, String> {
     match mode {
+        // mock-exception: LLM-01 — 실 LLM 응답은 비결정·과금; 결정적 단정을 위해 고정 답으로 답한다
         Mode::Stub => stub_answer(&ask),
         Mode::Real => {
             let key = key.ok_or_else(|| "no LLM key available for this analysis".to_string())?;
@@ -168,8 +169,6 @@ pub async fn ask(
         }
     }
 }
-
-// ── real: Anthropic Messages API ─────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct AnthropicResponse {
@@ -272,8 +271,6 @@ async fn anthropic(http: &reqwest::Client, key: &str, ask: Ask<'_>) -> Result<An
     })
 }
 
-// ── real: OpenAI Responses API ───────────────────────────────────────────────
-//
 // The Responses API rather than Chat Completions: it is the endpoint that takes
 // `reasoning.effort` and `text.format` together, which is exactly the pair the
 // Anthropic call above uses (`output_config.effort` / `.format`). Keeping the two
@@ -426,8 +423,6 @@ async fn openai(http: &reqwest::Client, key: &str, ask: Ask<'_>) -> Result<Answe
     openai_answer(parsed)
 }
 
-// ── stub ─────────────────────────────────────────────────────────────────────
-
 /// The model name the stub reports, so a document written in stub mode is
 /// distinguishable from a real one by inspection.
 pub const STUB_MODEL: &str = "stub-model";
@@ -438,7 +433,25 @@ pub const STUB_MODEL: &str = "stub-model";
 ///
 /// Token counts are derived from the prompt length so the cost columns hold
 /// plausible, stable numbers rather than zeros.
+///
+/// One deliberate extension of the deterministic answer: a *failure trigger*
+/// (blocker-ledger R1 in `docs/e2e-mocking-policy.md`). A real LLM call can fail
+/// on things no user input reproduces — a provider rate limit or a timeout — so
+/// before this trigger stub mode could not reach the stage-failure branch from an
+/// LLM error at all, and sc01-06 had to enter it through the tree 404 instead.
+/// Setting `FEATUREDOC_STUB_LLM_FAIL` to a prompt substring makes the stub fail
+/// with the same operator-facing one-liner a rejected request produces; with the
+/// env unset, or when the input does not carry the needle, nothing changes. The
+/// trigger needs both sides to match, so it stays inert for every other analysis.
 fn stub_answer(ask: &Ask<'_>) -> Result<Answer, String> {
+    // Same shape the real paths produce (`LLM rejected the request ({status})`):
+    // 429 = provider limit exceeded, the failure the scenario names.
+    if let Ok(needle) = std::env::var("FEATUREDOC_STUB_LLM_FAIL") {
+        if !needle.is_empty() && ask.user.contains(&needle) {
+            return Err("LLM rejected the request (429)".to_string());
+        }
+    }
+
     if ask.stub.is_null() {
         return Err("stub mode: caller supplied no stub answer".to_string());
     }
@@ -476,6 +489,45 @@ mod tests {
         assert_eq!(a.content, b.content);
         assert_eq!(a.input_tokens, b.input_tokens);
         assert_eq!(a.model, STUB_MODEL);
+    }
+
+    /// The failure trigger (blocker-ledger R1, `docs/e2e-mocking-policy.md`):
+    /// real-shaped provider failure exactly when the env names a prompt substring
+    /// the input carries, the deterministic answer otherwise. The trigger adds a
+    /// failure real has — it never removes one, and it is inert in every other
+    /// analysis. The env writes stay inside this one test; no other test reads
+    /// this variable, so parallel test runs cannot race on it.
+    #[tokio::test]
+    async fn stub_llm_fail_trigger_fires_only_on_the_named_input() {
+        let http = reqwest::Client::new();
+
+        // Env unset: nothing changes.
+        std::env::remove_var("FEATUREDOC_STUB_LLM_FAIL");
+        assert!(
+            ask(&http, Mode::Stub, Provider::OpenAI, None, an_ask())
+                .await
+                .is_ok()
+        );
+
+        // Env set and the input carries the needle: real-shaped provider failure.
+        std::env::set_var("FEATUREDOC_STUB_LLM_FAIL", "a\nb");
+        let hit = an_ask();
+        assert!(hit.user.contains("a\nb"));
+        let err = ask(&http, Mode::Stub, Provider::OpenAI, None, hit)
+            .await
+            .unwrap_err();
+        assert_eq!(err, "LLM rejected the request (429)");
+
+        // Env set but the input misses the needle: still the deterministic answer.
+        let mut miss = an_ask();
+        miss.user = "an input that does not carry the needle".to_string();
+        assert!(
+            ask(&http, Mode::Stub, Provider::OpenAI, None, miss)
+                .await
+                .is_ok()
+        );
+
+        std::env::remove_var("FEATUREDOC_STUB_LLM_FAIL");
     }
 
     /// Real mode with no key must fail rather than silently fall through to the
@@ -557,8 +609,6 @@ mod tests {
         );
         assert_eq!(Provider::Google.default_model(), None);
     }
-
-    // ── OpenAI request/response shape ────────────────────────────────────────
 
     #[test]
     fn openai_request_carries_the_schema_and_no_sampling_parameters() {

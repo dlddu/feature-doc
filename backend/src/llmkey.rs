@@ -23,8 +23,6 @@ pub fn routes() -> Router<AppState> {
         .route("/api/llm-keys/{id}", delete(revoke))
 }
 
-// ── provider ────────────────────────────────────────────────────────────────
-
 #[derive(Clone, Copy)]
 enum Provider {
     Anthropic,
@@ -50,8 +48,6 @@ impl Provider {
         }
     }
 
-    /// The provider's public key prefix (not secret) — used for stub validation
-    /// and for masking display.
     fn prefix(self) -> &'static str {
         match self {
             Provider::Anthropic => "sk-ant-",
@@ -75,8 +71,6 @@ impl Provider {
     }
 }
 
-// ── views / rows ──────────────────────────────────────────────────────────────
-
 /// What the API exposes for a key — identifiers only, never the secret or its bytes.
 #[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -89,7 +83,6 @@ pub struct LlmKeyView {
     pub created_at: i64,
 }
 
-/// The sealed columns needed to decrypt a key just-in-time at use.
 #[derive(sqlx::FromRow)]
 struct SealedKey {
     provider: String,
@@ -100,17 +93,12 @@ struct SealedKey {
     dek_nonce: Vec<u8>,
 }
 
-// ── handlers ──────────────────────────────────────────────────────────────────
-
 #[derive(Deserialize)]
 struct RegisterReq {
     provider: String,
     key: String,
 }
 
-/// Registers a key: validate provider → check it is in the supported scope →
-/// live-validate the key → envelope-encrypt → store ciphertext only. Returns the
-/// identifier view (201).
 async fn register(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -119,11 +107,6 @@ async fn register(
     let provider = Provider::parse(&req.provider)
         .ok_or_else(|| AppError::BadRequest("지원하지 않는 provider입니다".into()))?;
 
-    // AC4.2 지원 제공자 범위. 분석 호출이 구현되지 않은 제공자의 키는 받지 않는다 —
-    // 보관해도 호출도 비용 추정도 할 수 없고, 그 사이 [`ACTIVE_KEY_SQL`]이 등록 순서만으로
-    // 그 키를 "활성 키"로 골라 **이미 동작하던 분석을 조용히 깨뜨린다**(Anthropic 키를 쓰던
-    // 사용자가 미지원 키를 나중에 등록하는 경우). 쓸 수 없는 자격증명을 보관하지 않는 편이
-    // AC4.3 과도 맞다. 거부는 사용자가 아직 아무것도 맡기지 않은 이 지점에서 일어난다.
     if !provider.llm().supports_analysis() {
         return Err(AppError::BadRequest(format!(
             "{}는 아직 분석 호출을 지원하지 않아 키를 등록할 수 없습니다. OpenAI 또는 Anthropic 키를 등록해 주세요",
@@ -182,7 +165,6 @@ async fn register(
     ))
 }
 
-/// Lists the user's keys — identifiers only.
 async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -197,8 +179,6 @@ async fn list(
     Ok(Json(keys))
 }
 
-/// Revokes one of the user's keys. Scoped to the owner — another user's id is a 404
-/// (AC4.7), and new calls are blocked thereafter.
 async fn revoke(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -248,11 +228,8 @@ struct PreflightView {
     fingerprint: String,
 }
 
-/// Confirms the user has a usable key before an LLM-backed action (the seam Connect Repository's
-/// "분석 시작" preflight will call). Decrypts just-in-time to prove usability, then
-/// drops the plaintext; never returns or logs the key. No active key → blocked with
-/// "키가 없거나 폐기되었습니다" (test#4). Note: full per-call delegation (test#3)
-/// lands with the analysis pipeline.
+/// Confirms the user has a usable key before an LLM-backed action; never
+/// returns or logs the key.
 async fn preflight(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -321,13 +298,12 @@ pub async fn active_key_for_user(
     Ok(Some((provider, key)))
 }
 
-// ── validation + display helpers ─────────────────────────────────────────────
-
 /// Live-validates a key with its provider. Stub mode applies a deterministic shape
 /// check; real mode makes a lightweight authenticated request. Failures never echo
 /// the key.
 async fn validate_key(state: &AppState, provider: Provider, key: &str) -> Result<(), AppError> {
     match state.config.mode {
+        // mock-exception: EXT-04 — 키 라이브 검증은 실 프로바이더 키·과금 자격이 필요
         Mode::Stub => {
             if key.len() >= 20 && key.starts_with(provider.prefix()) {
                 Ok(())
@@ -364,7 +340,6 @@ async fn validate_key(state: &AppState, provider: Provider, key: &str) -> Result
     }
 }
 
-/// Non-reversible identifier for a key (first 64 bits of its SHA-256, hex).
 fn fingerprint(key: &str) -> String {
     let digest = Sha256::digest(key.as_bytes());
     hex::encode(&digest[..8])

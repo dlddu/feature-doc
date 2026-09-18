@@ -74,8 +74,6 @@ pub fn routes() -> Router<AppState> {
         .route("/api/analyses/{id}/candidates/merge", post(merge_candidates))
 }
 
-// ── views / rows ──────────────────────────────────────────────────────────────
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RepoView {
@@ -96,7 +94,6 @@ impl From<&RepoRef> for RepoView {
     }
 }
 
-/// What the API exposes for an analysis job (the home list).
 #[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisView {
@@ -115,7 +112,6 @@ struct AnalysisView {
     stages_done: i64,
 }
 
-/// One pipeline step as Analysis Progress renders it, straight off `analysis_stages`.
 #[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 struct StageView {
@@ -123,7 +119,6 @@ struct StageView {
     key: String,
     title: String,
     status: String,
-    /// The user-facing one-liner the worker measured ("766 files · 2.2 MB").
     detail: Option<String>,
     /// Why the stage failed, when it did. Retryable on its own (AC1.5).
     error: Option<String>,
@@ -147,7 +142,6 @@ struct AnalysisDetailView {
     stages: Vec<StageView>,
 }
 
-/// The analysis-level columns Analysis Progress adds on top of [`AnalysisView`].
 #[derive(sqlx::FromRow)]
 struct RunRow {
     error: Option<String>,
@@ -171,8 +165,6 @@ fn analysis_columns() -> String {
     )
 }
 
-// ── handlers ──────────────────────────────────────────────────────────────────
-
 /// The repositories the installation can access (candidates to analyze). Empty when
 /// the user has not connected the App yet — the Home and Connect Repository screens route those users to Credentials Setup.
 async fn list_repositories(
@@ -183,7 +175,6 @@ async fn list_repositories(
     Ok(Json(repos.iter().map(RepoView::from).collect()))
 }
 
-/// The user's analysis jobs, newest first (the home list). Scoped to the owner (AC4.7).
 async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -559,9 +550,6 @@ async fn create(
     ))
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-/// Reads one analysis and its stages under the owner's scope, or `404`.
 async fn load_detail(
     state: &AppState,
     user_id: &str,
@@ -601,7 +589,6 @@ async fn load_detail(
     })
 }
 
-/// The repositories the user's installation can access, or empty when not installed.
 async fn accessible_repos(state: &AppState, user_id: &str) -> Result<Vec<RepoRef>, AppError> {
     match installations::get_for_user(&state.db, user_id).await? {
         None => Ok(Vec::new()),
@@ -609,7 +596,6 @@ async fn accessible_repos(state: &AppState, user_id: &str) -> Result<Vec<RepoRef
     }
 }
 
-/// The requested branch when non-blank, else the repo's default branch.
 fn resolve_branch(requested: Option<String>, repo: &RepoRef) -> String {
     requested
         .map(|b| b.trim().to_string())
@@ -617,15 +603,11 @@ fn resolve_branch(requested: Option<String>, repo: &RepoRef) -> String {
         .unwrap_or_else(|| repo.default_branch.clone())
 }
 
-/// Parses a repo target. Accepts `owner/name`, `github.com/owner/name`, and full
-/// `https://github.com/owner/name(.git)` URLs. Anything else is a validation error
-/// (Connect Repository URL typo → immediate feedback).
 fn parse_repo(input: &str) -> Result<(String, String), AppError> {
     let s = input.trim();
     if s.is_empty() {
         return Err(AppError::BadRequest("저장소 URL을 입력해 주세요".into()));
     }
-    // Drop scheme + host if present, keep the path.
     let path = s.split_once("://").map(|(_, rest)| rest).unwrap_or(s);
     let path = path.strip_prefix("github.com/").unwrap_or(path);
     let mut parts = path.split('/').filter(|p| !p.is_empty());
@@ -667,8 +649,6 @@ impl Estimate {
     }
 }
 
-// ── discovery strategy review · edit · approve (AC1.3) ────────────────────────
-//
 // Stage 3 proposes; this is where a person decides. The proposal itself stays in
 // `analysis_documents` untouched (so re-running the stage and reproducibility keep
 // working); what the user edits lives in `discovery_strategies` (migration 0006)
@@ -997,8 +977,6 @@ async fn requeue(
     Ok(res.rows_affected() == 1)
 }
 
-// ── feature candidate review (AC1.4) ──────────────────────────────────────────
-//
 // Stage 4 extracts; this is where a person sifts. Same split as AC1.3: the
 // generated document stays in `analysis_documents` untouched (reproducibility keeps
 // working), and what the user decides lives in `feature_candidates` (migration
@@ -1010,7 +988,6 @@ const DECISION_UNDECIDED: &str = "undecided";
 const DECISION_APPROVED: &str = "approved";
 const DECISION_REJECTED: &str = "rejected";
 
-/// One candidate as Feature Candidates renders it.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CandidateView {
@@ -1065,9 +1042,7 @@ struct CandidateRow {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DecisionReq {
-    /// Which candidate — its [`crate::feature_candidates::candidate_key`].
     key: String,
-    /// `approve` or `reject`.
     decision: String,
     #[serde(default)]
     reason: Option<String>,
@@ -1106,7 +1081,6 @@ async fn candidates(
         .map(Json)
 }
 
-/// Materialises `feature_candidates` rows from stage 4's document, once.
 async fn seed_candidates(state: &AppState, id: &str) -> Result<bool, AppError> {
     let row: Option<(String,)> = sqlx::query_as(
         "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",

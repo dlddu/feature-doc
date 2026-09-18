@@ -14,8 +14,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: test (cargo + kind e2e)
+  # cargo test 와 kind e2e 는 서로를 기다릴 이유가 없어 두 job 으로 나란히 돈다.
+  # push 는 둘 다 그린일 때만 이미지를 올린다.
+  #
+  # PR 의 필수 상태 체크는 맨 아래 `ci-gate` 하나뿐이다. 새 검사를 추가할 때는
+  # branch protection 을 건드리지 말고 그 job 의 needs 에만 넣는다.
+  cargo:
+    name: test (cargo)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # registry 에 더해 target/ 의 의존성 빌드까지 캐시한다. 저장은 main 에서만 —
+      # PR 마다 저장하면 저장소 캐시 한도를 채워 buildx 캐시까지 밀어내고, PR 은
+      # main 의 캐시를 읽을 수 있어 잃는 것이 없다.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Test backend (cargo test)
+        run: cargo test --manifest-path backend/Cargo.toml --release
+
+  e2e:
+    name: test (kind e2e)
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
@@ -28,19 +51,6 @@ jobs:
           cache-dependency-path: |
             frontend/package-lock.json
             e2e/package-lock.json
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Test backend (cargo test)
-        run: cargo test --manifest-path backend/Cargo.toml --release
 
       - name: Install kind (arm64)
         run: |
@@ -55,14 +65,31 @@ jobs:
           sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
           kubectl version --client
 
-      - name: e2e (docker build → kind → smoke + playwright)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # push job 과 같은 GHA 캐시를 쓴다 — 평범한 `docker build` 는 이 캐시에 닿지 못해
+      # 매번 처음부터 빌드했다. 여기서 쌓은 레이어는 같은 실행의 push job 이 이어받는다.
+      - name: Build e2e image (featuredoc:dev)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: featuredoc:dev
+          # 로컬 docker 에 load 만 하는 이미지라 provenance attestation 이 필요 없다.
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: e2e (kind → smoke + playwright)
         env:
           IMAGE: featuredoc:dev
+          SKIP_BUILD: '1'
         run: bash scripts/e2e.sh
 
   push:
     name: build & push image (ghcr)
-    needs: test
+    needs: [cargo, e2e]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
@@ -104,6 +131,35 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # 문서 정합성 게이트 3종. 각자 파일에 있고 여기서 부른다 — 실패하면 체크 이름
+  # (`docs-… / …`)만으로 어느 칸이 깨졌는지 드러난다. push 는 이들을 기다리지 않는다.
+  docs-journey-mockup:
+    uses: ./.github/workflows/docs-journey-mockup.yml
+
+  docs-mockup-render:
+    uses: ./.github/workflows/docs-mockup-render.yml
+
+  docs-scenario-e2e:
+    uses: ./.github/workflows/docs-scenario-e2e.yml
+
+  # 유일한 필수 상태 체크. `always()` 인 이유: 앞 job 이 실패해 이 job 이 skipped 가
+  # 되면 GitHub 은 skipped 필수 체크를 통과로 친다. 그래서 항상 돌면서 needs 전부가
+  # success 인지 직접 판정한다(failure·cancelled·skipped 모두 실패).
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs: [cargo, e2e, push, docs-journey-mockup, docs-mockup-render, docs-scenario-e2e]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 2
+    steps:
+      - name: all required jobs succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.value.result)\t\(.key)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' > /dev/null \
+            || { echo "::error::success 가 아닌 job 이 있다(위 목록)."; exit 1; }
 
   pin:
     name: pin deployment image (main only)
