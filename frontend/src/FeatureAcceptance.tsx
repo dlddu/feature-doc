@@ -72,7 +72,7 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
   if (features === null) {
     return (
       <main className="screen">
-        <Appbar onBack={onBack} />
+        <Appbar onLeave={onBack} />
         {error !== null ? (
           <p className="body sm" style={{ marginTop: 22 }} data-testid="acceptance-error">
             {error}
@@ -89,7 +89,7 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
   if (features.length === 0) {
     return (
       <main className="screen">
-        <Appbar onBack={onBack} />
+        <Appbar onLeave={onBack} />
         <p className="body sm" style={{ marginTop: 22 }} data-testid="acceptance-empty">
           {NOT_GENERATED}
         </p>
@@ -101,7 +101,7 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
 
   return (
     <main className="screen">
-      <Appbar onBack={onBack} />
+      <Appbar onLeave={onBack} />
 
       <div className="field" style={{ marginTop: 16 }}>
         <label htmlFor="in-feature">검수할 기능</label>
@@ -245,15 +245,26 @@ function Contradiction({ clash }: { clash: AcceptanceContradiction }) {
 const LOADING = '불러오는 중…';
 const NOT_GENERATED = '인수 시나리오 생성 단계가 아직 끝나지 않았어요.';
 
-function Appbar({ onBack }: { onBack: () => void }) {
+/**
+ * The mockup's appbar is three slots, and on this step the left one is empty on
+ * purpose: `STP-read-scenarios` is the *first* step of `JRN-review-feature`, so there
+ * is nowhere to go back to inside the journey — the ghost button is the spacer that
+ * keeps the title centred, not a control.
+ *
+ * The right slot is `✕ 나가기`, the journey's exit. It lands on `onBack` because that
+ * is where this screen's other exit already goes (`나중에 이어서 볼게요`) — the same
+ * destination, not an invented one. The prototype also remembers *where* you left off
+ * when you press ✕; that half needs the evidence step, and it is already carried in
+ * docs/doc-tracker.md as the 재개 배너 row (해소 시점 = 슬라이스 5b).
+ */
+function Appbar({ onLeave }: { onLeave: () => void }) {
   return (
-    <div className="appbar">
-      <button className="icon-btn" type="button" onClick={onBack} aria-label="back">
-        ‹
+    <header className="appbar">
+      <button className="icon-btn ghost" type="button" aria-hidden="true" tabIndex={-1} />
+      <span className="appbar-title">기능 검수</span>
+      <button className="icon-btn" type="button" onClick={onLeave} aria-label="나가기">
+        ✕
       </button>
-      <div>
-        <div className="appbar-title">기능 검수</div>
-      </div>
-    </div>
+    </header>
   );
 }
