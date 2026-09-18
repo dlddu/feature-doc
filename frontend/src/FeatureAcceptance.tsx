@@ -1,26 +1,7 @@
-// Feature Acceptance — the real screen behind
-// docs/mockups/JRN-review-feature.html#STP-read-scenarios (AC2.1 · AC2.2 · AC2.3).
+// docs/mockups/JRN-review-feature.html#STP-read-scenarios 의 구현.
 //
-// The mockup is the SSOT for what this screen says, so the copy below is the
-// mockup's copy. What it *does* is PRD-2's first half: stage 5 read the confirmed
-// feature's logic (AC2.1) and its tests (AC2.2) and wrote one document per feature
-// in end-user language (AC2.3); this screen renders that document and nothing of its
-// own. Every sentence on it came from the server, which is why a reload shows the
-// same document — and why there is no local draft to lose.
-//
-// Two things the mockup draws that this slice does not implement, both registered in
-// docs/doc-tracker.md "알려진 목업↔구현 편차" with 해소 시점 = 슬라이스 5b:
-//  · the resume banner and the 검수 상태 (미검수 / 검수 완료, 잔여 카운트). Marking a
-//    feature reviewed is an action the mockup only offers *after* the evidence step,
-//    and that step is 5b — a 검수 완료 the user could set without opening any evidence
-//    would be a signature, not a review.
-//  · `근거가 진짜인지 확인하기` — the entry to `STP-verify-evidence`. Showing the code
-//    behind a criterion needs the repository's file *contents*, and `repo_scan` reads
-//    the tree only. That capability is 5b's, and a button that opened nothing would
-//    be worse than no button.
-//
-// The contradiction block is here in full, though: separating what the code says
-// from what the tests say is AC2.2 itself, not a nicety (test/02 시나리오 3).
+// Every sentence on this screen came from the server — which is why a reload shows
+// the same document, and why there is no local draft to lose.
 
 import { useEffect, useState } from 'react';
 import { getAcceptance } from './api';
@@ -30,7 +11,7 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** `evidence` plus the symbol when the pass named one — AC2.1's 근거 위치.
+/** `evidence` plus the symbol when the pass named one.
  *
  *  Concatenated rather than interpolated for the reason `FeatureCandidates` gives:
  *  a template literal reads as one product string to the copy gate, and this is a
@@ -43,9 +24,7 @@ function evidenceOf(scenario: AcceptanceScenario): string {
 
 type Props = {
   id: string;
-  /** Feature Acceptance → Analysis Progress (back to the run this feature came out of). */
   onBack: () => void;
-  /** Feature Acceptance → Feature Candidates — the mockup's cross-journey exit when the *finding* was wrong. */
   onOpenCandidates: () => void;
 };
 
@@ -53,7 +32,6 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
   const [features, setFeatures] = useState<Doc[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  /** Whether the "this is not a feature" confirmation is showing. */
   const [notAFeature, setNotAFeature] = useState(false);
 
   useEffect(() => {
@@ -237,25 +215,12 @@ function Contradiction({ clash }: { clash: AcceptanceContradiction }) {
   );
 }
 
-/**
- * Copy the static prototype has no counterpart for — a network wait and the state
- * before stage 5 has run. Registered in docs/doc-tracker.md "알려진 목업↔구현 편차";
- * kept as constants so each deviation is one place.
- */
 const LOADING = '불러오는 중…';
 const NOT_GENERATED = '인수 시나리오 생성 단계가 아직 끝나지 않았어요.';
 
 /**
- * The mockup's appbar is three slots, and on this step the left one is empty on
- * purpose: `STP-read-scenarios` is the *first* step of `JRN-review-feature`, so there
- * is nowhere to go back to inside the journey — the ghost button is the spacer that
- * keeps the title centred, not a control.
- *
- * The right slot is `✕ 나가기`, the journey's exit. It lands on `onBack` because that
- * is where this screen's other exit already goes (`나중에 이어서 볼게요`) — the same
- * destination, not an invented one. The prototype also remembers *where* you left off
- * when you press ✕; that half needs the evidence step, and it is already carried in
- * docs/doc-tracker.md as the 재개 배너 row (해소 시점 = 슬라이스 5b).
+ * The left slot is empty on purpose — the ghost button is the spacer that keeps the
+ * title centred under `.appbar`'s `space-between`, not a control.
  */
 function Appbar({ onLeave }: { onLeave: () => void }) {
   return (

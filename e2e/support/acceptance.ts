@@ -1,11 +1,7 @@
-// The walk to "stage 5 has written its acceptance document", shared by the three
-// AC2.x specs.
+// The walk to "stage 5 has written its acceptance document".
 //
-// It is here rather than copied into each spec for the same reason `cluster.ts` is:
-// the three specs assert *different* properties of the same document, and three
-// copies of the same 60-line pipeline walk would drift. What each spec still owns
-// itself is its stub identity (`?as=<handle>`) and its assertions — the setup is
-// shared, the verification is not.
+// Shared rather than copied: the setup is shared, the verification is not — each
+// spec still owns its stub identity (`?as=<handle>`) and its assertions.
 //
 // This file lives outside `testDir` (`e2e/tests`), so it is neither collected as a
 // test nor counted as an AC↔spec matching unit.
@@ -95,8 +91,8 @@ export async function runToAcceptance(
     .poll(() => statusOf(page, id), { timeout: 120_000, intervals: [1_000] })
     .toBe('awaiting_pipeline');
 
-  // Reading materialises the reviewable strategy (AC1.3's lazy seed); approving is
-  // what re-queues the job so stage 4 gets a turn.
+  // Reading materialises the reviewable strategy (lazy seed); approving is what
+  // re-queues the job so stage 4 gets a turn.
   expect((await page.request.get(`/api/analyses/${id}/discovery-strategy`)).ok()).toBeTruthy();
   expect(
     (await page.request.post(`/api/analyses/${id}/discovery-strategy/approve`)).ok(),
@@ -110,8 +106,8 @@ export async function runToAcceptance(
     })
     .toBeGreaterThan(0);
 
-  // Confirming a feature is what opens stage 5 — AC2.1 is about a *confirmed*
-  // feature, so this approval is part of the walk rather than an assertion.
+  // Confirming a feature is what opens stage 5, so this approval is part of the walk
+  // rather than an assertion.
   const open = (await candidatesOf(page, id)).filter((c) => c.mergedInto === null);
   expect(open.length, `${repo} must offer at least ${confirm} candidate(s)`).toBeGreaterThanOrEqual(
     confirm,

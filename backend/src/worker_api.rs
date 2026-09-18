@@ -111,13 +111,9 @@ struct ClaimView {
     branch: String,
     /// Stage keys the worker is expected to execute, in order.
     ///
-    /// This is also where the two human gates live. `feature_candidates` is
-    /// **withheld** until the user has approved this analysis's discovery strategy
-    /// (AC1.3), and `acceptance_dependencies` until at least one feature candidate is
-    /// approved (AC1.4 → AC2.1). So "승인된 전략만 다음 단계의 입력이 된다" — and its
-    /// one-step-later twin, "확정된 feature 에 대해서만 표현을 만든다" — are properties
-    /// of the queue rather than rules each worker is trusted to remember. A worker
-    /// only runs keys it both knows and was offered.
+    /// This is also where the two human gates live: they are properties of the queue
+    /// rather than rules each worker is trusted to remember. A worker only runs keys
+    /// it both knows and was offered.
     ///
     /// A stage that already **succeeded** is not offered again. That is what makes
     /// the post-approval re-queue safe: stage 4 opens without stages 2-3 re-running
@@ -128,8 +124,8 @@ struct ClaimView {
     /// carried on the claim so the worker needs no second round-trip — and so the
     /// gate and the input come from the same read of the same row.
     approved_patterns: Vec<String>,
-    /// The feature candidates the reviewer approved (AC1.4). Stage 5's input and its
-    /// gate, carried the same way and for the same reason as `approved_patterns`.
+    /// Stage 5's input and its gate, carried the same way and for the same reason as
+    /// `approved_patterns`.
     approved_candidates: Vec<CandidateRef>,
     lease_expires_at: i64,
     /// Short-lived GitHub installation token for this job's repository. `None` in
@@ -142,8 +138,7 @@ struct ClaimView {
     llm_api_key: Option<String>,
 }
 
-/// One approved feature candidate as stage 5 receives it — the same four fields
-/// `feature_candidates::Subject` needs, named as they are stored.
+/// One approved feature candidate as stage 5 receives it.
 #[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct CandidateRef {
@@ -310,11 +305,10 @@ pub async fn approved_patterns(
 }
 
 /// The feature candidates the reviewer approved, in review order — stage 5's input
-/// and, by being empty or not, its gate (AC2.1~AC2.3 are about a **confirmed**
-/// feature, so an unreviewed list is not something to write scenarios from).
+/// and, by being empty or not, its gate.
 ///
 /// Merged-away rows are excluded: a candidate folded into another is no longer a
-/// feature of its own, which is exactly what `merged_into` records.
+/// feature of its own.
 pub async fn approved_candidates(
     state: &AppState,
     analysis_id: &str,
@@ -403,7 +397,6 @@ pub async fn offered_stages(
     if strategy_approved && !done(pipeline::FEATURE_CANDIDATES) {
         offered.push(pipeline::FEATURE_CANDIDATES.to_string());
     }
-    // Stage 5's predicate is coverage, not success — see [`acceptance_pending`].
     if acceptance_pending {
         offered.push(pipeline::ACCEPTANCE_DEPENDENCIES.to_string());
     }

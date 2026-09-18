@@ -1,14 +1,8 @@
-//! Acceptance scenarios for a confirmed feature (AC2.1 · AC2.2 · AC2.3).
+//! Acceptance scenarios for a confirmed feature.
 //!
-//! The generation itself is unit-tested inside `src/acceptance.rs` — this file is
-//! about the two things only the whole app can answer:
-//!
-//!   * **the gate** — stage 5 is not offered until the reviewer has confirmed a
-//!     feature, and approving one is what re-queues the analysis so the stage gets a
-//!     turn. Rejecting confirms nothing, so it re-queues nothing.
-//!   * **coverage** — a reviewer decides candidates one at a time, so confirming a
-//!     second feature *after* the stage ran must re-open it. "The stage succeeded"
-//!     is the wrong predicate here and this is where that shows.
+//! The generation itself is unit-tested inside `src/acceptance.rs`; this file is
+//! about what only the whole app can answer — when the stage is offered, and to whom
+//! the document is readable.
 //!
 //! Documents are written through the worker's own `/internal` route and produced by
 //! `acceptance::derive` in stub mode, not hand-written — a fixture would drift from
@@ -102,8 +96,6 @@ async fn enqueue(state: &AppState, session: &str, repo: &str) -> String {
     json_body(resp).await["id"].as_str().unwrap().to_string()
 }
 
-/// One claim attempt. `None` is `204` — the queue is empty, which is itself an
-/// assertion several tests here make.
 async fn try_claim(state: &AppState) -> Option<serde_json::Value> {
     let resp = build_router(state.clone())
         .oneshot(worker_post(
@@ -218,8 +210,8 @@ async fn run_to_candidates(state: &AppState, session: &str, id: &str) {
     submit(state, id, "discovery_strategy", strategy_doc()).await;
     finish(state, id, "awaiting_pipeline").await;
 
-    // Reading materialises the reviewable strategy (AC1.3's lazy seed); approving is
-    // what re-queues the job so stage 4 gets its turn.
+    // Reading materialises the reviewable strategy (lazy seed); approving is what
+    // re-queues the job so stage 4 gets its turn.
     assert!(build_router(state.clone())
         .oneshot(get(&format!("/api/analyses/{id}/discovery-strategy"), session))
         .await
@@ -317,8 +309,7 @@ async fn document(state: &AppState, session: &str, id: &str) -> axum::response::
         .unwrap()
 }
 
-/// AC2.1 is about a **confirmed** feature, so an unreviewed candidate list is not
-/// something to write scenarios from. The gate is the queue's, not the worker's.
+/// The gate is the queue's, not the worker's.
 #[tokio::test]
 async fn stage_five_is_withheld_until_a_feature_is_confirmed() {
     let (state, path) = stub_state().await;
@@ -326,15 +317,12 @@ async fn stage_five_is_withheld_until_a_feature_is_confirmed() {
     let id = enqueue(&state, &session, "payments-api").await;
     run_to_candidates(&state, &session, &id).await;
 
-    // Nothing decided yet: the analysis has come to rest and the queue is empty, so
-    // no amount of claiming would run stage 5.
     assert_eq!(status_of(&state, &id).await, "awaiting_pipeline");
     assert!(
         try_claim(&state).await.is_none(),
         "an analysis waiting on the reviewer is not claimable work"
     );
 
-    // Confirming one feature opens it — and hands over that feature, not the list.
     let key = candidates(&state, &session, &id).await["candidates"][0]["key"]
         .as_str()
         .unwrap()
@@ -413,11 +401,9 @@ async fn confirming_a_second_feature_reopens_the_stage() {
     assert_eq!(documented.len(), 1);
     assert_eq!(documented[0].key, first);
 
-    // Everything confirmed is documented, so there is nothing left to do.
     assert_eq!(status_of(&state, &id).await, "awaiting_pipeline");
     assert!(try_claim(&state).await.is_none(), "no work left to claim");
 
-    // …until a second feature is confirmed.
     decide(&state, &session, &id, &second, json!({ "decision": "approve" })).await;
     assert_eq!(status_of(&state, &id).await, "queued");
     let job = claim(&state).await;
@@ -432,7 +418,7 @@ async fn confirming_a_second_feature_reopens_the_stage() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// What the reviewer reads on Feature Acceptance, and who may read it (AC4.7).
+/// What the reviewer reads on Feature Acceptance, and who may read it.
 #[tokio::test]
 async fn the_document_is_readable_by_its_owner_and_nobody_else() {
     let (state, path) = stub_state().await;
@@ -465,8 +451,6 @@ async fn the_document_is_readable_by_its_owner_and_nobody_else() {
     assert_eq!(feature["key"], key.as_str());
     assert!(feature["name"].as_str().is_some_and(|n| !n.is_empty()));
 
-    // AC2.1: every criterion carries the code location it came from, and that
-    // location is a path this analysis actually saw.
     let scenarios = feature["scenarios"].as_array().unwrap();
     assert!(!scenarios.is_empty());
     for scenario in scenarios {
@@ -483,8 +467,6 @@ async fn the_document_is_readable_by_its_owner_and_nobody_else() {
         );
     }
 
-    // AC2.2: the test pass added at least one criterion of its own, and every
-    // criterion it contributed cites a test file.
     let from_tests: Vec<&serde_json::Value> =
         scenarios.iter().filter(|s| s["source"] == "test").collect();
     assert!(
@@ -495,7 +477,6 @@ async fn the_document_is_readable_by_its_owner_and_nobody_else() {
         assert!(acceptance::is_test_path(scenario["evidence"].as_str().unwrap()));
     }
 
-    // …and a disagreement is kept out of the scenario list, with both sides named.
     let clashes = feature["contradictions"].as_array().unwrap();
     assert!(!clashes.is_empty(), "the stub disagrees with itself once");
     for clash in clashes {
