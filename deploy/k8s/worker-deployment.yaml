@@ -26,7 +26,7 @@ spec:
         - name: worker
           # ⚙️ API와 같은 이미지, 같은 SHA — `pin` job이 두 파일을 함께 바꾸므로
           # 둘이 어긋날 일은 없습니다. 명령만 다릅니다.
-          image: ghcr.io/dlddu/featuredoc:f9a7f27f6d9da801c48f2ee16dfb2f37c520623b
+          image: ghcr.io/dlddu/featuredoc:1c39ba2566dcd8a4ff5f18c1ec90dea4601e9922
           command: ["/usr/local/bin/featuredoc-worker"]
           env:
             # NOTE: no DATABASE_URL and no volume mount. The worker never opens
