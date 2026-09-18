@@ -1,13 +1,5 @@
 // 검증 시나리오: 01-analysis-pipeline.md#시나리오 6
 //
-// 「특정 단계 실패 후 부분 재시도」 전용 spec (AC1.5).
-//
-// docs/test/01-analysis-pipeline.md 시나리오 6을 그대로 따라간다:
-//   feature 추출 단계가 실패한 상태에서 실패 화면의 "이 단계만 다시 시도"를 누르면,
-//   횡단 분석/탐색 전략은 그대로 유지되고 그 단계만 재실행된다.
-//
-// 이 단정은 `sc01-05-resume-after-app-exit.spec.ts`와 한 파일에 있었다(선언은
-// 시나리오 5 하나) — 규칙 2 상 분리 대상으로 등재됐다가 이 파일로 옮겨왔다.
 // 도달성은 제품 표면만으로 충분하다: 브랜치는 Connect Repository의 사용자 입력
 // 필드라, 존재하지 않는 브랜치를 입력하면 fetch 단계가 실제 GitHub 트리 요청과 같은
 // 이유(404)로 실패한다 — 테스트 전용 훅이 필요 없다.
@@ -80,7 +72,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       // job cannot drain before the setup below.
       await scaleWorkers(0);
 
-      // ── setup: this spec's own user, App installation, LLM key ──────────
       await page.goto('/api/auth/login?as=sc0106');
       expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
       const key = await page.request.post('/api/llm-keys', {
@@ -94,7 +85,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       const good = await enqueue(page, 'payments-api', null);
       const failing = await enqueue(page, 'checkout-web', 'no-such-branch');
 
-      // ── 워커가 둘 다 처리한다 ────────────────────────────────────────────
       await scaleWorkers(1);
       await expect
         .poll(() => analysisOf(page, good).then((a) => a.status), {
@@ -109,7 +99,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
         })
         .toBe('failed');
 
-      // ── 실패한 단계와 그 사유 ───────────────────────────────────────────
       await page.goto(`/#/analyses/${failing}`);
       const failedStage = page.locator('[data-stage="fetch"]');
       await expect(failedStage).toContainText('github tree rejected (404)');
@@ -118,7 +107,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       const beforeRetry = await stageOf(page, failing, 'fetch');
       expect(beforeRetry.startedAt).not.toBeNull();
 
-      // ── 「이 단계만 다시 시도」 ──────────────────────────────────────────
       await failedStage.getByTestId('retry').click();
 
       // The reset is observed through the API rather than the DOM on purpose: a
@@ -148,7 +136,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       const afterRetry = await stageOf(page, failing, 'fetch');
       expect(afterRetry.error).toContain('404');
 
-      // ── 「부분」 재시도: 실행되지 않은 단계는 그대로, 다른 분석도 그대로 ──
       const stages = (await analysisOf(page, failing)).stages;
       for (const key of LATER_STAGES) {
         expect(stages.find((s) => s.key === key)?.status, `${key} must be untouched`).toBe(
@@ -158,7 +145,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       expect((await stageOf(page, good, 'fetch')).status).toBe('succeeded');
       expect((await stageOf(page, good, 'fetch')).detail).toBe('766 files · 2.2 MB');
     } finally {
-      // Back to the overlay's resting state, whatever happened above.
       await scaleWorkers(0);
     }
   });
@@ -178,7 +164,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       await scaleWorkers(0);
       setWorkerEnv('FEATUREDOC_STUB_LLM_FAIL', 'end-user feature candidates');
 
-      // ── setup: this spec's own user, App installation, LLM key ──────────
       await page.goto('/api/auth/login?as=sc0106');
       expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
       const key = await page.request.post('/api/llm-keys', {
@@ -190,7 +175,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       // 간 뒤, 승인으로 stage 4가 열린다. 격리 대조는 유지 대상 단계 자체로 관측한다.
       const llmFailing = await enqueue(page, 'checkout-web', null);
 
-      // ── 워커가 단계 1-3까지 처리한다 ────────────────────────────────────
       await scaleWorkers(1);
       await expect
         .poll(() => analysisOf(page, llmFailing).then((a) => a.status), {
@@ -207,7 +191,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
         expect(kept[k].status, `${k} succeeded before stage 4 runs`).toBe('succeeded');
       }
 
-      // ── 승인 → 재큐 → stage 4 → 트리거 → LLM 오류 ───────────────────────
       // 읽기가 검토 대상 전략을 실체화한다(AC1.3의 lazy seed) — 그 행이 없으면
       // 승인은 404다. 화면을 걷는 대신 API로 여는 것은 setup이며, 전략 검토
       // 화면 자체의 검증은 sc01-04가 소유한다.
@@ -233,7 +216,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
         )
         .toBe('failed: LLM rejected the request (429)');
 
-      // ── 실패한 단계와 그 사유 ───────────────────────────────────────────
       await page.goto(`/#/analyses/${llmFailing}`);
       const failedStage = page.locator('[data-stage="feature_candidates"]');
       await expect(failedStage).toContainText('LLM rejected the request (429)');
@@ -242,7 +224,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       const beforeRetry = await stageOf(page, llmFailing, 'feature_candidates');
       expect(beforeRetry.startedAt).not.toBeNull();
 
-      // ── 「이 단계만 다시 시도」 — 트리거가 결정적이므로 같은 사유로 실패 ──
       await failedStage.getByTestId('retry').click();
       await expect
         .poll(
@@ -261,8 +242,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       const afterRetry = await stageOf(page, llmFailing, 'feature_candidates');
       expect(afterRetry.error).toContain('429');
 
-      // ── 「부분」 재시도: 선행 단계는 시작 시각·사유까지 그대로, 이후 단계는
-      //     그대로 pending ─────────────────────────────────────────────────
       for (const k of ['fetch', 'cross_cutting', 'discovery_strategy']) {
         const s = await stageOf(page, llmFailing, k);
         expect(s.startedAt, `${k} must be untouched by the retry`).toBe(kept[k].startedAt);
@@ -270,7 +249,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       }
       expect((await stageOf(page, llmFailing, 'acceptance_dependencies')).status).toBe('pending');
     } finally {
-      // Back to the overlay's resting state and no trigger, whatever happened.
       await scaleWorkers(0);
       setWorkerEnv('FEATUREDOC_STUB_LLM_FAIL', null);
     }
