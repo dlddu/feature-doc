@@ -208,6 +208,13 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       }
 
       // ── 승인 → 재큐 → stage 4 → 트리거 → LLM 오류 ───────────────────────
+      // 읽기가 검토 대상 전략을 실체화한다(AC1.3의 lazy seed) — 그 행이 없으면
+      // 승인은 404다. 화면을 걷는 대신 API로 여는 것은 setup이며, 전략 검토
+      // 화면 자체의 검증은 sc01-04가 소유한다.
+      expect(
+        (await page.request.get(`/api/analyses/${llmFailing}/discovery-strategy`)).ok(),
+        'reading materialises the reviewable strategy',
+      ).toBeTruthy();
       const approved = await page.request.post(
         `/api/analyses/${llmFailing}/discovery-strategy/approve`,
       );
