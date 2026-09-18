@@ -149,6 +149,7 @@ pub async fn ask(
     ask: Ask<'_>,
 ) -> Result<Answer, String> {
     match mode {
+        // mock-exception: LLM-01 — 실 LLM 응답은 비결정·과금; 결정적 단정을 위해 고정 답으로 답한다
         Mode::Stub => stub_answer(&ask),
         Mode::Real => {
             let key = key.ok_or_else(|| "no LLM key available for this analysis".to_string())?;

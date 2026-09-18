@@ -35,6 +35,7 @@ pub async fn mint_installation_token(
     installation_id: i64,
 ) -> Result<InstallationToken, AppError> {
     match state.config.mode {
+        // mock-exception: EXT-02 — App JWT 서명·실제 설치 토큰 발급은 실제 App 개인키가 필요
         Mode::Stub => Ok(InstallationToken {
             token: format!("ghs_stub_{installation_id}_{}", crate::util::random_token()),
             expires_at: now_unix() + 3600,
@@ -81,6 +82,7 @@ pub async fn fetch_installation(
     installation_id: i64,
 ) -> Result<InstallationInfo, AppError> {
     match state.config.mode {
+        // mock-exception: EXT-02 — 설치 메타 조회는 실제 App 설치를 요구
         Mode::Stub => Ok(InstallationInfo {
             account_login: Some("stub-account".to_string()),
             account_type: Some("User".to_string()),
@@ -148,6 +150,7 @@ pub async fn list_repositories(
     installation_id: i64,
 ) -> Result<Vec<RepoRef>, AppError> {
     match state.config.mode {
+        // mock-exception: EXT-02 — 접근 가능 저장소 목록은 실제 설치 토큰이 필요
         Mode::Stub => Ok(stub_repositories()),
         Mode::Real => {
             let token = mint_installation_token(state, installation_id).await?;
@@ -235,6 +238,7 @@ fn stub_repositories() -> Vec<RepoRef> {
 /// Best-effort count of repositories the installation can access (for display).
 pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<i64> {
     match state.config.mode {
+        // mock-exception: EXT-02 — 저장소 개수 조회는 실제 설치 토큰이 필요
         Mode::Stub => Some(3),
         Mode::Real => {
             let token = mint_installation_token(state, installation_id).await.ok()?;

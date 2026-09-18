@@ -46,6 +46,7 @@ async fn install_url(
     let jar = jar.add(cookies::make(&state, SETUP_STATE_COOKIE, nonce.clone()));
 
     let url = match state.config.mode {
+        // mock-exception: EXT-02 — 실제 GitHub App 설치는 실제 계정·동의가 필요
         Mode::Stub => {
             let iid = stub_installation_id(user.github_id);
             format!("/api/github/setup?installation_id={iid}&setup_action=install&state={nonce}")

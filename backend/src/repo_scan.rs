@@ -59,6 +59,7 @@ pub async fn scan(
     token: Option<&str>,
 ) -> Result<ScanResult, String> {
     match mode {
+        // mock-exception: EXT-03 — 트리 스캔은 실 설치 토큰으로 실 저장소 트리를 읽어야 한다
         Mode::Stub => stub_scan(name, branch),
         Mode::Real => real_scan(http, api_base, owner, name, branch, token).await,
     }

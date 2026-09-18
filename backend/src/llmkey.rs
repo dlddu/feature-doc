@@ -328,6 +328,7 @@ pub async fn active_key_for_user(
 /// the key.
 async fn validate_key(state: &AppState, provider: Provider, key: &str) -> Result<(), AppError> {
     match state.config.mode {
+        // mock-exception: EXT-04 — 키 라이브 검증은 실 프로바이더 키·과금 자격이 필요
         Mode::Stub => {
             if key.len() >= 20 && key.starts_with(provider.prefix()) {
                 Ok(())
