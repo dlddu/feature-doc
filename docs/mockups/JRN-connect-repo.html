@@ -1121,7 +1121,7 @@ body {
       <span>9:41</span>
       <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
     </div>
-    <div class="screen">
+    <div class="screen has-tabbar">
       <header class="appbar">
         <span class="appbar-title">Repositories</span>
         <button class="btn-link" id="btn-logout" data-goto="STP-sign-in">로그아웃</button>
@@ -1173,10 +1173,21 @@ body {
         접근 가능한 저장소예요. 비용을 확인하고 시작할 수 있습니다.
       </div>
 
+      <div class="row between" style="margin-top:14px" id="access-row">
+        <span class="body sm" style="color:var(--text-primary)">GitHub App</span>
+        <span class="meta" id="access-state">미확인</span>
+      </div>
+
       <div class="stack" style="margin-top:20px">
         <button class="btn btn-primary block" data-cta="advance" data-goto="STP-confirm-cost" id="btn-pick" disabled>비용 확인하기</button>
       </div>
     </div>
+    <nav class="tabbar">
+      <div class="tab active"><span class="gl"></span>Repos</div>
+      <div class="tab"><span class="gl"></span>Activity</div>
+      <div class="tab" data-goto="STP-register-llm-key"><span class="gl"></span>Keys</div>
+      <div class="tab"><span class="gl"></span>Settings</div>
+    </nav>
     <div class="home-indicator"></div>
   </div>
 </section>
@@ -1188,12 +1199,15 @@ body {
       <span>9:41</span>
       <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
     </div>
-    <div class="screen">
+    <div class="screen has-tabbar">
       <header class="appbar">
-        <button class="icon-btn" data-goto="STP-pick-target" aria-label="back">‹</button>
-        <span class="appbar-title">Pre-flight</span>
-        <button class="icon-btn ghost" aria-hidden="true"></button>
+        <span class="appbar-title">Repositories</span>
+        <button class="btn-link" data-goto="STP-sign-in">로그아웃</button>
       </header>
+
+      <!-- 같은 화면(저장소 연결)의 아래쪽 — pre-flight 추정 영역. 여정 문서 STP-confirm-cost 터치포인트:
+           「저장소 연결(pre-flight 추정 영역 + 시작 버튼)」. 별도 화면이 아니다. -->
+      <button class="btn-link" data-goto="STP-pick-target" style="margin-top:12px">새 저장소 연결</button>
 
       <div style="margin-top:20px">
         <h1 class="h-display">얼마나 들까요</h1>
@@ -1213,6 +1227,11 @@ body {
           <div class="row between">
             <span class="body sm" style="color:var(--text-primary)">Branch</span>
             <span class="meta" style="color:var(--text-primary)" id="sum-branch">—</span>
+          </div>
+          <div class="row between">
+            <span class="body sm" style="color:var(--text-primary)">GitHub App</span>
+            <span class="meta" style="color:var(--text-primary)">✓ has access</span>
+            <span class="meta" hidden>✕ no access</span>
           </div>
         </div>
         <hr class="divider">
@@ -1249,6 +1268,12 @@ body {
         <button class="btn btn-ghost block" data-goto="END-saved-for-later" id="btn-later">Save for later</button>
       </div>
     </div>
+    <nav class="tabbar">
+      <div class="tab active"><span class="gl"></span>Repos</div>
+      <div class="tab"><span class="gl"></span>Activity</div>
+      <div class="tab" data-goto="STP-register-llm-key"><span class="gl"></span>Keys</div>
+      <div class="tab"><span class="gl"></span>Settings</div>
+    </nav>
     <div class="home-indicator"></div>
   </div>
 </section>

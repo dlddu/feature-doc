@@ -1028,33 +1028,53 @@ body {
         <p class="h-display-sub">항목마다 근거가 된 코드 위치를 함께 적었어요. 같은 커밋을 다시 분석하면 같은 결과가 나오고, 달라지면 무엇이 달라졌는지 항목별로 알려 드립니다.</p>
       </div>
 
-      <div class="card" style="margin-top:18px">
-        <span class="caps">인프라 · 저장소 구조</span>
-        <div style="margin-top:12px">
-          <div class="ev"><span class="ename" data-sample>PostgreSQL 15 · 단일 인스턴스</span><span class="esrc" data-sample>docker-compose.yml:12</span></div>
-          <div class="ev"><span class="ename" data-sample>Redis 큐 (BullMQ)</span><span class="esrc" data-sample>src/queue/index.ts:8</span></div>
-          <div class="ev"><span class="ename" data-sample>모노레포 · pnpm workspace</span><span class="esrc" data-sample>pnpm-workspace.yaml:1</span></div>
-        </div>
+      <div class="row" style="margin-top:14px;gap:8px" id="repro">
+        <span class="tag" data-verdict="unchanged">직전 분석과 동일한 결과예요</span>
+        <span class="tag" data-verdict="changed" hidden>직전 분석과 결과가 달라졌어요</span>
+        <span class="tag" data-verdict="first" hidden>이 저장소의 첫 분석이에요</span>
+        <span class="meta" data-sample>gpt-5.6-luna</span>
       </div>
 
-      <div class="card" style="margin-top:12px">
-        <span class="caps">아키텍처 · 프레임워크</span>
-        <div style="margin-top:12px">
-          <div class="ev"><span class="ename" data-sample>Express 4 · 레이어드 (route → service → repo)</span><span class="esrc" data-sample>src/app.ts:24</span></div>
-          <div class="ev"><span class="ename" data-sample>Prisma ORM</span><span class="esrc" data-sample>prisma/schema.prisma:1</span></div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px">
-        <span class="caps">미들웨어</span>
-        <div style="margin-top:12px">
-          <div class="ev"><span class="ename" data-sample>세션 인증 (express-session)</span><span class="esrc" data-sample>src/mw/auth.ts:5</span></div>
-          <div class="ev">
-            <span class="ename" data-sample>요청 속도 제한</span>
-            <span class="tag warn"><span class="dot"></span>근거 없음</span>
+      <div class="stack-14" style="margin-top:18px">
+        <div class="card">
+          <div class="section-title"><span>인프라</span><span class="count">2</span></div>
+          <div style="margin-top:12px">
+            <div class="ev"><span class="ename" data-sample>PostgreSQL 15 · 단일 인스턴스</span><span class="esrc" data-sample>docker-compose.yml:12</span></div>
+            <div class="ev"><span class="ename" data-sample>Redis 큐 (BullMQ)</span><span class="esrc" data-sample>src/queue/index.ts:8</span></div>
           </div>
         </div>
-        <p class="legend" style="margin-top:12px"><span class="mk">↳</span> 근거를 찾지 못한 항목은 지어내지 않고 그대로 표시합니다</p>
+
+        <div class="card">
+          <div class="section-title"><span>저장소 구조</span><span class="count">0</span></div>
+          <p class="body sm" style="margin-top:10px">이 저장소에서는 근거를 찾지 못했어요</p>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span>아키텍처</span><span class="count">1</span></div>
+          <div style="margin-top:12px">
+            <div class="ev"><span class="ename" data-sample>레이어드 (route → service → repo)</span><span class="esrc" data-sample>src/app.ts:24</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span>프레임워크 · 런타임</span><span class="count">2</span></div>
+          <div style="margin-top:12px">
+            <div class="ev"><span class="ename" data-sample>Express 4 · Node 20</span><span class="esrc" data-sample>package.json:5</span></div>
+            <div class="ev"><span class="ename" data-sample>Prisma ORM</span><span class="esrc" data-sample>prisma/schema.prisma:1</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span>미들웨어</span><span class="count">2</span></div>
+          <div style="margin-top:12px">
+            <div class="ev"><span class="ename" data-sample>세션 인증 (express-session)</span><span class="esrc" data-sample>src/mw/auth.ts:5</span></div>
+            <div class="ev">
+              <span class="ename" data-sample>요청 속도 제한</span>
+              <span class="tag warn"><span class="dot"></span>근거 없음</span>
+            </div>
+          </div>
+          <p class="legend" style="margin-top:12px"><span class="mk">↳</span> 근거를 찾지 못한 항목은 지어내지 않고 그대로 표시합니다</p>
+        </div>
       </div>
 
       <div id="edit-hint" class="notice info" style="margin-top:16px">
@@ -1165,15 +1185,31 @@ body {
             <button class="btn btn-secondary" data-decide="approve">승인</button>
             <button class="btn btn-ghost" data-decide="reject">거부</button>
           </div>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn btn-ghost grow" data-act="rename">이름 바꾸기</button>
+            <button class="btn btn-ghost grow" data-act="pick">고름 해제</button>
+          </div>
         </div>
         <div class="cand" data-cand="c2">
           <span class="cname" data-sample>결제 수단 등록</span>
           <span class="cwhere" data-sample>src/routes/billing.ts:52 · POST /billing/methods</span>
           <span class="cwhy" data-sample>Stripe SetupIntent 를 만들고 카드 정보를 저장하는 경로입니다.</span>
+          <div class="field" style="margin-top:10px" id="rename-panel">
+            <label for="in-rename-c2">Feature name</label>
+            <input type="text" id="in-rename-c2" value="결제 카드 등록" autocomplete="off">
+            <div class="btn-row" style="margin-top:10px">
+              <button class="btn btn-secondary grow" id="btn-rename-save">이름 저장</button>
+              <button class="btn btn-ghost" id="btn-rename-cancel">취소</button>
+            </div>
+          </div>
           <span class="cstate">결정됨</span>
           <div class="cbtns">
             <button class="btn btn-secondary" data-decide="approve">승인</button>
             <button class="btn btn-ghost" data-decide="reject">거부</button>
+          </div>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn btn-ghost grow" data-act="rename">이름 바꾸기</button>
+            <button class="btn btn-ghost grow" data-act="pick">합칠 후보로 고르기</button>
           </div>
         </div>
         <div class="cand" data-cand="c3">
@@ -1186,6 +1222,10 @@ body {
             <button class="btn btn-secondary" data-decide="approve">승인</button>
             <button class="btn btn-ghost" data-decide="reject">거부</button>
           </div>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn btn-ghost grow" data-act="rename">이름 바꾸기</button>
+            <button class="btn btn-ghost grow" data-act="pick">합칠 후보로 고르기</button>
+          </div>
         </div>
         <div class="cand" data-cand="c4">
           <span class="cname" data-sample>주문 내역 내려받기</span>
@@ -1195,6 +1235,11 @@ body {
           <div class="cbtns">
             <button class="btn btn-secondary" data-decide="approve">승인</button>
             <button class="btn btn-ghost" data-decide="reject">거부</button>
+          </div>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn btn-ghost grow" data-act="rename">이름 바꾸기</button>
+            <button class="btn btn-ghost grow" data-act="pick">합칠 후보로 고르기</button>
+            <button class="btn btn-secondary grow" data-act="fold">여기에 합치기</button>
           </div>
         </div>
       </div>
