@@ -170,8 +170,6 @@ pub async fn ask(
     }
 }
 
-// ── real: Anthropic Messages API ─────────────────────────────────────────────
-
 #[derive(Deserialize)]
 struct AnthropicResponse {
     #[serde(default)]
@@ -273,8 +271,6 @@ async fn anthropic(http: &reqwest::Client, key: &str, ask: Ask<'_>) -> Result<An
     })
 }
 
-// ── real: OpenAI Responses API ───────────────────────────────────────────────
-//
 // The Responses API rather than Chat Completions: it is the endpoint that takes
 // `reasoning.effort` and `text.format` together, which is exactly the pair the
 // Anthropic call above uses (`output_config.effort` / `.format`). Keeping the two
@@ -426,8 +422,6 @@ async fn openai(http: &reqwest::Client, key: &str, ask: Ask<'_>) -> Result<Answe
 
     openai_answer(parsed)
 }
-
-// ── stub ─────────────────────────────────────────────────────────────────────
 
 /// The model name the stub reports, so a document written in stub mode is
 /// distinguishable from a real one by inspection.
@@ -615,8 +609,6 @@ mod tests {
         );
         assert_eq!(Provider::Google.default_model(), None);
     }
-
-    // ── OpenAI request/response shape ────────────────────────────────────────
 
     #[test]
     fn openai_request_carries_the_schema_and_no_sampling_parameters() {

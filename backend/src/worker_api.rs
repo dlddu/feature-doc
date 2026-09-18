@@ -49,8 +49,6 @@ pub fn routes() -> Router<AppState> {
         .route("/internal/analyses/{id}/finish", post(finish))
 }
 
-// ── authentication ────────────────────────────────────────────────────────────
-
 /// Proof that the caller presented the configured worker token.
 ///
 /// An unset token is not "allow everything" — it is "these routes do not exist for
@@ -96,8 +94,6 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     diff == 0
 }
 
-// ── claim ─────────────────────────────────────────────────────────────────────
-
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClaimReq {
@@ -134,7 +130,6 @@ struct ClaimView {
     /// Short-lived GitHub installation token for this job's repository. `None` in
     /// stub mode (nothing to call). Never persisted, never logged.
     installation_token: Option<String>,
-    /// The provider the LLM key below belongs to (`anthropic` / `openai` / `google`).
     llm_provider: Option<String>,
     /// The owner's active LLM key, unsealed for this job only (AC1.2~AC1.4 stages).
     /// `None` when the user has no active key — the stage then fails with a clear
@@ -342,8 +337,6 @@ async fn work_remains(state: &AppState, analysis_id: &str) -> Result<bool, AppEr
     Ok(offered.iter().any(|k| k == pipeline::FEATURE_CANDIDATES))
 }
 
-// ── lease + progress ──────────────────────────────────────────────────────────
-
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct WorkerIdReq {
@@ -438,7 +431,6 @@ async fn report_stage(
 #[serde(rename_all = "camelCase")]
 struct FinishReq {
     worker_id: String,
-    /// `awaiting_pipeline` (every implemented stage ran) or `failed`.
     status: String,
     #[serde(default)]
     error: Option<String>,
@@ -495,10 +487,7 @@ async fn finish(
 #[serde(rename_all = "camelCase")]
 struct DocumentReq {
     worker_id: String,
-    /// The stage's JSON output, as produced by the pipeline stage module.
     content: serde_json::Value,
-    /// Model identifier and per-call token usage — the cost accounting AC4.6
-    /// surfaces in a later slice.
     model: String,
     #[serde(default)]
     input_tokens: i64,

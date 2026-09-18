@@ -34,6 +34,7 @@ use featuredoc::pipeline;
 use featuredoc::repo_scan;
 use serde::Deserialize;
 use serde_json::json;
+use tokio::signal::unix::{signal, SignalKind};
 
 /// Wait between polls when the queue is empty.
 const IDLE_POLL: Duration = Duration::from_secs(2);
@@ -104,20 +105,53 @@ async fn main() -> anyhow::Result<()> {
         "featuredoc worker started"
     );
 
+    // The worker is its container's PID 1, and the kernel drops any signal sent to
+    // a PID-namespace init that has no handler for it. Without these a scale-down's
+    // SIGTERM is ignored and the kubelet waits out the whole grace period (30 s by
+    // default) before its SIGKILL. Installed before the first claim so that a stop
+    // landing during it is still seen.
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigint = signal(SignalKind::interrupt())?;
+    let stop = async move {
+        tokio::select! {
+            _ = sigterm.recv() => "SIGTERM",
+            _ = sigint.recv() => "SIGINT",
+        }
+    };
+    tokio::pin!(stop);
+
     // A plain loop, not a scheduler: the API is the queue, and the lease in
-    // `worker_api` is what makes an abrupt SIGKILL recoverable.
+    // `worker_api` is what makes an abrupt SIGKILL recoverable. A stop is honoured
+    // only between claims: cancelling a claim in flight could leave a job leased to
+    // a worker that never saw it, and abandoning a job strands its lease for
+    // LEASE_SECONDS. So the current job runs on — to its end, or to the grace
+    // period's SIGKILL, which the lease still covers — and nothing new is claimed.
     loop {
-        match worker.claim().await {
+        let pause = match worker.claim().await {
             Ok(Some(job)) => {
                 if let Err(e) = worker.run(&job).await {
                     tracing::warn!(analysis_id = %job.id, "job failed: {e}");
                 }
+                Duration::ZERO
             }
-            Ok(None) => tokio::time::sleep(IDLE_POLL).await,
+            Ok(None) => IDLE_POLL,
             Err(e) => {
                 tracing::warn!("claim failed: {e}");
-                tokio::time::sleep(ERROR_BACKOFF).await;
+                ERROR_BACKOFF
             }
+        };
+        tokio::select! {
+            // A stop that arrived during a job must win over the zero pause after it.
+            biased;
+            sig = &mut stop => {
+                tracing::info!(
+                    worker_id = %worker.worker_id,
+                    signal = sig,
+                    "stop requested, exiting between claims"
+                );
+                return Ok(());
+            }
+            _ = tokio::time::sleep(pause) => {}
         }
     }
 }
