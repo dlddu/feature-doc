@@ -208,6 +208,15 @@ async fn run_to_documented(
     .await;
     finish(state, id).await;
 
+    // 읽는 순간 검토 가능한 전략이 심어진다(lazy seed). 이 GET 없이 approve 를 치면
+    // `load_strategy` 가 아직 없는 행을 찾아 404 다.
+    assert!(build_router(state.clone())
+        .oneshot(get(&format!("/api/analyses/{id}/discovery-strategy"), session))
+        .await
+        .unwrap()
+        .status()
+        .is_success());
+
     let status = build_router(state.clone())
         .oneshot(user_send(
             "POST",
