@@ -1,19 +1,8 @@
 // Feature Candidates — the real screen behind
-// docs/mockups/JRN-discover-features.html#STP-sift-candidates (Feature Candidates, AC1.4).
+// docs/mockups/JRN-discover-features.html#STP-sift-candidates.
 //
-// The mockup is the SSOT for what this screen says, so the copy below is the
-// mockup's copy. What it *does* is AC1.4: stage 4 extracted a list, and the
-// reviewer 승인 / 거부(사유와 함께) / 병합 / 이름 변경 한다. Nothing here is
-// client-side state — every mutation is a write the server answers with the new
-// list, which is why a reload shows the same decisions.
-//
-// Two kinds of difference from the prototype, both registered in
-// docs/doc-tracker.md "알려진 목업↔구현 편차":
-//  · the mockup's four candidate cards are sample data (marked `data-sample`);
-//    here the list is whatever stage 4 extracted for *this* repository.
-//  · 병합 and 이름 변경 have no counterpart in the mockup. AC1.4's 검증 방법 names
-//    them, and the PRD is the SSOT — implementing them is what the AC requires, so
-//    the mockup is the side that is behind ("목업 미갱신").
+// Nothing here is client-side state: every mutation is a write the server answers
+// with the new list, which is why a reload shows the same decisions.
 
 import { useEffect, useState } from 'react';
 import {
@@ -29,12 +18,9 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** The sample half of the previous-rejection notice — reason and when, as one value.
- *
- * Concatenated rather than a template literal: an interpolated literal is not
- * product copy, but the M3B extractor reads it as one (it scans string literals
- * whole). Building it from punctuation the extractor already filters keeps the copy
- * ledger free of a row that would never be true. */
+/** Concatenated rather than a template literal: an interpolated literal is not
+ *  product copy, but the M3B extractor reads it as one (it scans string literals
+ *  whole), which would put a row in the copy ledger that is never true. */
 function quotedRejection(prev: PreviousRejection): string {
   const when = new Date(prev.rejectedAt * 1000).toISOString().slice(0, 10);
   return '“' + prev.reason + '” (' + when + ')';
@@ -44,7 +30,6 @@ type Filter = 'all' | 'undecided' | 'approved' | 'rejected';
 
 type Props = {
   id: string;
-  /** Feature Candidates → Analysis Progress (back to the run these candidates came out of). */
   onBack: () => void;
 };
 
@@ -53,13 +38,10 @@ export function FeatureCandidates({ id, onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [busy, setBusy] = useState(false);
-  /** The candidate whose rejection panel is open, and the reason being written. */
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [reason, setReason] = useState('');
-  /** The candidate being renamed, and the new name. */
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
-  /** Candidates picked to fold into the next one approved for merging. */
   const [picked, setPicked] = useState<string[]>([]);
 
   useEffect(() => {
@@ -72,7 +54,6 @@ export function FeatureCandidates({ id, onBack }: Props) {
     };
   }, [id]);
 
-  /** Every mutation goes through the server and renders its answer, never a guess. */
   async function mutate(run: Promise<CandidateList>) {
     setBusy(true);
     setError(null);
@@ -409,8 +390,7 @@ function Card(p: CardProps) {
   );
 }
 
-/** `location` plus the symbol, when the extractor found one — AC1.4's "발견된 위치".
- *  Concatenated for the same reason as [`quotedRejection`]. */
+/** Concatenated for the same reason as [`quotedRejection`]. */
 function locationOf(candidate: FeatureCandidate): string {
   return candidate.symbol === null ? candidate.location : candidate.location + ' · ' + candidate.symbol;
 }
@@ -419,12 +399,6 @@ function nameOf(list: CandidateList, key: string): string {
   return list.candidates.find((c) => c.key === key)?.name ?? key;
 }
 
-/**
- * Copy the static prototype has no counterpart for — a network wait, the state
- * before stage 4 has run, and the two merge actions AC1.4 requires but the mockup
- * does not draw. All registered in docs/doc-tracker.md "알려진 목업↔구현 편차";
- * kept as constants so each deviation is one place, not scattered.
- */
 const LOADING = '불러오는 중…';
 const NOT_EXTRACTED = '후보 추출 단계가 아직 끝나지 않았어요.';
 const MERGE_PICK = '합칠 후보로 고르기';
@@ -432,9 +406,8 @@ const MERGE_PICKED = '고름 해제';
 const MERGE_INTO = '여기에 합치기';
 
 /**
- * Three slots, like the mockup's `STP-sift-candidates`: `‹ back`, the title as a direct
- * `span.appbar-title`, and a right-hand `icon-btn ghost` placeholder that keeps the
- * title centred under `.appbar`'s `space-between`.
+ * The right-hand `icon-btn ghost` is a spacer, not a control — it keeps the title
+ * centred under `.appbar`'s `space-between`.
  */
 function Appbar({ onBack }: { onBack: () => void }) {
   return (

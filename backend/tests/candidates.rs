@@ -1,20 +1,4 @@
-//! Feature candidate extraction and review (AC1.4).
-//!
-//! AC1.4's verification method names four actions and one memory, and each has a
-//! test here:
-//!   · 후보 목록으로 **제시**된다 — reading materialises the list from what stage 4
-//!     produced, and says "not there yet" before the stage has run.
-//!   · **승인 / 거부** — a rejection without a reason is refused outright; AC1.4
-//!     requires the reason, and a reason written later is a reason nobody wrote.
-//!   · **병합 / 이름 변경** — merging keeps the folded rows (visible, reversible) and
-//!     renaming does not move the candidate's identity.
-//!   · **거부된 후보의 사유는 다음 분석 시 참고될 수 있도록 기록된다** — test/01
-//!     시나리오 7, asserted across two analyses of the same target.
-//!
-//! Plus the two queue properties without which stage 4 could never run at all:
-//! approving a strategy re-queues the analysis, and the claim that follows offers
-//! **only** the stages that have not already succeeded — otherwise stages 2-3 would
-//! re-run their LLM calls and replace the very proposal the reviewer approved.
+//! Feature candidate extraction and review.
 //!
 //! Documents are written through the worker's own `/internal` route, not by
 //! inserting rows — a hand-written fixture could drift from what a worker submits.
@@ -174,8 +158,8 @@ fn candidate_doc(items: &[(&str, &str, &str)]) -> serde_json::Value {
     json!({ "candidates": candidates })
 }
 
-/// Walks an analysis to "stage 3 succeeded, awaiting the reviewer" — the state every
-/// test below starts from, driven through the same routes a worker uses.
+/// Walks an analysis to "stage 3 succeeded, awaiting the reviewer" through the same
+/// routes a worker uses.
 async fn run_through_stage_three(state: &AppState, id: &str, patterns: &[&str]) {
     let job = claim(state).await;
     assert_eq!(job["id"], id, "claimed a different job than the test meant to");
@@ -188,8 +172,8 @@ async fn run_through_stage_three(state: &AppState, id: &str, patterns: &[&str]) 
 }
 
 async fn approve(state: &AppState, session: &str, id: &str) {
-    // The strategy row is materialised on first read (AC1.3's lazy seed), so a
-    // reviewer always reads before approving and so does this helper.
+    // The strategy row is materialised on first read, so a reviewer always reads
+    // before approving and so does this helper.
     let resp = build_router(state.clone())
         .oneshot(get(&format!("/api/analyses/{id}/discovery-strategy"), session))
         .await
@@ -208,7 +192,7 @@ async fn approve(state: &AppState, session: &str, id: &str) {
     assert_eq!(resp.status(), StatusCode::OK, "approve");
 }
 
-/// Runs stage 4 the way the worker does, on the claim that follows approval.
+/// Runs on the claim that follows approval, the way the worker does.
 async fn run_stage_four(state: &AppState, id: &str, items: &[(&str, &str, &str)]) {
     let job = claim(state).await;
     assert_eq!(job["id"], id);
@@ -289,7 +273,6 @@ async fn a_candidate_list_exists_only_once_the_stage_has_extracted_one() {
     let first = candidate(&after, "src/routes/auth.ts");
     assert_eq!(first["name"], "비밀번호 재설정");
     assert_eq!(first["decision"], "undecided");
-    // AC1.4: 발견된 위치와 추정 근거가 함께 기록된다.
     assert_eq!(first["location"], "src/routes/auth.ts");
     assert_eq!(first["rationale"], "메일 템플릿과 만료 토큰 검증");
 }
@@ -349,8 +332,6 @@ async fn renaming_keeps_the_candidates_identity_and_merging_keeps_the_folded_row
     let renamed = json_body(resp).await;
     let entry = candidate(&renamed, "src/routes/auth.ts");
     assert_eq!(entry["name"], "비밀번호 찾기");
-    // The key did not move: identity is where the candidate was found, which is what
-    // lets the *next* analysis still recognise a renamed candidate.
     assert_eq!(entry["key"], "src/routes/auth.ts");
 
     let resp = build_router(state.clone())
@@ -369,14 +350,12 @@ async fn renaming_keeps_the_candidates_identity_and_merging_keeps_the_folded_row
         candidate(&merged, "src/routes/admin.ts")["mergedInto"],
         "src/routes/auth.ts"
     );
-    // …and it stops being a thing to decide.
     assert_eq!(merged["undecided"], 1);
 }
 
 #[tokio::test]
 async fn a_rejected_candidate_comes_back_flagged_in_the_next_analysis_of_the_same_target() {
-    // test/01 시나리오 7. The flag is information, never an automatic decision: the
-    // mockup is explicit that the reviewer decides again.
+    // The flag is information, never an automatic decision.
     let (state, _dir) = stub_state().await;
     let session = login_installed(&state, 9404, "sifter").await;
 
@@ -412,10 +391,8 @@ async fn a_rejected_candidate_comes_back_flagged_in_the_next_analysis_of_the_sam
     let carried = candidate(&view, "src/routes/admin.ts");
     assert_eq!(carried["previouslyRejected"]["reason"], "내부 도구라 사용자 기능이 아님");
     assert_eq!(carried["previouslyRejected"]["analysisId"], first.as_str());
-    // Not re-decided for the user.
     assert_eq!(carried["decision"], "undecided");
     assert_eq!(view["undecided"], 2);
-    // A candidate nobody rejected carries nothing.
     assert!(candidate(&view, "src/routes/auth.ts")["previouslyRejected"].is_null());
 }
 
@@ -426,8 +403,7 @@ async fn approving_requeues_the_job_and_the_next_claim_offers_only_what_is_left(
     let id = enqueue(&state, &session, "payments-api").await;
     run_through_stage_three(&state, &id, &["src/routes/**", "src/jobs/**"]).await;
 
-    // Before approval the job is parked: stage 4 is withheld (AC1.3's gate) and
-    // nothing would ever hand it back to a worker.
+    // Parked: nothing would ever hand this job back to a worker.
     assert_eq!(status_of(&state, &id).await, "awaiting_pipeline");
 
     approve(&state, &session, &id).await;
@@ -493,7 +469,7 @@ async fn another_users_candidates_are_not_readable_or_decidable() {
     approve(&state, &owner, &id).await;
     run_stage_four(&state, &id, &SIFTED).await;
 
-    // 404, not 403 — the API never confirms that someone else's id exists (AC4.7).
+    // 404, not 403 — the API never confirms that someone else's id exists.
     let resp = build_router(state.clone())
         .oneshot(get(&format!("/api/analyses/{id}/candidates"), &stranger))
         .await

@@ -1,34 +1,14 @@
-//! Stage 4 (`feature_candidates`): what end-user features live in this codebase? (AC1.4)
+//! Stage 4 (`feature_candidates`): proposes the end-user features of a codebase.
 //!
-//! AC1.4 takes the strategy the reviewer approved in stage 3 and asks for a list a
-//! person can sift: "각 후보에는 발견된 위치(파일·심볼)와 추정 근거가 함께 기록된다".
-//! So a candidate is a name plus **where it was found** plus **why** — three fields
-//! the screen renders side by side, and the reason the location is not optional.
-//!
-//! Two inputs, both already earned: the approved patterns (from
-//! `discovery_strategies`, handed over by the claim response so this stage needs no
-//! second round-trip) and the path list stage 1 measured, viewed through
-//! [`crate::cross_cutting::input_paths`] — the same view stages 2 and 3 use, so the
-//! four stages cannot disagree about what the repository contains.
-//!
-//! The *deciding* half of AC1.4 does not live here — it is `feature_candidates`
-//! (migration 0007) and the routes in [`crate::analysis`]. This module only
-//! produces the proposal, exactly as [`crate::discovery_strategy`] does for stage 3.
-//!
-//! One thing this module owns for both halves: [`candidate_key`]. A candidate's
-//! identity across analyses is *where it was found*, not a row id — the next
-//! analysis of the same repository writes new rows for the same places, and
-//! 시나리오 7 ("재분석 시 이전에 거부된 항목으로 표시") is only expressible if both
-//! sides derive that identity the same way.
+//! The approved patterns arrive on the claim response, so this stage needs no second
+//! round-trip. Paths are read through [`crate::cross_cutting::input_paths`], the same
+//! view stages 2 and 3 use, so the four stages cannot disagree about what the
+//! repository contains.
 
 use serde_json::{json, Value};
 
 use crate::llm::{self, Ask};
 
-/// Upper bound on one extraction. AC1.4's output is a list a person decides on one
-/// item at a time on a phone; past this it stops being reviewable and becomes a
-/// second file listing (same reasoning as stage 3's cap, one order larger because
-/// features are finer-grained than entry points).
 const MAX_CANDIDATES: usize = 40;
 
 const SYSTEM: &str = "\
@@ -40,7 +20,6 @@ Each candidate must name one path from the list as the location it was found at,
 and say in one sentence why that code looks like an end-user feature.
 Never propose a candidate whose location is not in the list.";
 
-/// The JSON shape the answer is constrained to (sent to the provider verbatim).
 fn schema() -> Value {
     json!({
         "type": "object",
@@ -65,13 +44,9 @@ fn schema() -> Value {
     })
 }
 
-/// A candidate's identity across analyses: `location` plus `symbol` when there is
-/// one.
-///
-/// Not a row id and not the name. The name is the first thing the reviewer renames
-/// (AC1.4 grants exactly that), so keying on it would make a renamed candidate a
-/// stranger to the next analysis; the location is what the *extractor* found and is
-/// stable as long as the code is.
+/// A candidate's identity across analyses — deliberately not a row id and not the
+/// name. The next analysis writes new rows for the same places, and the reviewer may
+/// rename; only the location survives both, so both sides must key on it.
 pub fn candidate_key(location: &str, symbol: Option<&str>) -> String {
     match symbol.map(str::trim).filter(|s| !s.is_empty()) {
         Some(symbol) => format!("{location}#{symbol}"),
@@ -79,13 +54,10 @@ pub fn candidate_key(location: &str, symbol: Option<&str>) -> String {
     }
 }
 
-/// Deterministic stand-in for the model's answer.
-///
-/// Derived from the actual tree and the actual approved patterns rather than
-/// hard-coded, for the same reason stages 2 and 3 do it: the e2e can then assert
-/// AC1.4's real property — every candidate cites a path this analysis actually saw,
-/// reached through a pattern the reviewer actually approved — instead of a fixed
-/// string that would still pass if the wiring were cut.
+/// Derived from the tree and the approved patterns rather than hard-coded so the
+/// e2e can assert the real property — every candidate cites a path this analysis
+/// saw, reached through a pattern the reviewer approved — instead of a fixed string
+/// that would still pass with the wiring cut.
 fn stub_answer(paths: &[String], patterns: &[String]) -> Value {
     let mut candidates = Vec::new();
     for pattern in patterns {
@@ -105,13 +77,9 @@ fn stub_answer(paths: &[String], patterns: &[String]) -> Value {
     json!({ "candidates": candidates })
 }
 
-/// Paths a glob-ish discovery pattern selects.
-///
-/// Deliberately small: `**` matches any run of characters, `*` matches within one
-/// path segment, and a pattern with no wildcard matches any path that starts with
-/// it (that is how stage 3's `cmd/admin-cli`-style hand-added entry points behave).
-/// Enough to make the stub honest and to check the model's answers; the real scan
-/// is the model's job.
+/// The pattern dialect is deliberately small: `**` matches any run of characters,
+/// `*` matches within one path segment, and a wildcard-free pattern is a prefix —
+/// which is how a hand-added entry point like `cmd/admin-cli` reaches its directory.
 pub fn matching<'a>(paths: &'a [String], pattern: &str) -> Vec<&'a String> {
     paths.iter().filter(|p| matches_pattern(p, pattern)).collect()
 }
@@ -123,8 +91,6 @@ fn matches_pattern(path: &str, pattern: &str) -> bool {
     glob_match(path.as_bytes(), pattern.as_bytes())
 }
 
-/// `**` spans separators, `*` does not. Recursive rather than a compiled matcher:
-/// patterns are short and there are at most [`MAX_CANDIDATES`] of them per run.
 fn glob_match(path: &[u8], pattern: &[u8]) -> bool {
     if pattern.is_empty() {
         return path.is_empty();
@@ -173,7 +139,6 @@ fn prompt(owner: &str, name: &str, branch: &str, paths: &[String], patterns: &[S
     )
 }
 
-/// Runs stage 4 and returns the document to persist.
 pub async fn extract(
     http: &reqwest::Client,
     mode: crate::config::Mode,
@@ -208,10 +173,8 @@ pub async fn extract(
     )
     .await?;
 
-    // Drop candidates whose location is not a path this analysis saw, then cap.
-    // Both are checks on the *answer* rather than trust in the instruction: a
-    // fabricated location is exactly the failure AC1.4's "발견된 위치" clause exists
-    // to prevent, and a list past the cap is not reviewable.
+    // Checks on the *answer* rather than trust in the instruction: a model will
+    // cite a location it invented, and it will run past "at most N".
     let Some(items) = answer
         .content
         .get_mut("candidates")
@@ -231,7 +194,6 @@ pub async fn extract(
     Ok(answer)
 }
 
-/// The candidates, in document order — what seeds the reviewable list.
 pub fn candidates(doc: &Value) -> Vec<Candidate> {
     doc.get("candidates")
         .and_then(Value::as_array)
@@ -264,7 +226,6 @@ pub fn candidates(doc: &Value) -> Vec<Candidate> {
         .collect()
 }
 
-/// One extracted candidate as the review half stores it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Candidate {
     pub key: String,
@@ -274,7 +235,7 @@ pub struct Candidate {
     pub rationale: String,
 }
 
-/// The one-liner Analysis Progress renders under the step, mirroring stages 2 and 3.
+/// The one-liner rendered under the step on Analysis Progress.
 pub fn detail(doc: &Value) -> String {
     format!("{} candidates · awaiting review", candidates(doc).len())
 }
@@ -300,10 +261,7 @@ mod tests {
             vec![&paths[0], &paths[1]]
         );
         assert_eq!(matching(&paths, "src/jobs/*.worker.ts"), vec![&paths[2]]);
-        // A single `*` does not cross a separator, so this matches nothing.
         assert!(matching(&paths, "src/*.ts").is_empty());
-        // A wildcard-free pattern is a prefix, which is how a hand-added entry
-        // point like `cmd/admin-cli` reaches its directory.
         assert_eq!(matching(&paths, "src/jobs"), vec![&paths[2]]);
     }
 
@@ -334,8 +292,6 @@ mod tests {
 
     #[test]
     fn identity_is_the_location_not_the_name() {
-        // Renaming is an action AC1.4 grants the reviewer, so the key must survive
-        // it — otherwise a renamed candidate is a stranger to the next analysis.
         assert_eq!(
             candidate_key("src/routes/auth.ts", None),
             candidate_key("src/routes/auth.ts", Some("   "))
