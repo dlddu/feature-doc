@@ -431,15 +431,19 @@ const MERGE_PICK = '합칠 후보로 고르기';
 const MERGE_PICKED = '고름 해제';
 const MERGE_INTO = '여기에 합치기';
 
+/**
+ * Three slots, like the mockup's `STP-sift-candidates`: `‹ back`, the title as a direct
+ * `span.appbar-title`, and a right-hand `icon-btn ghost` placeholder that keeps the
+ * title centred under `.appbar`'s `space-between`.
+ */
 function Appbar({ onBack }: { onBack: () => void }) {
   return (
-    <div className="appbar">
+    <header className="appbar">
       <button className="icon-btn" type="button" onClick={onBack} aria-label="back">
         ‹
       </button>
-      <div>
-        <div className="appbar-title">feature 후보</div>
-      </div>
-    </div>
+      <span className="appbar-title">feature 후보</span>
+      <span className="icon-btn ghost" aria-hidden="true" />
+    </header>
   );
 }

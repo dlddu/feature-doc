@@ -25,9 +25,18 @@
 #                   대상 파일에 실재하고, 캡션 집계가 실제 행 수와 같다.
 #  M5 래칫          미해소 편차 상한과 대조 보류 상한. 늘면 실패 — 줄이면 상한을 낮추라고
 #                   실패한다(형제 게이트의 원장 래칫과 같은 방침).
+#  M6 예시값 표기   `data-sample` 규약의 오용(잎이 아닌 자리·상호작용 요소)을 잡는다.
+#  M7 앱바 슬롯     활성 (화면, 단계) 쌍마다 목업 `<header class="appbar">` 의 슬롯 수와
+#                   구현 앱바의 슬롯 수를 대조한다. 슬롯은 `icon-btn`·`appbar-title`·
+#                   `appbar-sub`·`btn-link` 중 하나를 클래스로 가진 요소다. 원장 행의
+#                   「목업이 표현하는 것」 칸에 `(앱바 구조)` 마커가 있는 화면은 뺀다 —
+#                   `(단계 전체)` 와 같은 방식의 명시적 면제다.
 #
 # ── 이 게이트가 보지 않는 것(의도적) ─────────────────────────────────────
-#  * 규칙 5(구조·수치)의 CSS 클래스·px 대조는 아직 자동화하지 않는다.
+#  * 규칙 5(구조·수치) 중 **자동화된 것은 앱바 슬롯 수(M7) 하나뿐**이다. 나머지 CSS
+#    클래스·px 대조는 여전히 사람 몫이다. M7 을 넣은 이유는 그 한 조각이 카피 게이트의
+#    사각지대에 정확히 들어앉기 때문이다 — 슬롯이 통째로 빠져도 카피는 한 글자도 줄지
+#    않아 M3 가 영원히 초록이다(2026-09-18, 우측 자리표시자 부재 3건이 그렇게 숨어 있었다).
 #  * 실행 스크린샷 픽셀 비교는 모델 정의상 범위 밖이다.
 #  * 구현측 카피 추출(M3B)은 **JSX 텍스트 노드 · 한글 포함 문자열 리터럴 ·
 #    JSX children 위치의 문자열 리터럴**만 본다. 모듈 상수 테이블에 영문으로만 적힌
@@ -316,6 +325,38 @@ def discover_screens() -> dict[str, list[tuple[str, str]]]:
     return screens
 
 
+# ── M7 앱바 슬롯 ────────────────────────────────────────────────────────────
+# 앱바는 목업 전 페이지에서 **슬롯의 나열**이다 — 좌·중앙·우가 각각 하나씩이거나(3슬롯),
+# `JRN-connect-repo` 의 홈 계열처럼 제목 + 링크 둘이거나(2슬롯). 카피 대조는 이 축을 볼 수
+# 없다: 자리표시자(`icon-btn ghost`)는 글자가 없고, 제목을 감싼 래퍼가 바뀌어도 텍스트는
+# 그대로다. 그래서 슬롯 **수**만 따로 센다. 어느 컨트롤이 어느 슬롯에 있어야 하는가는
+# 여전히 카피 대조와 원장의 몫이다.
+APPBAR_MARKER = "(앱바 구조)"
+SLOT_CLASSES = {"icon-btn", "appbar-title", "appbar-sub", "btn-link"}
+CLASS_ATTR = re.compile(r'class(?:Name)?="([^"]*)"')
+
+
+def count_slots(block: str) -> int:
+    return sum(1 for m in CLASS_ATTR.finditer(block)
+               if m.group(1).split()[:1] and m.group(1).split()[0] in SLOT_CLASSES)
+
+
+def mockup_appbar(path: Path, step: str) -> str | None:
+    src = path.read_text(encoding="utf-8")
+    section = re.search(r'<section id="%s"(.*?)(?=<section id="|\Z)' % re.escape(step),
+                        src, flags=re.S)
+    if not section:
+        return None
+    header = re.search(r'<header class="appbar">(.*?)</header>', section.group(1), flags=re.S)
+    return header.group(1) if header else None
+
+
+def impl_appbar(path: Path) -> str | None:
+    src = strip_comments(path.read_text(encoding="utf-8"))
+    header = re.search(r'<header className="appbar">(.*?)</header>', src, flags=re.S)
+    return header.group(1) if header else None
+
+
 def root_tokens(text: str) -> dict[str, str]:
     block = re.search(r":root\s*\{(.*?)\}", text, flags=re.S)
     if not block:
@@ -393,7 +434,10 @@ def main() -> int:
     # ── 원장 인덱스 ─────────────────────────────────────────────────────
     exempt_steps: set[str] = set()
     exempt_strings: set[str] = set()
+    appbar_exempt: set[str] = set()
     for target_cell, mockup_cell, impl_cell, _kind, _why, _when in ledger_rows:
+        if APPBAR_MARKER in mockup_cell:
+            appbar_exempt.update(t for t in ticked(target_cell) if t.endswith(".tsx"))
         tokens = ticked(mockup_cell)
         if "(단계 전체)" in mockup_cell:
             exempt_steps.update(t for t in tokens if t.startswith("STP-"))
@@ -509,6 +553,39 @@ def main() -> int:
     for message in sample_misuse():
         fail("M6", message)
     print(f"M6 예시값 표기 — `data-sample` {marked}건, 오용 0건")
+
+    # ── M7 앱바 슬롯 ────────────────────────────────────────────────────
+    compared = 0
+    mismatched = 0
+    exempted = 0
+    for screen, steps in active.items():
+        if screen in appbar_exempt:
+            exempted += 1
+            note(f"M7 면제 [{screen}] — 원장 {APPBAR_MARKER} 행")
+            continue
+        block = impl_appbar(ROOT / screen)
+        if block is None:
+            fail("M7", f'{screen} 에서 `<header className="appbar">` 를 찾지 못했다')
+            continue
+        impl_slots = count_slots(block)
+        for step in steps:
+            found = next(
+                (b for filename, _ in screens.get(screen, [])
+                 if (b := mockup_appbar(MOCKUP_DIR / filename, step)) is not None),
+                None,
+            )
+            if found is None:
+                fail("M7", f"{screen} 의 활성 단계 {step} 에서 목업 앱바를 찾지 못했다")
+                continue
+            compared += 1
+            mockup_slots = count_slots(found)
+            if mockup_slots != impl_slots:
+                mismatched += 1
+                fail("M7", f"앱바 슬롯 수가 다르다 [{screen} ↔ {step}] — "
+                           f"목업 {mockup_slots} vs 구현 {impl_slots}")
+            else:
+                note(f"M7 ok [{screen} ↔ {step}] 슬롯 {mockup_slots}")
+    print(f"M7 앱바 슬롯 — 대조 {compared}쌍 · 면제 {exempted}화면 · 불일치 {mismatched}건")
 
     report()
     return 1 if failures else 0

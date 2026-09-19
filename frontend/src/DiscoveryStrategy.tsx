@@ -225,15 +225,20 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
 const LOADING = '불러오는 중…';
 const APPROVED = '승인된 전략이에요';
 
+/**
+ * The mockup's appbar is three slots (`STP-tune-strategy`): `‹ back`, the title as a
+ * direct `span.appbar-title`, and a `icon-btn ghost` placeholder on the right. The
+ * placeholder is a spacer, not a control — without it `.appbar`'s `space-between`
+ * pushes the title to the right edge instead of centring it.
+ */
 function Appbar({ onBack }: { onBack: () => void }) {
   return (
-    <div className="appbar">
+    <header className="appbar">
       <button className="icon-btn" type="button" onClick={onBack} aria-label="back">
         ‹
       </button>
-      <div>
-        <div className="appbar-title">탐색 전략</div>
-      </div>
-    </div>
+      <span className="appbar-title">탐색 전략</span>
+      <span className="icon-btn ghost" aria-hidden="true" />
+    </header>
   );
 }

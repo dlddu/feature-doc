@@ -95,7 +95,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
   if (error !== null) {
     return (
       <main className="screen">
-        <Appbar onBack={onBack} sub="" />
+        <Appbar onBack={onBack} />
         <div className="row" style={{ marginTop: 22 }} data-testid="concerns-error">
           <span className="badge danger">
             <span className="dot" />
@@ -110,7 +110,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
   if (doc === null) {
     return (
       <main className="screen">
-        <Appbar onBack={onBack} sub="" />
+        <Appbar onBack={onBack} />
         {/* The mockup draws no waiting copy, so the wait is an empty place rather than
             a sentence this screen invented (docs/doc-tracker.md 문서 권위 순서). */}
         <div style={{ marginTop: 22 }} data-testid="concerns-loading" />
@@ -130,7 +130,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
 
   return (
     <main className="screen">
-      <Appbar onBack={onBack} sub={`run ${id.slice(0, 8)}`} />
+      <Appbar onBack={onBack} />
 
       <h1 className="h-display" style={{ marginTop: 24 }}>
         내 코드가 서 있는 바닥
@@ -227,16 +227,20 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
   );
 }
 
-function Appbar({ onBack, sub }: { onBack: () => void; sub: string }) {
+/**
+ * Three slots, like the mockup's `STP-review-landscape`: `‹ back`, the title as a direct
+ * `span.appbar-title`, and a right-hand `icon-btn ghost` placeholder. The run id that
+ * used to sit here as an `appbar-sub` is gone — the mockup draws no subtitle, no upper
+ * document asks for one, and the id is already in the address (`#/analyses/{id}/…`).
+ */
+function Appbar({ onBack }: { onBack: () => void }) {
   return (
-    <div className="appbar">
+    <header className="appbar">
       <button className="icon-btn" type="button" onClick={onBack} aria-label="back">
         ‹
       </button>
-      <div>
-        <div className="appbar-title">횡단 관심사</div>
-        <div className="appbar-sub">{sub}</div>
-      </div>
-    </div>
+      <span className="appbar-title">횡단 관심사</span>
+      <span className="icon-btn ghost" aria-hidden="true" />
+    </header>
   );
 }
