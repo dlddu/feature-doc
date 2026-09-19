@@ -315,7 +315,7 @@ fn prompt(owner: &str, name: &str, branch: &str, subject: &Subject, paths: &[Str
 /// 본 경로를 근거로 든다)을 단정할 수 있고, 배선이 끊겨도 통과하는 상수를 단정하지
 /// 않게 된다. feature 자신이 발견된 자리는 언제나 한 줄로 들어간다 — 어떤 feature 든
 /// 최소한 자기 진입점에는 기대고 있다.
-fn stub(subject: &Subject, paths: &[String]) -> Value {
+fn stub_dependencies(subject: &Subject, paths: &[String]) -> Value {
     let mut items: Vec<Item> = Vec::new();
     let mut push = |category: &str, path: &str| {
         if items
@@ -376,7 +376,7 @@ pub async fn derive(
             user: prompt(owner, name, branch, subject, &paths),
             schema: schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
-            stub: stub(subject, &paths),
+            stub: stub_dependencies(subject, &paths),
         },
     )
     .await?;
@@ -515,7 +515,7 @@ mod tests {
     #[test]
     fn stub_is_derived_from_the_tree() {
         let paths = tree();
-        let doc = stub(&subject(), &paths);
+        let doc = stub_dependencies(&subject(), &paths);
         let items = items(&doc);
         assert!(!items.is_empty());
         for item in &items {
@@ -533,7 +533,7 @@ mod tests {
             "다층 의존성을 가진 트리는 여러 분류로 갈려야 한다: {categories:?}"
         );
 
-        let other = stub(&subject(), &["other/src/only.rs".to_string()]);
+        let other = stub_dependencies(&subject(), &["other/src/only.rs".to_string()]);
         assert_ne!(items_names(&doc), items_names(&other));
     }
 
