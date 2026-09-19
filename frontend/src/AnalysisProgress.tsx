@@ -70,6 +70,8 @@ type Props = {
   onOpenCrossCutting: () => void;
   /** Analysis Progress → Discovery Strategy, offered once stage 3 has proposed a strategy to review (AC1.3). */
   onOpenDiscoveryStrategy: () => void;
+  /** Analysis Progress → 달라진 것, offered once stage 5 has written this run's document (AC2.6). */
+  onOpenDiff: () => void;
 };
 
 export function AnalysisProgress({
@@ -77,6 +79,7 @@ export function AnalysisProgress({
   onBack,
   onOpenCrossCutting,
   onOpenDiscoveryStrategy,
+  onOpenDiff,
 }: Props) {
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -203,6 +206,23 @@ export function AnalysisProgress({
                 data-testid="open-cross-cutting"
               >
                 추출된 횡단 관심사 보기
+              </button>
+            )}
+            {/* AC2.6's way in. The mockup puts this CTA on `STP-notice-change`
+                (「무엇이 달라졌는지 보기」), the re-analysis notification screen this
+                slice does not build — so the copy is borrowed from there and carried
+                in docs/doc-tracker.md "알려진 목업↔구현 편차" until that screen exists.
+                Gated on stage 5 having succeeded: before that this run has no
+                representation to compare. */}
+            {stage.key === 'acceptance_dependencies' && stage.status === 'succeeded' && (
+              <button
+                className="btn btn-secondary block"
+                type="button"
+                style={{ marginTop: 12 }}
+                onClick={onOpenDiff}
+                data-testid="open-diff"
+              >
+                무엇이 달라졌는지 보기
               </button>
             )}
             {stage.status === 'failed' && (

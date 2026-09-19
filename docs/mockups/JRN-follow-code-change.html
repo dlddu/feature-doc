@@ -1059,22 +1059,22 @@ body {
       <div id="changed-list" style="margin-top:16px">
         <div class="dfeat conflict" data-feat="f1">
           <div class="dhead">
-            <span class="dname">재고 동기화</span>
+            <span class="dname" data-sample>재고 동기화</span>
             <span class="tag warn"><span class="dot"></span>확인 필요</span>
           </div>
-          <span class="dwhere">src/inventory/sync.ts:88 · 3 scenarios</span>
+          <span class="dwhere"><span data-sample>src/inventory/sync.ts:88 · 3</span> scenarios</span>
           <div class="dbody">
             <div class="dline" data-kind="scenario">
               <span class="dmark">+</span>
-              <span class="dtext">품절 임박 임계값을 넘으면 동기화 주기를 10분에서 2분으로 줄인다</span>
+              <span class="dtext" data-sample>품절 임박 임계값을 넘으면 동기화 주기를 10분에서 2분으로 줄인다</span>
             </div>
             <div class="dline" data-kind="scenario">
               <span class="dmark">−</span>
-              <span class="dtext">동기화 주기는 항상 10분 간격이다</span>
+              <span class="dtext" data-sample>동기화 주기는 항상 10분 간격이다</span>
             </div>
             <div class="dline" data-kind="dep">
               <span class="dmark">+</span>
-              <span class="dtext">의존성 추가 — <code>redis/stream</code></span>
+              <span class="dtext">의존성 추가 — <code data-sample>redis/stream</code></span>
             </div>
           </div>
           <div class="btn-row" style="margin-top:11px">
@@ -1083,18 +1083,18 @@ body {
         </div>
         <div class="dfeat" data-feat="f2">
           <div class="dhead">
-            <span class="dname">결제 수단 등록</span>
+            <span class="dname" data-sample>결제 수단 등록</span>
             <span class="tag info"><span class="dot"></span>갱신됨</span>
           </div>
-          <span class="dwhere">src/billing/card.ts:41 · 2 scenarios</span>
+          <span class="dwhere"><span data-sample>src/billing/card.ts:41 · 2</span> scenarios</span>
           <div class="dbody">
             <div class="dline" data-kind="scenario">
               <span class="dmark">+</span>
-              <span class="dtext">만료된 카드를 저장하려 하면 저장하지 않고 만료 사실을 알린다</span>
+              <span class="dtext" data-sample>만료된 카드를 저장하려 하면 저장하지 않고 만료 사실을 알린다</span>
             </div>
             <div class="dline" data-kind="dep">
               <span class="dmark">−</span>
-              <span class="dtext">의존성 제거 — <code>legacy/card-vault</code></span>
+              <span class="dtext">의존성 제거 — <code data-sample>legacy/card-vault</code></span>
             </div>
           </div>
           <div class="btn-row" style="margin-top:11px">
@@ -1103,18 +1103,18 @@ body {
         </div>
         <div class="dfeat" data-feat="f3">
           <div class="dhead">
-            <span class="dname">주문 내역 내려받기</span>
+            <span class="dname" data-sample>주문 내역 내려받기</span>
             <span class="tag info"><span class="dot"></span>갱신됨</span>
           </div>
-          <span class="dwhere">src/orders/export.ts:31 · 1 scenario</span>
+          <span class="dwhere"><span data-sample>src/orders/export.ts:31 · 1</span> scenario</span>
           <div class="dbody">
             <div class="dline" data-kind="scenario">
               <span class="dmark">+</span>
-              <span class="dtext">내려받기가 30초를 넘으면 메일로 링크를 보낸다</span>
+              <span class="dtext" data-sample>내려받기가 30초를 넘으면 메일로 링크를 보낸다</span>
             </div>
             <div class="dline" data-kind="dep">
               <span class="dmark">+</span>
-              <span class="dtext">의존성 추가 — <code>mailer/queue</code></span>
+              <span class="dtext">의존성 추가 — <code data-sample>mailer/queue</code></span>
             </div>
           </div>
           <div class="btn-row" style="margin-top:11px">
