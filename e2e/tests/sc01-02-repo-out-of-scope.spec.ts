@@ -43,30 +43,29 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
   await cont.click();
 
   // ── Home: the repositories the App can reach, and no analyses yet ──
-  await expect(page.getByTestId('metrics')).toBeVisible();
-  await expect(page.getByTestId('metric-repos')).toHaveText('3');
-  await expect(page.getByTestId('metric-analyses')).toHaveText('0');
+  // 메트릭 그리드는 목업에 없어 슬라이스 ⑥ 이 제거했다. 같은 두 사실을 목록 자체로 단정한다 —
+  // 카드 수가 App 이 닿는 저장소 수이고, 실행 이력이 없으면 상태 배지가 하나도 없다.
   const cards = page.getByTestId('repo-card');
   await expect(cards).toHaveCount(3);
+  await expect(page.locator('[data-testid="repo-card"] .badge')).toHaveCount(0);
   await expect(cards.filter({ hasText: 'stub-account/payments-api' })).toBeVisible();
 
-  // ── Connect Repository: a target outside the App's granted access is refused ──
-  await page.getByTestId('new-repository').click();
+  // ── 저장소 연결(같은 화면): a target outside the App's granted access is refused ──
   await page.getByTestId('repo-url').fill('github.com/someone-else/private-repo');
   await page.getByTestId('check-access').click();
   const noAccess = page.getByTestId('no-access');
   await expect(noAccess).toBeVisible();
-  await expect(noAccess).toContainText('someone-else/private-repo');
-  // The recovery path (App 설치 범위 관리) is offered, and the trigger is unreachable.
+  // 시나리오가 요구하는 것은 **명확한 사유**이고, 슬라이스 ⑥ 이 그 문면을 목업 카피로 수렴시켰다
+  // (대상 저장소 이름을 끼워 넣던 구현 문구 → 목업의 고정 문장). 사유 자체는 그대로 있다.
+  await expect(noAccess).toContainText('App 설치 범위 밖입니다');
+  // The recovery path is offered, and the trigger is unreachable.
   await expect(page.getByTestId('manage-install')).toBeVisible();
   await expect(page.getByTestId('start-analysis')).toHaveCount(0);
 
-  // Nothing was queued by the refused attempt.
-  await page.getByTestId('back').click();
-  await expect(page.getByTestId('metric-analyses')).toHaveText('0');
+  // Nothing was queued by the refused attempt — 목록에 상태 배지가 여전히 없다.
+  await expect(page.locator('[data-testid="repo-card"] .badge')).toHaveCount(0);
 
-  // ── Connect Repository: an in-scope target shows the pre-flight estimate before triggering ──
-  await page.getByTestId('new-repository').click();
+  // ── 같은 화면의 pre-flight 영역: an in-scope target shows the estimate before triggering ──
   await page.getByTestId('repo-url').fill('stub-account/payments-api');
   await page.getByTestId('check-access').click();
   const estimate = page.getByTestId('estimate');
@@ -77,7 +76,7 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
 
   // ── Trigger: the job lands on the home list as queued ──
   await page.getByTestId('start-analysis').click();
-  await expect(page.getByTestId('metric-analyses')).toHaveText('1');
+  await expect(page.locator('[data-testid="repo-card"] .badge')).toHaveCount(1);
   const analyzed = page.getByTestId('repo-card').filter({ hasText: 'stub-account/payments-api' });
   await expect(analyzed).toContainText('Queued');
 });

@@ -1,5 +1,5 @@
 // Screen routing for the journey the docs describe (user-journey flow 1 → 2):
-// Credentials → Repositories → Connect Repository → Analysis.
+// Credentials → Repositories (list + connect form, one screen) → Analysis.
 //
 // Still a state machine rather than a router dependency, with one addition: Analysis Progress is
 // *addressable* (`#/analyses/<id>`). AC1.5 requires that closing the app and coming
@@ -15,11 +15,10 @@ import { DiscoveryStrategy } from './DiscoveryStrategy';
 import { FeatureAcceptance } from './FeatureAcceptance';
 import { FeatureCandidates } from './FeatureCandidates';
 import { FeatureDependencies } from './FeatureDependencies';
-import { ConnectRepository } from './ConnectRepository';
 import { CredentialsSetup } from './CredentialsSetup';
 import { HomeRepositories } from './HomeRepositories';
 
-type Screen = 'credentials' | 'home' | 'connect';
+type Screen = 'credentials' | 'home';
 
 /** Which analysis screen a hash addresses, if any. */
 export type AnalysisRoute = {
@@ -72,7 +71,7 @@ export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('credentials');
-  // Bumped on returning from Connect Repository so the home list refetches the new job.
+  // Bumped after a run is queued so the home list refetches the new job.
   const [homeEpoch, setHomeEpoch] = useState(0);
   const [route, setRoute] = useState<AnalysisRoute | null>(() =>
     analysisRouteFromHash(window.location.hash),
@@ -240,15 +239,12 @@ export function App() {
     return (
       <HomeRepositories
         key={homeEpoch}
-        onConnectRepository={() => setScreen('connect')}
         onOpenCredentials={() => setScreen('credentials')}
         onOpenAnalysis={openAnalysis}
         onLoggedOut={afterLogout}
+        onAnalysisQueued={backToHome}
       />
     );
-  }
-  if (screen === 'connect') {
-    return <ConnectRepository onDone={backToHome} />;
   }
   return <CredentialsSetup onReady={() => setScreen('home')} />;
 }

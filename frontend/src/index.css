@@ -651,6 +651,31 @@ button.ico { cursor: pointer; }
   border-color: rgba(201, 168, 104, 0.4);
   color: var(--warning);
 }
+/* err·ok — 목업 JRN-connect-repo.html 의 같은 규칙을 그대로 옮긴다. 슬라이스 ⑥ 이 홈·연결
+   병합과 함께 접근 불가/접근 가능 안내를 목업의 notice 로 수렴시키면서 필요해졌다. */
+.notice.err {
+  border-color: rgba(201, 128, 128, 0.4);
+  color: var(--danger);
+}
+.notice.ok {
+  border-color: rgba(134, 184, 154, 0.4);
+  color: var(--success);
+}
+.notice .btn {
+  margin-top: 10px;
+  height: 34px;
+  font-size: 12px;
+}
+
+/* page-h1 — 목업의 같은 이름 규칙. 「새 저장소 연결」처럼 화면 안쪽의 구획 제목이
+   h-display 보다 한 단계 작게 서는 자리에 쓴다. */
+.page-h1 {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
 
 /* feature-candidate cards — Feature Candidates (mockups/JRN-discover-features.html#STP-sift-candidates).
    Copied from the mockup's inline CSS so the screen and the prototype render the
