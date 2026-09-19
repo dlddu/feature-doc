@@ -9,7 +9,7 @@
 처음 보신다면 다음 순서를 추천합니다:
 
 1. **[`docs/values.md`](docs/values.md)** — 제품이 제공하려는 8개 가치(V1~V8). 모든 판단의 기준입니다.
-2. **[`docs/doc-tracker.md`](docs/doc-tracker.md)** — 문서 체계의 현재 상태와 위험 진단. 한눈에 전체 구조와 건강 상태를 봅니다.
+2. **[`docs/doc-tracker/`](docs/doc-tracker/index.md)** — 문서 체계의 현재 상태와 위험 진단. 한눈에 전체 구조와 건강 상태를 봅니다.
 3. **PRD 4종** — 핵심 기능 단위로 구체적인 요구사항을 정의합니다.
 4. **테스트 문서 4종** — 각 AC의 검증 시나리오를 정의합니다.
 
@@ -18,7 +18,7 @@
 ```
 docs/
 ├── values.md              # 가치 문서 (최상위)
-├── doc-tracker.md         # 문서 체계 상태 추적
+├── doc-tracker/         # 문서 체계 상태 추적
 ├── design-system.md       # UI 디자인 시스템 — 토큰·컴포넌트·원칙
 ├── prd/
 │   ├── 01-analysis-pipeline.md       # 코드베이스 분석 파이프라인
@@ -76,7 +76,7 @@ e2e/                       # HTTP smoke (자격증명 평문 미노출 단언 �
 ├── support/               # 매칭 단위가 아님 — 배포 전역 상태(워커 replica) 임대 핸들
 └── tests/                 # 각 spec 첫 줄에 `// 검증 시나리오: <문서>#시나리오 <N>` 을 정확히 1개 선언
     │                      # 파일명 `sc<문서번호>-<시나리오번호>-<slug>.spec.ts` 가 그 선언과 교차 확인된다
-    │                      # (규약·매핑 표: docs/doc-tracker.md "e2e 매핑" / 게이트: tools/check-scenario-e2e.py)
+    │                      # (규약·매핑 표: docs/doc-tracker/ "e2e 매핑" / 게이트: tools/check-scenario-e2e.py)
     ├── sc01-01-full-pipeline-run.spec.ts              # 전체 파이프라인을 한 바퀴 걷는 중량 spec
     ├── sc01-02-repo-out-of-scope.spec.ts
     ├── sc01-03-cross-cutting-determinism.spec.ts
@@ -194,11 +194,11 @@ CI는 이 사고를 잡지 못합니다 — `cargo test`도 kind e2e도 매번 �
 
 - **가치 우선**: 모든 PRD/AC/테스트는 자신이 어떤 가치(V1~V8)를 달성하는지 명시합니다. 가치와 연결되지 않은 문서는 위험으로 진단됩니다.
 - **AC 단위 작성**: PRD는 Acceptance Criteria 단위로 쪼개고, 각 AC는 1개 이상의 테스트 시나리오로 검증됩니다.
-- **상태 추적**: 문서를 추가/수정할 때마다 [`docs/doc-tracker.md`](docs/doc-tracker.md)를 함께 갱신하여 끊어진 연결이 없는지 확인합니다.
+- **상태 추적**: 문서를 추가/수정할 때마다 [`docs/doc-tracker/`](docs/doc-tracker/index.md)를 함께 갱신하여 끊어진 연결이 없는지 확인합니다.
 
 ## 현재 상태 (요약)
 
 - 가치: **8개** / PRD: **4개** / AC: **23개** / 테스트 문서: **4개**
 - 가치 미연결 AC: 0개 ✅
 - 미검증 AC: 0개 ✅
-- ⚠️ **제품 소유자 미지정** — 가장 우선 해결할 항목입니다. 자세한 내용은 [`docs/doc-tracker.md`](docs/doc-tracker.md)를 보세요.
+- ⚠️ **제품 소유자 미지정** — 가장 우선 해결할 항목입니다. 자세한 내용은 [`docs/doc-tracker/`](docs/doc-tracker/index.md)를 보세요.

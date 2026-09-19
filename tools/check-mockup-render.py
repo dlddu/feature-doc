@@ -62,7 +62,7 @@ import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TRACKER = ROOT / "docs" / "doc-tracker.md"
+TRACKER = sorted((ROOT / "docs" / "doc-tracker").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9].md"))[-1]
 DESIGN_SYSTEM = ROOT / "docs" / "design-system.md"
 INDEX_CSS = ROOT / "frontend" / "src" / "index.css"
 SRC_DIR = ROOT / "frontend" / "src"

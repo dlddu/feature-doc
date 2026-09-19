@@ -175,13 +175,13 @@ for _jid, _jr in JOURNEYS.items():
         STEP_OWNER.setdefault(_sid, _jid)
 README = read(MK / "README.md")
 HUB = read(DOCS / "index.html")
-TRACKER = read(DOCS / "doc-tracker.md")
+TRACKER = read(sorted((DOCS / "doc-tracker").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9].md"))[-1])
 
 # ── R0 · README 기계 판독 구간 ────────────────────────────────────
 jmap_block = marked(README, "jmap")
 
 # ── 예외 등재 (규칙 8) — SSOT 는 doc-tracker 「수용된 위험」 ──────
-accepted = TRACKER[TRACKER.index("## 수용된 위험"):TRACKER.index("## 변경 이력")] if "## 수용된 위험" in TRACKER else ""
+accepted = TRACKER[TRACKER.index("## 수용된 위험"):TRACKER.index("\n## ", TRACKER.index("## 수용된 위험") + 1)] if "## 수용된 위험" in TRACKER else ""
 exempt_journeys = set()
 for cells in table_rows(accepted):
     if len(cells) >= 4:

@@ -43,7 +43,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TRACKER = ROOT / "docs" / "doc-tracker.md"
+TRACKER = sorted((ROOT / "docs" / "doc-tracker").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9].md"))[-1]
 TEST_DOC_DIR = ROOT / "docs" / "test"
 SPEC_DIR = ROOT / "e2e" / "tests"
 
@@ -244,7 +244,7 @@ def main() -> int:
 
     section = slice_section(TRACKER.read_text(encoding="utf-8"))
     if section is None:
-        fail("S0", f"`docs/doc-tracker.md` 에 `{SECTION}` 절이 없다")
+        fail("S0", f"`{TRACKER.relative_to(ROOT)}` 에 `{SECTION}` 절이 없다")
         return report()
     blocks = split_blocks(section)
 
