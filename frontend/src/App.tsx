@@ -91,7 +91,7 @@ export function App() {
 
   /**
    * After logout the app returns to Credentials Setup, which re-reads `/api/me` on
-   * mount and therefore lands on its signed-out branch (`Sign in with GitHub`) —
+   * mount and, finding no user, hands off to the Sign In screen (`SignIn.tsx`) —
    * the mockup's `data-goto="STP-sign-in"` destination. The hash is cleared first:
    * an analysis route left behind would otherwise re-render a signed-in screen over
    * the entry one.

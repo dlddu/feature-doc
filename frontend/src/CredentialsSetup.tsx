@@ -2,6 +2,11 @@
 // docs/mockups/JRN-connect-repo.html#STP-grant-repo-access and #STP-register-llm-key
 // (Credentials Setup, AC4.1 · AC4.2 · AC4.3).
 //
+// The unauthenticated branch used to live here as a third state. It is now its own
+// screen (`SignIn.tsx` ← `#STP-sign-in`) because the mockup and the journey both draw
+// it that way — 2026-09-18 authority-order ruling. What is left is exactly the two
+// steps this file is mapped to.
+//
 // Once pre-flight confirms the credentials are usable, the primary action becomes
 // the hand-off into Home (journey flow 1: Credentials Setup → Home → Connect Repository).
 
@@ -12,11 +17,11 @@ import {
   getInstallUrl,
   getMe,
   listKeys,
-  LOGIN_URL,
   preflight,
   registerKey,
 } from './api';
 import type { Connection, LlmKey, ProviderId, User } from './api';
+import { SignIn } from './SignIn';
 
 // Mockup order (`JRN-connect-repo.html#STP-register-llm-key`, the `#in-provider`
 // options): Anthropic → OpenAI → Google, with the key hint written for the first
@@ -109,10 +114,6 @@ export function CredentialsSetup({ onReady }: Props = {}) {
     setKeys(await listKeys());
   }
 
-  function signIn() {
-    window.location.href = LOGIN_URL;
-  }
-
   async function connectApp() {
     setConnecting(true);
     try {
@@ -179,6 +180,11 @@ export function CredentialsSetup({ onReady }: Props = {}) {
   const ready = installed && hasAnyActiveKey;
   const placeholder = PROVIDERS.find((p) => p.id === provider)?.placeholder ?? '';
 
+  // Unauthenticated is a different screen, not a state of this one.
+  if (me === null) {
+    return <SignIn error={loadError} />;
+  }
+
   return (
     <main className="screen">
       <div className="toprow">
@@ -200,27 +206,6 @@ export function CredentialsSetup({ onReady }: Props = {}) {
         <p className="body sm" style={{ marginTop: 28 }}>
           불러오는 중…
         </p>
-      )}
-
-      {me === null && (
-        <div className="stack-10" style={{ marginTop: 28 }}>
-          <button className="btn btn-primary block" type="button" onClick={signIn} data-testid="signin">
-            Sign in with GitHub
-          </button>
-          <p className="body sm">
-            읽기 전용 최소 권한만 요청하고, 접근할 저장소는 당신이 직접 고릅니다. LLM 호출은
-            당신의 키로만 일어나요.
-          </p>
-          {loadError && (
-            <div className="row">
-              <span className="badge danger">
-                <span className="dot" />
-                Error
-              </span>
-              <span className="body sm">{loadError}</span>
-            </div>
-          )}
-        </div>
       )}
 
       {me && (
