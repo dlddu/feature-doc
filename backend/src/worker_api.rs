@@ -46,9 +46,7 @@ pub fn routes() -> Router<AppState> {
         .route("/internal/analyses/{id}/heartbeat", post(heartbeat))
         .route("/internal/analyses/{id}/stages/{key}", post(report_stage))
         .route("/internal/analyses/{id}/documents/{kind}", post(submit_document))
-        // 의존성 결과는 `documents/{kind}` 를 타지 않는다 — 그 경로는 `kind` 가
-        // 파이프라인 단계일 때만 받고, 의존성은 단계가 아니라 feature 단위 행동이다
-        // (AC2.4). feature key 가 경로 구분자를 품으므로 본문으로 온다.
+        // feature key 가 경로 구분자를 품으므로 결과는 경로가 아니라 본문으로 온다.
         .route("/internal/analyses/{id}/dependencies", post(submit_dependencies))
         .route("/internal/analyses/{id}/finish", post(finish))
 }
@@ -131,14 +129,9 @@ struct ClaimView {
     /// Stage 5's input and its gate, carried the same way and for the same reason as
     /// `approved_patterns`.
     approved_candidates: Vec<CandidateRef>,
-    /// The features someone asked to trace the dependencies of (AC2.4), still
-    /// waiting. Carried for the same reason as the two above — the gate and the
-    /// input come from one read — and empty when nobody asked, which is what makes
-    /// "아무도 요청하지 않았으면 아무것도 돌지 않는다" a property of the queue rather
-    /// than a rule the worker remembers.
-    ///
-    /// Not part of `executable_stages`: this is not a pipeline stage, and putting it
-    /// there would make Analysis Progress draw a sixth step it does not have.
+    /// Carried for the same reason as the two above, and empty when nobody asked —
+    /// which is what makes "아무도 요청하지 않았으면 아무것도 돌지 않는다" a property
+    /// of the queue rather than a rule the worker remembers.
     dependency_requests: Vec<CandidateRef>,
     lease_expires_at: i64,
     /// Short-lived GitHub installation token for this job's repository. `None` in
@@ -374,15 +367,10 @@ pub async fn acceptance_pending(
     Ok(approved.iter().any(|c| !documented.contains(&c.key)))
 }
 
-/// The features whose dependency extraction is still owed (AC2.4).
-///
-/// The request row *is* the gate: someone pressed 「의존성 분석」 on a feature, and
-/// until that run reaches a terminal status the row keeps saying so. A failed run
-/// stays failed rather than retrying forever — re-asking is a person's decision,
-/// and the request route upserts the row back to `queued` when they make it.
-///
-/// Only approved candidates are traced. A feature nobody confirmed is not a feature
-/// yet (the same reading AC2.1 gets in [`approved_candidates`]).
+/// The request row *is* the gate: until a run reaches a terminal status the row
+/// keeps saying so. A failed run stays failed rather than retrying forever —
+/// re-asking is a person's decision, and the request route upserts the row back to
+/// `queued` when they make it.
 pub async fn pending_dependency_requests(
     state: &AppState,
     analysis_id: &str,
@@ -467,8 +455,8 @@ async fn work_remains(state: &AppState, analysis_id: &str) -> Result<bool, AppEr
     {
         return Ok(true);
     }
-    // A 「의존성 분석」 request that landed while this pass was running is the same
-    // race the approvals have, and it gets the same answer (AC2.4).
+    // A request that landed while this pass was running is the same race the
+    // approvals have, and it gets the same answer.
     Ok(!pending_dependency_requests(state, analysis_id).await?.is_empty())
 }
 
@@ -682,7 +670,6 @@ struct DependencyReq {
     /// Which feature this run traced. In the body rather than the path because a
     /// candidate key carries the location it was found at (`src/api/routes.rs`).
     feature_key: String,
-    /// `succeeded` or `failed` — see [`crate::dependencies::request_status`].
     status: String,
     #[serde(default)]
     error: Option<String>,
@@ -696,18 +683,13 @@ struct DependencyReq {
     output_tokens: i64,
 }
 
-/// Stores one feature's dependency extraction (AC2.4) as **rows** (AC2.5).
-///
-/// Not `submit_document`: that route only accepts a pipeline stage as its `kind`,
-/// and dependencies are a per-feature action rather than a stage. Storing rows is
-/// not an implementation detail either — AC2.5 asks for structured data that a
-/// reverse query can select from, which a JSON blob would not be.
+/// Stores one feature's dependency extraction as rows.
 ///
 /// A successful re-run **replaces** that feature's rows in the same transaction
-/// that moves the request to its terminal status: re-extraction is an update, and
-/// leaving the old rows would make the screen show a union of two readings of the
-/// code. A failed run replaces nothing — a previous good answer outlives a bad
-/// attempt, and the row carries the reason instead.
+/// that moves the request to its terminal status: leaving the old rows would make
+/// the screen show a union of two readings of the code. A failed run replaces
+/// nothing — a previous good answer outlives a bad attempt, and the row carries
+/// the reason instead.
 async fn submit_dependencies(
     State(state): State<AppState>,
     _auth: WorkerAuth,

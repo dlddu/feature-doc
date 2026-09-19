@@ -1,14 +1,4 @@
-//! Feature 단위 종단 의존성 (AC2.4) 과 그 구조화 적재 (AC2.5).
-//!
-//! 추출 자체는 `src/dependencies.rs` 의 단위 테스트가 지킨다. 여기서 묻는 것은 앱
-//! 전체만 답할 수 있는 세 가지다:
-//!
-//!   * **요청이 곧 게이트다** — 아무도 「의존성 분석」을 누르지 않았으면 claim 은
-//!     아무것도 제안하지 않고, 누르면 분석이 다시 큐에 들어가 그 feature 가 실린다.
-//!   * **행으로 적재된다** — 역방향 질의(「이 데이터 모델을 쓰는 feature 전부」)와
-//!     export 가 성립하는지는 JSON 문서로는 물을 수 없는 질문이다 (AC2.5).
-//!   * **실패가 앞의 답을 지우지 않는다** — 재추출 실패는 사유를 남기고, 직전에
-//!     성공한 결과는 그대로 남는다.
+//! Feature 단위 종단 의존성과 그 구조화 적재를 앱 전체로 묻는다.
 //!
 //! 문서는 손으로 쓰지 않고 `dependencies::derive` 가 stub 모드로 만든 것을 워커의
 //! `/internal` 라우트로 넣는다 — 픽스처는 워커가 실제로 보내는 것과 갈린다.
@@ -185,8 +175,7 @@ fn candidate_doc() -> serde_json::Value {
     json!({ "candidates": candidates })
 }
 
-/// Walks an analysis to "the reviewer has confirmed `approve` of the candidates",
-/// which is the state every dependency test starts from.
+/// Walks an analysis to the state every dependency test starts from: candidates confirmed.
 async fn run_to_confirmed(state: &AppState, session: &str, id: &str, approve: usize) -> Vec<String> {
     let job = claim(state).await;
     assert_eq!(job["id"], id);
@@ -249,9 +238,8 @@ async fn run_to_confirmed(state: &AppState, session: &str, id: &str, approve: us
         approved.push(key);
     }
 
-    // Stage 5 opens on that approval; run it — with the document a worker would
-    // actually submit, so the stage's coverage predicate comes to rest — and the
-    // analysis is then waiting on nothing but the dependency question.
+    // Run stage 5 with the document a worker would actually submit, so the stage's
+    // coverage predicate comes to rest.
     let job = claim(state).await;
     assert_eq!(job["id"], id);
     let subjects: Vec<Subject> = job["approvedCandidates"]
@@ -383,8 +371,6 @@ fn items_of(view: &serde_json::Value) -> Vec<(String, String, Option<String>)> {
         .collect()
 }
 
-/// 아무도 묻지 않았으면 아무것도 돌지 않는다. 의존성 추출은 feature 단위 **행동**이고
-/// (test/02 시나리오 5), 그 행동이 없으면 claim 은 그것을 제안하지 않는다.
 #[tokio::test]
 async fn nothing_is_traced_until_someone_asks() {
     let (state, path) = stub_state().await;
@@ -392,7 +378,6 @@ async fn nothing_is_traced_until_someone_asks() {
     let id = enqueue(&state, &session, "payments-api").await;
     let approved = run_to_confirmed(&state, &session, &id, 1).await;
 
-    // 분석은 멈춰 있다 — 큐가 비었으므로 아무리 claim 해도 추적은 일어나지 않는다.
     assert!(try_claim(&state).await.is_none(), "queue should be at rest");
 
     let view = read_trace(&state, &session, &id, &approved[0]).await;
@@ -404,8 +389,6 @@ async fn nothing_is_traced_until_someone_asks() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// AC2.4: 요청이 분석을 다시 큐에 넣고, 그 claim 이 이 feature 를 싣는다. 추출된
-/// 항목은 분류별로 갈리고 각 항목은 이 분석이 실제로 본 경로를 근거로 든다.
 #[tokio::test]
 async fn a_request_requeues_and_the_trace_cites_the_scanned_tree() {
     let (state, path) = stub_state().await;
@@ -421,7 +404,6 @@ async fn a_request_requeues_and_the_trace_cites_the_scanned_tree() {
     let carried = job["dependencyRequests"].as_array().unwrap();
     assert_eq!(carried.len(), 1, "claim 이 요청된 feature 를 싣는다: {job}");
     assert_eq!(carried[0]["key"].as_str().unwrap(), approved[0]);
-    // 의존성은 파이프라인 단계가 아니다 — 여섯 번째 단계 키가 생기지 않는다.
     let stages: Vec<&str> = job["executableStages"]
         .as_array()
         .unwrap()
@@ -458,15 +440,11 @@ async fn a_request_requeues_and_the_trace_cites_the_scanned_tree() {
         "다층 의존성은 분류별로 갈려야 한다: {categories:?}"
     );
 
-    // 한 번 답한 뒤에는 다시 제안되지 않는다.
     assert!(try_claim(&state).await.is_none(), "the request is settled");
 
     let _ = std::fs::remove_file(&path);
 }
 
-/// AC2.5 의 검증 방법 그대로 — 「데이터 모델 X 를 사용하는 feature 전부」. 두 feature
-/// 가 같은 것에 기대고 있으면 역방향 질의가 둘 다 돌려준다. 이것이 행으로 적재해야
-/// 하는 이유이고, JSON 문서 하나로는 물을 수 없는 질문이다.
 #[tokio::test]
 async fn the_reverse_query_finds_every_feature_that_depends_on_the_same_thing() {
     let (state, path) = stub_state().await;
@@ -484,8 +462,7 @@ async fn the_reverse_query_finds_every_feature_that_depends_on_the_same_thing() 
     run_trace(&state, &id, &job, 1).await;
     finish(&state, &id, "awaiting_pipeline").await;
 
-    // 두 추적이 공유하는 항목 하나를 고른다 — 어느 이름인지는 트리가 정하지, 이
-    // 테스트가 정하지 않는다.
+    // 공유 항목이 어느 이름인지는 트리가 정하지, 이 테스트가 정하지 않는다.
     let first = items_of(&read_trace(&state, &session, &id, &approved[0]).await);
     let second = items_of(&read_trace(&state, &session, &id, &approved[1]).await);
     let shared = first
@@ -517,7 +494,6 @@ async fn the_reverse_query_finds_every_feature_that_depends_on_the_same_thing() 
         assert_eq!(feature["repoName"], "payments-api");
     }
 
-    // 분류가 7종 밖이면 질의 자체가 성립하지 않는다.
     let resp = build_router(state.clone())
         .oneshot(get(
             "/api/dependencies/features?category=wishful&name=whatever",
@@ -527,7 +503,6 @@ async fn the_reverse_query_finds_every_feature_that_depends_on_the_same_thing() 
         .unwrap();
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
-    // 남의 분석의 의존성은 남의 것이다 (AC4.7).
     let stranger = login_installed(&state, 2, "bob").await;
     let resp = build_router(state.clone())
         .oneshot(get(
@@ -549,8 +524,6 @@ async fn the_reverse_query_finds_every_feature_that_depends_on_the_same_thing() 
     let _ = std::fs::remove_file(&path);
 }
 
-/// AC2.5 의 나머지 절반 — 「데이터는 시스템 외부로 export 가능」. 화면이 JSON 을
-/// 보여 주는 것이 아니라 파일이 제품 밖으로 나간다.
 #[tokio::test]
 async fn export_hands_back_a_file_something_else_can_read() {
     let (state, path) = stub_state().await;
@@ -605,8 +578,6 @@ async fn export_hands_back_a_file_something_else_can_read() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// 실패한 재추적은 사유를 남기지만 직전에 성공한 답을 지우지 않는다 — 나쁜 시도가
-/// 좋은 답보다 오래 살아서는 안 된다.
 #[tokio::test]
 async fn a_failed_retrace_keeps_the_previous_answer() {
     let (state, path) = stub_state().await;
@@ -621,7 +592,6 @@ async fn a_failed_retrace_keeps_the_previous_answer() {
     let before = items_of(&read_trace(&state, &session, &id, &approved[0]).await);
     assert!(!before.is_empty());
 
-    // 다시 묻고, 이번엔 실패로 답한다.
     request_trace(&state, &session, &id, &approved[0]).await;
     let job = claim(&state).await;
     assert_eq!(job["dependencyRequests"].as_array().unwrap().len(), 1);

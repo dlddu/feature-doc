@@ -1,40 +1,20 @@
-//! 종단 의존성: 이 feature 는 무엇에 기대고 있는가? (AC2.4 · AC2.5)
+//! 종단 의존성: 이 feature 는 무엇에 기대고 있는가?
 //!
-//! PRD-2 의 뒤쪽 절반이다. 앞쪽 절반([`crate::acceptance`])이 「이 기능을 쓰면
-//! 사용자에게 무슨 일이 벌어지는가」를 답한다면, 여기는 「이 기능을 건드리면 무엇이
-//! 영향받는가」를 답한다.
+//! **파이프라인 단계를 더하지 않는다.** [`crate::pipeline::STAGES`] 는 그대로 두고,
+//! 승인이 분석을 재큐잉하고 다음 claim 이 그 일을 제안하는 기계를 한 칸 더 쓴다 —
+//! `feature_dependency_requests` 행 하나가 게이트이자 실행 상태다.
 //!
-//!   * **AC2.4** — 확정된 feature **1건**에 대해 인프라 · 데이터 모델 · 아키텍처
-//!     레이어 · 프레임워크/라이브러리 · 미들웨어 · 핵심 로직 모듈 · 외부 인터페이스를
-//!     종단으로 식별한다. 각 항목에 **코드 근거**가 붙는다.
-//!   * **AC2.5** — 그 결과는 텍스트 문서가 아니라 **행(row)** 으로 적재된다
-//!     (`feature_dependencies`, 마이그레이션 0008). 그래야 「데이터 모델 X 를 쓰는
-//!     feature 전부」라는 역방향 질의와 export 가 성립한다.
-//!
-//! **파이프라인 단계가 아니다.** `docs/test/02` 시나리오 5 의 실행 단계는 「해당
-//! feature 선택 → "의존성 분석" 트리거」다 — 분석 전체가 아니라 feature 하나에 대한
-//! 행동이고, Analysis Progress 목업이 그리는 다섯 단계에 여섯 번째를 더하지 않는다.
-//! 그래서 [`crate::pipeline::STAGES`] 는 그대로 두고, 이미 있는 기계 — 사람이 무언가를
-//! 승인하면 분석이 재큐잉되고 다음 claim 이 그 일을 제안한다 — 를 한 칸 더 쓴다.
-//! 요청은 `feature_dependency_requests` 행이고, 그 행이 곧 게이트이자 실행 상태다.
-//!
-//! **근거를 지어내지 않는다.** 모델이 든 근거가 이 분석이 실제로 본 경로가 아니면
-//! 항목을 버리는 대신 **근거만 떨어뜨린다**(`evidence: None` → 화면의 「근거 없음」).
-//! 여정 `JRN-review-feature` 의 예외 표가 그렇게 요구한다 — 「근거 없음으로 명시.
-//! 임의로 채우지 않음」. 버리면 의존성 자체가 사라지고, 채우면 거짓이 된다.
+//! **근거를 지어내지 않는다.** 모델이 든 근거가 이 분석이 본 경로가 아니면 항목을
+//! 버리는 대신 **근거만 떨어뜨린다** — 버리면 의존성이 사라지고, 채우면 거짓이 된다.
 
 use serde_json::{json, Value};
 
 use crate::acceptance::{is_test_path, Subject};
 use crate::llm::{self, Ask};
 
-/// 한 feature 가 가질 수 있는 의존성 항목 수의 상한. 넘어가면 영향 범위를 한눈에
-/// 잡는다는 AC2.4 의 목적("의존성 목록만 봐도 추론 가능")이 무너진다.
+/// 한 feature 가 가질 수 있는 의존성 항목 수의 상한. 넘어가면 목록만 보고 영향 범위를
+/// 잡는다는 목적이 무너진다.
 const MAX_ITEMS: usize = 40;
-
-// 프롬프트에 싣는 경로 수의 상한은 [`crate::cross_cutting::input_paths`] 가 이미
-// 정한 값을 그대로 쓴다 — 단계마다 다른 상한을 두면 같은 저장소가 단계마다 다른
-// 트리로 보인다.
 
 pub const CATEGORY_INFRASTRUCTURE: &str = "infrastructure";
 pub const CATEGORY_DATA: &str = "data";
@@ -44,9 +24,8 @@ pub const CATEGORY_MIDDLEWARE: &str = "middleware";
 pub const CATEGORY_LOGIC: &str = "logic";
 pub const CATEGORY_INTERFACE: &str = "interface";
 
-/// AC2.4 가 열거한 7종. **한 곳에서만 정의된다** — 프롬프트, 답변 검증, 마이그레이션의
-/// CHECK, 화면의 분류 칩이 전부 이 배열을 출처로 갖는다. 목업이 「전체 7종」이라고
-/// 적어 둔 그 7이다.
+/// 분류 7종이 **한 곳에서만 정의되는** 자리 — 프롬프트, 답변 검증, 마이그레이션의
+/// CHECK, 화면의 분류 칩이 전부 이 배열을 출처로 갖는다.
 pub const CATEGORIES: [&str; 7] = [
     CATEGORY_INFRASTRUCTURE,
     CATEGORY_DATA,
@@ -57,16 +36,13 @@ pub const CATEGORIES: [&str; 7] = [
     CATEGORY_INTERFACE,
 ];
 
-/// 요청 행(`feature_dependency_requests.status`)이 가질 수 있는 값.
-///
-/// 중간 상태가 없다. claim 은 분석 단위로 배타적이므로, 리스가 끊긴 요청은 `queued`
-/// 그대로 남아 다음 claim 에 다시 제안된다 — 회수하려고 상태를 되돌릴 자리가 없다.
+/// 요청 행의 상태값. 중간 상태가 없다 — claim 은 분석 단위로 배타적이라 리스가 끊긴
+/// 요청은 `queued` 그대로 남아 다음 claim 에 다시 제안된다.
 pub mod request_status {
     pub const QUEUED: &str = "queued";
     pub const SUCCEEDED: &str = "succeeded";
     pub const FAILED: &str = "failed";
 
-    /// 워커가 보고할 수 있는 종료 상태인가.
     pub fn is_terminal(status: &str) -> bool {
         matches!(status, SUCCEEDED | FAILED)
     }
@@ -107,8 +83,7 @@ fn schema() -> Value {
     })
 }
 
-/// 의존성 한 줄. `evidence` 가 `None` 인 것은 기록된 사실이다 — 화면은 그것을
-/// 「근거 없음」으로 그린다.
+/// 의존성 한 줄. `evidence: None` 은 흠결이 아니라 기록된 사실이다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Item {
     pub category: String,
@@ -116,12 +91,11 @@ pub struct Item {
     pub evidence: Option<String>,
 }
 
-/// 주어진 분류가 7종 중 하나인가.
 pub fn is_category(category: &str) -> bool {
     CATEGORIES.contains(&category)
 }
 
-/// 분류의 표시 순서. 목업의 칩 순서이자 저장되는 `seq` 의 순서다.
+/// 분류의 표시 순서 — 화면 칩 순서이자 저장되는 `seq` 의 순서다.
 fn category_rank(category: &str) -> usize {
     CATEGORIES
         .iter()
@@ -129,11 +103,8 @@ fn category_rank(category: &str) -> usize {
         .unwrap_or(CATEGORIES.len())
 }
 
-/// 답변에서 의존성 항목을 읽는다. 알 수 없는 분류·빈 이름은 버리고, 같은
-/// (분류, 이름)은 먼저 나온 것만 남기며, 분류 순서로 정렬해 상한까지 자른다.
-///
-/// 이 함수가 적재 경로의 **유일한** 해석 지점이다 — 워커가 만든 문서와 API 가
-/// 행으로 옮기는 값이 서로 다른 규칙을 타면 화면과 역방향 질의가 갈린다.
+/// 답변에서 의존성 항목을 읽는다. 적재 경로의 **유일한** 해석 지점이다 — 워커가 만든
+/// 문서와 API 가 행으로 옮기는 값이 다른 규칙을 타면 화면과 역방향 질의가 갈린다.
 pub fn items(doc: &Value) -> Vec<Item> {
     let Some(raw) = doc.get("items").and_then(|v| v.as_array()) else {
         return Vec::new();
@@ -205,9 +176,8 @@ pub fn detail(doc: &Value) -> String {
 
 /// 한 경로가 어느 분류에 해당하는가. 의존성으로 셀 것이 아니면 `None`.
 ///
-/// 영리하기보다 **관습적**이다. 이 함수는 결정적 stub 이 어떤 트리에서도 같은 답을
-/// 내게 하는 자리이고, 답변 검증이 「이 경로를 이 분류로 부를 수 있는가」를 묻는
-/// 자리가 아니다 — 분류는 모델이 정하고, 이 함수는 stub 과 단위 테스트의 것이다.
+/// 영리하기보다 **관습적**이다 — 분류는 모델이 정하고, 이 함수는 결정적 stub 과 단위
+/// 테스트가 어떤 트리에서도 같은 답을 내게 하는 자리다.
 pub fn category_for(path: &str) -> Option<&'static str> {
     if is_test_path(path) {
         return None;
@@ -223,7 +193,6 @@ pub fn category_for(path: &str) -> Option<&'static str> {
         .map(|s| s.to_ascii_lowercase())
         .collect();
 
-    // 숨김 디렉터리(`.github` 등)와 읽을거리는 의존성이 아니다.
     if segments.iter().any(|s| s.starts_with('.')) || file.starts_with('.') {
         return None;
     }
@@ -277,8 +246,7 @@ pub fn category_for(path: &str) -> Option<&'static str> {
     Some(CATEGORY_LOGIC)
 }
 
-/// 사람이 부를 법한 이름. 파일 이름이 아니라 그것이 사는 자리를 부른다
-/// (`payments-api/src/domain/model.rs` → `domain · model`).
+/// 사람이 부를 법한 이름 — 파일 이름이 아니라 그것이 사는 자리를 부른다.
 fn item_name(path: &str) -> String {
     let (dirs, file) = match path.rsplit_once('/') {
         Some((dirs, file)) => (dirs, file),
@@ -310,11 +278,8 @@ fn prompt(owner: &str, name: &str, branch: &str, subject: &Subject, paths: &[Str
 
 /// 결정적 stub.
 ///
-/// 고정 문자열이 아니라 **스캔된 트리에서 파생**한다 — 다른 단계들이 그렇게 하는
-/// 이유와 같다. 그래야 e2e 가 AC2.4 의 실제 성질(분류별로 갈리고, 각 항목이 이 분석이
-/// 본 경로를 근거로 든다)을 단정할 수 있고, 배선이 끊겨도 통과하는 상수를 단정하지
-/// 않게 된다. feature 자신이 발견된 자리는 언제나 한 줄로 들어간다 — 어떤 feature 든
-/// 최소한 자기 진입점에는 기대고 있다.
+/// 고정 문자열이 아니라 **스캔된 트리에서 파생**한다 — 배선이 끊겨도 통과하는 상수를
+/// e2e 가 단정하지 않게 하려는 것이다.
 fn stub_dependencies(subject: &Subject, paths: &[String]) -> Value {
     let mut items: Vec<Item> = Vec::new();
     let mut push = |category: &str, path: &str| {
@@ -345,8 +310,7 @@ fn stub_dependencies(subject: &Subject, paths: &[String]) -> Value {
     document(&items)
 }
 
-/// 한 feature 의 의존성을 추출한다 (AC2.4). 돌려주는 문서는 이미 검증된 것이다 —
-/// 이 분석이 보지 않은 경로를 근거로 든 항목은 근거만 비워서 남는다.
+/// 한 feature 의 의존성을 추출한다. 돌려주는 문서는 이미 검증된 것이다.
 pub async fn derive(
     http: &reqwest::Client,
     mode: crate::config::Mode,
@@ -453,7 +417,6 @@ mod tests {
         assert_eq!(category_for("payments-api/src/billing.rs"), Some(CATEGORY_LOGIC));
     }
 
-    /// 테스트 코드·문서·CI 설정은 이 기능이 기대는 것이 아니다.
     #[test]
     fn category_for_skips_what_is_not_a_dependency() {
         assert_eq!(category_for("payments-api/tests/integration.rs"), None);
@@ -474,14 +437,12 @@ mod tests {
         });
         let items = items(&doc);
         assert_eq!(items.len(), 2);
-        // 분류 순서(CATEGORIES)대로 정렬된다.
         assert_eq!(items[0].category, CATEGORY_INFRASTRUCTURE);
         assert_eq!(items[0].evidence, None);
         assert_eq!(items[1].name, "주문");
         assert_eq!(items[1].evidence.as_deref(), Some("a.rs"));
     }
 
-    /// 근거가 이 분석이 본 경로가 아니면 **항목이 아니라 근거가** 사라진다.
     #[test]
     fn fabricated_evidence_becomes_no_evidence() {
         let paths = tree();
@@ -511,7 +472,6 @@ mod tests {
         );
     }
 
-    /// stub 은 고정 문자열이 아니라 트리에서 파생된다 — 트리가 달라지면 답도 달라진다.
     #[test]
     fn stub_is_derived_from_the_tree() {
         let paths = tree();
