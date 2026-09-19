@@ -10,10 +10,6 @@ use sha2::{Digest, Sha256};
 
 /// Selects a real external integration vs. its deterministic in-process test
 /// double — for **one** boundary.
-///
-/// `Real` (default) talks to GitHub or the LLM provider over the network. `Stub`
-/// short-circuits that one boundary with canned, deterministic behaviour so the
-/// kind-based e2e and unit tests stay hermetic.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Mode {
     Real,
@@ -22,32 +18,23 @@ pub enum Mode {
 
 /// Which external boundaries this process answers with a test double.
 ///
-/// Doubles are selected *per boundary* rather than by one process-wide switch, so
-/// nothing can turn on a double the running process does not itself own: the API
-/// holds the three boundaries below and the analysis worker holds its own two (see
-/// `WorkerDoubles` in `bin/worker.rs`). Each is opt-in — the default everywhere is
-/// the real integration.
-///
-/// The allow-list for these doubles is `docs/e2e-mocking-policy.md`; every branch
-/// they select carries a matching `mock-exception:` comment.
+/// Selected *per boundary* rather than by one process-wide switch, so nothing can
+/// turn on a double the running process does not itself own — the analysis worker
+/// holds its own set. Each is opt-in; the default everywhere is the real
+/// integration.
 #[derive(Clone, Copy, Debug)]
 pub struct Doubles {
-    /// EXT-01 — GitHub login identity (`auth.rs`, `github_api.rs`).
     pub github_auth: Mode,
-    /// EXT-02 — App installation, installation tokens, repository list
-    /// (`github.rs`, `github_app.rs`).
     pub github_app: Mode,
-    /// EXT-04 — LLM key live validation (`llmkey.rs`).
     pub llm_key: Mode,
 }
 
 impl Mode {
     /// Reads one boundary's setting from its own environment variable.
     ///
-    /// `stub` selects the double; anything else — including an unset variable —
-    /// is the real integration, so a deployment that says nothing gets nothing
-    /// stubbed. Deliberately not one shared name for every boundary: a value read
-    /// here can only ever reach the single boundary its caller names.
+    /// An unset variable is the real integration, so a deployment that says nothing
+    /// gets nothing stubbed. Deliberately not one shared name for every boundary: a
+    /// value read here can only ever reach the single boundary its caller names.
     pub fn from_env(key: &str) -> Self {
         if env_or(key, "").trim().eq_ignore_ascii_case("stub") {
             Self::Stub
@@ -58,8 +45,8 @@ impl Mode {
 }
 
 impl Doubles {
-    /// Every boundary at the same setting. For tests, which want one hermetic
-    /// state rather than a per-boundary mix.
+    /// Every boundary at the same setting — for tests, which want one hermetic state
+    /// rather than a per-boundary mix.
     pub fn all(mode: Mode) -> Self {
         Self {
             github_auth: mode,
@@ -68,7 +55,6 @@ impl Doubles {
         }
     }
 
-    /// One environment variable per boundary — the API's three.
     fn from_env() -> Self {
         Self {
             github_auth: Mode::from_env("FEATUREDOC_DOUBLE_GITHUB_AUTH"),

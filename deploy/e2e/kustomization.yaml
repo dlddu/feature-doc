@@ -1,12 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# e2e overlay. Covers both workloads (API + worker). The base (deploy/k8s)
-# targets ghcr.io/dlddu/featuredoc at an immutable commit-SHA tag that CI pins —
-# correct for production. For kind-based e2e we
-# instead want the image scripts/e2e.sh builds locally and `kind load`s into
-# the node, so we retag to featuredoc:dev and force IfNotPresent (otherwise the
-# node would ignore the loaded image and try to pull from GHCR).
+# e2e overlay. Retags to the image scripts/e2e.sh builds locally and `kind load`s
+# into the node, and forces IfNotPresent — otherwise the node ignores the loaded
+# image and tries to pull from GHCR.
 resources:
   - ../k8s
 
@@ -15,10 +12,8 @@ images:
     newName: featuredoc
     newTag: dev
 
-# Generate the e2e secret (the base provides none — see secret.yaml.example): a
-# deterministic e2e KEK; GitHub creds stay empty since the GitHub doubles enabled
-# below never call GitHub. Double selection + base URL + cookie flag are
-# non-secret env, overridden below.
+# The base provides no Secret. GitHub creds stay empty here because the doubles
+# enabled below never call GitHub.
 secretGenerator:
   - name: featuredoc-secrets
     literals:
@@ -27,7 +22,6 @@ secretGenerator:
       - GITHUB_CLIENT_ID=
       - GITHUB_CLIENT_SECRET=
       - GITHUB_APP_PRIVATE_KEY=
-      # Shared by the API (to authenticate /internal) and the worker (to call it).
       - FEATUREDOC_WORKER_TOKEN=e2e-worker-token-not-a-real-secret
 
 generatorOptions:
@@ -48,14 +42,6 @@ patches:
             containers:
               - name: app
                 imagePullPolicy: IfNotPresent
-                # Enables the three doubles this process owns (EXT-01 · EXT-02 ·
-                # EXT-04), plus http cookies and the local base URL (merged by env
-                # name). The worker's two are on its own Deployment below — neither
-                # workload can enable the other's doubles. These are activation
-                # wiring, not mocking sites: the registered sites are the code
-                # branches they select, listed in docs/e2e-mocking-policy.md, and
-                # the policy is explicit that switch points carry no exception
-                # comment of their own.
                 env:
                   - name: FEATUREDOC_DOUBLE_GITHUB_AUTH
                     value: "stub"
@@ -76,25 +62,17 @@ patches:
       metadata:
         name: featuredoc-worker
       spec:
-        # Off at rest. A running worker drains the queue within a couple of
-        # seconds, which would race any spec that asserts a job is still `Queued`
-        # (ac1-1 does). The worker is deployment-wide state — unlike App
-        # installs and LLM keys, no per-user handle can isolate it — so it is
-        # *leased*: a spec that needs it (ac4-5, ac1-5) scales it up inside its
-        # own block and returns it to 0 in `finally`, and `workers: 1` keeps
-        # spec files from overlapping. See docs/doc-tracker.md "e2e 매핑".
+        # Off at rest: a running worker drains the queue within a couple of seconds,
+        # which would race any spec that asserts a job is still `Queued`. The worker
+        # is deployment-wide state — no per-user handle can isolate it — so specs
+        # that need it *lease* it: scale up inside their own block, back to 0 in
+        # `finally`, with `workers: 1` keeping spec files from overlapping.
         replicas: 0
         template:
           spec:
             containers:
               - name: worker
                 imagePullPolicy: IfNotPresent
-                # The two doubles this process owns. EXT-03: repo_scan answers from
-                # the deterministic stub set, so the worker never reaches GitHub
-                # from kind. LLM-01: the analysis stages answer from the canned
-                # documents the determinism assertions need. Activation wiring, not
-                # mocking sites — see the API patch above.
-                #
                 # FEATUREDOC_STUB_LLM_FAIL is deliberately NOT set here: sc01-06
                 # injects it onto this Deployment inside its own worker lease and
                 # removes it afterwards (e2e/support/cluster.ts setWorkerEnv).

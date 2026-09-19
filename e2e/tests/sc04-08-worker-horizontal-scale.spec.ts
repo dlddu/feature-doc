@@ -1,18 +1,8 @@
 // 검증 시나리오: 04-platform.md#시나리오 8
 //
-// 「워커의 수평 확장」 전용 spec (AC4.5).
-//
-// docs/test/04-platform.md 시나리오 8을 그대로 따라간다:
-//   다수 분석 요청이 큐에 적재된 상태에서 워커 replica를 늘리면, 처리가 비례적으로
-//   이어지고 API/워커 간 결합 없이 확장된다.
-//
-// 이 단정은 `sc04-07-api-availability-without-workers.spec.ts`와 한 파일에 있었다
-// (선언은 시나리오 7 하나) — 규칙 2 상 분리 대상으로 등재됐다가 이 파일로 옮겨왔다.
-// 여기서 시나리오 7의 몫(워커 다운 시 API 가용성·큐 보존·복구)은 sc04-07이 지킨다;
-// 이 파일은 확장 자체 — 두 replica가 같은 큐를 청구하고, 아무 job도 두 번 처리되지
-// 않는 성질 — 을 검증한다. exactly-once의 계약은
-// backend/tests/worker.rs::many_workers_racing_never_claim_the_same_job_twice가
-// 먼저 지키고, 이 파일은 클러스터 절반을 더한다.
+// exactly-once의 계약은 backend/tests/worker.rs의
+// many_workers_racing_never_claim_the_same_job_twice가 먼저 지키고, 이 파일은 그 위에
+// 클러스터 절반을 더한다.
 //
 // So this file drives `kubectl` against the same kind cluster scripts/e2e.sh
 // created, and observes the effect through the public API. That is deliberate:
@@ -34,11 +24,9 @@ import { expect, test, type APIRequestContext } from '@playwright/test';
 import { desiredWorkerReplicas, scaleWorkers, workerLogs } from '../support/cluster';
 
 /**
- * Signs in as this spec's stub user, links a (stub) App installation and registers
- * an LLM key — the pre-conditions for enqueuing anything that will actually run.
- * All three are the same endpoints the UI drives; this spec calls them directly
- * because its subject is the cluster topology, not the screens (which sc01-02 /
- * sc04-01 / sc04-03 own).
+ * The pre-conditions for enqueuing anything that will actually run. Driven through
+ * the same endpoints the UI drives, but directly — this spec's subject is the
+ * cluster topology, not the screens.
  */
 async function signInWithApp(request: APIRequestContext): Promise<void> {
   const login = await request.get('/api/auth/login?as=sc0408');
@@ -51,12 +39,8 @@ async function signInWithApp(request: APIRequestContext): Promise<void> {
   expect(connection.ok()).toBeTruthy();
   expect((await connection.json()).installed, 'App must be linked before enqueuing').toBe(true);
 
-  // Same entry condition every other analysis-running spec sets up. This file used
-  // to skip it and still drain, because the worker let a keyless job fall back to
-  // a default provider whenever the LLM double was on — a stub path more permissive
-  // than the real one. That leniency is gone (backend/src/bin/worker.rs
-  // `provider_for`), so the topology under test now runs the same jobs production
-  // would.
+  // An active key is the entry condition for an analysis on the stubbed path too, so
+  // the topology under test drains the same jobs production would.
   const key = await request.post('/api/llm-keys', {
     data: { provider: 'openai', key: 'sk-proj-8888888888888888888888' },
   });
@@ -87,17 +71,15 @@ test.describe('시나리오 8: 워커의 수평 확장', () => {
     request,
   }) => {
     try {
-      // The overlay already rests at 0; start the burst from there, as the
-      // scenario's precondition states (다수 분석 요청이 큐에 적재된 상태).
+      // The overlay already rests at 0; the burst has to be enqueued from there so
+      // that nothing drains before the replicas are raised.
       await scaleWorkers(0);
       await signInWithApp(request);
 
       const burst = [await enqueue(request, 'checkout-web'), await enqueue(request, 'notif-worker')];
 
-      // ── 워커를 2개로 늘린다 ──────────────────────────────────────────────
       await scaleWorkers(2);
 
-      // Every job the burst enqueued drains once the two replicas run.
       await expect
         .poll(
           async () => {
@@ -112,10 +94,8 @@ test.describe('시나리오 8: 워커의 수평 확장', () => {
         )
         .toBe(burst.length);
 
-      // Scaling out is unconditional: two replicas both reach Ready and both poll
-      // the same queue. There is no leader election or exclusive resource that
-      // would make the second one a no-op — which is what 「API/워커 간 결합 없이
-      // 확장된다」 asks for.
+      // Scaling out is unconditional: there is no leader election and no exclusive
+      // resource that would make the second replica a no-op.
       expect(desiredWorkerReplicas()).toBe('2');
 
       // Every line, not the default --tail=10: the claims are counted below.
@@ -130,13 +110,11 @@ test.describe('시나리오 8: 워커의 수평 확장', () => {
       const started = logs.split('\n').filter((l) => l.includes('featuredoc worker started'));
       expect(started.length, 'both replicas start and poll, neither crash-loops').toBe(2);
 
-      // No job is processed twice. This is the property that makes scaling *safe*
-      // — and unlike "each pod claimed at least one", it does not depend on which
-      // pod happened to win the race, so it is deterministic in CI. (A fast pod
-      // legitimately drains the whole burst before its sibling finishes booting.)
-      // Note the checks match on the analysis id rather than counting lines. The
-      // queue is global — a job another spec left `queued` is drained by these same
-      // workers, so a bare line count is not this spec's to assert.
+      // Asserted this way rather than as "each pod claimed at least one" because that
+      // would depend on which pod won the race: a fast pod legitimately drains the
+      // whole burst before its sibling finishes booting. The checks also match on the
+      // analysis id rather than counting lines — the queue is global, so a job another
+      // spec left `queued` is drained by these same workers.
       const lines = logs.split('\n');
       for (const id of burst) {
         expect(
@@ -144,8 +122,7 @@ test.describe('시나리오 8: 워커의 수평 확장', () => {
           `analysis ${id} must be claimed exactly once`,
         ).toBe(1);
 
-        // And it drained by *doing work*, not by being marked done: the one
-        // implemented stage ran. (Rendering it is Analysis Progress / sc01-05.)
+        // And it drained by *doing work*, not by being marked done.
         expect(
           lines.filter((l) => l.includes('fetch stage complete') && l.includes(id)).length,
           `analysis ${id} must have run its fetch stage exactly once`,

@@ -5,9 +5,8 @@ metadata:
   labels:
     app.kubernetes.io/name: featuredoc-worker
 spec:
-  # Horizontally scalable (AC4.5): the queue claim is atomic, so raising this
-  # number raises throughput without any coordination between workers. Scaling it
-  # to 0 stops analyses from draining but leaves the API completely unaffected.
+  # The queue claim is atomic, so raising this number raises throughput without any
+  # coordination between workers, and lowering it to 0 leaves the API unaffected.
   replicas: 1
   strategy:
     # Unlike the API, the worker holds no volume and no exclusive resource, so it

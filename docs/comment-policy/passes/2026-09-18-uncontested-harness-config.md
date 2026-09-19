@@ -162,3 +162,55 @@ P1~P7 각각을 이미 한 줄씩 정의하고, 각 블록의 `ok(cond, 'P6', �
    사람 승인 게이트를 거치는 별도 패스.
 4. **이미 판정된 backend 집중 4파일** — #49 가 머지되면 그 범위에 새 주석 48행이 들어온다. 그때는
    새 패스 파일을 만들지 않고 `2026-09-17-backend-concentrated.md` 에 절을 더한다.
+
+## 증분 재판정 ① — `backend/src/config.rs` +23행 (2026-09-18 · `rct_20260918-0005`)
+
+위 본문은 판정 시점(부모 `313750f`)의 기록이고 그대로 둔다. 그 뒤 **#60**(`ebe8657`, 전역
+`FEATUREDOC_MODE` 스위치 제거)이 이 범위의 `config.rs`에 `Mode`·`Doubles` doc으로 **23행을
+더했고**(130 → 153), 4차 패스는 그 증분을 「미판정」으로 명시 등재만 하고 넘겼다. 이 절이 그
+23행을 판정한다. 원장 규약대로 **새 행을 만들지 않고** 2행의 결과 칸을 갱신했다.
+
+이 증분이 서술하는 것은 자매 모델 `tbm_feature-doc-e2e-mock-policy`가 만든 **경계별 더블 선택**
+불변식이라, 같은 축을 집는
+[2026-09-18-worker-double-axis.md](2026-09-18-worker-double-axis.md)와 한 PR에서 함께 봤다.
+
+### 집계
+
+| 구분 | 행수 |
+|---|---|
+| 증분 판정 대상 | 23 |
+| 순 제거 | **13** |
+| 유지 | 10 |
+
+파일 전체로는 **64행 → 51행**, 원장 2행 전체로는 **153행 → 140행**
+(`ea29e09f…` → `ddacce0b…`). diff 기준 23행 삭제 · 9행 재작성.
+
+### 제거 (13행)
+
+- **`Mode`의 variant 동작 설명 4행** — 「`Real`(default)은 네트워크로 GitHub·LLM에 간다,
+  `Stub`은 그 경계만 결정적 동작으로 단락시킨다」. variant 이름과 `from_env`의 분기가 말한다(①).
+- **`Doubles`의 필드 doc 6행**(`EXT-01`·`EXT-02`·`EXT-04`) — 필드 이름이 경계를 말하고,
+  식별자↔env↔프로세스 대응표는 `docs/e2e-mocking-policy.md`에 있다(①②).
+- **`Doubles::from_env`의 「One environment variable per boundary — the API's three.」 1행** —
+  바로 아래 세 줄이 그 자체다(①).
+- **`Mode::from_env`의 「`stub` selects the double」 1행** — `eq_ignore_ascii_case("stub")`(①).
+- **「The allow-list for these doubles is `docs/e2e-mocking-policy.md`; every branch they select
+  carries a matching `mock-exception:` comment.」 2행** — 그 문서가 규정하는 규칙의 되풀이(②).
+  정책이 「rustdoc 링크를 위해서만 문장을 남기지 않는다」고 한 자리다.
+- 위에 딸린 `///` 빈 줄 정리 포함.
+
+### 유지 (10행)
+
+- **경계별 선택 불변식 4행** — 「하나의 프로세스 전역 스위치가 아니라 경계별로 고르므로, 자기가
+  돌리지 않는 double을 켤 수 없다. 워커는 자기 몫을 따로 쥔다.」 #60이 만든 **설계 불변식**이고,
+  코드는 결과만 보일 뿐 왜 그렇게 나눴는지는 말하지 않는다.
+- **안전 기본값 3행**(`Mode::from_env`) — 「unset이면 real이므로, 아무 말도 하지 않는 배포는
+  아무것도 stub되지 않는다」 + 「경계마다 이름을 따로 두었으므로 여기서 읽은 값은 호출자가 지목한
+  단 하나의 경계에만 닿는다」.
+- **`Doubles::all`의 1행** — 「모든 경계를 같은 설정으로 — 경계별 혼합이 아니라 하나의 밀폐 상태를
+  원하는 테스트용」. 이름만으로는 *왜* 있는지가 복원되지 않는다.
+- **`Mode`·`Doubles`의 요약 1줄씩** — `pub` 항목의 요약은 정책의 유지 대상이다.
+
+본문 「판단이 갈려 남긴 것」의 **`Mode`의 stub/real 설명 2행**은 이 재판정으로 **정리됐다** —
+#60이 그 doc을 다시 쓰면서 충실도 경계(stub이 real과 갈리는 지점)는 `worker.rs`의 `provider_for`로
+옮겨 갔고, 여기 남은 것은 variant 이름의 재진술뿐이었다.
