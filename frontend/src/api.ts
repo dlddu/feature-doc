@@ -550,3 +550,50 @@ export async function requestDependencies(
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as FeatureDependencies;
 }
+
+// ── 재분석 diff (AC2.6) ───────────────────────────────────────────────────
+
+/** 달라진 인수 시나리오 한 줄. `mark` 는 `+`(추가) 또는 `-`(제거). */
+export type ScenarioLine = {
+  mark: string;
+  text: string;
+};
+
+/** 추가·제거된 의존성 한 줄. */
+export type DependencyLine = {
+  mark: string;
+  category: string;
+  name: string;
+};
+
+/** 한 기능이 이번 재분석에서 어떻게 달라졌는가. */
+export type FeatureDiff = {
+  key: string;
+  name: string;
+  location: string | null;
+  scenarios: number;
+  scenarioLines: ScenarioLine[];
+  dependencyLines: DependencyLine[];
+};
+
+/**
+ * 이번 분석과 **같은 타깃의 직전 분석**의 차이 (AC2.6).
+ *
+ * `comparedTo: null` 은 견줄 상대가 없다는 뜻이고 — 같은 저장소·브랜치의 첫
+ * 분석이다 — 「바뀐 게 없다」(`features: []` 이면서 `comparedTo` 가 있는 경우)와
+ * 다른 상태다. `getDocument` 의 `reproducibility.verdict: 'first'` 와 같은 구분이다.
+ */
+export type AnalysisDiff = {
+  comparedTo: string | null;
+  comparedToCreatedAt: number | null;
+  changedLineCount: number;
+  features: FeatureDiff[];
+};
+
+export async function getAnalysisDiff(id: string): Promise<AnalysisDiff> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/diff`, {
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as AnalysisDiff;
+}

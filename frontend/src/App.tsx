@@ -8,6 +8,7 @@
 // server-side route table, no dependency.
 
 import { useEffect, useState } from 'react';
+import { AnalysisDiff } from './AnalysisDiff';
 import { AnalysisProgress } from './AnalysisProgress';
 import { CrossCuttingConcerns } from './CrossCuttingConcerns';
 import { DiscoveryStrategy } from './DiscoveryStrategy';
@@ -29,7 +30,8 @@ export type AnalysisRoute = {
     | 'discovery-strategy'
     | 'candidates'
     | 'acceptance'
-    | 'dependencies';
+    | 'dependencies'
+    | 'diff';
   /** Only for `dependencies`: AC2.4 traces **one** feature, so the address names it. */
   featureKey?: string;
 };
@@ -58,7 +60,7 @@ export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
     };
   }
   const match =
-    /^#\/analyses\/([^/?#]+)(?:\/(cross-cutting|discovery-strategy|candidates|acceptance))?$/.exec(
+    /^#\/analyses\/([^/?#]+)(?:\/(cross-cutting|discovery-strategy|candidates|acceptance|diff))?$/.exec(
       hash,
     );
   if (!match) return null;
@@ -134,6 +136,16 @@ export function App() {
     setRoute({ id, view: 'candidates' });
   }
 
+  /**
+   * Analysis Progress → 달라진 것 (AC2.6). Addressable like every other analysis
+   * screen, and for the same reason: a diff you cannot link to cannot be the thing
+   * the journey's 알림 sends a reader to.
+   */
+  function openDiff(id: string) {
+    window.location.hash = `#/analyses/${encodeURIComponent(id)}/diff`;
+    setRoute({ id, view: 'diff' });
+  }
+
   /** Feature Dependencies → Feature Acceptance, the document this feature's trace belongs to. */
   function openAcceptance(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/acceptance`;
@@ -161,6 +173,16 @@ export function App() {
           id={route.id}
           featureKey={route.featureKey}
           onBack={() => openAcceptance(route.id)}
+        />
+      );
+    }
+    if (route.view === 'diff') {
+      return (
+        <AnalysisDiff
+          key={`${route.id}-ad`}
+          id={route.id}
+          onBack={() => openAnalysis(route.id)}
+          onOpenFeature={() => openAcceptance(route.id)}
         />
       );
     }
@@ -210,6 +232,7 @@ export function App() {
         onBack={leaveAnalysis}
         onOpenCrossCutting={() => openCrossCutting(route.id)}
         onOpenDiscoveryStrategy={() => openDiscoveryStrategy(route.id)}
+        onOpenDiff={() => openDiff(route.id)}
       />
     );
   }

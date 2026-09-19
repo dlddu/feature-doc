@@ -80,6 +80,15 @@ const STUB_BRANCH: &str = "main";
 /// does not exist would make the double *more* forgiving than the API it stands in
 /// for, and a fetch failure would then be unreachable outside production.
 pub fn stub_scan(name: &str, branch: &str) -> Result<ScanResult, String> {
+    stub_scan_at(name, branch, revision_from_env())
+}
+
+/// [`stub_scan`] with the revision decided by the caller.
+///
+/// The split exists so the property that matters — *the second revision only adds*
+/// — is testable without mutating process-wide environment state, which other
+/// tests in the same binary would race against.
+pub fn stub_scan_at(name: &str, branch: &str, revised: bool) -> Result<ScanResult, String> {
     if branch != STUB_BRANCH {
         return Err("github tree rejected (404)".to_string());
     }
@@ -90,11 +99,49 @@ pub fn stub_scan(name: &str, branch: &str) -> Result<ScanResult, String> {
         _ => 1024,
     };
     let files = (size_kb / 3).max(1);
+    let mut paths = stub_paths(name, files);
+    if !revised {
+        return Ok(ScanResult {
+            files,
+            bytes: size_kb * 1024,
+            paths,
+        });
+    }
+    let added: Vec<String> = REVISION
+        .iter()
+        .map(|p| format!("{name}/{p}"))
+        .filter(|p| !paths.contains(p))
+        .collect();
+    let count = added.len() as i64;
+    paths.extend(added);
     Ok(ScanResult {
-        files,
-        bytes: size_kb * 1024,
-        paths: stub_paths(name, files),
+        // 새 파일이 생겼으니 측정값도 함께 움직인다. ~3 KiB/파일 비율은 [`stub_paths`]
+        // 의 것과 같다 — 재분석의 1단계가 "그대로다"라고 말하면 거짓이 된다.
+        files: files + count,
+        bytes: size_kb * 1024 + count * 3 * 1024,
+        paths,
     })
+}
+
+/// 두 번째 리비전이 들여오는 경로.
+///
+/// `docs/test/02-feature-representation.md#시나리오 8` 의 사전 조건("이후 코드에서
+/// 결제 모듈에 환불 로직 추가")을 그대로 옮긴 것이다. **더하기만** 한다 — 기존
+/// 경로를 지우거나 이름을 바꾸면 그 위에 세워진 feature 키가 함께 움직여,
+/// "같은 feature 의 표현이 갱신됐다"는 시나리오 8 의 관측 자체가 성립하지 않는다.
+const REVISION: [&str; 1] = ["src/billing/refund.rs"];
+
+/// 재분석이 한 걸음 나아간 트리를 보게 하는 결정적 트리거.
+///
+/// 실 모드에서는 시간이 지나면 같은 브랜치의 트리가 달라지지만, 이름에서만
+/// 파생되는 stub 트리는 시간을 모른다. 그래서 「코드가 바뀐 뒤」라는 사전 조건을
+/// 가진 시나리오는 이 더블 위에서는 재현할 수 없었다 — `FEATUREDOC_STUB_LLM_FAIL`
+/// 이 LLM 더블 안에서 실패를 재현한 것과 같은 **충실도 확장**이며, 등재된
+/// EXT-03 지점(`docs/e2e-mocking-policy.md`) 안에 머문다. 값은 존재 여부만 읽는다.
+fn revision_from_env() -> bool {
+    std::env::var("FEATUREDOC_STUB_REPO_REVISION")
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false)
 }
 
 /// A deterministic stand-in tree for the stub repositories.
@@ -246,6 +293,46 @@ mod tests {
         assert!(!a.paths.is_empty());
         assert!(a.paths.iter().all(|p| p.starts_with("payments-api/")));
         assert_ne!(stub_scan("checkout-web", "main").unwrap().paths, a.paths);
+    }
+
+    /// 리비전 트리거는 **더하기만** 한다. 기존 경로가 한 줄이라도 사라지거나
+    /// 순서가 바뀌면 그 위에 세워진 feature 키가 함께 움직여, 「같은 feature 의
+    /// 표현이 갱신됐다」(`02#시나리오 8`)를 관측할 수 없게 된다.
+    #[test]
+    fn the_second_revision_only_adds_paths() {
+        let first = stub_scan_at("payments-api", "main", false).unwrap();
+        let second = stub_scan_at("payments-api", "main", true).unwrap();
+
+        assert_eq!(
+            second.paths[..first.paths.len()],
+            first.paths[..],
+            "앞선 리비전의 경로가 그 순서 그대로 남아 있어야 한다"
+        );
+        assert_eq!(second.paths.len(), first.paths.len() + REVISION.len());
+        assert!(second
+            .paths
+            .contains(&"payments-api/src/billing/refund.rs".to_string()));
+        // 1단계의 측정값도 함께 움직인다 — 재분석이 "그대로다"라고 말하면 거짓이다.
+        assert!(second.files > first.files && second.bytes > first.bytes);
+    }
+
+    /// 리비전을 켜지 않은 호출은 바이트 단위로 예전과 같다 — 다른 spec 들의
+    /// 단정(파일 수·문서 내용)이 이 확장으로 흔들리지 않는다는 뜻이다.
+    #[test]
+    fn an_unrevised_scan_is_unchanged() {
+        assert_eq!(
+            stub_scan_at("payments-api", "main", false).unwrap(),
+            stub_scan("payments-api", "main").unwrap()
+        );
+    }
+
+    /// 리비전이 켜져 있어도 없는 ref 는 여전히 404 다.
+    #[test]
+    fn a_revised_scan_still_rejects_an_unknown_branch() {
+        assert_eq!(
+            stub_scan_at("payments-api", "no-such-branch", true),
+            Err("github tree rejected (404)".to_string())
+        );
     }
 
     #[test]

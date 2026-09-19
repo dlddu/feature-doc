@@ -13,6 +13,7 @@ pub mod crypto;
 pub mod cross_cutting;
 pub mod db;
 pub mod dependencies;
+pub mod diff;
 pub mod discovery_strategy;
 pub mod error;
 pub mod feature_candidates;

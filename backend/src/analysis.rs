@@ -43,6 +43,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::auth::CurrentUser;
 use crate::dependencies;
+use crate::diff;
 use crate::error::AppError;
 use crate::github_app::{self, RepoRef};
 use crate::installations;
@@ -81,6 +82,10 @@ pub fn routes() -> Router<AppState> {
             get(feature_dependencies).post(request_dependencies),
         )
         .route("/api/analyses/{id}/dependencies/export", get(export_dependencies))
+        // 재분석이 무엇을 바꿨는가 (AC2.6). 분석 하나를 주소로 받아 **같은 타깃의
+        // 직전 분석**과 견준다 — 비교 대상은 사용자가 고르는 것이 아니라 그
+        // 저장소·브랜치의 이력이 정하는 것이다.
+        .route("/api/analyses/{id}/diff", get(analysis_diff))
         // 역방향 질의는 분석 하나에 매이지 않는다 — 「이 데이터 모델을 쓰는 feature
         // 전부」는 이 사용자의 모든 분석을 가로지르는 질문이다 (AC2.5).
         .route("/api/dependencies/features", get(dependents))
@@ -1725,4 +1730,161 @@ async fn export_dependencies(
         )],
         Json(body),
     ))
+}
+
+/// 이번 재분석이 무엇을 바꿨는가 (AC2.6).
+///
+/// 비교 대상은 **같은 타깃(사용자·저장소·브랜치)의 직전 분석**이다 —
+/// [`document`] 의 재현성 판정이 쓰는 것과 같은 질의이고, 같은 이유로 `(created_at,
+/// rowid)` 로 정렬한다(같은 초에 만들어진 형제 분석이 있으면 `created_at` 만으로는
+/// 진짜 선행을 놓친다).
+///
+/// 목록에 서는 것은 **이번 분석이 들고 있는 feature 중 달라진 것**뿐이다. 지난번에
+/// 있었는데 이번에 없는 feature 는 싣지 않는다 — 재분석 뒤 아직 후보를 확정하지
+/// 않았다는 사실이 "기능이 지워졌다"로 읽히면 안 되고, 삭제·복구는 AC3.3 의 몫이다.
+async fn analysis_diff(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<AnalysisDiffView>, AppError> {
+    owned_analysis(&state, &user.id, &id).await?;
+
+    let previous: Option<(String, i64)> = sqlx::query_as(
+        "SELECT prev.id, prev.created_at \
+           FROM analyses cur \
+           JOIN analyses prev \
+             ON prev.user_id = cur.user_id AND prev.repo_owner = cur.repo_owner \
+            AND prev.repo_name = cur.repo_name AND prev.branch = cur.branch \
+            AND (prev.created_at < cur.created_at \
+                 OR (prev.created_at = cur.created_at AND prev.rowid < cur.rowid)) \
+          WHERE cur.id = ? AND cur.user_id = ? \
+          ORDER BY prev.created_at DESC, prev.rowid DESC LIMIT 1",
+    )
+    .bind(&id)
+    .bind(&user.id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let Some((previous_id, previous_created_at)) = previous else {
+        // 첫 분석이다. "바뀐 게 없다"와 구분되어야 하므로 `comparedTo` 는 null 이고
+        // 목록은 비어 있다 — `ReproducibilityView` 의 `first` 와 같은 구분이다.
+        return Ok(Json(AnalysisDiffView {
+            compared_to: None,
+            compared_to_created_at: None,
+            changed_line_count: 0,
+            features: Vec::new(),
+        }));
+    };
+
+    let current_doc = acceptance_document(&state, &id).await?;
+    let previous_doc = acceptance_document(&state, &previous_id).await?;
+    let locations = candidate_locations(&state, &id).await?;
+
+    let mut features = Vec::new();
+    for key in diff::feature_keys(&current_doc) {
+        let name = diff::feature_name(&current_doc, &key).unwrap_or_else(|| key.clone());
+        let location = locations
+            .iter()
+            .find(|(candidate, _)| *candidate == key)
+            .map(|(_, location)| location.clone());
+        let entry = diff::feature_diff(
+            &key,
+            &name,
+            location,
+            &diff::scenarios_of(&previous_doc, &key),
+            &diff::scenarios_of(&current_doc, &key),
+            traced_dependencies(&state, &previous_id, &key).await?.as_deref(),
+            traced_dependencies(&state, &id, &key).await?.as_deref(),
+        );
+        if let Some(entry) = entry {
+            features.push(entry);
+        }
+    }
+
+    Ok(Json(AnalysisDiffView {
+        compared_to: Some(previous_id),
+        compared_to_created_at: Some(previous_created_at),
+        changed_line_count: features.iter().map(diff::FeatureDiff::lines).sum(),
+        features,
+    }))
+}
+
+/// 한 분석의 인수 문서. 5단계가 아직 돌지 않았으면 빈 문서로 읽는다 — 문서가 없는
+/// 것은 오류가 아니라 "그 시점에 아직 쓰인 시나리오가 없다"이다.
+async fn acceptance_document(
+    state: &AppState,
+    analysis_id: &str,
+) -> Result<serde_json::Value, AppError> {
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",
+    )
+    .bind(analysis_id)
+    .bind(pipeline::ACCEPTANCE_DEPENDENCIES)
+    .fetch_optional(&state.db)
+    .await?;
+    Ok(row
+        .and_then(|(content,)| serde_json::from_str(&content).ok())
+        .unwrap_or_else(|| serde_json::json!({})))
+}
+
+/// 이 분석의 후보가 발견된 자리 (`key` → `location`).
+async fn candidate_locations(
+    state: &AppState,
+    analysis_id: &str,
+) -> Result<Vec<(String, String)>, AppError> {
+    Ok(sqlx::query_as(
+        "SELECT key, location FROM feature_candidates WHERE analysis_id = ? ORDER BY seq, rowid",
+    )
+    .bind(analysis_id)
+    .fetch_all(&state.db)
+    .await?)
+}
+
+/// 그 시점에 **성공적으로 추적된** 의존성. 요청이 없거나 아직 끝나지 않았으면
+/// `None` — 묻지 않은 것과 물었더니 없던 것은 다르다(0008 이 요청과 데이터를 두
+/// 테이블로 나눈 것과 같은 구분).
+async fn traced_dependencies(
+    state: &AppState,
+    analysis_id: &str,
+    feature_key: &str,
+) -> Result<Option<Vec<diff::Dependency>>, AppError> {
+    let request: Option<(String,)> = sqlx::query_as(
+        "SELECT status FROM feature_dependency_requests \
+          WHERE analysis_id = ? AND feature_key = ?",
+    )
+    .bind(analysis_id)
+    .bind(feature_key)
+    .fetch_optional(&state.db)
+    .await?;
+    if request.map(|(status,)| status)
+        != Some(dependencies::request_status::SUCCEEDED.to_string())
+    {
+        return Ok(None);
+    }
+
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT category, name FROM feature_dependencies \
+          WHERE analysis_id = ? AND feature_key = ? ORDER BY seq, rowid",
+    )
+    .bind(analysis_id)
+    .bind(feature_key)
+    .fetch_all(&state.db)
+    .await?;
+    Ok(Some(
+        rows.into_iter()
+            .map(|(category, name)| diff::Dependency { category, name })
+            .collect(),
+    ))
+}
+
+/// 이번 재분석이 만든 차이 (AC2.6).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnalysisDiffView {
+    /// 견준 상대 분석. 같은 타깃의 첫 분석이면 `None`.
+    compared_to: Option<String>,
+    compared_to_created_at: Option<i64>,
+    /// 목업의 「변경 줄」 계량.
+    changed_line_count: usize,
+    features: Vec<diff::FeatureDiff>,
 }
