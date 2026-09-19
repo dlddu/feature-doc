@@ -1,19 +1,15 @@
-// The walk to "this feature's dependencies have been traced", shared by the three
-// AC2.4/AC2.5 specs.
+// The walk to "this feature's dependencies have been traced".
 //
-// Here rather than copied into each spec for the same reason `acceptance.ts` is: the
-// three specs assert *different* properties (the seven-way split, the reverse query,
-// the export) of the same rows, and three copies of the same request-and-wait would
-// drift. What each spec still owns is its stub identity and its assertions.
+// Shared rather than copied: the three specs assert different properties of the same
+// rows, and each still owns its stub identity and its assertions.
 //
 // This file lives outside `testDir` (`e2e/tests`), so it is neither collected as a
 // test nor counted as a scenario↔spec matching unit.
 
 import { expect, type Page } from '@playwright/test';
 
-/** The seven categories AC2.4 lists. The server's `dependencies::CATEGORIES` is the
- *  definition; this is the e2e's copy of the same seven, and a spec that sees an
- *  eighth kind should fail rather than quietly widen. */
+/** The server's `dependencies::CATEGORIES` is the definition; this is the e2e's copy,
+ *  and a spec that sees an eighth kind should fail rather than quietly widen. */
 export const CATEGORIES = [
   'infrastructure',
   'data',

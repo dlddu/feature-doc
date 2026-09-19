@@ -43,9 +43,7 @@ struct Claim {
     /// Empty until the reviewer approves — which is also when stage 5 is not offered.
     #[serde(default)]
     approved_candidates: Vec<ApprovedCandidate>,
-    /// The features someone asked to trace the dependencies of (AC2.4). Not a
-    /// pipeline stage and therefore not in `executable_stages`: the request row is
-    /// the gate, and an empty list means nobody asked.
+    /// Empty when nobody asked — the request row is the gate.
     #[serde(default)]
     dependency_requests: Vec<ApprovedCandidate>,
     installation_token: Option<String>,
@@ -334,8 +332,6 @@ impl Worker {
             }
         }
 
-        // 종단 의존성 (AC2.4). Not a pipeline stage and so it reports no
-        // `analysis_stages` row — Analysis Progress still draws exactly five steps.
         // One feature's failure does not kill the job: its request row carries the
         // reason and the other features' results are not held hostage.
         for feature in &job.dependency_requests {
@@ -416,11 +412,8 @@ impl Worker {
         Ok(())
     }
 
-    /// One feature's end-to-end dependencies (AC2.4).
-    ///
-    /// Shaped like the stages but reporting through its own route: dependencies are
-    /// a per-feature action, so there is no stage row to move and no document kind
-    /// to write. What lands is rows (AC2.5).
+    /// One feature's end-to-end dependencies — reported through its own route, so
+    /// there is no stage row to move and no document kind to write.
     async fn run_dependencies(
         &self,
         job: &Claim,

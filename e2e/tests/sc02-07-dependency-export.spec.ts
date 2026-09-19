@@ -1,15 +1,7 @@
 // 검증 시나리오: 02-feature-representation.md#시나리오 7
 //
-// AC2.5 (의존성 데이터의 외부 재사용) 전용 spec.
-//
-// 시나리오 7 의 기대 결과는 「구조화된 형식(JSON/그래프 형식 등)으로 **외부에서 재사용
-// 가능한 형태**로 내려받을 수 있다」이다. 그래서 이 파일이 보는 것은 두 가지다 — 내려받는
-// 것이 정말 **파일로 나가는가**(`Content-Disposition: attachment`), 그리고 그 파일이 추적한
-// 행들을 **그대로 담고 있는가**. 화면이 JSON 을 보여 주는 것은 export 가 아니다.
-//
-// 「외부에서 재사용 가능」의 판정은 내려받은 문서를 다시 파싱해 API 가 돌려준 행과 맞춰
-// 보는 것으로 한다 — 형식이 스스로를 설명한다(분류 축이 문서 안에 있고, feature 별로
-// 묶여 있다).
+// 재사용 가능한지는 내려받은 문서를 다시 파싱해 API 가 돌려준 행과 맞춰 보는 것으로
+// 판정한다 — 화면이 JSON 을 보여 주는 것은 export 가 아니다.
 //
 // Isolation: this spec *leases* the analysis worker (see `e2e/support/cluster.ts`).
 // It scales the Deployment to 1 inside its own block and returns it to 0 in
@@ -62,7 +54,7 @@ test.describe('AC2.5: 의존성 데이터는 제품 밖으로 나갈 수 있다'
         expect(entry.dependencies.length).toBeGreaterThan(0);
       }
 
-      // 남의 분석은 존재하지 않는다 (AC4.7 과 같은 판정).
+      // 남의 분석은 존재하지 않는다.
       await page.goto('/api/auth/login?as=ac26-stranger');
       const stranger = await page.request.get(`/api/analyses/${id}/dependencies/export`);
       expect(stranger.status()).toBe(404);
