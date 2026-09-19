@@ -26,6 +26,7 @@ SSOT 방향:
   R8 링크 무결성 — docs/ 안의 상대 링크가 전부 실재 파일
   R9 집계 일치 — README·허브·doc-tracker 가 선언한 숫자가 실측과 같다
   R10 보조 레이어 — 문서 메타가 기본 닫힌 <details> 안에만 있다 (규칙 5b)
+  R11 허브 단계 주석 — 허브가 실재하는 단계 화면 옆에서 그 반대를 주장하지 않는다
 
 규칙 5 의 (c)(d)(e) 는 정적 대조로 확인할 수 없다 — 파일을 읽어 속성만 세면
 배선이 끊긴 버튼과 살아 있는 버튼이 구분되지 않는다. 그쪽은 DOM 하네스
@@ -515,6 +516,33 @@ else:
     if got != want:
         fail("R9", "doc-tracker 목업 집계 %s 이 실측 %s 과 다르다 (총 · 여정 페이지)" % (got, want))
 
+# ── R11 · 허브 단계 주석 ─────────────────────────────────────────
+# 허브가 단계 링크 옆에 다는 곁텍스트는 그 단계의 시각화 상태를 독자에게 주장한다.
+# R8 은 앵커가 실재하는지만 보고 R9 는 숫자만 대조하므로, 살아 있는 화면으로 들어가는
+# 링크 옆에 「시각화 없음」이 남아 있어도 둘 다 초록이었다 — 규칙 7(허브 동기화)이
+# 이름 붙인 한쪽만 갱신된 상태이자, 규칙 8 이 금지한 등재 없는 예외 광고다.
+# 링크가 실재하는 단계 섹션으로 들어간다면 그 단계는 시각화돼 있다. 곁텍스트는 문면을
+# 가리지 않고 전부 잡는다 — 특정 문구만 막으면 같은 주장을 바꿔 쓰는 것으로 빠져나간다.
+annotated = 0
+for li in re.findall(r"<li>(.*?)</li>", HUB, re.S):
+    m = re.search(r'href="mockups/([A-Za-z0-9._-]+\.html)#(STP-[a-z0-9-]+)"', li)
+    if not m:
+        continue
+    page, step = m.groups()
+    annotated += 1
+    residue = re.sub(r"<a\b[^>]*>.*?</a>", "", li, flags=re.S)
+    residue = re.sub(r"<[^>]+>", " ", residue)
+    residue = html_mod.unescape(residue).strip()
+    if not residue:
+        continue
+    target = MK / page
+    if target.exists() and ('id="%s"' % step) in read(target):
+        fail("R11", "허브의 `%s` 링크 옆에 곁주석 %r 이 붙어 있는데 그 단계 화면은 `%s` 안에 "
+                    "실재한다 — 등재 없는 예외를 광고하는 상태다(규칙 7·8). 주석을 걷거나 "
+                    "실상에 맞게 고칠 것" % (step, residue, page))
+
+notes.append("허브 단계 링크 %d건 주석 대조" % annotated)
+
 # ── 보고 ─────────────────────────────────────────────────────────
 print("여정 %d (예외 %d · 이관 완료 %d · 이관 대기 %d) · 목업 페이지 %d · 문서 %d"
       % (n_j, n_ex, n_done, n_wait, len(PAGES), n_docs))
@@ -526,4 +554,4 @@ if failures:
     for f in failures:
         print("  ✗", f)
     sys.exit(1)
-print("\n통과 — 여정 ↔ 목업 정합성 규칙 R0~R10 이상 없음")
+print("\n통과 — 여정 ↔ 목업 정합성 규칙 R0~R11 이상 없음")
