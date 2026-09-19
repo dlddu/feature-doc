@@ -87,6 +87,20 @@ export function App() {
     setScreen('home');
   }
 
+  /**
+   * After logout the app returns to Credentials Setup, which re-reads `/api/me` on
+   * mount and therefore lands on its signed-out branch (`Sign in with GitHub`) —
+   * the mockup's `data-goto="STP-sign-in"` destination. The hash is cleared first:
+   * an analysis route left behind would otherwise re-render a signed-in screen over
+   * the entry one.
+   */
+  function afterLogout() {
+    window.location.hash = '';
+    setRoute(null);
+    setHomeEpoch((n) => n + 1);
+    setScreen('credentials');
+  }
+
   /** Leaving Analysis Progress clears the hash, which is what re-renders the home screen. */
   function leaveAnalysis() {
     window.location.hash = '';
@@ -206,6 +220,7 @@ export function App() {
         onConnectRepository={() => setScreen('connect')}
         onOpenCredentials={() => setScreen('credentials')}
         onOpenAnalysis={openAnalysis}
+        onLoggedOut={afterLogout}
       />
     );
   }

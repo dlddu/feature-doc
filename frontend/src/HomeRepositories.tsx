@@ -9,7 +9,7 @@
 // (AC1.2~1.4 · AC4.6) — this screen only shows what the API really knows.
 
 import { useEffect, useState } from 'react';
-import { listAnalyses, listRepositories } from './api';
+import { listAnalyses, listRepositories, logout } from './api';
 import type { Analysis, Repository } from './api';
 import { formatAgo, formatCost } from './format';
 
@@ -88,16 +88,20 @@ type Props = {
   onOpenCredentials: () => void;
   /** Home → Analysis Progress, for a repository that has been analyzed at least once. */
   onOpenAnalysis: (analysisId: string) => void;
+  /** The session ended; the app goes back to the signed-out entry screen. */
+  onLoggedOut: () => void;
 };
 
 export function HomeRepositories({
   onConnectRepository,
   onOpenCredentials,
   onOpenAnalysis,
+  onLoggedOut,
 }: Props) {
   const [repos, setRepos] = useState<Repository[] | null>(null);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -115,6 +119,22 @@ export function HomeRepositories({
   const rows = buildRows(repos ?? [], analyses);
   const estimatedCents = analyses.reduce((sum, a) => sum + a.estCostCents, 0);
 
+  // The mockup puts 로그아웃 in this screen's header (`STP-pick-target`, the
+  // `btn-link` beside the title) and 여정 분기 「로그아웃」 leaves from here; the
+  // server-side invalidation it triggers is what test/04 시나리오 12 verifies. A
+  // failure is shown rather than swallowed — a logout the user believes happened
+  // but did not is the one outcome worth interrupting for.
+  async function signOut() {
+    setSigningOut(true);
+    try {
+      await logout();
+      onLoggedOut();
+    } catch (e) {
+      setSigningOut(false);
+      setError(messageOf(e));
+    }
+  }
+
   return (
     <main className="screen has-tabbar">
       <div className="row between" style={{ paddingTop: 14 }}>
@@ -126,15 +146,26 @@ export function HomeRepositories({
             Repositories
           </h1>
         </div>
-        <button
-          className="icon-btn"
-          type="button"
-          aria-label="settings"
-          onClick={onOpenCredentials}
-          data-testid="open-credentials"
-        >
-          <GearIcon />
-        </button>
+        <span className="row" style={{ gap: 12 }}>
+          <button
+            className="btn-link"
+            type="button"
+            onClick={() => void signOut()}
+            disabled={signingOut}
+            data-testid="logout"
+          >
+            로그아웃
+          </button>
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label="settings"
+            onClick={onOpenCredentials}
+            data-testid="open-credentials"
+          >
+            <GearIcon />
+          </button>
+        </span>
       </div>
 
       {/* The mockup's Features / Spend cells need pipeline output (slice 4+) and real
