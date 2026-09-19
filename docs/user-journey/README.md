@@ -108,9 +108,9 @@ JRN-follow-code-change ──(자동 갱신이 틀렸을 때)──> JRN-restore
 | F7 | 거부한 feature가 다시 잡힘 | `JRN-follow-code-change` / `STP-recheck-candidates` | AC1.4, AC3.3 | 거부 결정 반복 시간 |
 | F8 | 모바일에서 편집이 3탭을 넘김 | `JRN-review-feature` / `STP-decide-diff` | AC3.1, AC4.4 | 3탭 준수율 |
 
-번호는 이전 판(F1~F8)과 동일하게 유지했습니다 — [`doc-tracker.md`](../doc-tracker.md)와 외부 참조가 깨지지 않도록.
+번호는 이전 판(F1~F8)과 동일하게 유지했습니다 — [`doc-tracker/`](../doc-tracker/index.md)와 외부 참조가 깨지지 않도록.
 
-> 이 표는 `doc-tracker.md`의 위험 진단과 별개입니다. 그쪽은 *문서 체계의 위험*을, 이 표는 *사용자 행동상의 마찰*을 다룹니다.
+> 이 표는 `doc-tracker/`의 위험 진단과 별개입니다. 그쪽은 *문서 체계의 위험*을, 이 표는 *사용자 행동상의 마찰*을 다룹니다.
 
 ## 5. 연결 매트릭스 — 여정 ↔ 가치 ↔ AC
 
@@ -129,7 +129,7 @@ JRN-follow-code-change ──(자동 갱신이 틀렸을 때)──> JRN-restore
 
 - 가치 8개 중 등장: **8개** ✅ (V1~V8)
 - AC 24개 중 등장: **23개**. 미등장 1개는 **AC4.5**(k8s 배포·워크로드 분리) — 사용자에게 보이지 않는 운영 배경이라 어느 행동에도 붙지 않습니다. AC4.4(모바일 우선)는 모든 여정에 깔리는 횡단 약속이지만, 3탭 룰이라는 관찰 가능한 형태로 `STP-decide-diff`에 앵커했습니다
-- **시각화 공백 1건**: `JRN-restore-history` 전체 (이력 화면 미제작). [`doc-tracker.md`](../doc-tracker.md)에 수용된 위험으로 등재되어 있습니다. `JRN-connect-repo` / `STP-sign-in`의 미인증 상태는 여정 페이지가 실제 로그인 화면을 가지면서 해소됐습니다
+- **시각화 공백 1건**: `JRN-restore-history` 전체 (이력 화면 미제작). [`doc-tracker/`](../doc-tracker/index.md)에 수용된 위험으로 등재되어 있습니다. `JRN-connect-repo` / `STP-sign-in`의 미인증 상태는 여정 페이지가 실제 로그인 화면을 가지면서 해소됐습니다
 - **목업 연결 5건**: 판정 대상 여정 5개가 각각 목업 페이지 하나(`mockups/JRN-<슬러그>.html`)를 갖습니다. `JRN-restore-history`는 위 공백 1건으로 예외 등재. 매핑의 단일 소스는 [`mockups/README.md`](../mockups/README.md)입니다
 
 ## 6. 갱신 정책
@@ -141,6 +141,6 @@ JRN-follow-code-change ──(자동 갱신이 틀렸을 때)──> JRN-restore
 3. **새 페르소나 정의** → §1과, 그 페르소나의 목표에 해당하는 새 여정 문서 추가
 4. **새 여정 추가** → 여정 문서와 같은 PR에서 목업 페이지(`mockups/JRN-<슬러그>.html`)까지 만들고, 각 여정의 `연결 문서` 칸과 §5 매트릭스를 함께 갱신 (이관 대기 상한이 0이라 페이지 없는 여정은 CI를 통과하지 못합니다)
 
-문서를 고칠 때는 기존 식별자를 유지한 채 해당 섹션만 바꾸고, 그 문서의 변경 이력에 한 줄을 추가하며 버전을 올립니다(내용 변경 0.1 단위, 팀 확정 시 1.0). 단계를 추가·삭제했다면 목업 연결이 깨질 수 있으므로 `doc-tracker.md`에도 남깁니다.
+문서를 고칠 때는 기존 식별자를 유지한 채 해당 섹션만 바꾸고, 그 문서의 변경 이력에 한 줄을 추가하며 버전을 올립니다(내용 변경 0.1 단위, 팀 확정 시 1.0). 단계를 추가·삭제했다면 목업 연결이 깨질 수 있으므로 `doc-tracker/`에도 남깁니다.
 
-문서 체계 전체의 일관성 점검은 [`doc-tracker.md`](../doc-tracker.md)에서 통합 추적합니다.
+문서 체계 전체의 일관성 점검은 [`doc-tracker/`](../doc-tracker/index.md)에서 통합 추적합니다.
