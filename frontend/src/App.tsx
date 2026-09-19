@@ -13,6 +13,7 @@ import { CrossCuttingConcerns } from './CrossCuttingConcerns';
 import { DiscoveryStrategy } from './DiscoveryStrategy';
 import { FeatureAcceptance } from './FeatureAcceptance';
 import { FeatureCandidates } from './FeatureCandidates';
+import { FeatureDependencies } from './FeatureDependencies';
 import { ConnectRepository } from './ConnectRepository';
 import { CredentialsSetup } from './CredentialsSetup';
 import { HomeRepositories } from './HomeRepositories';
@@ -22,7 +23,15 @@ type Screen = 'credentials' | 'home' | 'connect';
 /** Which analysis screen a hash addresses, if any. */
 export type AnalysisRoute = {
   id: string;
-  view: 'progress' | 'cross-cutting' | 'discovery-strategy' | 'candidates' | 'acceptance';
+  view:
+    | 'progress'
+    | 'cross-cutting'
+    | 'discovery-strategy'
+    | 'candidates'
+    | 'acceptance'
+    | 'dependencies';
+  /** Only for `dependencies`: AC2.4 traces **one** feature, so the address names it. */
+  featureKey?: string;
 };
 
 /**
@@ -38,6 +47,16 @@ export type AnalysisRoute = {
  * 들어옴", i.e. by address rather than by walking the pipeline again.
  */
 export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
+  // Feature Dependencies is the one address with two variables — the analysis and
+  // the feature — because a dependency trace is per-feature (AC2.4), not per-run.
+  const traced = /^#\/analyses\/([^/?#]+)\/features\/([^/?#]+)\/dependencies$/.exec(hash);
+  if (traced) {
+    return {
+      id: decodeURIComponent(traced[1]),
+      view: 'dependencies',
+      featureKey: decodeURIComponent(traced[2]),
+    };
+  }
   const match =
     /^#\/analyses\/([^/?#]+)(?:\/(cross-cutting|discovery-strategy|candidates|acceptance))?$/.exec(
       hash,
@@ -101,6 +120,17 @@ export function App() {
     setRoute({ id, view: 'candidates' });
   }
 
+  /** Feature Dependencies → Feature Acceptance, the document this feature's trace belongs to. */
+  function openAcceptance(id: string) {
+    window.location.hash = `#/analyses/${encodeURIComponent(id)}/acceptance`;
+    setRoute({ id, view: 'acceptance' });
+  }
+
+  // Feature Dependencies has no in-app entry either, and for the same reason as the
+  // paragraph below: the mockup puts the way in on `STP-verify-evidence`, the step
+  // this slice does not implement. A button that mockup does not draw would be copy
+  // carried as a deviation. The address is the entry (AC1.5's reason, again).
+
   // Feature Acceptance has no in-app entry yet: the mockup puts one on the *confirmed list*
   // (`END-features-confirmed`), which is the screen slice 5b brings in. Until then
   // the address is the entry — which is also how the journey describes re-entry
@@ -110,6 +140,16 @@ export function App() {
   // The hash wins over the state machine: a deep link must land on Analysis Progress or Cross-cutting Concerns even on
   // a cold load, before the user has walked the journey in this session.
   if (route !== null) {
+    if (route.view === 'dependencies' && route.featureKey !== undefined) {
+      return (
+        <FeatureDependencies
+          key={`${route.id}-fd`}
+          id={route.id}
+          featureKey={route.featureKey}
+          onBack={() => openAcceptance(route.id)}
+        />
+      );
+    }
     if (route.view === 'acceptance') {
       return (
         <FeatureAcceptance

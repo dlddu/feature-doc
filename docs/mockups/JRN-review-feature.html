@@ -1129,22 +1129,22 @@ body {
           <circle cx="150" cy="66" r="5" fill="#454545"></circle>
           <circle cx="150" cy="102" r="5" fill="#454545"></circle>
           <circle cx="256" cy="66" r="5" fill="#454545"></circle>
-          <text x="52" y="88" fill="#9a9a9a" font-size="9" text-anchor="middle" font-family="monospace">결제 수단</text>
-          <text x="150" y="18" fill="#6a6a6a" font-size="9" text-anchor="middle" font-family="monospace">카드 저장소</text>
-          <text x="150" y="124" fill="#6a6a6a" font-size="9" text-anchor="middle" font-family="monospace">속도 제한</text>
-          <text x="256" y="88" fill="#6a6a6a" font-size="9" text-anchor="middle" font-family="monospace">결제사</text>
+          <text data-sample x="52" y="88" fill="#9a9a9a" font-size="9" text-anchor="middle" font-family="monospace">결제 수단</text>
+          <text data-sample x="150" y="18" fill="#6a6a6a" font-size="9" text-anchor="middle" font-family="monospace">카드 저장소</text>
+          <text data-sample x="150" y="124" fill="#6a6a6a" font-size="9" text-anchor="middle" font-family="monospace">속도 제한</text>
+          <text data-sample x="256" y="88" fill="#6a6a6a" font-size="9" text-anchor="middle" font-family="monospace">결제사</text>
         </svg>
       </div>
 
       <div class="card" style="margin-top:12px">
         <div id="dep-list">
-          <div class="dep" data-cat="data"><span class="dname">카드 저장소 (암호화 컬럼)</span><span class="esrc">db/schema.sql:120</span></div>
-          <div class="dep" data-cat="infra"><span class="dname">결제사 연동 · 외부 호출</span><span class="esrc">billing/psp.ts:14</span></div>
-          <div class="dep" data-cat="arch"><span class="dname">결제 도메인 · 서비스 레이어</span><span class="esrc">billing/index.ts:1</span></div>
-          <div class="dep" data-cat="framework"><span class="dname">웹 프레임워크 라우팅</span><span class="esrc">app/router.ts:33</span></div>
-          <div class="dep" data-cat="middleware" id="dep-noevidence"><span class="dname">요청 속도 제한</span><span class="tag warn"><span class="dot"></span>근거 없음</span></div>
-          <div class="dep" data-cat="logic"><span class="dname">중복 카드 판정</span><span class="esrc">billing/card.ts:52</span></div>
-          <div class="dep" data-cat="interface"><span class="dname">카드 입력 화면</span><span class="esrc">web/CardForm.tsx:1</span></div>
+          <div class="dep" data-cat="data"><span class="dname" data-sample>카드 저장소 (암호화 컬럼)</span><span class="esrc" data-sample>db/schema.sql:120</span></div>
+          <div class="dep" data-cat="infra"><span class="dname" data-sample>결제사 연동 · 외부 호출</span><span class="esrc" data-sample>billing/psp.ts:14</span></div>
+          <div class="dep" data-cat="arch"><span class="dname" data-sample>결제 도메인 · 서비스 레이어</span><span class="esrc" data-sample>billing/index.ts:1</span></div>
+          <div class="dep" data-cat="framework"><span class="dname" data-sample>웹 프레임워크 라우팅</span><span class="esrc" data-sample>app/router.ts:33</span></div>
+          <div class="dep" data-cat="middleware" id="dep-noevidence"><span class="dname" data-sample>요청 속도 제한</span><span class="tag warn"><span class="dot"></span>근거 없음</span></div>
+          <div class="dep" data-cat="logic"><span class="dname" data-sample>중복 카드 판정</span><span class="esrc" data-sample>billing/card.ts:52</span></div>
+          <div class="dep" data-cat="interface"><span class="dname" data-sample>카드 입력 화면</span><span class="esrc" data-sample>web/CardForm.tsx:1</span></div>
         </div>
         <p class="legend" style="margin-top:12px"><span class="mk">↳</span> 근거를 찾지 못한 항목은 <strong>근거 없음</strong>으로 그대로 두고 임의로 채우지 않아요</p>
       </div>

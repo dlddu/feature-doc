@@ -15,6 +15,7 @@ use std::time::Duration;
 use featuredoc::acceptance;
 use featuredoc::config::Mode;
 use featuredoc::cross_cutting;
+use featuredoc::dependencies;
 use featuredoc::discovery_strategy;
 use featuredoc::feature_candidates;
 use featuredoc::llm;
@@ -42,6 +43,11 @@ struct Claim {
     /// Empty until the reviewer approves — which is also when stage 5 is not offered.
     #[serde(default)]
     approved_candidates: Vec<ApprovedCandidate>,
+    /// The features someone asked to trace the dependencies of (AC2.4). Not a
+    /// pipeline stage and therefore not in `executable_stages`: the request row is
+    /// the gate, and an empty list means nobody asked.
+    #[serde(default)]
+    dependency_requests: Vec<ApprovedCandidate>,
     installation_token: Option<String>,
     llm_provider: Option<String>,
     llm_api_key: Option<String>,
@@ -328,6 +334,28 @@ impl Worker {
             }
         }
 
+        // 종단 의존성 (AC2.4). Not a pipeline stage and so it reports no
+        // `analysis_stages` row — Analysis Progress still draws exactly five steps.
+        // One feature's failure does not kill the job: its request row carries the
+        // reason and the other features' results are not held hostage.
+        for feature in &job.dependency_requests {
+            if let Err(reason) = self.run_dependencies(job, &result.paths, feature).await {
+                tracing::warn!(
+                    analysis_id = %job.id,
+                    feature = %feature.key,
+                    "dependency trace failed: {reason}"
+                );
+                self.report_dependencies(
+                    &job.id,
+                    &feature.key,
+                    dependencies::request_status::FAILED,
+                    Some(&reason),
+                    None,
+                )
+                .await?;
+            }
+        }
+
         // Not `succeeded`: a stage behind a human gate may still be waiting — stage 4
         // on the strategy approval, stage 5 on a confirmed feature. The API turns
         // this into `queued` when an approval arrived while this pass was running.
@@ -386,6 +414,87 @@ impl Worker {
             "acceptance stage complete"
         );
         Ok(())
+    }
+
+    /// One feature's end-to-end dependencies (AC2.4).
+    ///
+    /// Shaped like the stages but reporting through its own route: dependencies are
+    /// a per-feature action, so there is no stage row to move and no document kind
+    /// to write. What lands is rows (AC2.5).
+    async fn run_dependencies(
+        &self,
+        job: &Claim,
+        paths: &[String],
+        feature: &ApprovedCandidate,
+    ) -> Result<(), String> {
+        self.heartbeat(&job.id)
+            .await
+            .map_err(|e| format!("could not renew lease: {e}"))?;
+
+        let subject = acceptance::Subject {
+            key: feature.key.clone(),
+            name: feature.name.clone(),
+            location: feature.location.clone(),
+            symbol: feature.symbol.clone(),
+        };
+        let answer = dependencies::derive(
+            &self.http,
+            self.doubles.llm,
+            self.provider_for(job)?,
+            job.llm_api_key.as_deref(),
+            &job.repo_owner,
+            &job.repo_name,
+            &job.branch,
+            paths,
+            &subject,
+        )
+        .await?;
+
+        let detail = dependencies::detail(&answer.content);
+        self.report_dependencies(
+            &job.id,
+            &feature.key,
+            dependencies::request_status::SUCCEEDED,
+            None,
+            Some(&answer),
+        )
+        .await
+        .map_err(|e| format!("could not store the dependencies: {e}"))?;
+
+        tracing::info!(
+            analysis_id = %job.id,
+            feature = %feature.key,
+            detail = %detail,
+            "dependency trace complete"
+        );
+        Ok(())
+    }
+
+    async fn report_dependencies(
+        &self,
+        id: &str,
+        feature_key: &str,
+        status: &str,
+        error: Option<&str>,
+        answer: Option<&llm::Answer>,
+    ) -> anyhow::Result<()> {
+        let body = json!({
+            "workerId": self.worker_id,
+            "featureKey": feature_key,
+            "status": status,
+            "error": error,
+            "content": answer
+                .map(|a| a.content.clone())
+                .unwrap_or_else(|| json!({ "items": [] })),
+            "model": answer.map(|a| a.model.clone()),
+            "inputTokens": answer.map_or(0, |a| a.input_tokens),
+            "outputTokens": answer.map_or(0, |a| a.output_tokens),
+        });
+        self.expect_ok(
+            self.post(&format!("/internal/analyses/{id}/dependencies"), body)
+                .await?,
+            "dependency submit",
+        )
     }
 
     async fn run_feature_candidates(&self, job: &Claim, paths: &[String]) -> Result<(), String> {

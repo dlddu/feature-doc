@@ -476,3 +476,63 @@ export async function getAcceptance(id: string): Promise<AcceptanceDocument | nu
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as AcceptanceDocument;
 }
+
+/** One dependency of a feature (AC2.4). `evidence: null` is 「근거 없음」 — recorded,
+ *  never invented. */
+export type Dependency = {
+  category: string;
+  name: string;
+  evidence: string | null;
+};
+
+export type DependencyGroup = {
+  category: string;
+  items: Dependency[];
+};
+
+/**
+ * What one feature depends on, plus how the last trace went.
+ *
+ * `status: null` means nobody has asked yet — a different state from "asked and it
+ * found nothing", exactly as `getAcceptance` distinguishes "not generated" from
+ * "generated and empty".
+ */
+export type FeatureDependencies = {
+  featureKey: string;
+  featureName: string | null;
+  status: string | null;
+  error: string | null;
+  categories: DependencyGroup[];
+  total: number;
+  withoutEvidence: number;
+};
+
+export async function getDependencies(
+  id: string,
+  key: string,
+): Promise<FeatureDependencies> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/features/dependencies?key=${encodeURIComponent(key)}`,
+    { credentials: 'same-origin' },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as FeatureDependencies;
+}
+
+/** 「의존성 분석」 — records the request and re-queues the analysis (AC2.4). */
+export async function requestDependencies(
+  id: string,
+  key: string,
+): Promise<FeatureDependencies> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/features/dependencies`,
+    {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: json,
+      body: JSON.stringify({ key }),
+    },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as FeatureDependencies;
+}

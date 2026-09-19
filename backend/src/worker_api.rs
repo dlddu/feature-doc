@@ -46,6 +46,10 @@ pub fn routes() -> Router<AppState> {
         .route("/internal/analyses/{id}/heartbeat", post(heartbeat))
         .route("/internal/analyses/{id}/stages/{key}", post(report_stage))
         .route("/internal/analyses/{id}/documents/{kind}", post(submit_document))
+        // 의존성 결과는 `documents/{kind}` 를 타지 않는다 — 그 경로는 `kind` 가
+        // 파이프라인 단계일 때만 받고, 의존성은 단계가 아니라 feature 단위 행동이다
+        // (AC2.4). feature key 가 경로 구분자를 품으므로 본문으로 온다.
+        .route("/internal/analyses/{id}/dependencies", post(submit_dependencies))
         .route("/internal/analyses/{id}/finish", post(finish))
 }
 
@@ -127,6 +131,15 @@ struct ClaimView {
     /// Stage 5's input and its gate, carried the same way and for the same reason as
     /// `approved_patterns`.
     approved_candidates: Vec<CandidateRef>,
+    /// The features someone asked to trace the dependencies of (AC2.4), still
+    /// waiting. Carried for the same reason as the two above — the gate and the
+    /// input come from one read — and empty when nobody asked, which is what makes
+    /// "아무도 요청하지 않았으면 아무것도 돌지 않는다" a property of the queue rather
+    /// than a rule the worker remembers.
+    ///
+    /// Not part of `executable_stages`: this is not a pipeline stage, and putting it
+    /// there would make Analysis Progress draw a sixth step it does not have.
+    dependency_requests: Vec<CandidateRef>,
     lease_expires_at: i64,
     /// Short-lived GitHub installation token for this job's repository. `None` in
     /// stub mode (nothing to call). Never persisted, never logged.
@@ -254,6 +267,7 @@ async fn claim(
     // would put the gate inside the concurrency-critical path for no benefit.
     let approved_patterns = approved_patterns(&state, &job.id).await?;
     let approved_candidates = approved_candidates(&state, &job.id).await?;
+    let dependency_requests = pending_dependency_requests(&state, &job.id).await?;
     let executable_stages = offered_stages(
         &state,
         &job.id,
@@ -270,6 +284,7 @@ async fn claim(
         executable_stages,
         approved_patterns: approved_patterns.unwrap_or_default(),
         approved_candidates,
+        dependency_requests,
         lease_expires_at: lease_until,
         installation_token,
         llm_provider,
@@ -359,6 +374,34 @@ pub async fn acceptance_pending(
     Ok(approved.iter().any(|c| !documented.contains(&c.key)))
 }
 
+/// The features whose dependency extraction is still owed (AC2.4).
+///
+/// The request row *is* the gate: someone pressed 「의존성 분석」 on a feature, and
+/// until that run reaches a terminal status the row keeps saying so. A failed run
+/// stays failed rather than retrying forever — re-asking is a person's decision,
+/// and the request route upserts the row back to `queued` when they make it.
+///
+/// Only approved candidates are traced. A feature nobody confirmed is not a feature
+/// yet (the same reading AC2.1 gets in [`approved_candidates`]).
+pub async fn pending_dependency_requests(
+    state: &AppState,
+    analysis_id: &str,
+) -> Result<Vec<CandidateRef>, AppError> {
+    Ok(sqlx::query_as(
+        "SELECT c.key, c.name, c.location, c.symbol \
+           FROM feature_dependency_requests r \
+           JOIN feature_candidates c \
+             ON c.analysis_id = r.analysis_id AND c.key = r.feature_key \
+          WHERE r.analysis_id = ? AND r.status = ? \
+            AND c.decision = 'approved' AND c.merged_into IS NULL \
+          ORDER BY c.seq, c.rowid",
+    )
+    .bind(analysis_id)
+    .bind(crate::dependencies::request_status::QUEUED)
+    .fetch_all(&state.db)
+    .await?)
+}
+
 /// Which stages this claim offers.
 ///
 /// The rule is "a stage that has not succeeded yet", with one deliberate exception:
@@ -418,9 +461,15 @@ async fn work_remains(state: &AppState, analysis_id: &str) -> Result<bool, AppEr
     let approved = approved_candidates(state, analysis_id).await?;
     let pending = acceptance_pending(state, analysis_id, &approved).await?;
     let offered = offered_stages(state, analysis_id, strategy_approved, pending).await?;
-    Ok(offered
+    if offered
         .iter()
-        .any(|k| k == pipeline::FEATURE_CANDIDATES || k == pipeline::ACCEPTANCE_DEPENDENCIES))
+        .any(|k| k == pipeline::FEATURE_CANDIDATES || k == pipeline::ACCEPTANCE_DEPENDENCIES)
+    {
+        return Ok(true);
+    }
+    // A 「의존성 분석」 request that landed while this pass was running is the same
+    // race the approvals have, and it gets the same answer (AC2.4).
+    Ok(!pending_dependency_requests(state, analysis_id).await?.is_empty())
 }
 
 #[derive(Deserialize)]
@@ -622,6 +671,104 @@ async fn submit_document(
     .bind(now_unix())
     .execute(&state.db)
     .await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DependencyReq {
+    worker_id: String,
+    /// Which feature this run traced. In the body rather than the path because a
+    /// candidate key carries the location it was found at (`src/api/routes.rs`).
+    feature_key: String,
+    /// `succeeded` or `failed` — see [`crate::dependencies::request_status`].
+    status: String,
+    #[serde(default)]
+    error: Option<String>,
+    #[serde(default)]
+    content: serde_json::Value,
+    #[serde(default)]
+    model: Option<String>,
+    #[serde(default)]
+    input_tokens: i64,
+    #[serde(default)]
+    output_tokens: i64,
+}
+
+/// Stores one feature's dependency extraction (AC2.4) as **rows** (AC2.5).
+///
+/// Not `submit_document`: that route only accepts a pipeline stage as its `kind`,
+/// and dependencies are a per-feature action rather than a stage. Storing rows is
+/// not an implementation detail either — AC2.5 asks for structured data that a
+/// reverse query can select from, which a JSON blob would not be.
+///
+/// A successful re-run **replaces** that feature's rows in the same transaction
+/// that moves the request to its terminal status: re-extraction is an update, and
+/// leaving the old rows would make the screen show a union of two readings of the
+/// code. A failed run replaces nothing — a previous good answer outlives a bad
+/// attempt, and the row carries the reason instead.
+async fn submit_dependencies(
+    State(state): State<AppState>,
+    _auth: WorkerAuth,
+    Path(id): Path<String>,
+    Json(req): Json<DependencyReq>,
+) -> Result<StatusCode, AppError> {
+    use crate::dependencies::request_status;
+
+    if !request_status::is_terminal(&req.status) {
+        return Err(AppError::BadRequest("unknown dependency request status".into()));
+    }
+    let error = req.error.filter(|e| !e.trim().is_empty());
+    if req.status == request_status::FAILED && error.is_none() {
+        return Err(AppError::BadRequest("a failed run must carry a reason".into()));
+    }
+    require_lease(&state, &id, &req.worker_id).await?;
+
+    let items = crate::dependencies::items(&req.content);
+    let now = now_unix();
+    let mut tx = state.db.begin().await?;
+
+    let res = sqlx::query(
+        "UPDATE feature_dependency_requests             SET status = ?, error = ?, model = ?, input_tokens = ?, output_tokens = ?,                 updated_at = ?           WHERE analysis_id = ? AND feature_key = ?",
+    )
+    .bind(&req.status)
+    .bind(error.as_deref())
+    .bind(req.model.as_deref())
+    .bind(req.input_tokens)
+    .bind(req.output_tokens)
+    .bind(now)
+    .bind(&id)
+    .bind(&req.feature_key)
+    .execute(&mut *tx)
+    .await?;
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+
+    if req.status == request_status::SUCCEEDED {
+        sqlx::query("DELETE FROM feature_dependencies WHERE analysis_id = ? AND feature_key = ?")
+            .bind(&id)
+            .bind(&req.feature_key)
+            .execute(&mut *tx)
+            .await?;
+        for (seq, item) in items.iter().enumerate() {
+            sqlx::query(
+                "INSERT INTO feature_dependencies                    (id, analysis_id, feature_key, seq, category, name, evidence, created_at)                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(uuid::Uuid::new_v4().to_string())
+            .bind(&id)
+            .bind(&req.feature_key)
+            .bind(seq as i64)
+            .bind(&item.category)
+            .bind(&item.name)
+            .bind(item.evidence.as_deref())
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+    tx.commit().await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
