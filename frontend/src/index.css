@@ -701,3 +701,33 @@ button.ico { cursor: pointer; }
   line-height: 1.5;
   color: var(--warning);
 }
+
+/* 종단 의존성 (Feature Dependencies, AC2.4) — 목업
+   docs/mockups/JRN-review-feature.html#STP-trace-dependencies 의 규칙을 그대로 옮겼다.
+   `.esrc` 는 `.dep` 아래로 한정한다 — 목업도 그렇게 한정하고, 전역으로 풀면 이 슬라이스가
+   건드리지 않는 화면의 렌더가 함께 움직인다. */
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 13px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.choice input { margin: 2px 0 0; accent-color: var(--accent); cursor: pointer; }
+.choice .ct { font-size: 12.5px; color: var(--text-primary); }
+.choice .cs { display: block; margin-top: 3px; font-size: 11px; color: var(--text-tertiary); }
+.choice:has(input:checked) { border-color: var(--accent-border); background: var(--accent-dim); }
+
+.dep {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dep:last-child { border-bottom: 0; }
+.dep .dname { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary); }
+.dep .esrc { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }

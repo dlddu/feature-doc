@@ -34,13 +34,15 @@
 //! Real per-call cost accounting is still AC4.6: what these views report is the
 //! pre-flight estimate, never a measured spend.
 
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::extract::{Path, Query, State};
+use axum::http::{header, StatusCode};
+use axum::response::IntoResponse;
 use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
 use crate::auth::CurrentUser;
+use crate::dependencies;
 use crate::error::AppError;
 use crate::github_app::{self, RepoRef};
 use crate::installations;
@@ -72,6 +74,16 @@ pub fn routes() -> Router<AppState> {
         .route("/api/analyses/{id}/candidates/decision", post(decide_candidate))
         .route("/api/analyses/{id}/candidates/rename", post(rename_candidate))
         .route("/api/analyses/{id}/candidates/merge", post(merge_candidates))
+        // 종단 의존성 (AC2.4 · AC2.5). feature key 는 경로 구분자를 품으므로
+        // 후보 라우트와 같이 본문·쿼리로 받는다.
+        .route(
+            "/api/analyses/{id}/features/dependencies",
+            get(feature_dependencies).post(request_dependencies),
+        )
+        .route("/api/analyses/{id}/dependencies/export", get(export_dependencies))
+        // 역방향 질의는 분석 하나에 매이지 않는다 — 「이 데이터 모델을 쓰는 feature
+        // 전부」는 이 사용자의 모든 분석을 가로지르는 질문이다 (AC2.5).
+        .route("/api/dependencies/features", get(dependents))
 }
 
 #[derive(Serialize)]
@@ -1369,4 +1381,348 @@ async fn merge_candidates(
     load_candidates(&state, &user.id, &id, &owner, &name, &branch, created_at)
         .await
         .map(Json)
+}
+
+// ── 종단 의존성 (AC2.4 · AC2.5) ──────────────────────────────────────────────
+//
+// 인수 시나리오가 파이프라인 5단계인 것과 달리, 의존성은 **feature 하나에 대한
+// 행동**이다(`docs/test/02` 시나리오 5: 「해당 feature 선택 → "의존성 분석" 트리거」).
+// 그래서 여기 있는 것은 단계가 아니라 요청이고, 요청이 하는 일은 후보 승인이 5단계를
+// 여는 것과 똑같다 — 행 하나를 남기고 분석을 재큐잉한다. 무엇을 돌릴지는 큐가 알고,
+// 워커는 제안받은 것만 한다.
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DependencyRequestReq {
+    /// The candidate key, in the body for the same reason the decision routes take
+    /// it there: it carries the path the feature was found at.
+    key: String,
+}
+
+#[derive(Deserialize)]
+struct FeatureQuery {
+    key: String,
+}
+
+#[derive(Deserialize)]
+struct DependentsQuery {
+    category: String,
+    name: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DependencyView {
+    category: String,
+    name: String,
+    /// `None` is the recorded fact 「근거 없음」, not a missing field — the journey's
+    /// exception table forbids filling it in.
+    evidence: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DependencyGroupView {
+    category: String,
+    items: Vec<DependencyView>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FeatureDependencyView {
+    feature_key: String,
+    feature_name: Option<String>,
+    /// `None` until someone asks for this feature's dependencies. That is a
+    /// different thing from "asked and got nothing", and the screen says so.
+    status: Option<String>,
+    error: Option<String>,
+    /// All seven categories, empty ones included — the screen draws 「전체 7종」 and
+    /// an empty category is information (nothing of that kind was found).
+    categories: Vec<DependencyGroupView>,
+    total: usize,
+    without_evidence: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DependentFeatureView {
+    analysis_id: String,
+    repo_owner: String,
+    repo_name: String,
+    branch: String,
+    feature_key: String,
+    feature_name: Option<String>,
+    evidence: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DependentsView {
+    category: String,
+    name: String,
+    features: Vec<DependentFeatureView>,
+}
+
+#[derive(sqlx::FromRow)]
+struct DependencyRow {
+    category: String,
+    name: String,
+    evidence: Option<String>,
+}
+
+#[derive(sqlx::FromRow)]
+struct DependentRow {
+    analysis_id: String,
+    repo_owner: String,
+    repo_name: String,
+    branch: String,
+    feature_key: String,
+    feature_name: Option<String>,
+    evidence: Option<String>,
+}
+
+/// One approved candidate, or `404` when this analysis has no such confirmed
+/// feature. Dependencies are traced for **confirmed** features only — the same
+/// reading AC2.1 gets for acceptance scenarios.
+async fn approved_candidate_name(
+    state: &AppState,
+    analysis_id: &str,
+    key: &str,
+) -> Result<String, AppError> {
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT name FROM feature_candidates \
+          WHERE analysis_id = ? AND key = ? AND decision = ? AND merged_into IS NULL",
+    )
+    .bind(analysis_id)
+    .bind(key)
+    .bind(DECISION_APPROVED)
+    .fetch_optional(&state.db)
+    .await?;
+    row.map(|(name,)| name).ok_or(AppError::NotFound)
+}
+
+async fn load_feature_dependencies(
+    state: &AppState,
+    analysis_id: &str,
+    key: &str,
+    feature_name: Option<String>,
+) -> Result<FeatureDependencyView, AppError> {
+    let request: Option<(String, Option<String>)> = sqlx::query_as(
+        "SELECT status, error FROM feature_dependency_requests \
+          WHERE analysis_id = ? AND feature_key = ?",
+    )
+    .bind(analysis_id)
+    .bind(key)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let rows: Vec<DependencyRow> = sqlx::query_as(
+        "SELECT category, name, evidence FROM feature_dependencies \
+          WHERE analysis_id = ? AND feature_key = ? ORDER BY seq, rowid",
+    )
+    .bind(analysis_id)
+    .bind(key)
+    .fetch_all(&state.db)
+    .await?;
+
+    let total = rows.len();
+    let without_evidence = rows.iter().filter(|r| r.evidence.is_none()).count();
+    let categories = dependencies::CATEGORIES
+        .iter()
+        .map(|category| DependencyGroupView {
+            category: (*category).to_string(),
+            items: rows
+                .iter()
+                .filter(|r| r.category == **category)
+                .map(|r| DependencyView {
+                    category: r.category.clone(),
+                    name: r.name.clone(),
+                    evidence: r.evidence.clone(),
+                })
+                .collect(),
+        })
+        .collect();
+
+    Ok(FeatureDependencyView {
+        feature_key: key.to_string(),
+        feature_name,
+        status: request.as_ref().map(|(status, _)| status.clone()),
+        error: request.and_then(|(_, error)| error),
+        categories,
+        total,
+        without_evidence,
+    })
+}
+
+/// What this feature depends on, as far as the last run got (AC2.4).
+async fn feature_dependencies(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Query(query): Query<FeatureQuery>,
+) -> Result<Json<FeatureDependencyView>, AppError> {
+    owned_analysis(&state, &user.id, &id).await?;
+    let name = approved_candidate_name(&state, &id, &query.key).await?;
+    load_feature_dependencies(&state, &id, &query.key, Some(name))
+        .await
+        .map(Json)
+}
+
+/// 「의존성 분석」. Records the request and re-queues the analysis in one
+/// transaction, for the same reason approving a candidate does: they are one fact
+/// ("this analysis may now trace this feature"), and a request that survives
+/// without the re-queue is a request nobody will ever run.
+///
+/// Re-asking after a failure is allowed and is what resets the row to `queued`; the
+/// rows a previous successful run stored stay until a new run replaces them.
+async fn request_dependencies(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Json(req): Json<DependencyRequestReq>,
+) -> Result<Json<FeatureDependencyView>, AppError> {
+    owned_analysis(&state, &user.id, &id).await?;
+    let name = approved_candidate_name(&state, &id, &req.key).await?;
+
+    let now = now_unix();
+    let mut tx = state.db.begin().await?;
+    sqlx::query(
+        "INSERT INTO feature_dependency_requests \
+           (id, analysis_id, feature_key, status, error, requested_at, updated_at) \
+         VALUES (?, ?, ?, ?, NULL, ?, ?) \
+         ON CONFLICT(analysis_id, feature_key) DO UPDATE SET \
+           status = excluded.status, error = NULL, updated_at = excluded.updated_at",
+    )
+    .bind(uuid::Uuid::new_v4().to_string())
+    .bind(&id)
+    .bind(&req.key)
+    .bind(dependencies::request_status::QUEUED)
+    .bind(now)
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+    requeue(&mut tx, &id).await?;
+    tx.commit().await?;
+
+    load_feature_dependencies(&state, &id, &req.key, Some(name))
+        .await
+        .map(Json)
+}
+
+/// AC2.5's reverse query: every feature of **this user's** analyses that depends on
+/// the named thing. Scoped to the caller for the same reason every other read is —
+/// an id that is not theirs does not exist (AC4.7).
+async fn dependents(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<DependentsQuery>,
+) -> Result<Json<DependentsView>, AppError> {
+    if !dependencies::is_category(&query.category) {
+        return Err(AppError::BadRequest(
+            "알 수 없는 분류예요. 의존성 분류는 7종 중 하나입니다.".into(),
+        ));
+    }
+    let rows: Vec<DependentRow> = sqlx::query_as(
+        "SELECT d.analysis_id AS analysis_id, a.repo_owner AS repo_owner, \
+                a.repo_name AS repo_name, a.branch AS branch, \
+                d.feature_key AS feature_key, c.name AS feature_name, d.evidence AS evidence \
+           FROM feature_dependencies d \
+           JOIN analyses a ON a.id = d.analysis_id \
+           LEFT JOIN feature_candidates c \
+                  ON c.analysis_id = d.analysis_id AND c.key = d.feature_key \
+          WHERE a.user_id = ? AND d.category = ? AND d.name = ? \
+          ORDER BY a.created_at DESC, d.analysis_id, d.feature_key",
+    )
+    .bind(&user.id)
+    .bind(&query.category)
+    .bind(&query.name)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(DependentsView {
+        category: query.category,
+        name: query.name,
+        features: rows
+            .into_iter()
+            .map(|r| DependentFeatureView {
+                analysis_id: r.analysis_id,
+                repo_owner: r.repo_owner,
+                repo_name: r.repo_name,
+                branch: r.branch,
+                feature_key: r.feature_key,
+                feature_name: r.feature_name,
+                evidence: r.evidence,
+            })
+            .collect(),
+    }))
+}
+
+/// AC2.5's export: the whole analysis's dependency graph in a form something else
+/// can read. An attachment rather than a rendered view — 「시스템 외부로 export
+/// 가능」 means a file leaves the product, not that a screen shows JSON.
+async fn export_dependencies(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let (owner, name, branch, _created_at) = owned_analysis(&state, &user.id, &id).await?;
+
+    let rows: Vec<(String, Option<String>, String, String, Option<String>)> = sqlx::query_as(
+        "SELECT d.feature_key, c.name, d.category, d.name, d.evidence \
+           FROM feature_dependencies d \
+           LEFT JOIN feature_candidates c \
+                  ON c.analysis_id = d.analysis_id AND c.key = d.feature_key \
+          WHERE d.analysis_id = ? \
+          ORDER BY d.feature_key, d.seq, d.rowid",
+    )
+    .bind(&id)
+    .fetch_all(&state.db)
+    .await?;
+
+    let mut features: Vec<serde_json::Value> = Vec::new();
+    let mut current: Option<(String, Option<String>, Vec<serde_json::Value>)> = None;
+    for (feature_key, feature_name, category, dep_name, evidence) in rows {
+        match &mut current {
+            Some((key, _, items)) if *key == feature_key => {
+                items.push(serde_json::json!({
+                    "category": category, "name": dep_name, "evidence": evidence,
+                }));
+            }
+            _ => {
+                if let Some((key, name, items)) = current.take() {
+                    features.push(serde_json::json!({
+                        "key": key, "name": name, "dependencies": items,
+                    }));
+                }
+                current = Some((
+                    feature_key,
+                    feature_name,
+                    vec![serde_json::json!({
+                        "category": category, "name": dep_name, "evidence": evidence,
+                    })],
+                ));
+            }
+        }
+    }
+    if let Some((key, name, items)) = current.take() {
+        features.push(serde_json::json!({
+            "key": key, "name": name, "dependencies": items,
+        }));
+    }
+
+    let body = serde_json::json!({
+        "analysisId": id,
+        "repository": format!("{owner}/{name}"),
+        "branch": branch,
+        "categories": dependencies::CATEGORIES,
+        "features": features,
+    });
+    let filename = format!("dependencies-{id}.json");
+    Ok((
+        [(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{filename}\""),
+        )],
+        Json(body),
+    ))
 }
