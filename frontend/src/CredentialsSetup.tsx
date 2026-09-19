@@ -18,13 +18,20 @@ import {
 } from './api';
 import type { Connection, LlmKey, ProviderId, User } from './api';
 
-// OpenAI first because it is the default the rest of the system assumes: the
-// worker falls back to it and an analysis picks an OpenAI key over the others
-// (`llm::DEFAULT_PROVIDER`, `llmkey::ACTIVE_KEY_SQL`). The order is the signal —
-// a user who does not choose gets the cheapest supported engine.
+// Mockup order (`JRN-connect-repo.html#STP-register-llm-key`, the `#in-provider`
+// options): Anthropic → OpenAI → Google, with the key hint written for the first
+// entry (`sk-ant-`). No upper document fixes the order — PRD AC4.2 and test/04
+// 시나리오 13 are silent — so the mockup wins as the visual SSOT.
+//
+// The *backend's* default provider rule is a separate axis and is untouched: the
+// worker still falls back to OpenAI and an analysis still picks an OpenAI key over
+// the others (`llm::DEFAULT_PROVIDER`, `llmkey::ACTIVE_KEY_SQL`). What this array
+// decides is only what the screen shows and which segment a user who has never
+// chosen starts on — `load()` replaces it with the provider of an already active
+// key, so the initial value is a first-run affordance, not a policy.
 const PROVIDERS: { id: ProviderId; label: string; placeholder: string }[] = [
-  { id: 'openai', label: 'OpenAI', placeholder: 'sk-…' },
   { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-…' },
+  { id: 'openai', label: 'OpenAI', placeholder: 'sk-…' },
   { id: 'google', label: 'Google', placeholder: 'AIza…' },
 ];
 
@@ -63,7 +70,7 @@ export function CredentialsSetup({ onReady }: Props = {}) {
   const [keys, setKeys] = useState<LlmKey[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [provider, setProvider] = useState<ProviderId>('openai');
+  const [provider, setProvider] = useState<ProviderId>(PROVIDERS[0].id);
   const [keyInput, setKeyInput] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [keyState, setKeyState] = useState<KeyState>('idle');

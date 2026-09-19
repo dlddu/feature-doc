@@ -55,6 +55,20 @@ export async function getMe(): Promise<User | null> {
   return (await res.json()) as User;
 }
 
+/**
+ * End the session. The invalidation is server-side (`backend/src/auth.rs` logout →
+ * `session::delete`), so the caller only has to stop showing signed-in screens —
+ * the cookie it dropped is already dead, which is what
+ * `sc04-12-logout-session-invalidation.spec.ts` asserts against the API.
+ */
+export async function logout(): Promise<void> {
+  const res = await fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+}
+
 export async function getConnection(): Promise<Connection> {
   const res = await fetch('/api/github/connection', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(await errorMessage(res));
