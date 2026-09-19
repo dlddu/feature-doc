@@ -1,32 +1,16 @@
-//! Stage 3 (`discovery_strategy`): where should feature discovery look? (AC1.3)
+//! Stage 3 (`discovery_strategy`): proposes where feature discovery should look.
 //!
-//! AC1.3 takes the cross-cutting document stage 2 produced and asks for a strategy
-//! a person can read and edit — "진입점 파일 패턴, 라우팅 정의 위치, UI 컴포넌트
-//! 경로, 외부에 노출된 API 엔드포인트, CLI 명령 등". So the unit here is a
-//! **pattern**, not a prose paragraph: something the next stage can scan by and a
-//! reviewer can delete in one gesture.
-//!
-//! Two inputs, both already earned by earlier stages: the sorted, truncated path
-//! list stage 1 measured (via [`crate::cross_cutting::input_paths`], the same view,
-//! so the two stages cannot disagree about what the repository contains) and the
-//! cross-cutting document stage 2 stored. Reusing stage 1's list rather than
-//! re-deriving one is what keeps the prompt deterministic for a given tree.
-//!
-//! The *editing and approval* half of AC1.3 does not live here — it is
-//! `discovery_strategies` (migration 0006) and the routes in [`crate::analysis`].
-//! This module only produces the proposal.
+//! Reuses stage 1's path view rather than re-deriving one: sharing
+//! [`crate::cross_cutting::input_paths`] is what keeps the prompt deterministic for
+//! a given tree, and keeps the stages from disagreeing about what the repository
+//! contains.
 
 use serde_json::{json, Value};
 
 use crate::llm::{self, Ask};
 
-/// The kinds of entry point AC1.3 enumerates. Sent to the model as the closed set
-/// it must classify into, so an entry's `kind` is never free-form text the screen
-/// would have to guess how to render.
 pub const KINDS: [&str; 5] = ["route", "ui", "api", "job", "cli"];
 
-/// Upper bound on the proposal. AC1.3's output is something a person reviews on a
-/// phone screen; a list longer than this is not a strategy, it is a file listing.
 const MAX_ENTRIES: usize = 12;
 
 const SYSTEM: &str = "\
@@ -37,7 +21,6 @@ rationale and at least one path from the list as evidence that the pattern match
 something real. Never propose a pattern that matches no path in the list.
 Prefer a few broad entry points over many narrow ones.";
 
-/// The JSON shape the answer is constrained to (sent to the provider verbatim).
 fn schema() -> Value {
     json!({
         "type": "object",
@@ -62,15 +45,9 @@ fn schema() -> Value {
     })
 }
 
-/// Deterministic stand-in for the model's answer.
-///
-/// Derived from the actual tree rather than hard-coded, for the same reason stage
-/// 2's stub is: the e2e can then assert AC1.3's real property — every proposed
-/// pattern matches a path the analysis actually saw — instead of a fixed string.
-///
-/// The pattern is the directory prefix of the chosen path plus `/**`, which is a
-/// pattern the path genuinely matches. A path with no directory part yields the
-/// file itself.
+/// Derived from the tree rather than hard-coded so the e2e can assert the real
+/// property — every proposed pattern matches a path the analysis actually saw —
+/// instead of a fixed string that would still pass with the wiring cut.
 fn stub_answer(paths: &[String]) -> Value {
     let mut entries = Vec::new();
     for (i, kind) in KINDS.iter().enumerate() {
@@ -91,9 +68,6 @@ fn stub_answer(paths: &[String]) -> Value {
     json!({ "entries": entries })
 }
 
-/// A compact rendering of stage 2's document — the axes and item names, without the
-/// evidence lists. The model needs to know *what kind of codebase this is*; feeding
-/// it the whole document back would mostly re-send paths it already has.
 fn landscape(cross_cutting: &Value) -> String {
     let mut lines = Vec::new();
     for category in cross_cutting
@@ -130,7 +104,6 @@ fn prompt(owner: &str, name: &str, branch: &str, paths: &[String], cross_cutting
     )
 }
 
-/// Runs stage 3 and returns the document to persist.
 pub async fn propose(
     http: &reqwest::Client,
     mode: crate::config::Mode,
@@ -162,8 +135,7 @@ pub async fn propose(
     .await?;
 
     // Cap here rather than trusting the instruction: a model that ignores "at most
-    // N" would otherwise hand the reviewer an unreviewable list, and AC1.3's whole
-    // point is that a person reviews this.
+    // N" would otherwise hand the reviewer an unreviewable list.
     if let Some(entries) = answer.content.get_mut("entries").and_then(Value::as_array_mut) {
         entries.truncate(MAX_ENTRIES);
         if entries.is_empty() {
@@ -175,7 +147,6 @@ pub async fn propose(
     Ok(answer)
 }
 
-/// The patterns, in document order — what seeds the reviewable strategy.
 pub fn patterns(doc: &Value) -> Vec<String> {
     doc.get("entries")
         .and_then(Value::as_array)
@@ -187,7 +158,7 @@ pub fn patterns(doc: &Value) -> Vec<String> {
         .collect()
 }
 
-/// The one-liner Analysis Progress renders under the step, mirroring stage 2's "5 categories · 3 items".
+/// The one-liner rendered under the step on Analysis Progress.
 pub fn detail(doc: &Value) -> String {
     format!("{} entry points · awaiting approval", patterns(doc).len())
 }
@@ -229,8 +200,6 @@ mod tests {
         .unwrap()
     }
 
-    /// AC1.3's proposal is only reviewable if it points at things that exist: every
-    /// entry cites a path the analysis actually saw.
     #[tokio::test]
     async fn every_entry_cites_a_path_from_the_tree() {
         let known = crate::cross_cutting::input_paths(&tree());
@@ -249,8 +218,6 @@ mod tests {
         }
     }
 
-    /// The same tree and the same landscape must reproduce exactly — the stage
-    /// inherits AC1.2's determinism posture because its input is the same fixed list.
     #[tokio::test]
     async fn the_same_input_reproduces_the_same_document() {
         assert_eq!(run().await.content, run().await.content);
@@ -274,7 +241,6 @@ mod tests {
         assert!(err.contains("empty"), "{err}");
     }
 
-    /// The reviewer, not the model, decides how long the list is allowed to be.
     #[test]
     fn the_proposal_is_capped_for_a_human_reviewer() {
         assert!(MAX_ENTRIES <= 12);

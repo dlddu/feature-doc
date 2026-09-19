@@ -1,17 +1,4 @@
-//! Discovery strategy review, edit and approval (AC1.3).
-//!
-//! AC1.3's verification method has three clauses, and each has a test here:
-//!   · 사용자는 자동 생성된 전략을 **검토**할 수 있다 — reading it materialises the
-//!     draft from what stage 3 proposed, and says so before the stage has run.
-//!   · **수정**할 수 있다 — deleting and adding are one write of the whole list, and
-//!     provenance (generated vs. the reviewer's own) survives the round trip.
-//!   · **승인된 전략만 다음 단계의 입력이 된다** — the queue withholds the next stage
-//!     until approval. That is the one clause that would otherwise be a promise in
-//!     prose, so it is asserted against `/internal/analyses/claim` directly.
-//!
-//! Plus the carry-over the Discovery Strategy mockup promises in as many words ("여기서 보탠 항목은
-//! 다음 분석에서도 그대로 참조됩니다"): a copy that a screen renders and nothing
-//! enforces is a copy that will quietly become false.
+//! Discovery strategy review, edit and approval.
 //!
 //! Documents are written through the worker's own `/internal` route, not by
 //! inserting rows — a hand-written fixture could drift from what a worker submits.
@@ -113,8 +100,8 @@ async fn claim(state: &AppState) -> serde_json::Value {
     json_body(resp).await
 }
 
-/// Returns a claimed job to the queue, the way AC1.5's retry does — the tests below
-/// claim to observe what the queue offers, and a held lease would hide the next one.
+/// The tests below claim to observe what the queue offers, and a held lease would
+/// hide the next one.
 async fn requeue(state: &AppState, id: &str) {
     sqlx::query("UPDATE analyses SET status = 'queued', lease_expires_at = NULL WHERE id = ?")
         .bind(id)
@@ -123,8 +110,7 @@ async fn requeue(state: &AppState, id: &str) {
         .unwrap();
 }
 
-/// The proposal stage 3 stores, submitted the way the worker submits it — which
-/// means claiming the job first, because `/internal` writes are lease-guarded.
+/// Claims the job first because `/internal` writes are lease-guarded.
 async fn propose(state: &AppState, id: &str, patterns: &[&str]) {
     let job = claim(state).await;
     assert_eq!(job["id"], id, "claimed a different job than the test meant to");
@@ -198,7 +184,6 @@ fn patterns_of(view: &serde_json::Value) -> Vec<String> {
         .collect()
 }
 
-/// Claiming is what a worker does; the assertion is about what the queue *offers*.
 async fn offered_stages(state: &AppState) -> Vec<String> {
     claim(state).await["executableStages"]
         .as_array()
@@ -236,13 +221,11 @@ async fn the_reviewer_deletes_and_adds_and_the_provenance_survives() {
     propose(&state, &id, &["src/routes/**", "src/pages/**"]).await;
     read(&state, &session, &id).await; // materialise the draft
 
-    // One deletion and one addition, sent as the list the screen is showing.
     let view = json_body(put(&state, &session, &id, &["src/routes/**", "cmd/admin-cli"]).await).await;
     assert_eq!(patterns_of(&view), ["src/routes/**", "cmd/admin-cli"]);
     assert_eq!(view["entries"][0]["source"], "generated");
     assert_eq!(view["entries"][1]["source"], "user", "보탠 항목은 사용자 것이다");
 
-    // The edit is server state, so a fresh read is the same list.
     let reread = json_body(read(&state, &session, &id).await).await;
     assert_eq!(patterns_of(&reread), patterns_of(&view));
 
@@ -252,7 +235,7 @@ async fn the_reviewer_deletes_and_adds_and_the_provenance_survives() {
     assert_eq!(patterns_of(&deduped), ["src/routes/**"]);
 }
 
-/// AC1.3's gate, asserted where it is enforced rather than where it is described.
+/// Asserted where the gate is enforced rather than where it is described.
 #[tokio::test]
 async fn the_next_stage_is_withheld_from_the_queue_until_the_strategy_is_approved() {
     let (state, _dir) = stub_state().await;
@@ -315,8 +298,8 @@ async fn an_approved_strategy_is_frozen_and_an_empty_one_cannot_be_approved() {
     );
 }
 
-/// The Discovery Strategy mockup tells the reviewer their additions carry forward. This is that
-/// sentence, enforced.
+/// A copy that a screen renders and nothing enforces is a copy that will quietly
+/// become false; this is the carry-over sentence, enforced.
 #[tokio::test]
 async fn the_reviewers_own_entries_carry_into_the_next_analysis_of_the_same_target() {
     let (state, _dir) = stub_state().await;
@@ -328,8 +311,6 @@ async fn the_reviewers_own_entries_carry_into_the_next_analysis_of_the_same_targ
     put(&state, &session, &first, &["src/routes/**", "cmd/admin-cli"]).await;
     assert_eq!(approve(&state, &session, &first).await.status(), StatusCode::OK);
 
-    // A second analysis of the same repository proposes something different; the
-    // reviewer's own entry is still there, and the earlier *generated* one is not.
     let second = enqueue(&state, &session, "payments-api").await;
     propose(&state, &second, &["src/handlers/**"]).await;
     let view = json_body(read(&state, &session, &second).await).await;
@@ -343,8 +324,7 @@ async fn the_reviewers_own_entries_carry_into_the_next_analysis_of_the_same_targ
     assert_eq!(patterns_of(&other_view), ["src/handlers/**"]);
 }
 
-/// Owner scope (AC4.7): another user's analysis is 404, not 403 — the API does not
-/// confirm that the id exists.
+/// 404, not 403 — the API does not confirm that someone else's id exists.
 #[tokio::test]
 async fn another_users_strategy_is_not_readable_or_writable() {
     let (state, _dir) = stub_state().await;
@@ -364,7 +344,6 @@ async fn another_users_strategy_is_not_readable_or_writable() {
         StatusCode::NOT_FOUND
     );
 
-    // …and nothing the stranger sent landed.
     let view = json_body(read(&state, &owner, &id).await).await;
     assert_eq!(patterns_of(&view), ["src/routes/**"]);
     assert_eq!(view["approved"], false);

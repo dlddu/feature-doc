@@ -1,19 +1,8 @@
 // Discovery Strategy — the real screen behind
-// docs/mockups/JRN-discover-features.html#STP-tune-strategy (Discovery Strategy, AC1.3).
+// docs/mockups/JRN-discover-features.html#STP-tune-strategy.
 //
-// The mockup is the SSOT for what this screen says, so the copy below is the
-// mockup's copy. What it *does* is AC1.3: the list stage 3 proposed is a draft the
-// reviewer can delete from and add to, and only an approved list becomes the next
-// stage's input. Nothing here is client-side state — every mutation is a write the
-// server answers with the new list, which is why a reload shows the same edits.
-//
-// One thing the mockup draws that this screen deliberately does not: the five
-// example patterns (`src/routes/**/*.ts` and friends). Those are sample data in a
-// static prototype; here the list is whatever the model proposed for *this*
-// repository, and hard-coding the samples would be a false list. The mockup marks
-// them `data-sample` so the copy gate skips them (docs/mockups/README.md "예시값
-// 표기 규약") — it used to be carried as a row in docs/doc-tracker.md "알려진
-// 목업↔구현 편차" instead, which is no longer needed.
+// Nothing here is client-side state: every mutation is a write the server answers
+// with the new list, which is why a reload shows the same edits.
 
 import { useEffect, useState } from 'react';
 import { approveDiscoveryStrategy, getDiscoveryStrategy, putDiscoveryStrategy } from './api';
@@ -25,13 +14,7 @@ function messageOf(e: unknown): string {
 
 type Props = {
   id: string;
-  /** Discovery Strategy → Analysis Progress (back to the run this strategy belongs to). */
   onBack: () => void;
-  /**
-   * Discovery Strategy → Feature Candidates (AC1.4). The mockup's own wiring: `이 전략으로 후보 뽑기` carries
-   * `data-goto="STP-sift-candidates"`, so approving and entering the candidate list
-   * are one button. Before approval it approves; after, it is the way through.
-   */
   onOpenCandidates: () => void;
 };
 
@@ -53,8 +36,7 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
 
   // Takes the started request rather than a thunk: `() => Promise<Strategy>` would
   // read as product copy to the M3B copy extractor (it scans the text between `>`
-  // and `<`), and there is nothing to gain from deferring the call by one tick.
-  /** Every mutation goes through the server and renders its answer, never a guess. */
+  // and `<`).
   async function mutate(run: Promise<Strategy>) {
     setBusy(true);
     setError(null);
@@ -217,19 +199,12 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
   );
 }
 
-/**
- * Copy the static prototype has no counterpart for — a network wait and the
- * post-approval state. Both are registered in docs/doc-tracker.md "알려진
- * 목업↔구현 편차"; kept as constants so the deviation is one place, not scattered.
- */
 const LOADING = '불러오는 중…';
 const APPROVED = '승인된 전략이에요';
 
 /**
- * The mockup's appbar is three slots (`STP-tune-strategy`): `‹ back`, the title as a
- * direct `span.appbar-title`, and a `icon-btn ghost` placeholder on the right. The
- * placeholder is a spacer, not a control — without it `.appbar`'s `space-between`
- * pushes the title to the right edge instead of centring it.
+ * The right-hand `icon-btn ghost` is a spacer, not a control — without it
+ * `.appbar`'s `space-between` pushes the title to the right edge.
  */
 function Appbar({ onBack }: { onBack: () => void }) {
   return (

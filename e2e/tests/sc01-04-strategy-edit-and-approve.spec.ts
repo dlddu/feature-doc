@@ -1,18 +1,11 @@
 // 검증 시나리오: 01-analysis-pipeline.md#시나리오 4
 //
-// 「탐색 전략의 사용자 편집 후 재사용」 전용 spec (AC1.3).
-//
-// AC1.3 의 검증 방법을 그대로 따라간다: 자동 생성된 전략을 사용자가 **검토·수정·승인**
-// 할 수 있고, **승인된 전략만 다음 단계의 입력이 된다**.
-//
 // 기대값을 상수로 박지 않는다. "제안된 패턴이 이 저장소에서 나온 것인지"는 문서 자신이
 // 아니라 **스캔이 본 저장소**를 기준으로 판정해야 의미가 있으므로, 화면·API 가 내려준
 // 값들끼리 대조한다. 픽스처를 바꿔도 이 테스트는 여전히 옳고, 3단계가 근거 없는 패턴을
 // 만들어내는 순간에만 깨진다.
 //
-// 승인 게이트는 화면 밖에서도 확인한다 — 승인 전/후로 `PUT` 이 409 로 바뀌는 것이
-// "승인된 전략은 더 이상 흔들리지 않는다"의 관측 가능한 형태다. 큐가 다음 단계를
-// 내주는지(`executableStages`)는 `/internal` 이라 브라우저에서 못 보므로
+// 큐가 다음 단계를 내주는지(`executableStages`)는 `/internal` 이라 브라우저에서 못 보므로
 // `backend/tests/strategy.rs` 가 대신 지킨다.
 //
 // Isolation: this spec *leases* the analysis worker (see `e2e/support/cluster.ts`).
@@ -59,7 +52,6 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       // job cannot drain before the "nothing has run yet" assertion below.
       await scaleWorkers(0);
 
-      // ── setup: this spec's own user, App installation, LLM key ──────────
       await page.goto('/api/auth/login?as=ac13');
       expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
       const key = await page.request.post('/api/llm-keys', {
@@ -69,21 +61,15 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
 
       const first = await enqueue(page, 'payments-api');
 
-      // ── before any worker: there is no strategy to review yet ───────────
-      // 404, not an empty list: "아직 제안되지 않았다" 와 "제안했는데 비었다" 는
-      // 사용자에게 다른 상태다.
       expect((await page.request.get(`/api/analyses/${first}/discovery-strategy`)).status()).toBe(
         404,
       );
 
-      // ── let one worker run the job through stage 3 ──────────────────────
       await scaleWorkers(1);
       await expect
         .poll(() => statusOf(page, first), { timeout: 120_000, intervals: [1_000] })
         .toBe('awaiting_pipeline');
 
-      // ── 제안된 전략은 이 저장소에서 나왔다 ───────────────────────────────
-      // 근거의 유효성은 문서 자신이 아니라 **분석된 저장소**를 기준으로 본다.
       const proposal = (await (
         await page.request.get(`/api/analyses/${first}/documents/discovery-strategy`)
       ).json()) as Proposal;
@@ -104,7 +90,6 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
         proposal.content.entries.map((e) => e.pattern),
       );
 
-      // ── 탐색 전략 화면이 그 전략을 그린다 ─────────────────────────────────────────
       await page.goto(`/#/analyses/${first}/discovery-strategy`);
       await expect(page.getByTestId('strategy-entry')).toHaveCount(proposed.entries.length);
       await expect(page.getByTestId('strategy-count')).toHaveText(
@@ -115,7 +100,6 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
         proposed.entries[0].pattern,
       );
 
-      // ── 검토: 지운다 ────────────────────────────────────────────────────
       const dropped = proposed.entries[0].pattern;
       await page.getByTestId('strategy-drop').first().click();
       await expect(page.getByTestId('strategy-entry')).toHaveCount(proposed.entries.length - 1);
@@ -124,7 +108,6 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       const shown = await page.locator('[data-testid="strategy-entry"] .sname').allTextContents();
       expect(shown).not.toContain(dropped);
 
-      // ── 검토: 보탠다 ────────────────────────────────────────────────────
       const mine = 'cmd/admin-cli';
       await page.getByTestId('strategy-input').fill(mine);
       await page.getByTestId('strategy-add').click();
@@ -132,7 +115,6 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       await expect(added).toHaveCount(1);
       await expect(added).toContainText(mine);
 
-      // 화면이 아니라 서버가 기억한다 — 새로고침이 곧 그 증거다.
       await page.reload();
       await expect(
         page.locator('[data-testid="strategy-entry"][data-source="user"]'),
@@ -142,29 +124,22 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       expect(edited.entries.map((e) => e.pattern)).toContain(mine);
       expect(edited.approved).toBe(false);
 
-      // ── 승인 ────────────────────────────────────────────────────────────
       await page.getByTestId('strategy-approve').click();
       await expect(page.getByTestId('strategy-approved')).toBeVisible();
-      // 승인 뒤에는 수정 액션이 화면에서 사라진다.
       await expect(page.getByTestId('strategy-drop')).toHaveCount(0);
       await expect(page.getByTestId('strategy-add')).toHaveCount(0);
       expect((await strategyOf(page, first)).approved).toBe(true);
 
-      // …그리고 API 로도 잠긴다: 승인된 전략은 다음 단계의 입력이므로 흔들리면 안 된다.
       const late = await page.request.put(`/api/analyses/${first}/discovery-strategy/entries`, {
         data: { patterns: ['something/else'] },
       });
       expect(late.status(), '승인된 전략은 수정할 수 없다').toBe(409);
 
-      // ── 분석 진행 → 탐색 전략 사용자 경로 ───────────────────────────────────────────
       await page.goto(`/#/analyses/${first}`);
       await expect(page.locator('[data-stage="discovery_strategy"]')).toContainText('entry points');
       await page.getByTestId('open-discovery-strategy').click();
       await expect(page.getByTestId('strategy-approved')).toBeVisible();
 
-      // ── 보탠 항목은 같은 대상의 다음 분석에도 이어진다 ───────────────────
-      // 탐색 전략 화면이 그렇게 적어 두었으므로(「여기서 보탠 항목은 다음 분석에서도 그대로
-      // 참조됩니다」) 그 문장이 참인지 실제로 확인한다.
       const second = await enqueue(page, 'payments-api');
       await expect
         .poll(() => statusOf(page, second), { timeout: 120_000, intervals: [1_000] })
@@ -183,7 +158,6 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
         page.locator('[data-testid="strategy-entry"][data-source="user"]'),
       ).toContainText(mine);
     } finally {
-      // The worker is leased, not owned — hand it back whatever happened above.
       await scaleWorkers(0);
     }
   });
