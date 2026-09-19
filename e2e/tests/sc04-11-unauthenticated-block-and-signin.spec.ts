@@ -9,7 +9,7 @@
 // Runs against the e2e deployment (FEATUREDOC_DOUBLE_GITHUB_AUTH=stub), so the GitHub OAuth
 // boundary is answered by an in-process test double — no network. This spec owns the
 // *default* stub user, because it is the only one that drives the real UI entry point
-// ("Sign in with GitHub"); every other spec signs in through `?as=<handle>` with its
+// (the Sign In screen's primary button); every other spec signs in through `?as=<handle>` with its
 // own identity so that per-user state (App installation, LLM keys) never collides
 // across the parallel workers that share one deployment.
 import { expect, test } from '@playwright/test';

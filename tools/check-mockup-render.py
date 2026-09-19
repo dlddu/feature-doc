@@ -563,17 +563,31 @@ def main() -> int:
             exempted += 1
             note(f"M7 면제 [{screen}] — 원장 {APPBAR_MARKER} 행")
             continue
+        # 앱바가 **양쪽 다 없는** 화면이 있다 — 온보딩 계열(`STP-sign-in`)은 목업이
+        # 앱바 대신 브랜드 `toprow` 를 쓴다. 목업 쪽을 먼저 풀어야 이것을 「구현이
+        # 앱바를 빠뜨렸다」와 구분할 수 있다: 목업에 앱바가 없으면 구현에도 없어야
+        # 맞고(합의), 목업에 있는데 구현에 없으면 그때가 누락이다.
+        blocks = {
+            step: next(
+                (b for filename, _ in screens.get(screen, [])
+                 if (b := mockup_appbar(MOCKUP_DIR / filename, step)) is not None),
+                None,
+            )
+            for step in steps
+        }
         block = impl_appbar(ROOT / screen)
+        if all(b is None for b in blocks.values()):
+            if block is not None:
+                fail("M7", f"{screen} 의 목업에는 앱바가 없는데 구현은 앱바를 그린다")
+            else:
+                note(f"M7 앱바 없음 일치 [{screen}] — 목업이 `toprow` 계열")
+            continue
         if block is None:
             fail("M7", f'{screen} 에서 `<header className="appbar">` 를 찾지 못했다')
             continue
         impl_slots = count_slots(block)
         for step in steps:
-            found = next(
-                (b for filename, _ in screens.get(screen, [])
-                 if (b := mockup_appbar(MOCKUP_DIR / filename, step)) is not None),
-                None,
-            )
+            found = blocks[step]
             if found is None:
                 fail("M7", f"{screen} 의 활성 단계 {step} 에서 목업 앱바를 찾지 못했다")
                 continue

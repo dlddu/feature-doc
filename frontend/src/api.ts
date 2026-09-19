@@ -32,7 +32,7 @@ export type LlmKey = {
 
 export type ProviderId = 'anthropic' | 'openai' | 'google';
 
-/** Where the "Sign in with GitHub" button navigates (full-page, to follow redirects). */
+/** Where the Sign In screen's primary button navigates (full-page, to follow redirects). */
 export const LOGIN_URL = '/api/auth/login';
 
 const json = { 'content-type': 'application/json' };
