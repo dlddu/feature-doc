@@ -73,7 +73,8 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       });
       expect(key.ok(), 'an active LLM key is the entry condition').toBeTruthy();
 
-      // Connect Repository 화면(Home → new repository)에서 사용자가 실제로 입력한다.
+      // 저장소 연결 폼은 홈과 한 화면이다(슬라이스 ⑥ 병합) — 목록 아래 「새 저장소 연결」에
+      // 사용자가 직접 입력한다. 별도의 연결 화면으로 건너뛰는 단계가 없어졌다.
       // 화면 라우팅은 서버 게이트가 아니라 상태 머신이라, 셋업이 API로 됐어도 로드는
       // 자격증명 화면에서 시작한다 — continue 두 번이 실제 홈 진입 경로다(선례: sc01-05).
       await page.goto('/');
@@ -82,9 +83,10 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       await cont.click();
       await expect(page.getByTestId('ready')).toBeVisible();
       await cont.click();
-      await expect(page.getByTestId('metrics')).toBeVisible();
-      await expect(page.getByTestId('metric-analyses')).toHaveText('0');
-      await page.getByTestId('new-repository').click();
+      // 시작 전에는 어떤 저장소도 실행 이력이 없다(메트릭 그리드는 목업에 없어 제거됐으므로
+      // 같은 사실을 카드의 실행 상태로 단정한다 — 상태 배지가 하나도 없다).
+      await expect(page.getByTestId('repo-card')).not.toHaveCount(0);
+      await expect(page.locator('[data-testid="repo-card"] .badge')).toHaveCount(0);
       await page.getByTestId('repo-url').fill('stub-account/payments-api');
       // 시나리오는 브랜치 입력을 명시한다 — 스텁의 기본 브랜치 이름을 그대로 입력한다.
       await page.getByTestId('branch').fill('main');

@@ -1,17 +1,36 @@
 // Home — Repositories — the real, stateful screen behind
-// docs/mockups/JRN-connect-repo.html#STP-pick-target (Home, AC1.1).
+// docs/mockups/JRN-connect-repo.html#STP-pick-target and its pre-flight area
+// docs/mockups/JRN-connect-repo.html#STP-confirm-cost (Home + Connect, AC1.1 · AC4.6 pre-flight).
+//
+// One screen, not two. The journey's `STP-confirm-cost` touchpoint reads
+// "저장소 연결(pre-flight 추정 영역 + 시작 버튼)" — the estimate is an *area* of the
+// connect screen, and the connect form in turn lives under the same app bar as the
+// repository list. The implementation used to split that into a list screen and a
+// separate connect screen; slice ⑥ moves the composition back onto the mockup, which
+// is what lets this screen be compared step-for-step instead of sitting in 대조 보류.
 //
 // Reads the slice-2a enqueue contract: the repositories the GitHub App can reach
 // (`GET /api/repositories`) and the analysis jobs the user has triggered
-// (`GET /api/analyses`), which now carries each job's pipeline fraction so a card
-// can say "step 1 of 5" and open Analysis Progress (AC1.5). The pipeline *outputs* the mockup's
-// "features / conflicts / spend" figures imply still arrive with later slices
-// (AC1.2~1.4 · AC4.6) — this screen only shows what the API really knows.
+// (`GET /api/analyses`), which carries each job's pipeline fraction so a card can say
+// "step 1 of 5" and open Analysis Progress (AC1.5).
+//
+// The single primary action stays two-phase: a target must pass pre-flight
+// (`POST /api/analyses/preflight`) before it can be triggered, so the expected scale
+// and cost are always on screen *before* anything is enqueued (AC1.1 + 비용 사전 안내).
+// A target outside the App's granted access never reaches the trigger — the screen
+// shows the reason and the recovery path, and nothing is queued (test/01 시나리오 2).
 
 import { useEffect, useState } from 'react';
-import { listAnalyses, listRepositories, logout } from './api';
-import type { Analysis, Repository } from './api';
-import { formatAgo, formatCost } from './format';
+import {
+  createAnalysis,
+  getInstallUrl,
+  listAnalyses,
+  listRepositories,
+  logout,
+  preflightAnalysis,
+} from './api';
+import type { Analysis, Preflight, Repository } from './api';
+import { formatAgo, formatCost, formatSize } from './format';
 
 /** How an analysis status renders as a status badge (design-system §4.2 tag). */
 const STATUS_BADGE: Record<string, { tone: string; label: string }> = {
@@ -23,6 +42,8 @@ const STATUS_BADGE: Record<string, { tone: string; label: string }> = {
   succeeded: { tone: 'success', label: 'Synced' },
   failed: { tone: 'danger', label: 'Failed' },
 };
+
+type Phase = 'idle' | 'checking' | 'starting';
 
 function badgeFor(status: string): { tone: string; label: string } {
   return STATUS_BADGE[status] ?? { tone: '', label: status };
@@ -67,41 +88,41 @@ function buildRows(repos: Repository[], analyses: Analysis[]): Row[] {
 
   const seen = new Set(rows.map((r) => r.key));
   for (const a of analyses) {
-    const key = `${a.repoOwner}/${a.repoName}`.toLowerCase();
+    const fullName = a.repoOwner + '/' + a.repoName;
+    const key = fullName.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    rows.push({
-      key,
-      fullName: `${a.repoOwner}/${a.repoName}`,
-      branch: a.branch,
-      latest: a,
-      accessible: false,
-    });
+    rows.push({ key, fullName, branch: a.branch, latest: a, accessible: false });
   }
   return rows;
 }
 
 type Props = {
-  /** Home → Connect Repository ("+ New"). */
-  onConnectRepository: () => void;
-  /** Home → Credentials Setup (settings / Keys tab). */
+  /** Home → Credentials Setup (Keys tab). */
   onOpenCredentials: () => void;
   /** Home → Analysis Progress, for a repository that has been analyzed at least once. */
   onOpenAnalysis: (analysisId: string) => void;
   /** The session ended; the app goes back to the signed-out entry screen. */
   onLoggedOut: () => void;
+  /** A run was queued from this screen — the caller refetches the list. */
+  onAnalysisQueued: () => void;
 };
 
 export function HomeRepositories({
-  onConnectRepository,
   onOpenCredentials,
   onOpenAnalysis,
   onLoggedOut,
+  onAnalysisQueued,
 }: Props) {
   const [repos, setRepos] = useState<Repository[] | null>(null);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+
+  const [repoUrl, setRepoUrl] = useState('');
+  const [branch, setBranch] = useState('');
+  const [estimate, setEstimate] = useState<Preflight | null>(null);
+  const [phase, setPhase] = useState<Phase>('idle');
 
   useEffect(() => {
     void (async () => {
@@ -117,9 +138,8 @@ export function HomeRepositories({
   }, []);
 
   const rows = buildRows(repos ?? [], analyses);
-  const estimatedCents = analyses.reduce((sum, a) => sum + a.estCostCents, 0);
 
-  // The mockup puts 로그아웃 in this screen's header (`STP-pick-target`, the
+  // The mockup puts 로그아웃 in this screen's app bar (`STP-pick-target`, the
   // `btn-link` beside the title) and 여정 분기 「로그아웃」 leaves from here; the
   // server-side invalidation it triggers is what test/04 시나리오 12 verifies. A
   // failure is shown rather than swallowed — a logout the user believes happened
@@ -135,78 +155,72 @@ export function HomeRepositories({
     }
   }
 
+  /** Any edit invalidates the estimate — the trigger must never use a stale one. */
+  function edit(setter: (v: string) => void) {
+    return (value: string) => {
+      setter(value);
+      setEstimate(null);
+      setError(null);
+    };
+  }
+
+  async function check() {
+    setPhase('checking');
+    setError(null);
+    try {
+      setEstimate(await preflightAnalysis(repoUrl, branch));
+    } catch (e) {
+      setEstimate(null);
+      setError(messageOf(e));
+    } finally {
+      setPhase('idle');
+    }
+  }
+
+  async function start() {
+    setPhase('starting');
+    setError(null);
+    try {
+      await createAnalysis(repoUrl, branch);
+      onAnalysisQueued();
+    } catch (e) {
+      setError(messageOf(e));
+      setPhase('idle');
+    }
+  }
+
+  async function openInstallScope() {
+    try {
+      window.location.href = await getInstallUrl();
+    } catch (e) {
+      setError(messageOf(e));
+    }
+  }
+
+  const ready = estimate?.hasAccess === true;
+  const busy = phase !== 'idle';
+
   return (
     <main className="screen has-tabbar">
-      <div className="row between" style={{ paddingTop: 14 }}>
-        <div>
-          <span className="brand">
-            <span className="mk">●</span> FeatureDoc
-          </span>
-          <h1 className="h-display" style={{ marginTop: 6 }}>
-            Repositories
-          </h1>
-        </div>
-        <span className="row" style={{ gap: 12 }}>
-          <button
-            className="btn-link"
-            type="button"
-            onClick={() => void signOut()}
-            disabled={signingOut}
-            data-testid="logout"
-          >
-            로그아웃
-          </button>
-          <button
-            className="icon-btn"
-            type="button"
-            aria-label="settings"
-            onClick={onOpenCredentials}
-            data-testid="open-credentials"
-          >
-            <GearIcon />
-          </button>
-        </span>
-      </div>
+      <header className="appbar">
+        <span className="appbar-title">Repositories</span>
+        <button
+          className="btn-link"
+          type="button"
+          onClick={() => void signOut()}
+          disabled={signingOut}
+          data-testid="logout"
+        >
+          로그아웃
+        </button>
+      </header>
 
-      {/* The mockup's Features / Spend cells need pipeline output (slice 4+) and real
-          per-call accounting (AC4.6); until those exist the grid shows what the API
-          actually reports — see docs/doc-tracker.md "알려진 목업↔구현 편차". */}
-      <div className="metric-grid" style={{ marginTop: 18 }} data-testid="metrics">
-        <div className="cell">
-          <div className="k">Repos</div>
-          <div className="v" data-testid="metric-repos">
-            {repos === null ? '—' : repos.length}
-          </div>
-        </div>
-        <div className="cell">
-          <div className="k">Analyses</div>
-          <div className="v" data-testid="metric-analyses">
-            {analyses.length}
-          </div>
-        </div>
-        <div className="cell">
-          <div className="k">Est. cost</div>
-          <div className="v">{formatCost(estimatedCents)}</div>
-        </div>
-      </div>
-
-      <div className="section-title" style={{ marginTop: 28, alignItems: 'center' }}>
+      <div className="section-title" style={{ marginTop: 16 }}>
         <span>연결된 저장소</span>
-        <span className="row" style={{ gap: 12 }}>
-          <span className="count">{rows.length}</span>
-          <button
-            className="section-action"
-            type="button"
-            onClick={onConnectRepository}
-            data-testid="new-repository"
-          >
-            <PlusIcon />
-            New
-          </button>
-        </span>
+        <span className="count">{rows.length}</span>
       </div>
 
-      <div className="stack-10" style={{ marginTop: 12 }}>
+      <div className="stack-10" style={{ marginTop: 10 }}>
         {repos === null && (
           <p className="body sm" data-testid="home-loading">
             불러오는 중…
@@ -224,20 +238,9 @@ export function HomeRepositories({
         )}
 
         {repos !== null && !error && rows.length === 0 && (
-          <div className="card stack" data-testid="home-empty">
-            <p className="body sm">
-              아직 접근할 수 있는 저장소가 없어요. GitHub App을 연결하고 분석할 저장소를 고르면
-              여기에 나타납니다.
-            </p>
-            <button
-              className="btn btn-secondary block"
-              type="button"
-              onClick={onOpenCredentials}
-              data-testid="empty-open-credentials"
-            >
-              GitHub App 연결하기
-            </button>
-          </div>
+          <p className="body sm" data-testid="home-empty">
+            아직 분석한 저장소가 없어요. 아래에서 첫 저장소를 연결해 보세요.
+          </p>
         )}
 
         {rows.map((row) => {
@@ -251,7 +254,7 @@ export function HomeRepositories({
                   </div>
                   <div className="meta" style={{ marginTop: 3 }}>
                     ⎇ {row.branch}
-                    {row.latest ? ` · ${formatAgo(row.latest.createdAt)}` : ' · not analyzed'}
+                    {row.latest ? ' · ' + formatAgo(row.latest.createdAt) : ' · not analyzed'}
                   </div>
                 </div>
                 {badge && (
@@ -288,59 +291,209 @@ export function HomeRepositories({
         })}
       </div>
 
-      <p className="legend" style={{ marginTop: 24 }}>
-        <span className="mk">02</span> — discovery · home view
-      </p>
+      <hr className="divider" style={{ marginTop: 22, marginBottom: 22 }} />
+
+      {/* 「새 저장소 연결」 — the mockup's connect form, on this same screen. */}
+      <div>
+        <h1 className="page-h1">새 저장소 연결</h1>
+        <p className="h-display-sub" style={{ marginTop: 6 }}>
+          분석을 시작하면 횡단 관심사 → 탐색 전략 → 기능 후보 순으로 진행돼요.
+        </p>
+      </div>
+
+      <div className="stack-10" style={{ marginTop: 18 }}>
+        <div className="input">
+          <span className="lbl">Repository URL</span>
+          <input
+            className="field-input"
+            type="text"
+            value={repoUrl}
+            placeholder="github.com/owner/repo"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            aria-label="Repository URL"
+            data-testid="repo-url"
+            onChange={(e) => edit(setRepoUrl)(e.target.value)}
+          />
+        </div>
+        <div className="input">
+          <span className="lbl">Branch</span>
+          <input
+            className="field-input"
+            type="text"
+            value={branch}
+            placeholder="기본 브랜치"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            aria-label="Branch"
+            data-testid="branch"
+            onChange={(e) => edit(setBranch)(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {estimate && !estimate.hasAccess && (
+        <div className="notice err" style={{ marginTop: 12 }} data-testid="no-access">
+          이 저장소에는 접근할 수 없어요 — App 설치 범위 밖입니다.
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={openInstallScope}
+            data-testid="manage-install"
+          >
+            설치 범위에 추가하기
+          </button>
+        </div>
+      )}
+
+      {estimate?.hasAccess && (
+        <div className="notice ok" style={{ marginTop: 12 }} data-testid="access-ok">
+          접근 가능한 저장소예요. 비용을 확인하고 시작할 수 있습니다.
+        </div>
+      )}
+
+      {error && (
+        <div className="row" style={{ marginTop: 12 }} data-testid="connect-error">
+          <span className="badge danger">
+            <span className="dot" />
+            Error
+          </span>
+          <span className="body sm">{error}</span>
+        </div>
+      )}
+
+      <div className="row between" style={{ marginTop: 14 }} data-testid="access">
+        <span className="body sm" style={{ color: 'var(--text-primary)' }}>
+          GitHub App
+        </span>
+        <span className="meta">
+          {estimate ? (estimate.hasAccess ? '✓ has access' : '✕ no access') : '미확인'}
+        </span>
+      </div>
+
+      {!ready && (
+        <div className="stack" style={{ marginTop: 20 }}>
+          <button
+            className="btn btn-primary block"
+            type="button"
+            onClick={() => void check()}
+            disabled={busy || repoUrl.trim() === ''}
+            data-testid="check-access"
+          >
+            {/* In-flight is shown by the disabled button alone — the mockup draws no
+                waiting copy, so none is invented here (문서 권위 순서). */}
+            {'비용 확인하기'}
+          </button>
+        </div>
+      )}
+
+      {/* pre-flight 추정 영역 — 목업 `STP-confirm-cost`. 별도 화면이 아니라 이 화면의 아래쪽이다. */}
+      {estimate?.hasAccess && (
+        <>
+          <div style={{ marginTop: 20 }}>
+            <h1 className="h-display">얼마나 들까요</h1>
+            <p className="h-display-sub">
+              분석은 이 버튼으로만 시작돼요. 자동으로 시작되는 경로는 없습니다.
+            </p>
+          </div>
+
+          <div className="card stack-14" style={{ marginTop: 20 }} data-testid="estimate">
+            <div className="row between">
+              <span className="caps">Target</span>
+              <span className="badge success">
+                <span className="dot" />
+                Ready
+              </span>
+            </div>
+            <div className="stack">
+              <div className="row between">
+                <span className="body sm" style={{ color: 'var(--text-primary)' }}>
+                  Repository
+                </span>
+                <span className="meta" style={{ color: 'var(--text-primary)' }}>
+                  {estimate.fullName}
+                </span>
+              </div>
+              <div className="row between">
+                <span className="body sm" style={{ color: 'var(--text-primary)' }}>
+                  Branch
+                </span>
+                <span className="meta" style={{ color: 'var(--text-primary)' }}>
+                  ⎇ {estimate.branch}
+                </span>
+              </div>
+            </div>
+            <hr className="divider" />
+            <div className="row" style={{ gap: 0 }}>
+              <div className="grow">
+                <div className="metric">~{formatCost(estimate.estCostCents)}</div>
+                <div className="caps" style={{ marginTop: 6 }}>
+                  Est. LLM Cost
+                </div>
+              </div>
+              <div className="grow">
+                <div className="metric">~{estimate.estDurationMin} min</div>
+                <div className="caps" style={{ marginTop: 6 }}>
+                  Est. Duration
+                </div>
+              </div>
+            </div>
+            <hr className="divider" />
+            <div className="stack">
+              <div className="row between">
+                <span className="body sm" style={{ color: 'var(--text-primary)' }}>
+                  Files to scan
+                </span>
+                <span className="meta" style={{ color: 'var(--text-primary)' }}>
+                  {estimate.filesToScan} <span className="dot-sep">·</span>{' '}
+                  {formatSize(estimate.sizeBytes)}
+                </span>
+              </div>
+              <div className="row between">
+                <span className="body sm" style={{ color: 'var(--text-primary)' }}>
+                  Est. LLM calls
+                </span>
+                <span className="meta" style={{ color: 'var(--text-primary)' }}>
+                  ~{estimate.estLlmCalls}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="stack" style={{ marginTop: 20 }}>
+            <button
+              className="btn btn-primary block"
+              type="button"
+              onClick={() => void start()}
+              disabled={busy}
+              data-testid="start-analysis"
+            >
+              Start Analysis →
+            </button>
+          </div>
+        </>
+      )}
 
       <nav className="tabbar">
         <button className="tab active" type="button" data-testid="tab-repos">
           <span className="gl" />
           Repos
         </button>
-        <button className="tab" type="button" disabled title="분석 파이프라인 슬라이스에서 열립니다">
+        <button className="tab" type="button" disabled>
           <span className="gl" />
           Activity
         </button>
-        <button
-          className="tab"
-          type="button"
-          onClick={onOpenCredentials}
-          data-testid="tab-keys"
-        >
+        <button className="tab" type="button" onClick={onOpenCredentials} data-testid="tab-keys">
           <span className="gl" />
           Keys
         </button>
-        <button className="tab" type="button" disabled title="설정 화면은 후속 슬라이스입니다">
+        <button className="tab" type="button" disabled>
           <span className="gl" />
           Settings
         </button>
       </nav>
     </main>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-      <circle cx="7.5" cy="7.5" r="2.4" stroke="currentColor" strokeWidth="1.1" />
-      <path
-        d="M7.5 1.4v2M7.5 11.6v2M1.4 7.5h2M11.6 7.5h2M3.2 3.2l1.4 1.4M10.4 10.4l1.4 1.4M11.8 3.2l-1.4 1.4M4.6 10.4l-1.4 1.4"
-        stroke="currentColor"
-        strokeWidth="1.1"
-      />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
-      <path
-        d="M5.5 1.6v7.8M1.6 5.5h7.8"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }
