@@ -1,20 +1,5 @@
 // 검증 시나리오: 02-feature-representation.md#시나리오 8
 //
-// AC2.6 (코드 변경 시 표현·의존성의 재계산 가능성) 전용 spec.
-//
-// 시나리오 8 의 사전 조건이 이 파일의 형태를 정한다 — 「시나리오 5 완료. **이후 코드에서
-// 결제 모듈에 환불 로직 추가**」. 그러므로 이 spec 은 같은 저장소를 **두 번** 분석하되,
-// 두 번째 분석이 **한 걸음 나아간 트리**를 보게 한다. stub 트리는 저장소 이름에서만
-// 파생돼 시간을 모르므로, 등재된 EXT-03 더블 안의 리비전 트리거
-// (`FEATUREDOC_STUB_REPO_REVISION`, `backend/src/repo_scan.rs`)가 그 「이후」를 만든다 —
-// sc01-06 의 LLM 실패 재현(`FEATUREDOC_STUB_LLM_FAIL`)과 같은 충실도 확장이다.
-//
-// 기대 결과는 「인수 테스트 시나리오에 환불 케이스가 추가되거나, **의존성에 환불 관련
-// 모듈이 추가된** 차이가 diff 로 표시된다」이고, 이 트리 변화가 실제로 만드는 것은
-// 뒤쪽이다 — 새 경로가 `logic` 분류의 첫 항목이 되어 의존성 한 줄이 늘어난다. 그 값을
-// 상수로 박지 않고 **두 추적 결과의 차집합**으로 재서 단정한다. 시나리오 문장이 그대로인
-// 것도 함께 단정한다: 바뀌지 않은 것이 바뀐 것처럼 보이면 diff 는 신뢰를 잃는다.
-//
 // Isolation: this spec *leases* two pieces of deployment-wide state — the worker
 // replica count and one worker env var (see `e2e/support/cluster.ts`). Both are set
 // inside its own block and returned in `finally`; `playwright.config.ts` pins
@@ -62,25 +47,20 @@ test.describe('AC2.6: 코드가 바뀐 뒤 재분석하면 달라진 것만 diff
       await signInWithCredentials(page, 'sc0208');
       await scaleWorkers(1);
 
-      // ── 첫 번째 분석 (시나리오 5 까지의 상태) ───────────────────────────
       const first = await runToAcceptance(page, 'payments-api', 2);
       const key = first.confirmed[0];
       const untouched = first.confirmed[1];
       const before = await traced(page, first.id, key);
       expect(before.length, '첫 분석에서 의존성이 하나도 나오지 않았다').toBeGreaterThan(0);
 
-      // 견줄 상대가 없다는 것을 스스로 밝힌다 — 「바뀐 게 없다」와 다른 상태다.
       const firstDiff = await diffOf(page, first.id);
       expect(firstDiff.comparedTo, '이 저장소의 첫 분석이다').toBeNull();
       expect(firstDiff.features).toHaveLength(0);
 
-      // ── 코드가 바뀐다 ───────────────────────────────────────────────────
-      // 배포 전역 상태는 임대다: 워커를 내린 뒤 켜고, 다시 내린 뒤 되돌린다.
       await scaleWorkers(0);
       setWorkerEnv(REVISION, '2');
       await scaleWorkers(1);
 
-      // ── 두 번째 분석 ───────────────────────────────────────────────────
       const second = await runToAcceptance(page, 'payments-api', 2);
       expect(
         second.confirmed,
@@ -94,7 +74,6 @@ test.describe('AC2.6: 코드가 바뀐 뒤 재분석하면 달라진 것만 diff
       const added = after.filter((d) => !seen.has(identity(d)));
       expect(added.length, '코드가 늘었는데 의존성이 그대로다').toBeGreaterThan(0);
 
-      // ── diff ────────────────────────────────────────────────────────────
       const diff = await diffOf(page, second.id);
       expect(diff.comparedTo, '직전 분석이 상대다').toBe(first.id);
       expect(
@@ -111,11 +90,9 @@ test.describe('AC2.6: 코드가 바뀐 뒤 재분석하면 달라진 것만 diff
       expect(changed.dependencyLines[0].category).toBe(added[0].category);
       expect(diff.changedLineCount).toBe(changed.dependencyLines.length);
 
-      // 「의존성 분석」을 하지 않은 기능은 의존성이 사라진 것으로 읽히지 않는다.
       const untouchedView = await dependenciesOf(page, second.id, untouched);
       expect(untouchedView.status, '이 기능은 이번에도 묻지 않았다').toBeNull();
 
-      // ── 달라진 것 화면이 그 줄들을 그린다 ───────────────────────────────
       await page.goto(`/#/analyses/${second.id}/diff`);
       await expect(page.getByTestId('diff-list')).toBeVisible();
       await expect(page.getByTestId('diff-feature')).toHaveCount(1);
@@ -126,14 +103,12 @@ test.describe('AC2.6: 코드가 바뀐 뒤 재분석하면 달라진 것만 diff
       );
       await expect(page.getByTestId('diff-dependency-name').first()).toHaveText(added[0].name);
 
-      // Show 필터가 축을 실제로 자른다 — 시나리오 변화가 없으므로 「시나리오만」은 빈다.
       await page.getByTestId('diff-filter').selectOption('scenario');
       await expect(page.getByTestId('diff-feature')).toHaveCount(0);
       await expect(page.getByTestId('diff-line-count')).toHaveText('0');
       await page.getByTestId('diff-filter').selectOption('dep');
       await expect(page.getByTestId('diff-feature')).toHaveCount(1);
 
-      // 새로고침 후에도 같다 — diff 는 서버 상태다.
       await page.reload();
       await expect(page.getByTestId('diff-feature')).toHaveCount(1);
       await expect(page.getByTestId('diff-line-count')).toHaveText(

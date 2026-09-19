@@ -1,7 +1,4 @@
 //! FeatureDoc backend library: configuration, persistence, and the HTTP router.
-//!
-//! The binary (`main.rs`) is a thin wrapper that loads [`config::Config`],
-//! connects the database, and serves [`build_router`].
 
 pub mod acceptance;
 pub mod analysis;
@@ -44,8 +41,8 @@ async fn hello() -> Json<Value> {
     Json(json!({ "message": "Hello from FeatureDoc backend" }))
 }
 
-/// Builds the full application router: the `/hello` probe, the (future) `/api/*`
-/// surface, and a static-file fallback that serves the SPA shell.
+/// Builds the full application router, with a static-file fallback that serves the
+/// SPA shell for anything the routes above do not claim.
 pub fn build_router(state: AppState) -> Router {
     let dist = state.config.static_dir.clone();
     let index = format!("{dist}/index.html");

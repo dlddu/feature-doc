@@ -1,10 +1,5 @@
 //! Stage 1 (`fetch`): resolve a repository tree and measure it.
 //!
-//! This is the only pipeline stage that needs no LLM, so it is the one the worker
-//! actually executes in this slice. It replaces the size-derived guess used for the
-//! Connect Repository pre-flight with a *measured* file count and byte total — the same pair the
-//! Analysis Progress mockup shows under "Fetch repository" ("847 files · 2.3 MB").
-//!
 //! Free functions rather than methods on `AppState`: the worker process has no
 //! database and no `AppState`, only an HTTP client and a mode.
 
@@ -26,7 +21,6 @@ pub struct ScanResult {
 }
 
 impl ScanResult {
-    /// The one-liner Analysis Progress renders under the step ("847 files · 2.3 MB").
     pub fn detail(&self) -> String {
         format!("{} files · {}", self.files, human_size(self.bytes))
     }
@@ -44,11 +38,6 @@ fn human_size(bytes: i64) -> String {
 }
 
 /// Counts the blobs in `owner/name@branch` and sums their sizes.
-///
-/// `Mode::Stub` answers deterministically from the repository name so the kind e2e
-/// and unit tests never reach the network — the same doubling used by
-/// `github_app::stub_repositories`. `Mode::Real` reads the recursive git tree with
-/// the caller's short-lived installation token.
 pub async fn scan(
     http: &reqwest::Client,
     mode: Mode,
@@ -69,10 +58,9 @@ pub async fn scan(
 /// and, since the stub set has no other refs, the only one that resolves.
 const STUB_BRANCH: &str = "main";
 
-/// Deterministic stand-in derived from the stub repository sizes in `github_app`
-/// (payments-api 2300 KiB, checkout-web 5100 KiB, notif-worker 800 KiB). Keeping
-/// the ~3 KiB-per-file ratio of the pre-flight heuristic makes the measured value
-/// and the estimate tell a coherent story in tests.
+/// Deterministic stand-in sized from `github_app`'s stub repositories. The
+/// ~3 KiB-per-file ratio is the pre-flight heuristic's, so the measured value and
+/// the estimate tell a coherent story in tests.
 ///
 /// A branch the stub repositories do not have fails the same way the real tree
 /// request does — GitHub answers `404` for an unknown ref, and [`real_scan`] turns
@@ -115,8 +103,7 @@ pub fn stub_scan_at(name: &str, branch: &str, revised: bool) -> Result<ScanResul
     let count = added.len() as i64;
     paths.extend(added);
     Ok(ScanResult {
-        // 새 파일이 생겼으니 측정값도 함께 움직인다. ~3 KiB/파일 비율은 [`stub_paths`]
-        // 의 것과 같다 — 재분석의 1단계가 "그대로다"라고 말하면 거짓이 된다.
+        // 재분석의 1단계가 "그대로다"라고 말하면 거짓이 된다.
         files: files + count,
         bytes: size_kb * 1024 + count * 3 * 1024,
         paths,
@@ -125,19 +112,15 @@ pub fn stub_scan_at(name: &str, branch: &str, revised: bool) -> Result<ScanResul
 
 /// 두 번째 리비전이 들여오는 경로.
 ///
-/// `docs/test/02-feature-representation.md#시나리오 8` 의 사전 조건("이후 코드에서
-/// 결제 모듈에 환불 로직 추가")을 그대로 옮긴 것이다. **더하기만** 한다 — 기존
-/// 경로를 지우거나 이름을 바꾸면 그 위에 세워진 feature 키가 함께 움직여,
-/// "같은 feature 의 표현이 갱신됐다"는 시나리오 8 의 관측 자체가 성립하지 않는다.
+/// **더하기만** 한다 — 기존 경로를 지우거나 이름을 바꾸면 그 위에 세워진 feature 키가
+/// 함께 움직여, 「같은 feature 의 표현이 갱신됐다」를 관측할 수 없게 된다.
 const REVISION: [&str; 1] = ["src/billing/refund.rs"];
 
 /// 재분석이 한 걸음 나아간 트리를 보게 하는 결정적 트리거.
 ///
-/// 실 모드에서는 시간이 지나면 같은 브랜치의 트리가 달라지지만, 이름에서만
-/// 파생되는 stub 트리는 시간을 모른다. 그래서 「코드가 바뀐 뒤」라는 사전 조건을
-/// 가진 시나리오는 이 더블 위에서는 재현할 수 없었다 — `FEATUREDOC_STUB_LLM_FAIL`
-/// 이 LLM 더블 안에서 실패를 재현한 것과 같은 **충실도 확장**이며, 등재된
-/// EXT-03 지점(`docs/e2e-mocking-policy.md`) 안에 머문다. 값은 존재 여부만 읽는다.
+/// 실 모드에서는 시간이 지나면 같은 브랜치의 트리가 달라지지만, 이름에서만 파생되는
+/// stub 트리는 시간을 모른다 — `FEATUREDOC_STUB_LLM_FAIL` 이 LLM 더블 안에서 실패를
+/// 재현하는 것과 같은 충실도 확장이다. 값은 존재 여부만 읽는다.
 fn revision_from_env() -> bool {
     std::env::var("FEATUREDOC_STUB_REPO_REVISION")
         .map(|value| !value.trim().is_empty())
@@ -146,11 +129,10 @@ fn revision_from_env() -> bool {
 
 /// A deterministic stand-in tree for the stub repositories.
 ///
-/// It is shaped like a real project rather than `file_0..file_N` so the stage-2
-/// document reads plausibly, and it is derived from the name so two stub repos
-/// never look identical. The list is capped well below `files` — the measured
-/// count is what stage 1 reports, and enumerating thousands of synthetic paths
-/// would only bloat the prompt.
+/// Shaped like a real project rather than `file_0..file_N` so the stage-2 document
+/// reads plausibly. The list is capped well below `files` — the measured count is
+/// what stage 1 reports, and enumerating thousands of synthetic paths would only
+/// bloat the prompt.
 fn stub_paths(name: &str, files: i64) -> Vec<String> {
     const SHAPE: [&str; 12] = [
         "README.md",
@@ -193,7 +175,7 @@ async fn real_scan(
         .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await
-        // Never interpolate the response or the token into the message (AC4.3).
+        // Never interpolate the response or the token into the message.
         .map_err(|_| "github tree request failed".to_string())?;
 
     if !resp.status().is_success() {
@@ -262,9 +244,6 @@ mod tests {
         assert_ne!(stub_scan("checkout-web", "main").unwrap(), a);
     }
 
-    /// The double must not resolve a ref the stub repositories do not have: the
-    /// real tree request 404s, and a stage failure has to be reachable in stub mode
-    /// for AC1.5's partial retry to be verifiable at all.
     #[test]
     fn stub_scan_rejects_an_unknown_branch_like_the_real_tree_request() {
         assert_eq!(
@@ -283,8 +262,6 @@ mod tests {
         assert_eq!(r.detail(), "847 files · 2.3 MB");
     }
 
-    /// Stage 2 (AC1.2) reads these paths, so they must be stable across runs and
-    /// must actually name files rather than being an empty placeholder.
     #[test]
     fn stub_scan_returns_a_stable_non_empty_path_list() {
         let a = stub_scan("payments-api", "main").unwrap();
@@ -295,9 +272,6 @@ mod tests {
         assert_ne!(stub_scan("checkout-web", "main").unwrap().paths, a.paths);
     }
 
-    /// 리비전 트리거는 **더하기만** 한다. 기존 경로가 한 줄이라도 사라지거나
-    /// 순서가 바뀌면 그 위에 세워진 feature 키가 함께 움직여, 「같은 feature 의
-    /// 표현이 갱신됐다」(`02#시나리오 8`)를 관측할 수 없게 된다.
     #[test]
     fn the_second_revision_only_adds_paths() {
         let first = stub_scan_at("payments-api", "main", false).unwrap();
@@ -312,7 +286,6 @@ mod tests {
         assert!(second
             .paths
             .contains(&"payments-api/src/billing/refund.rs".to_string()));
-        // 1단계의 측정값도 함께 움직인다 — 재분석이 "그대로다"라고 말하면 거짓이다.
         assert!(second.files > first.files && second.bytes > first.bytes);
     }
 
@@ -326,7 +299,6 @@ mod tests {
         );
     }
 
-    /// 리비전이 켜져 있어도 없는 ref 는 여전히 404 다.
     #[test]
     fn a_revised_scan_still_rejects_an_unknown_branch() {
         assert_eq!(

@@ -1,17 +1,10 @@
-//! 코드 변경 후 재분석 diff (AC2.6).
+//! 코드 변경 후 재분석 diff.
 //!
-//! 판정 규칙 자체는 `src/diff.rs` 의 단위 테스트가 지킨다. 여기서 묻는 것은 앱
-//! 전체만 답할 수 있는 세 가지다:
+//! 판정 규칙 자체는 `src/diff.rs` 의 단위 테스트가 지킨다 — 여기서 묻는 것은 앱
+//! 전체만 답할 수 있는 것뿐이다.
 //!
-//!   * **비교 대상을 사용자가 고르지 않는다** — 같은 저장소·브랜치의 직전 분석이
-//!     자동으로 상대가 되고, 첫 분석은 상대가 없다고 스스로 밝힌다.
-//!   * **바뀐 것만 목록에 선다** — 두 번 돌려도 같은 답이 나온 feature 는 목록에
-//!     없다. 여정 `JRN-follow-code-change` 가 적어 둔 이탈 위험이 그것이다.
-//!   * **의존성 변화가 시나리오 변화와 나란히 읽힌다** (AC2.6 의 검증 방법).
-//!
-//! 인수 문서는 여기서만 손으로 만든다 — 이 테스트가 묻는 것이 「두 시점의 답이
-//! 다를 때 무엇이 보이는가」라서, 답이 달라지는 지점을 테스트가 쥐고 있어야 한다.
-//! 워커가 실제로 보내는 모양(`features[].scenarios[]`)은 그대로 따른다.
+//! 인수 문서는 여기서만 손으로 만든다 — 답이 달라지는 지점을 테스트가 쥐고 있어야
+//! 하기 때문이다. 워커가 실제로 보내는 모양은 그대로 따른다.
 
 mod common;
 
@@ -161,7 +154,6 @@ fn candidate_doc() -> Value {
     json!({ "candidates": candidates })
 }
 
-/// 한 feature 의 인수 문서 조각. `then` 이 화면에 뜨는 줄이다.
 fn feature_doc(key: &str, name: &str, thens: &[&str]) -> Value {
     json!({
         "key": key,
@@ -179,8 +171,6 @@ fn feature_doc(key: &str, name: &str, thens: &[&str]) -> Value {
     })
 }
 
-/// 분석 하나를 「후보 둘을 확정하고 인수 문서까지 받은」 상태로 걷는다.
-/// 돌려주는 것은 확정된 후보 키들이다(분석을 가로지르는 feature 의 정체성).
 async fn run_to_documented(
     state: &AppState,
     session: &str,
@@ -286,7 +276,6 @@ async fn run_to_documented(
     keys
 }
 
-/// 「의존성 분석」을 누르고 워커가 그것을 실제로 실행한 상태까지 간다.
 /// `tree` 는 그 시점의 저장소 트리다 — 두 번째 분석은 한 걸음 나아간 트리를 본다.
 async fn trace(state: &AppState, session: &str, id: &str, key: &str, tree: &[String]) {
     let resp = build_router(state.clone())
@@ -364,8 +353,6 @@ fn second_revision() -> Vec<String> {
         .paths
 }
 
-/// 첫 분석은 견줄 상대가 없다고 **스스로 밝힌다**. 「비교 대상이 없다」와
-/// 「바뀐 게 없다」는 화면에서 다른 말이어야 한다.
 #[tokio::test]
 async fn a_first_analysis_has_nothing_to_compare_against() {
     let (state, path) = stub_state().await;
@@ -387,8 +374,6 @@ async fn a_first_analysis_has_nothing_to_compare_against() {
     let _ = std::fs::remove_file(path);
 }
 
-/// 재분석은 **달라진 feature 만** 싣는다. 같은 답이 다시 나온 feature 는 목록에
-/// 없다 — "변경되지 않은 기능까지 갱신된 것처럼 보이면 diff 를 신뢰하지 않게 된다".
 #[tokio::test]
 async fn a_re_analysis_lists_only_the_features_that_changed() {
     let (state, path) = stub_state().await;
@@ -441,8 +426,6 @@ async fn a_re_analysis_lists_only_the_features_that_changed() {
     let _ = std::fs::remove_file(path);
 }
 
-/// 코드가 늘면 의존성 줄이 선다 — `02#시나리오 8` 의 기대 결과 후반부
-/// ("의존성에 … 모듈이 추가된 차이가 diff 로 표시된다").
 #[tokio::test]
 async fn an_added_dependency_shows_up_as_a_line() {
     let (state, path) = stub_state().await;
@@ -474,8 +457,6 @@ async fn an_added_dependency_shows_up_as_a_line() {
     let _ = std::fs::remove_file(path);
 }
 
-/// 한쪽이 「의존성 분석」을 누르지 않았으면 의존성은 **세지 않는다** — 묻지 않은
-/// 것이 "제거됨"으로 읽히면 재분석 직후 화면이 거짓말을 한다.
 #[tokio::test]
 async fn an_untraced_side_is_not_read_as_a_removal() {
     let (state, path) = stub_state().await;
@@ -503,7 +484,6 @@ async fn an_untraced_side_is_not_read_as_a_removal() {
     let _ = std::fs::remove_file(path);
 }
 
-/// 남의 분석 id 는 존재하지 않는다 (AC4.7 과 같은 404 규약).
 #[tokio::test]
 async fn another_users_analysis_is_a_404() {
     let (state, path) = stub_state().await;
