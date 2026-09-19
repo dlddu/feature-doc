@@ -1,36 +1,8 @@
 // Analysis Diff (「달라진 것」) — the real screen behind
-// docs/mockups/JRN-follow-code-change.html#STP-scan-diff (AC2.6).
+// docs/mockups/JRN-follow-code-change.html#STP-scan-diff.
 //
-// Its own screen rather than a section of Feature Acceptance, for the same reason
-// Feature Dependencies is its own screen: the mockup draws it as its own screen card
-// with its own appbar (「달라진 것」), and the 2026-09-18 「문서 권위 순서」 decision is
-// that the mockup's composition wins where a higher document does not pin one. The
-// journey's 터치포인트 column names the screens a reader passes through, not the
-// screen composition.
-//
-// What it renders is a *comparison*, and the comparison is not the user's to choose:
-// AC2.6 is about "이전 버전과의 차이", and the previous version of an analysis is the
-// previous analysis of the same repository and branch. The server decides it
-// (`GET /api/analyses/{id}/diff`) so the screen cannot show a difference against a
-// run of something else.
-//
-// Only features that actually changed are listed. The journey pins that
-// (`STP-scan-diff`: 「변경되지 않은 기능까지 갱신된 것처럼 보이면 diff를 신뢰하지 않게
-// 된다 → 변경 없는 feature는 그대로 유지하고 표시도 하지 않는다」), and the server
-// applies it — this screen never filters a feature out on its own.
-//
-// Three things the mockup draws that this slice does not, all registered in
-// docs/doc-tracker.md "알려진 목업↔구현 편차" with 해소 시점 「슬라이스 6」:
-//  · the conflict banner (「내가 손봤던 문장과 자동 결과가 부딪히는…」) and the
-//    「확인 필요」 tag — a conflict is an event between an automatic result and a
-//    *user edit*, and user edits are AC3.5. With nothing to conflict with, drawing
-//    the banner would be a lie the screen tells on every run.
-//  · 「부딪힌 곳 정리하기」 — the entry to `STP-resolve-conflict`, same AC3.5.
-//  · the legend 「한 곳이라도 열어 봐야 다음으로 넘어갈 수 있어요」, which is that
-//    CTA's gate and has nothing to gate without it.
-// The always-true half of that pair — 「이번에는 부딪히는 편집이 없었어요」 — *is*
-// drawn: it is true of every run in this slice, and it is what tells the reader the
-// list in front of them is the whole story.
+// The screen never drops a feature on its own: what is listed is what the server
+// sent.
 
 import { useEffect, useState } from 'react';
 import { getAnalysisDiff } from './api';
@@ -40,7 +12,6 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** The mockup's Show filter. `all` is 「시나리오 + 의존성」. */
 const ALL = 'all';
 const SCENARIO = 'scenario';
 const DEP = 'dep';
@@ -223,12 +194,7 @@ function Card({
   );
 }
 
-/**
- * Copy the mockup has no counterpart for — the wait, the first run of a target, and
- * the run that changed nothing. The mockup draws a run that has changes to show;
- * the two states around it are ours. Registered in docs/doc-tracker.md
- * "알려진 목업↔구현 편차"; kept as constants so each deviation is one place.
- */
+/** 목업에 대응 카피가 없는 세 상태 — 대기 · 첫 분석 · 변경 없음. */
 const LOADING = '불러오는 중…';
 const FIRST_RUN = '이 저장소를 처음 분석했어요. 견줄 이전 결과가 아직 없습니다.';
 const UNCHANGED = '이번 재분석에서 달라진 기능이 없어요.';

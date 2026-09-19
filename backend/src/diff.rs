@@ -1,29 +1,12 @@
-//! 재분석이 무엇을 바꿨는가 (AC2.6).
+//! 재분석이 무엇을 바꿨는가.
 //!
-//! 이 경계는 **계산만** 한다 — DB 도 HTTP 도 모른다. 두 시점의 같은 타깃 분석이
-//! 남긴 것(인수 시나리오 문서 · 의존성 행)을 받아 feature 별로 `+`/`-` 줄을 만든다.
-//! 순수 함수로 떼어 둔 이유는 AC2.6 의 검증 방법("동일 feature를 두 시점에 분석하면
-//! 변경된 시나리오/추가·제거된 의존성이 diff 형태로 노출된다")이 **판정 규칙**에 대한
-//! 요구이고, 그 규칙은 픽스처 없이 단위 테스트로 세울 수 있어야 하기 때문이다.
-//!
-//! 세 가지 판정 규칙이 여기 있다.
-//!
-//! 1. **시나리오의 정체성은 정규화한 (given, when, then) 삼중**이다. 근거 경로가
-//!    바뀐 것은 같은 시나리오가 다른 자리를 인용한 것이지 *달라진 시나리오*가
-//!    아니다 — 그것을 변경으로 세면 화면에 글자가 똑같은 `+`/`-` 한 쌍이 뜬다.
-//!    `acceptance::situation` 이 상황의 정체성에 쓰는 공백 정규화와 같은 규칙이다.
-//! 2. **의존성의 정체성은 (category, name)** 이다. 0008 마이그레이션의
-//!    `UNIQUE(analysis_id, feature_key, category, name)` 가 고른 축과 같다 —
-//!    같은 이름이라도 분류가 다르면 다른 항목이라는 성질(`02#시나리오 6`)을 diff 도
-//!    그대로 따른다.
-//! 3. **변경 0줄인 feature 는 결과에 넣지 않는다.** 여정 `JRN-follow-code-change`
-//!    의 `STP-scan-diff` 가 적어 둔 이탈 위험이 그것이다 — "변경되지 않은 기능까지
-//!    갱신된 것처럼 보이면 diff를 신뢰하지 않게 된다".
+//! 의존성의 정체성 축 `(category, name)` 은 0008 마이그레이션의
+//! `UNIQUE(analysis_id, feature_key, category, name)` 가 고른 축과 같다 — 둘이
+//! 어긋나면 저장에서 한 행인 것이 diff 에서는 두 항목이 된다.
 
 use serde::Serialize;
 use serde_json::Value;
 
-/// 줄 한 개의 방향. 화면은 이것을 `+`/`−` 로 그린다.
 pub const ADDED: &str = "+";
 pub const REMOVED: &str = "-";
 
@@ -68,7 +51,7 @@ pub struct FeatureDiff {
     pub name: String,
     /// 이 분석이 그 feature 를 찾은 자리. 후보 행이 없으면 `None`.
     pub location: Option<String>,
-    /// 이번 분석이 그 feature 에 대해 들고 있는 시나리오 수(목업의 "N scenarios").
+    /// 세는 것은 **이번** 시나리오뿐이다 — 견준 상대의 수가 아니다.
     pub scenarios: usize,
     pub scenario_lines: Vec<ScenarioLine>,
     pub dependency_lines: Vec<DependencyLine>,
@@ -87,8 +70,8 @@ fn norm(text: &str) -> String {
 
 /// 저장된 인수 문서에서 한 feature 의 시나리오를 읽는다.
 ///
-/// 문서는 워커가 넣은 그대로다 — `features[].scenarios[]` 가 `given`·`when`·`then`
-/// 을 각각 가진다. 셋 중 하나라도 없는 항목은 화면에 그릴 문장이 없으므로 버린다.
+/// 문서는 워커가 넣은 그대로라 검증되지 않았다 — 셋 중 하나라도 없는 항목은 화면에
+/// 그릴 문장이 없으므로 오류가 아니라 누락으로 버린다.
 pub fn scenarios_of(doc: &Value, key: &str) -> Vec<Scenario> {
     doc.get("features")
         .and_then(Value::as_array)
@@ -248,16 +231,12 @@ mod tests {
         )
     }
 
-    /// 같은 답을 두 번 받은 재분석은 **아무 줄도 만들지 않는다** — 그 feature 는
-    /// 목록에 서지 않는다.
     #[test]
     fn an_unchanged_feature_produces_no_diff() {
         let before = doc("k", &[("a", "b", "c"), ("d", "e", "f")]);
         assert_eq!(diff_of(&before, &before.clone()), None);
     }
 
-    /// 공백만 다른 문장은 같은 시나리오다. 이것이 아니면 재포맷 한 번에 문서
-    /// 전체가 "달라진 것"으로 뜬다.
     #[test]
     fn whitespace_alone_is_not_a_change() {
         let before = doc("k", &[("a", "b", "c")]);
@@ -265,7 +244,6 @@ mod tests {
         assert_eq!(diff_of(&before, &after), None);
     }
 
-    /// 추가·제거가 각각 한 줄로 선다. 표시 문장은 `then` 이다.
     #[test]
     fn added_and_removed_scenarios_each_get_a_line() {
         let before = doc("k", &[("a", "b", "묵은 결과")]);
@@ -281,8 +259,6 @@ mod tests {
         assert_eq!(diff.scenarios, 1, "카드가 밝히는 것은 **이번** 시나리오 수다");
     }
 
-    /// 근거 경로만 달라진 것은 변경이 아니다 — 글자가 같은 `+`/`-` 한 쌍을
-    /// 만들지 않는다.
     #[test]
     fn a_moved_evidence_path_is_not_a_changed_scenario() {
         let before = doc("k", &[("a", "b", "c")]);
@@ -292,7 +268,6 @@ mod tests {
         assert_eq!(diff_of(&before, &after), None);
     }
 
-    /// 처음 문서화된 feature 는 자기 시나리오 전부를 `+` 로 들고 목록에 선다.
     #[test]
     fn a_newly_documented_feature_is_all_additions() {
         let after = doc("k", &[("a", "b", "c"), ("d", "e", "f")]);
@@ -301,8 +276,6 @@ mod tests {
         assert!(diff.scenario_lines.iter().all(|l| l.mark == "+"));
     }
 
-    /// 의존성은 (분류, 이름) 으로 같고 다름을 가른다 — 이름이 같아도 분류가
-    /// 다르면 다른 항목이다(`02#시나리오 6` 이 단정하는 성질).
     #[test]
     fn dependencies_are_identified_by_category_and_name() {
         let same = doc("k", &[("a", "b", "c")]);
@@ -332,7 +305,6 @@ mod tests {
         );
     }
 
-    /// 한쪽이 묻지 않은 것은 "제거됨"이 아니다.
     #[test]
     fn an_untraced_side_produces_no_dependency_lines() {
         let same = doc("k", &[("a", "b", "c")]);
@@ -349,7 +321,6 @@ mod tests {
         assert_eq!(diff, None, "이번에 묻지 않았을 뿐이다");
     }
 
-    /// 다른 feature 의 시나리오를 끌어오지 않는다.
     #[test]
     fn scenarios_are_read_per_feature() {
         let document = json!({
@@ -363,7 +334,6 @@ mod tests {
         assert_eq!(feature_keys(&document), vec!["a".to_string(), "b".to_string()]);
     }
 
-    /// 문서가 아직 없을 때(=단계가 돌지 않았을 때)도 답이 선다.
     #[test]
     fn an_absent_document_reads_as_empty() {
         assert!(scenarios_of(&json!({}), "k").is_empty());

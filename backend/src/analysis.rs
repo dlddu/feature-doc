@@ -75,19 +75,14 @@ pub fn routes() -> Router<AppState> {
         .route("/api/analyses/{id}/candidates/decision", post(decide_candidate))
         .route("/api/analyses/{id}/candidates/rename", post(rename_candidate))
         .route("/api/analyses/{id}/candidates/merge", post(merge_candidates))
-        // 종단 의존성 (AC2.4 · AC2.5). feature key 는 경로 구분자를 품으므로
-        // 후보 라우트와 같이 본문·쿼리로 받는다.
+        // feature key 는 경로 구분자를 품으므로 본문·쿼리로 받는다.
         .route(
             "/api/analyses/{id}/features/dependencies",
             get(feature_dependencies).post(request_dependencies),
         )
         .route("/api/analyses/{id}/dependencies/export", get(export_dependencies))
-        // 재분석이 무엇을 바꿨는가 (AC2.6). 분석 하나를 주소로 받아 **같은 타깃의
-        // 직전 분석**과 견준다 — 비교 대상은 사용자가 고르는 것이 아니라 그
-        // 저장소·브랜치의 이력이 정하는 것이다.
         .route("/api/analyses/{id}/diff", get(analysis_diff))
-        // 역방향 질의는 분석 하나에 매이지 않는다 — 「이 데이터 모델을 쓰는 feature
-        // 전부」는 이 사용자의 모든 분석을 가로지르는 질문이다 (AC2.5).
+        // 역방향 질의만 분석 하나에 매이지 않는다 — 이 사용자의 모든 분석을 가로지른다.
         .route("/api/dependencies/features", get(dependents))
 }
 
@@ -1388,19 +1383,13 @@ async fn merge_candidates(
         .map(Json)
 }
 
-// ── 종단 의존성 (AC2.4 · AC2.5) ──────────────────────────────────────────────
-//
-// 인수 시나리오가 파이프라인 5단계인 것과 달리, 의존성은 **feature 하나에 대한
-// 행동**이다(`docs/test/02` 시나리오 5: 「해당 feature 선택 → "의존성 분석" 트리거」).
-// 그래서 여기 있는 것은 단계가 아니라 요청이고, 요청이 하는 일은 후보 승인이 5단계를
-// 여는 것과 똑같다 — 행 하나를 남기고 분석을 재큐잉한다. 무엇을 돌릴지는 큐가 알고,
-// 워커는 제안받은 것만 한다.
+// 의존성은 단계가 아니라 **feature 하나에 대한 요청**이라, 후보 승인이 5단계를 여는
+// 것과 같은 방식으로 움직인다 — 행 하나를 남기고 분석을 재큐잉한다. 무엇을 돌릴지는
+// 큐가 알고, 워커는 제안받은 것만 한다.
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DependencyRequestReq {
-    /// The candidate key, in the body for the same reason the decision routes take
-    /// it there: it carries the path the feature was found at.
     key: String,
 }
 
@@ -1420,8 +1409,7 @@ struct DependentsQuery {
 struct DependencyView {
     category: String,
     name: String,
-    /// `None` is the recorded fact 「근거 없음」, not a missing field — the journey's
-    /// exception table forbids filling it in.
+    /// `None` is the recorded fact 「근거 없음」, not a missing field.
     evidence: Option<String>,
 }
 
@@ -1437,12 +1425,10 @@ struct DependencyGroupView {
 struct FeatureDependencyView {
     feature_key: String,
     feature_name: Option<String>,
-    /// `None` until someone asks for this feature's dependencies. That is a
-    /// different thing from "asked and got nothing", and the screen says so.
+    /// `None` until someone asks — a different thing from "asked and got nothing".
     status: Option<String>,
     error: Option<String>,
-    /// All seven categories, empty ones included — the screen draws 「전체 7종」 and
-    /// an empty category is information (nothing of that kind was found).
+    /// Empty categories are carried too: "none of that kind was found" is an answer.
     categories: Vec<DependencyGroupView>,
     total: usize,
     without_evidence: usize,
@@ -1486,9 +1472,7 @@ struct DependentRow {
     evidence: Option<String>,
 }
 
-/// One approved candidate, or `404` when this analysis has no such confirmed
-/// feature. Dependencies are traced for **confirmed** features only — the same
-/// reading AC2.1 gets for acceptance scenarios.
+/// Dependencies are traced for **confirmed** features only.
 async fn approved_candidate_name(
     state: &AppState,
     analysis_id: &str,
@@ -1559,7 +1543,7 @@ async fn load_feature_dependencies(
     })
 }
 
-/// What this feature depends on, as far as the last run got (AC2.4).
+/// What this feature depends on, as far as the last run got.
 async fn feature_dependencies(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -1573,13 +1557,11 @@ async fn feature_dependencies(
         .map(Json)
 }
 
-/// 「의존성 분석」. Records the request and re-queues the analysis in one
-/// transaction, for the same reason approving a candidate does: they are one fact
-/// ("this analysis may now trace this feature"), and a request that survives
-/// without the re-queue is a request nobody will ever run.
+/// Records the request and re-queues the analysis in **one transaction**: a request
+/// that survives without the re-queue is a request nobody will ever run.
 ///
-/// Re-asking after a failure is allowed and is what resets the row to `queued`; the
-/// rows a previous successful run stored stay until a new run replaces them.
+/// Re-asking after a failure resets the row to `queued`; the rows a previous
+/// successful run stored stay until a new run replaces them.
 async fn request_dependencies(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -1614,9 +1596,7 @@ async fn request_dependencies(
         .map(Json)
 }
 
-/// AC2.5's reverse query: every feature of **this user's** analyses that depends on
-/// the named thing. Scoped to the caller for the same reason every other read is —
-/// an id that is not theirs does not exist (AC4.7).
+/// Every feature of **this user's** analyses that depends on the named thing.
 async fn dependents(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -1662,9 +1642,8 @@ async fn dependents(
     }))
 }
 
-/// AC2.5's export: the whole analysis's dependency graph in a form something else
-/// can read. An attachment rather than a rendered view — 「시스템 외부로 export
-/// 가능」 means a file leaves the product, not that a screen shows JSON.
+/// An attachment rather than a rendered view — export means a file leaves the
+/// product, not that a screen shows JSON.
 async fn export_dependencies(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -1732,16 +1711,14 @@ async fn export_dependencies(
     ))
 }
 
-/// 이번 재분석이 무엇을 바꿨는가 (AC2.6).
+/// 이번 재분석이 무엇을 바꿨는가.
 ///
-/// 비교 대상은 **같은 타깃(사용자·저장소·브랜치)의 직전 분석**이다 —
-/// [`document`] 의 재현성 판정이 쓰는 것과 같은 질의이고, 같은 이유로 `(created_at,
+/// 비교 대상은 사용자가 고르지 않는다 — 같은 타깃의 직전 분석이고, `(created_at,
 /// rowid)` 로 정렬한다(같은 초에 만들어진 형제 분석이 있으면 `created_at` 만으로는
 /// 진짜 선행을 놓친다).
 ///
-/// 목록에 서는 것은 **이번 분석이 들고 있는 feature 중 달라진 것**뿐이다. 지난번에
-/// 있었는데 이번에 없는 feature 는 싣지 않는다 — 재분석 뒤 아직 후보를 확정하지
-/// 않았다는 사실이 "기능이 지워졌다"로 읽히면 안 되고, 삭제·복구는 AC3.3 의 몫이다.
+/// 지난번에 있었는데 이번에 없는 feature 는 싣지 않는다 — 아직 후보를 확정하지
+/// 않았다는 사실이 "기능이 지워졌다"로 읽히면 안 된다.
 async fn analysis_diff(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -1766,8 +1743,6 @@ async fn analysis_diff(
     .await?;
 
     let Some((previous_id, previous_created_at)) = previous else {
-        // 첫 분석이다. "바뀐 게 없다"와 구분되어야 하므로 `comparedTo` 는 null 이고
-        // 목록은 비어 있다 — `ReproducibilityView` 의 `first` 와 같은 구분이다.
         return Ok(Json(AnalysisDiffView {
             compared_to: None,
             compared_to_created_at: None,
@@ -1809,8 +1784,8 @@ async fn analysis_diff(
     }))
 }
 
-/// 한 분석의 인수 문서. 5단계가 아직 돌지 않았으면 빈 문서로 읽는다 — 문서가 없는
-/// 것은 오류가 아니라 "그 시점에 아직 쓰인 시나리오가 없다"이다.
+/// 문서가 없는 것은 오류가 아니라 "그 시점에 아직 쓰인 시나리오가 없다"이므로 빈
+/// 문서로 읽는다.
 async fn acceptance_document(
     state: &AppState,
     analysis_id: &str,
@@ -1827,7 +1802,6 @@ async fn acceptance_document(
         .unwrap_or_else(|| serde_json::json!({})))
 }
 
-/// 이 분석의 후보가 발견된 자리 (`key` → `location`).
 async fn candidate_locations(
     state: &AppState,
     analysis_id: &str,
@@ -1840,9 +1814,8 @@ async fn candidate_locations(
     .await?)
 }
 
-/// 그 시점에 **성공적으로 추적된** 의존성. 요청이 없거나 아직 끝나지 않았으면
-/// `None` — 묻지 않은 것과 물었더니 없던 것은 다르다(0008 이 요청과 데이터를 두
-/// 테이블로 나눈 것과 같은 구분).
+/// 요청이 없거나 아직 끝나지 않았으면 `None` — 묻지 않은 것과 물었더니 없던 것은
+/// 다르다(0008 이 요청과 데이터를 두 테이블로 나눈 것과 같은 구분).
 async fn traced_dependencies(
     state: &AppState,
     analysis_id: &str,
@@ -1877,14 +1850,12 @@ async fn traced_dependencies(
     ))
 }
 
-/// 이번 재분석이 만든 차이 (AC2.6).
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisDiffView {
-    /// 견준 상대 분석. 같은 타깃의 첫 분석이면 `None`.
+    /// 첫 분석이면 `None` — 「바뀐 게 없다」와 구분되어야 한다.
     compared_to: Option<String>,
     compared_to_created_at: Option<i64>,
-    /// 목업의 「변경 줄」 계량.
     changed_line_count: usize,
     features: Vec<diff::FeatureDiff>,
 }

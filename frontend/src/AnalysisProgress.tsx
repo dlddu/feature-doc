@@ -1,34 +1,14 @@
 // Analysis in Progress — the real, stateful screen behind
-// docs/mockups/JRN-discover-features.html#STP-leave-and-return (AC1.5). The standalone
-// s04-*.html mockup was absorbed when JRN-follow-code-change migrated (2026-09-01); the
-// journey page's step anchor is the screen's public path now.
+// docs/mockups/JRN-discover-features.html#STP-leave-and-return.
 //
-// Every figure on this screen comes from `GET /api/analyses/{id}`: the stage rows
-// the worker reports into (AC4.5 seeded them at enqueue), and nothing else. The
-// component holds no progress of its own, which is what makes test/01 시나리오 5
-// ("앱을 종료했다 다시 열어도 같은 진행률") true by construction — a reload is just
-// another read of the same server state.
-//
-// This screen became an *active* copy comparison on 2026-09-02 — until then it sat in
-// docs/doc-tracker.md "대조 보류" because most of what the mockup draws in the pipeline
-// rows is example data. The `data-sample` convention (docs/mockups/README.md) closed
-// that, so the step is compared in both directions now and every remaining difference
-// is a row in "알려진 목업↔구현 편차" rather than something this comment holds. The
-// larger ones, for context while reading the JSX below:
-//   · the *measured* spend the mockup shows as "Cost so far" needs per-call
-//     accounting, which is AC4.6 (slice 7) — the card below shows the pre-flight
-//     estimate and says so, because an invented number would be worse.
-//   · the stage titles are seeded by the backend (backend/src/pipeline.rs) in English
-//     while the mockup draws them in Korean; this screen only renders what it is given.
-//   · the mockup draws progress as a metric grid + linear bar; this screen kept the
-//     ring, whose second grid cell would be the not-yet-measured spend above.
+// The component holds no progress of its own: a reload is just another read of the
+// same server state.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAnalysis, retryStage } from './api';
 import type { AnalysisDetail, Stage } from './api';
 import { formatCost, formatDuration } from './format';
 
-/** How often an unfinished analysis is re-read (async progress, AC1.5). */
 const POLL_MS = 2_000;
 
 /** Statuses that can still change on their own — the ones worth polling for. */
@@ -38,7 +18,6 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** The mockup's three step tones, plus the failure the mockup never shows. */
 function toneOf(status: Stage['status']): string {
   if (status === 'succeeded') return 'done';
   if (status === 'running') return 'active';
@@ -46,7 +25,6 @@ function toneOf(status: Stage['status']): string {
   return 'todo';
 }
 
-/** The one-liner under a step label: what it measured, or why it stopped. */
 function subOf(stage: Stage): string {
   if (stage.status === 'failed') return stage.error ?? '실패했어요';
   if (stage.detail) return stage.detail;
@@ -55,7 +33,6 @@ function subOf(stage: Stage): string {
   return '대기 중';
 }
 
-/** Wall time a step took, or has been taking. Blank until it starts. */
 function elapsedOf(stage: Stage, nowSeconds: number): string {
   if (stage.startedAt === null) return '';
   const end = stage.finishedAt ?? nowSeconds;
@@ -66,11 +43,8 @@ type Props = {
   id: string;
   /** Analysis Progress → Home (back, close, or "Run in background" — the job keeps running). */
   onBack: () => void;
-  /** Analysis Progress → Cross-cutting Concerns, offered once the cross-cutting stage has produced its document. */
   onOpenCrossCutting: () => void;
-  /** Analysis Progress → Discovery Strategy, offered once stage 3 has proposed a strategy to review (AC1.3). */
   onOpenDiscoveryStrategy: () => void;
-  /** Analysis Progress → 달라진 것, offered once stage 5 has written this run's document (AC2.6). */
   onOpenDiff: () => void;
 };
 
@@ -208,12 +182,7 @@ export function AnalysisProgress({
                 추출된 횡단 관심사 보기
               </button>
             )}
-            {/* AC2.6's way in. The mockup puts this CTA on `STP-notice-change`
-                (「무엇이 달라졌는지 보기」), the re-analysis notification screen this
-                slice does not build — so the copy is borrowed from there and carried
-                in docs/doc-tracker.md "알려진 목업↔구현 편차" until that screen exists.
-                Gated on stage 5 having succeeded: before that this run has no
-                representation to compare. */}
+            {/* 5단계가 쓰기 전에는 이 실행에 견줄 표현 자체가 없다. */}
             {stage.key === 'acceptance_dependencies' && stage.status === 'succeeded' && (
               <button
                 className="btn btn-secondary block"
@@ -234,8 +203,6 @@ export function AnalysisProgress({
                 onClick={() => void retry(stage.key)}
                 data-testid="retry"
               >
-                {/* Retrying is shown by the disabled button alone — the mockup draws no
-                    waiting copy (docs/doc-tracker.md 문서 권위 순서). */}
                 이 단계만 다시 시도
               </button>
             )}
@@ -259,7 +226,6 @@ export function AnalysisProgress({
         </div>
       )}
 
-      {/* Estimates, labelled as estimates: the measured spend is AC4.6 (slice 7). */}
       <div className="card row between" style={{ marginTop: 14 }} data-testid="spend">
         <div>
           <div className="caps">Est. LLM Spend</div>
@@ -323,7 +289,6 @@ function Appbar({ title, sub, onBack }: { title: string; sub: string; onBack: ()
   );
 }
 
-/** The mockup's headline figure: an arc of the circle plus the percentage. */
 function ProgressRing({ percent }: { percent: number }) {
   const radius = 62;
   const circumference = 2 * Math.PI * radius;
