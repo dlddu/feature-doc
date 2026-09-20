@@ -1,6 +1,3 @@
-//! LLM key lifecycle: register (identifiers only, ciphertext at rest), reject
-//! invalid keys, revoke -> blocked, and per-user isolation.
-
 mod common;
 
 use axum::body::Body;
@@ -77,7 +74,6 @@ async fn register_stores_only_ciphertext_and_lists_identifiers() {
     assert!(body["masked"].as_str().unwrap().contains('\u{2022}'));
     assert!(body.get("key").is_none(), "response must not echo the key");
 
-    // At rest: the stored ciphertext must not contain the plaintext key bytes.
     let uid: (String,) = sqlx::query_as("SELECT id FROM users WHERE login = ?")
         .bind("alice")
         .fetch_one(&state.db)
@@ -93,7 +89,6 @@ async fn register_stores_only_ciphertext_and_lists_identifiers() {
         "plaintext key must never be stored"
     );
 
-    // Listing exposes identifiers only.
     let resp = build_router(state).oneshot(get("/api/llm-keys", &token)).await.unwrap();
     let list = json(resp).await;
     assert_eq!(list.as_array().unwrap().len(), 1);
@@ -135,14 +130,12 @@ async fn revoke_blocks_subsequent_use() {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
-    // Usable before revocation.
     let resp = build_router(state.clone())
         .oneshot(get("/api/llm-keys/preflight", &token))
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 
-    // Revoke.
     let resp = build_router(state.clone())
         .oneshot(
             Request::builder()
@@ -156,7 +149,6 @@ async fn revoke_blocks_subsequent_use() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 
-    // Blocked afterwards with the specified message.
     let resp = build_router(state)
         .oneshot(get("/api/llm-keys/preflight", &token))
         .await
@@ -167,10 +159,8 @@ async fn revoke_blocks_subsequent_use() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// A user may hold one key per provider, so "the active key" needs a rule.
-/// It is OpenAI first — the product default (`llm::DEFAULT_PROVIDER`) — and only
-/// then most-recent. The OpenAI key here is deliberately the *older* one, so a
-/// plain recency rule would pick Anthropic and this assertion would fail.
+/// The OpenAI key here is deliberately the *older* one, so a plain most-recent rule
+/// would pick Anthropic and this assertion would fail.
 #[tokio::test]
 async fn an_openai_key_is_preferred_over_a_newer_one() {
     let (state, path) = stub_state().await;
@@ -204,8 +194,6 @@ async fn an_openai_key_is_preferred_over_a_newer_one() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// The preference is a preference, not a hard-coded provider: a user who only
-/// registered Anthropic still gets Anthropic.
 #[tokio::test]
 async fn a_lone_anthropic_key_is_still_the_active_one() {
     let (state, path) = stub_state().await;
@@ -249,11 +237,9 @@ async fn keys_are_isolated_per_user() {
     .await;
     let alice_key_id = created["id"].as_str().unwrap().to_string();
 
-    // Bob sees none of Alice's keys.
     let resp = build_router(state.clone()).oneshot(get("/api/llm-keys", &bob)).await.unwrap();
     assert_eq!(json(resp).await.as_array().unwrap().len(), 0);
 
-    // Bob cannot revoke Alice's key.
     let resp = build_router(state.clone())
         .oneshot(
             Request::builder()
@@ -267,7 +253,6 @@ async fn keys_are_isolated_per_user() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
-    // Alice's key is still usable.
     let resp = build_router(state)
         .oneshot(get("/api/llm-keys/preflight", &alice))
         .await
@@ -276,8 +261,6 @@ async fn keys_are_isolated_per_user() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// AC4.2 supported-provider scope. A provider with no analysis call is refused at
-/// registration — nothing is stored, so nothing has to be cleaned up later.
 #[tokio::test]
 async fn a_provider_without_an_analysis_call_cannot_be_registered() {
     let (state, path) = stub_state().await;
@@ -296,24 +279,19 @@ async fn a_provider_without_an_analysis_call_cannot_be_registered() {
     let err = body["error"].as_str().unwrap();
     assert!(err.contains("google"), "{err}");
     assert!(err.contains("분석 호출을 지원하지 않아"), "{err}");
-    // The rejection names a way forward rather than only what failed.
     assert!(err.contains("OpenAI"), "{err}");
-    // Nothing was persisted — not even a row we would have to sweep up later.
     let stored: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM llm_keys")
         .fetch_one(&state.db)
         .await
         .unwrap();
     assert_eq!(stored, 0);
-    // And the user sees no key.
     let resp = build_router(state).oneshot(get("/api/llm-keys", &token)).await.unwrap();
     assert_eq!(json(resp).await.as_array().unwrap().len(), 0);
     let _ = std::fs::remove_file(&path);
 }
 
-/// Why the refusal is at registration and not at call time: `ACTIVE_KEY_SQL` ranks by
-/// `(provider = 'openai') DESC, created_at DESC`, so an unsupported key registered
-/// *after* a working one would outrank it and every later analysis would fail. This
-/// asserts the working key keeps the seat.
+/// Why the refusal has to be at registration and not at call time: an unsupported key
+/// registered *after* a working one would outrank it, and every later analysis would fail.
 #[tokio::test]
 async fn a_refused_provider_cannot_displace_a_working_active_key() {
     let (state, path) = stub_state().await;
@@ -329,15 +307,13 @@ async fn a_refused_provider_cannot_displace_a_working_active_key() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::CREATED);
 
-    // Backdate it so the ordering is decided, not tied: registration timestamps are
-    // whole seconds, and a tie would let this pass for the wrong reason. Measured with
-    // the gate removed, this is exactly the setup where preflight answers "google".
+    // Backdate as above. Measured with the registration gate removed, this is exactly
+    // the setup where preflight answers "google" — so the gate is what this test observes.
     sqlx::query("UPDATE llm_keys SET created_at = created_at - 100 WHERE provider = 'anthropic'")
         .execute(&state.db)
         .await
         .unwrap();
 
-    // Newer, and not OpenAI — it would win the ordering if it were ever stored.
     let resp = build_router(state.clone())
         .oneshot(post_json(
             "/api/llm-keys",
