@@ -23,8 +23,7 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
   await page.getByTestId('register-key').click();
   await expect(page.getByTestId('active-key')).toBeVisible();
 
-  // 같은 버튼(목업의 `저장하고 계속`)이, 입력이 빈 채로 눌리면 pre-flight 로 준비를
-  // 확인하고 Home 으로 넘긴다.
+  // 같은 버튼을 다시 누른다 — 입력이 빈 두 번째 클릭은 등록이 아니라 pre-flight 다.
   await page.getByTestId('register-key').click();
 
   const cards = page.getByTestId('repo-card');

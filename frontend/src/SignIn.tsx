@@ -1,18 +1,11 @@
 // Sign In — the standalone screen behind
 // docs/mockups/JRN-connect-repo.html#STP-sign-in (AC4.8).
 //
-// The mockup draws sign-in as its own screen and the journey's `STP-sign-in`
-// touchpoint says the same ("로그인 화면"), so the 2026-09-18 authority-order
-// ruling put the implementation on the mockup's side: the unauthenticated branch
-// leaves Credentials Setup and becomes this screen. Credentials Setup keeps only
-// what it is named for — App installation and LLM key registration.
-//
 // `data-testid="signin"` stays on the primary button: it is the one UI entry
 // point sc04-11 drives, and every other spec signs in through `?as=<handle>`.
 
 import { LOGIN_URL } from './api';
 
-/** A login round trip that failed before a session existed (network, 5xx). */
 export function SignIn({ error }: { error?: string | null }) {
   function signIn() {
     window.location.href = LOGIN_URL;

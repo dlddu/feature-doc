@@ -1,42 +1,27 @@
-/* ============================================================
-   FeatureDoc — app stylesheet
-   ------------------------------------------------------------
-   Ported from the docs/mockups/*.html inline CSS, which encodes
-   docs/design-system.md (v0.1). Device-frame chrome (frame/statusbar/
-   home-indicator) is intentionally dropped — the real app is the screen
-   itself. The bottom tab bar is *not* frame chrome: it is design-system
-   §4 navigation, so it is ported (Home onwards) as a fixed bar pinned to
-   the same 420px column. Mockup raw hex is mapped onto the design-system
-   tokens below (e.g. btn-primary #ededed/#0a0a0a ->
-   --text-primary/--bg-base); no new values are introduced.
-   ============================================================ */
+/* Every value here resolves to a token declared below — raw hex enters only in
+   this :root block. */
 
 :root {
-  /* surfaces — 5 levels, elevation by tone only (no shadow) */
   --bg-base:        #0a0a0a;
   --bg-elevated:    #0f0f0f;
   --bg-card:        #141414;
   --bg-input:       #181818;
   --bg-hover:       #1c1c1c;
 
-  /* borders — always 1px, differentiated by tone */
   --border-subtle:  #1d1d1d;
   --border-default: #272727;
   --border-strong:  #333333;
 
-  /* text — 4 levels */
   --text-primary:    #ededed;
   --text-secondary:  #9a9a9a;
   --text-tertiary:   #6a6a6a;
   --text-quaternary: #454545;
 
-  /* status — desaturated, used as small dot only */
   --success: #86b89a;
   --warning: #c9a868;
   --danger:  #c98080;
   --info:    #8aa4c4;
 
-  /* accent — used very sparingly (brand mark only) */
   --accent:        #c8ff5e;
   --accent-dim:    rgba(200, 255, 94, 0.06);
   --accent-border: rgba(200, 255, 94, 0.18);
@@ -61,7 +46,6 @@ body {
   font-feature-settings: 'ss01', 'cv11';
 }
 
-/* ── screen — mobile-first column (design-system 3.1: 22px gutters) ── */
 .screen {
   width: 100%;
   max-width: 420px;
@@ -70,7 +54,6 @@ body {
   padding: 14px 22px 44px;
 }
 
-/* brand mark / step counter row */
 .toprow {
   display: flex;
   align-items: center;
@@ -93,7 +76,6 @@ body {
   color: var(--text-tertiary);
 }
 
-/* ── headings — one display per screen (design-system 2.3) ── */
 .h-display {
   font-size: 20px;
   font-weight: 500;
@@ -108,7 +90,6 @@ body {
   margin-top: 6px;
 }
 
-/* caps label — 10px mono */
 .caps {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -117,7 +98,6 @@ body {
   color: var(--text-tertiary);
 }
 
-/* body text */
 .body  { font-size: 14px; line-height: 1.55; color: var(--text-primary); }
 .body.sm { font-size: 13px; color: var(--text-secondary); }
 .meta {
@@ -126,7 +106,6 @@ body {
   color: var(--text-tertiary);
 }
 
-/* ── button — one primary per screen (design-system 4.1) ── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -162,11 +141,6 @@ body {
 .btn.block { width: 100%; }
 .btn-row { display: flex; gap: 8px; }
 
-/* ── btn-link — the mockups' text-only secondary action (로그아웃, 나중에 하기).
-   Ported verbatim from the mockups' inlined design-system block; every colour and
-   family is an existing token, so no new value enters the palette. The disabled
-   state follows `.btn:disabled` above rather than the mockup, which is a static
-   prototype and has no in-flight state to draw. ── */
 .btn-link {
   background: none;
   border: 0;
@@ -183,7 +157,6 @@ body {
   opacity: 0.45;
 }
 
-/* ── tag — uniform grey outline, dot colour signals status ── */
 .tag {
   display: inline-flex;
   align-items: center;
@@ -210,7 +183,6 @@ body {
 .tag.info    .dot { background: var(--info); }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* ── card — all cards identical (design-system 4.4) ── */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -218,7 +190,6 @@ body {
   padding: 14px 16px;
 }
 
-/* ── input field — caps mono label + value ── */
 .input {
   background: var(--bg-input);
   border: 1px solid var(--border-default);
@@ -244,7 +215,6 @@ body {
   word-break: break-all;
 }
 .input .val.placeholder { color: var(--text-quaternary); }
-/* editable value — real <input>, styled to match .val (state extension) */
 .input .field-input {
   display: block;
   width: 100%;
@@ -263,7 +233,6 @@ body {
   top: 12px; right: 12px;
 }
 
-/* status badge inside an input / card corner */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -287,7 +256,6 @@ body {
 .badge.info    .dot { background: var(--info); }
 .badge.accent  .dot { background: var(--accent); }
 
-/* ── segment selector — active distinguished by fill, not colour ── */
 .segment {
   display: flex;
   gap: 6px;
@@ -311,7 +279,6 @@ body {
   font-weight: 500;
 }
 
-/* ── icon container — uniform grey ── */
 .ico {
   flex: none;
   background: var(--bg-input);
@@ -324,7 +291,6 @@ body {
 button.ico { cursor: pointer; }
 .ico svg { display: block; }
 
-/* ── small primitives + layout helpers (spacing is the hierarchy) ── */
 .divider { height: 1px; background: var(--border-subtle); border: 0; }
 .stack    > * + * { margin-top: 8px; }
 .stack-10 > * + * { margin-top: 10px; }
@@ -335,7 +301,6 @@ button.ico { cursor: pointer; }
 .row.top { align-items: flex-start; }
 .grow { flex: 1; min-width: 0; }
 
-/* footer legend — the one accent use per screen */
 .legend {
   font-family: var(--font-mono);
   font-size: 9px;
@@ -345,7 +310,6 @@ button.ico { cursor: pointer; }
 }
 .legend .mk { color: var(--accent); }
 
-/* subtle page-load reveal — opacity only, no glow/gradient */
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -360,15 +324,7 @@ button.ico { cursor: pointer; }
   .screen > * { animation: none; }
 }
 
-/* ============================================================
-   Home · Connect Repository components (ported from those two screens, which now live as
-   prototype steps in docs/mockups/JRN-connect-repo.html — design-system §4.6
-   app bar, §4.7 bottom
-   tab bar, §4.10 segment/§4.11 metric grid/§4.12 progress bar, and the
-   §2.2 "section title" typographic role).
-   ============================================================ */
 
-/* ── app bar — back / title / trailing slot ── */
 .appbar {
   display: flex;
   align-items: center;
@@ -393,7 +349,6 @@ button.ico { cursor: pointer; }
   margin-top: 2px;
 }
 
-/* icon button — 36px app-bar slot */
 .icon-btn {
   flex: none;
   width: 36px;
@@ -413,7 +368,6 @@ button.ico { cursor: pointer; }
 .icon-btn.ghost { border-color: transparent; background: transparent; }
 .icon-btn:disabled { cursor: not-allowed; opacity: 0.45; }
 
-/* ── section title — 11px mono caps with a trailing count/action ── */
 .section-title {
   display: flex;
   align-items: baseline;
@@ -442,7 +396,6 @@ button.ico { cursor: pointer; }
   cursor: pointer;
 }
 
-/* ── metric grid — bordered cells split by 1px dividers (§4.11) ── */
 .metric-grid {
   display: flex;
   border: 1px solid var(--border-default);
@@ -466,7 +419,6 @@ button.ico { cursor: pointer; }
   margin-top: 8px;
 }
 
-/* standalone metric readout (Connect Repository estimate card) */
 .metric {
   font-family: var(--font-mono);
   font-size: 18px;
@@ -474,7 +426,6 @@ button.ico { cursor: pointer; }
   color: var(--text-primary);
 }
 
-/* ── progress bar (§4.12) ── */
 .progress {
   height: 4px;
   border-radius: 2px;
@@ -488,14 +439,11 @@ button.ico { cursor: pointer; }
   background: var(--text-secondary);
 }
 
-/* side-by-side inputs (Connect Repository branch + access) */
 .input-row { display: flex; gap: 8px; }
 .input-row .input { flex: 1; min-width: 0; }
 
-/* mono separator between inline meta facts */
 .dot-sep { color: var(--text-quaternary); }
 
-/* ── bottom tab bar — 4 fixed slots (§4.7) ── */
 .tabbar {
   position: fixed;
   bottom: 0;
@@ -536,11 +484,8 @@ button.ico { cursor: pointer; }
 .tabbar .tab.active .gl { border-color: var(--text-primary); }
 .tabbar .tab:disabled { cursor: not-allowed; opacity: 0.5; }
 
-/* leave room for the fixed tab bar */
 .screen.has-tabbar { padding-bottom: 90px; }
 
-/* ── step — pipeline progress (§4.5), ported from the Analysis Progress screen (now
-   docs/mockups/JRN-discover-features.html#STP-leave-and-return) ── */
 .step {
   display: flex;
   align-items: center;
@@ -570,8 +515,6 @@ button.ico { cursor: pointer; }
   animation: spin 3.4s linear infinite;
 }
 .step.todo .ic { border: 1.5px solid var(--border-default); }
-/* a failed step keeps the todo outline but takes the danger tone — the mockup has
-   no failure state, and §4.2's danger dot is the design system's way to say it */
 .step.failed .ic { border: 1.5px solid var(--danger); }
 .step .body-col { flex: 1; min-width: 0; }
 .step .label { font-size: 13.5px; color: var(--text-primary); }
@@ -594,7 +537,6 @@ button.ico { cursor: pointer; }
   to { transform: rotate(360deg); }
 }
 
-/* progress ring — Analysis Progress's headline figure (mockups/README: §4 외 요소) */
 .ring {
   position: relative;
   width: 148px;
@@ -614,9 +556,6 @@ button.ico { cursor: pointer; }
   letter-spacing: -0.02em;
 }
 
-/* discovery-strategy list — Discovery Strategy (mockups/JRN-discover-features.html#STP-tune-strategy).
-   Copied from the mockup's inline CSS so the screen and the prototype render the
-   same shape; the tokens are the ones §5.2 already defines. */
 .strat {
   display: flex;
   align-items: center;
@@ -637,7 +576,6 @@ button.ico { cursor: pointer; }
   color: var(--text-primary);
 }
 
-/* inline notice — the mockup shows it with `.on`; the screen renders it or not */
 .notice {
   border-radius: 10px;
   padding: 11px 13px;
@@ -651,8 +589,6 @@ button.ico { cursor: pointer; }
   border-color: rgba(201, 168, 104, 0.4);
   color: var(--warning);
 }
-/* err·ok — 목업 JRN-connect-repo.html 의 같은 규칙을 그대로 옮긴다. 슬라이스 ⑥ 이 홈·연결
-   병합과 함께 접근 불가/접근 가능 안내를 목업의 notice 로 수렴시키면서 필요해졌다. */
 .notice.err {
   border-color: rgba(201, 128, 128, 0.4);
   color: var(--danger);
@@ -667,8 +603,6 @@ button.ico { cursor: pointer; }
   font-size: 12px;
 }
 
-/* page-h1 — 목업의 같은 이름 규칙. 「새 저장소 연결」처럼 화면 안쪽의 구획 제목이
-   h-display 보다 한 단계 작게 서는 자리에 쓴다. */
 .page-h1 {
   font-size: 28px;
   font-weight: 500;
@@ -677,9 +611,6 @@ button.ico { cursor: pointer; }
   color: var(--text-primary);
 }
 
-/* feature-candidate cards — Feature Candidates (mockups/JRN-discover-features.html#STP-sift-candidates).
-   Copied from the mockup's inline CSS so the screen and the prototype render the
-   same shape; the tokens are the ones §5.2 already defines. */
 .cand {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -748,10 +679,8 @@ button.ico { cursor: pointer; }
   color: var(--warning);
 }
 
-/* 종단 의존성 (Feature Dependencies, AC2.4) — 목업
-   docs/mockups/JRN-review-feature.html#STP-trace-dependencies 의 규칙을 그대로 옮겼다.
-   `.esrc` 는 `.dep` 아래로 한정한다 — 목업도 그렇게 한정하고, 전역으로 풀면 이 슬라이스가
-   건드리지 않는 화면의 렌더가 함께 움직인다. */
+/* `.esrc` 는 `.dep` 아래로 한정한다 — 전역으로 풀면 이 규칙을 기대하지 않는 화면의
+   렌더가 함께 움직인다. */
 .choice {
   display: flex;
   align-items: flex-start;
@@ -778,8 +707,6 @@ button.ico { cursor: pointer; }
 .dep .dname { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary); }
 .dep .esrc { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
 
-/* ext-note — 목업 JRN-connect-repo.html 의 같은 규칙을 그대로 옮긴다. 슬라이스 ⑦ 이
-   권한 부여 화면에서 「다음은 GitHub 이 그리는 화면」임을 알리는 자리에 쓴다. */
 .ext-note {
   display: flex;
   gap: 8px;

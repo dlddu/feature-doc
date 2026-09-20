@@ -1,46 +1,13 @@
 // Register LLM Key — the screen behind
 // docs/mockups/JRN-connect-repo.html#STP-register-llm-key (AC4.2 · AC4.3).
-//
-// Split out of `CredentialsSetup.tsx` by 수렴 슬라이스 ⑦ (rct_20260919-0007): the
-// mockup draws 권한 부여 and 키 등록 as two steps and the 2026-09-18 authority-order
-// ruling gave the mockup the screen composition, so the merged screen became
-// `GrantRepoAccess.tsx` + this one. The appbar, the headline, the 봉투 암호화 card
-// and both buttons are the mockup's step, one for one.
-//
-// Two things this screen draws that the mockup's step does not, both 원장 rows:
-//   * 제공자 변이 — the static mockup holds one variant (Anthropic) of copy its
-//     prototype script swaps per provider (`KEY_RULES`). The screen derives the
-//     variant from the selected provider, so `AIza` (Google's prefix) is the only
-//     literal that has no mockup counterpart.
-//   * 이미 등록된 키 — the mockup's step is the first-run scene only. A returning
-//     user must see which key an analysis would call with, and 시나리오 4 requires
-//     revoking it, so the API Key field has a registered state built from values
-//     (masked id, provider) rather than new copy.
-//
-// `저장하고 계속` is one button doing what the mockup's `btn-savekey` does, in two
-// moves: with a key typed it registers (and stays, because 시나리오 3 replaces a
-// key without leaving), with the field empty and a key already active it
-// pre-flights and hands off to Home. `나중에 하기` is the mockup's abandon branch.
 
 import { useEffect, useState } from 'react';
 import { deleteKey, getConnection, listKeys, preflight, registerKey } from './api';
 import type { Connection, LlmKey, ProviderId } from './api';
 
-// Mockup order (`JRN-connect-repo.html#STP-register-llm-key`, the `#in-provider`
-// options): Anthropic → OpenAI → Google, with the key hint written for the first
-// entry (`sk-ant-`). No upper document fixes the order — PRD AC4.2 and test/04
-// 시나리오 13 are silent — so the mockup wins as the visual SSOT.
-//
-// The *backend's* default provider rule is a separate axis and is untouched: the
-// worker still falls back to OpenAI and an analysis still picks an OpenAI key over
-// the others (`llm::DEFAULT_PROVIDER`, `llmkey::ACTIVE_KEY_SQL`). What this array
-// decides is only what the screen shows and which segment a user who has never
-// chosen starts on — `load()` replaces it with the provider of an already active
-// key, so the initial value is a first-run affordance, not a policy.
-//
-// `keyPrefix` is the mockup prototype's `KEY_RULES[…].prefix`: it writes both the
-// input's example and the format hint, which is why neither is a per-provider
-// sentence in this file.
+// Screen-only: this order and its first entry decide what a user who has never
+// chosen starts on. The backend's own provider rule (`llm::DEFAULT_PROVIDER`) is a
+// separate axis and is untouched by anything here.
 const PROVIDERS: { id: ProviderId; label: string; keyPrefix: string }[] = [
   { id: 'anthropic', label: 'Anthropic', keyPrefix: 'sk-ant-' },
   { id: 'openai', label: 'OpenAI', keyPrefix: 'sk-' },
@@ -48,10 +15,9 @@ const PROVIDERS: { id: ProviderId; label: string; keyPrefix: string }[] = [
 ];
 
 /**
- * The provider whose key an analysis would actually use, or `null` if the user has
- * none. Mirrors the backend's active-key rule (`llmkey::ACTIVE_KEY_SQL`): OpenAI
- * first, then most recently registered — so the screen names the same key the
- * pipeline would call with.
+ * Duplicates the backend's active-key rule (`llmkey::ACTIVE_KEY_SQL`): OpenAI first,
+ * then most recently registered. The two must move together, or the screen names a
+ * different key from the one the pipeline calls with.
  */
 function activeProviderOf(keys: LlmKey[]): ProviderId | null {
   const active = keys.filter((k) => k.status === 'active');
@@ -68,9 +34,7 @@ function messageOf(e: unknown): string {
 }
 
 type Props = {
-  /** Back to 권한 부여 — the mockup's appbar `‹` (`data-goto="STP-grant-repo-access"`). */
   onBack: () => void;
-  /** Continue into Home, the mockup's `data-goto="STP-pick-target"`. */
   onReady: () => void;
 };
 
@@ -93,10 +57,8 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
       const [conn, ks] = await Promise.all([getConnection(), listKeys()]);
       setConnection(conn);
       setKeys(ks);
-      // Someone who already registered a key sees *that* provider. The default
-      // below is where a user who has not chosen starts, not a value that
-      // overrides a choice already made — so this runs on mount only and never
-      // fights a later selection.
+      // Mount only: a later selection must not be overwritten by a reload of the
+      // same value.
       const already = activeProviderOf(ks);
       if (already) setProvider(already);
     } catch (e) {
@@ -138,7 +100,6 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
     }
   }
 
-  /** The mockup's `저장하고 계속`: save what was typed, or continue with what is stored. */
   async function onSave() {
     if (keyInput.trim() !== '') {
       await register();
@@ -160,9 +121,8 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
   const activeKey = keys.find((k) => k.provider === provider && k.status === 'active') ?? null;
   const hasAnyActiveKey = keys.some((k) => k.status === 'active');
   const typed = keyInput.trim();
-  // The mockup's `keyValid()`, minus the disabling: a key that fails the shape
-  // check is still submitted, because the provider — not this screen — owns the
-  // verdict (시나리오 13 rejects a well-shaped key the platform cannot call).
+  // Shown, but not enforced: a badly shaped key is still submitted, because the
+  // provider — not this screen — owns the verdict.
   const formatBad = typed !== '' && !typed.startsWith(selected.keyPrefix);
   const installed = connection?.installed ?? false;
   const permissions = connection?.permissions ?? [];

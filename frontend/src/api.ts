@@ -1,5 +1,5 @@
-// Typed client for the FeatureDoc backend. Cookies (the session) ride along on
-// same-origin requests; the SPA and API share an origin in every deployment.
+// The SPA and the API share an origin in every deployment — that is what every
+// `credentials: 'same-origin'` below relies on.
 
 export type User = {
   id: string;
@@ -32,7 +32,7 @@ export type LlmKey = {
 
 export type ProviderId = 'anthropic' | 'openai' | 'google';
 
-/** Where the Sign In screen's primary button navigates (full-page, to follow redirects). */
+/** Full-page navigation, not fetch — the OAuth redirect chain is the browser's to follow. */
 export const LOGIN_URL = '/api/auth/login';
 
 const json = { 'content-type': 'application/json' };
@@ -42,12 +42,10 @@ async function errorMessage(res: Response): Promise<string> {
     const body = (await res.json()) as { error?: string };
     if (body.error) return body.error;
   } catch {
-    /* fall through */
   }
   return `요청에 실패했어요 (${res.status})`;
 }
 
-/** Current user, or null when unauthenticated (401). */
 export async function getMe(): Promise<User | null> {
   const res = await fetch('/api/me', { credentials: 'same-origin' });
   if (res.status === 401) return null;
@@ -55,12 +53,6 @@ export async function getMe(): Promise<User | null> {
   return (await res.json()) as User;
 }
 
-/**
- * End the session. The invalidation is server-side (`backend/src/auth.rs` logout →
- * `session::delete`), so the caller only has to stop showing signed-in screens —
- * the cookie it dropped is already dead, which is what
- * `sc04-12-logout-session-invalidation.spec.ts` asserts against the API.
- */
 export async function logout(): Promise<void> {
   const res = await fetch('/api/auth/logout', {
     method: 'POST',
@@ -106,16 +98,12 @@ export async function deleteKey(id: string): Promise<void> {
   if (!res.ok && res.status !== 204) throw new Error(await errorMessage(res));
 }
 
-/** Confirms a usable key exists before continuing; throws the block message if not. */
 export async function preflight(): Promise<{ provider: string; fingerprint: string }> {
   const res = await fetch('/api/llm-keys/preflight', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as { provider: string; fingerprint: string };
 }
 
-// ── analyses (AC1.1) ─────────────────────────────────────────────────────────
-
-/** A repository the installation can access — a candidate to analyze (Home · Connect Repository). */
 export type Repository = {
   owner: string;
   name: string;
@@ -123,7 +111,6 @@ export type Repository = {
   defaultBranch: string;
 };
 
-/** An analysis job as the home list shows it (Home). */
 export type Analysis = {
   id: string;
   repoOwner: string;
@@ -133,25 +120,22 @@ export type Analysis = {
   estLlmCalls: number;
   estCostCents: number;
   createdAt: number;
-  /** Pipeline progress, so a card can read "step 1 of 5" without a second fetch. */
+  /** Denormalized onto the list row so a card can show progress without a second fetch. */
   stagesDone: number;
   stagesTotal: number;
 };
 
-/** One pipeline step of an analysis (Analysis Progress). `pending` until a worker runs it. */
 export type Stage = {
   seq: number;
   key: string;
   title: string;
   status: 'pending' | 'running' | 'succeeded' | 'failed';
-  /** What the stage measured, e.g. `766 files · 2.2 MB`. */
   detail: string | null;
   error: string | null;
   startedAt: number | null;
   finishedAt: number | null;
 };
 
-/** Everything Analysis Progress draws — all of it persisted server-side (AC1.5). */
 export type AnalysisDetail = Analysis & {
   error: string | null;
   startedAt: number | null;
@@ -160,8 +144,8 @@ export type AnalysisDetail = Analysis & {
 };
 
 /**
- * Pre-flight estimate for a typed target (Connect Repository). `hasAccess: false` is not an error —
- * the screen renders the "add this repo to the App" recovery path instead.
+ * `hasAccess: false` is not an error — it is the answer, and the screen renders a
+ * recovery path from it.
  */
 export type Preflight = {
   hasAccess: boolean;
@@ -176,21 +160,20 @@ export type Preflight = {
   estDurationMin: number;
 };
 
-/** Repositories the App can reach. Empty when the App is not installed yet. */
+/** Empty — not an error — when the App is not installed yet. */
 export async function listRepositories(): Promise<Repository[]> {
   const res = await fetch('/api/repositories', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as Repository[];
 }
 
-/** The user's analysis jobs, newest first. */
+/** Newest first. */
 export async function listAnalyses(): Promise<Analysis[]> {
   const res = await fetch('/api/analyses', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as Analysis[];
 }
 
-/** Resolves a typed target and estimates the analysis scale before triggering. */
 export async function preflightAnalysis(repoUrl: string, branch: string): Promise<Preflight> {
   const res = await fetch('/api/analyses/preflight', {
     method: 'POST',
@@ -202,7 +185,6 @@ export async function preflightAnalysis(repoUrl: string, branch: string): Promis
   return (await res.json()) as Preflight;
 }
 
-/** One analysis with its pipeline stages — the Analysis Progress read (AC1.5). */
 export async function getAnalysis(id: string): Promise<AnalysisDetail> {
   const res = await fetch(`/api/analyses/${encodeURIComponent(id)}`, {
     credentials: 'same-origin',
@@ -212,8 +194,8 @@ export async function getAnalysis(id: string): Promise<AnalysisDetail> {
 }
 
 /**
- * Re-runs one failed stage and nothing else (AC1.5). The job returns to the queue,
- * so the answer already carries the reset progress the screen should render.
+ * The job returns to the queue, so the answer already carries the reset progress —
+ * the caller does not refetch.
  */
 export async function retryStage(id: string, stageKey: string): Promise<AnalysisDetail> {
   const res = await fetch(
@@ -224,7 +206,7 @@ export async function retryStage(id: string, stageKey: string): Promise<Analysis
   return (await res.json()) as AnalysisDetail;
 }
 
-/** Explicitly enqueues an analysis. Rejects out-of-scope targets without queueing. */
+/** An out-of-scope target is rejected without ever being queued. */
 export async function createAnalysis(repoUrl: string, branch: string): Promise<Analysis> {
   const res = await fetch('/api/analyses', {
     method: 'POST',
@@ -236,31 +218,21 @@ export async function createAnalysis(repoUrl: string, branch: string): Promise<A
   return (await res.json()) as Analysis;
 }
 
-// ── pipeline documents (AC1.2) ───────────────────────────────────────────────
-
-/** One extracted concern, with the file paths it was inferred from. */
 export type CrossCuttingItem = {
   name: string;
-  /** Repository paths that support this item — AC1.2's "근거가 된 파일 경로". */
   evidence: string[];
 };
 
-/** One of AC1.2's five axes and what was found on it. */
 export type CrossCuttingCategory = {
   axis: string;
   items: CrossCuttingItem[];
 };
 
-/**
- * Whether this document reproduced the previous analysis of the same target.
- * `first` — nothing earlier to compare against.
- */
 export type Reproducibility = {
   verdict: 'first' | 'unchanged' | 'changed';
   comparedTo: string | null;
 };
 
-/** Everything Cross-cutting Concerns draws (AC1.2). */
 export type CrossCuttingDocument = {
   kind: string;
   content: { categories: CrossCuttingCategory[] };
@@ -270,11 +242,9 @@ export type CrossCuttingDocument = {
 };
 
 /**
- * The cross-cutting concerns document one analysis produced.
- *
- * A 404 means the stage has not produced it yet — that is a distinct state from
- * "ran and found nothing", so it is surfaced rather than flattened to an empty
- * document.
+ * A 404 means the stage has not produced the document yet — a distinct state from
+ * "ran and found nothing", so it is surfaced rather than flattened to an empty one.
+ * The same reading applies to every `documents/*` read below.
  */
 export async function getCrossCutting(id: string): Promise<CrossCuttingDocument> {
   const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/documents/cross-cutting`, {
@@ -285,15 +255,11 @@ export async function getCrossCutting(id: string): Promise<CrossCuttingDocument>
   return (await res.json()) as CrossCuttingDocument;
 }
 
-// ── discovery strategy (AC1.3) ───────────────────────────────────────────────
-
-/** One place the next stage will look. `user` entries are the reviewer's own. */
 export type StrategyEntry = {
   pattern: string;
   source: 'generated' | 'user';
 };
 
-/** The reviewable strategy for one analysis — draft until `approved`. */
 export type DiscoveryStrategy = {
   entries: StrategyEntry[];
   approved: boolean;
@@ -301,12 +267,6 @@ export type DiscoveryStrategy = {
   updatedAt: number;
 };
 
-/**
- * The strategy stage 3 proposed, as the user has it so far.
- *
- * A 404 means stage 3 has not produced a proposal yet — a different state from
- * "proposed nothing", so it is surfaced rather than flattened to an empty list.
- */
 export async function getDiscoveryStrategy(id: string): Promise<DiscoveryStrategy> {
   const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/discovery-strategy`, {
     credentials: 'same-origin',
@@ -316,7 +276,6 @@ export async function getDiscoveryStrategy(id: string): Promise<DiscoveryStrateg
   return (await res.json()) as DiscoveryStrategy;
 }
 
-/** Replaces the list — deleting and adding are both this call (AC1.3 "수정"). */
 export async function putDiscoveryStrategy(
   id: string,
   patterns: string[],
@@ -334,7 +293,6 @@ export async function putDiscoveryStrategy(
   return (await res.json()) as DiscoveryStrategy;
 }
 
-/** Approves it. Only an approved strategy becomes the next stage's input (AC1.3). */
 export async function approveDiscoveryStrategy(id: string): Promise<DiscoveryStrategy> {
   const res = await fetch(
     `/api/analyses/${encodeURIComponent(id)}/discovery-strategy/approve`,
@@ -344,7 +302,6 @@ export async function approveDiscoveryStrategy(id: string): Promise<DiscoveryStr
   return (await res.json()) as DiscoveryStrategy;
 }
 
-/** An earlier analysis of the same target rejected this same candidate (AC1.4). */
 export type PreviousRejection = {
   reason: string;
   rejectedAt: number;
@@ -363,12 +320,10 @@ export type FeatureCandidate = {
   previouslyRejected: PreviousRejection | null;
 };
 
-/** The reviewable candidate list for one analysis (AC1.4). */
 export type CandidateList = {
   candidates: FeatureCandidate[];
-  /** Counted by the server, so the screen and the "결정 끝" gate read one number. */
+  /** Counted by the server so the screen and its 「결정 끝」 gate read one number. */
   undecided: number;
-  /** Whether stage 4 has produced its document yet. `false` is a state, not an error. */
   extracted: boolean;
 };
 
@@ -395,12 +350,10 @@ async function candidateAction(
   return (await res.json()) as CandidateList;
 }
 
-/** Approve one candidate (AC1.4). */
 export function approveCandidate(id: string, key: string): Promise<CandidateList> {
   return candidateAction(id, 'decision', { key, decision: 'approve' });
 }
 
-/** Reject one candidate with the reason AC1.4 requires to be recorded. */
 export function rejectCandidate(
   id: string,
   key: string,
@@ -409,7 +362,7 @@ export function rejectCandidate(
   return candidateAction(id, 'decision', { key, decision: 'reject', reason });
 }
 
-/** Rename one candidate. Its key does not move — identity is where it was found. */
+/** The key does not move — a candidate's identity is where it was found. */
 export function renameCandidate(
   id: string,
   key: string,
@@ -418,7 +371,7 @@ export function renameCandidate(
   return candidateAction(id, 'rename', { key, name });
 }
 
-/** Fold candidates into one. The folded rows are kept, marked `mergedInto`. */
+/** Folded rows are kept, marked `mergedInto`. */
 export function mergeCandidates(
   id: string,
   into: string,
@@ -427,24 +380,15 @@ export function mergeCandidates(
   return candidateAction(id, 'merge', { into, keys });
 }
 
-// ── acceptance scenarios (AC2.1 · AC2.2 · AC2.3) ─────────────────────────────
-
-/** One acceptance criterion, in the words of a person using the product. */
 export type AcceptanceScenario = {
   given: string;
   when: string;
   then: string;
-  /** The repository path this criterion was read from — AC2.1's 근거. */
   evidence: string;
   symbol: string | null;
-  /** Which pass found it: the logic read (AC2.1) or the test read (AC2.2). */
   source: 'logic' | 'test';
 };
 
-/**
- * One place the logic and the tests describe the same situation differently.
- * Kept out of the scenario list on purpose — test/02 시나리오 3.
- */
 export type AcceptanceContradiction = {
   given: string;
   when: string;
@@ -454,7 +398,6 @@ export type AcceptanceContradiction = {
   testEvidence: string;
 };
 
-/** One confirmed feature's acceptance document (AC2.3: one per feature). */
 export type FeatureAcceptance = {
   key: string;
   name: string;
@@ -473,13 +416,9 @@ export type AcceptanceDocument = {
 };
 
 /**
- * The acceptance scenarios stage 5 wrote for this analysis, or `null` when it has
- * not run yet.
- *
- * `null` rather than a thrown 404: "아직 만들어지지 않았다" is a state Feature Acceptance draws (the
- * reviewer confirms a feature and comes here while the stage is still queued), not
- * an error to report. The distinction from "ran and found nothing" survives — that
- * case is a document with an empty feature list, which the stage refuses to write.
+ * `null` rather than a thrown 404, unlike the reads above: not-yet-generated is a
+ * state this screen draws rather than an error. The distinction from "ran and found
+ * nothing" survives anyway — the stage refuses to write an empty feature list.
  */
 export async function getAcceptance(id: string): Promise<AcceptanceDocument | null> {
   const res = await fetch(
@@ -491,8 +430,7 @@ export async function getAcceptance(id: string): Promise<AcceptanceDocument | nu
   return (await res.json()) as AcceptanceDocument;
 }
 
-/** One dependency of a feature (AC2.4). `evidence: null` is 「근거 없음」 — recorded,
- *  never invented. */
+/** `evidence: null` is 「근거 없음」 — recorded, never invented. */
 export type Dependency = {
   category: string;
   name: string;
@@ -505,11 +443,8 @@ export type DependencyGroup = {
 };
 
 /**
- * What one feature depends on, plus how the last trace went.
- *
  * `status: null` means nobody has asked yet — a different state from "asked and it
- * found nothing", exactly as `getAcceptance` distinguishes "not generated" from
- * "generated and empty".
+ * found nothing".
  */
 export type FeatureDependencies = {
   featureKey: string;
@@ -533,7 +468,7 @@ export async function getDependencies(
   return (await res.json()) as FeatureDependencies;
 }
 
-/** 「의존성 분석」 — records the request and re-queues the analysis (AC2.4). */
+/** Records the request and re-queues the analysis. */
 export async function requestDependencies(
   id: string,
   key: string,
@@ -551,22 +486,17 @@ export async function requestDependencies(
   return (await res.json()) as FeatureDependencies;
 }
 
-// ── 재분석 diff (AC2.6) ───────────────────────────────────────────────────
-
-/** 달라진 인수 시나리오 한 줄. `mark` 는 `+`(추가) 또는 `-`(제거). */
 export type ScenarioLine = {
   mark: string;
   text: string;
 };
 
-/** 추가·제거된 의존성 한 줄. */
 export type DependencyLine = {
   mark: string;
   category: string;
   name: string;
 };
 
-/** 한 기능이 이번 재분석에서 어떻게 달라졌는가. */
 export type FeatureDiff = {
   key: string;
   name: string;
@@ -577,11 +507,8 @@ export type FeatureDiff = {
 };
 
 /**
- * 이번 분석과 **같은 타깃의 직전 분석**의 차이 (AC2.6).
- *
- * `comparedTo: null` 은 견줄 상대가 없다는 뜻이고 — 같은 저장소·브랜치의 첫
- * 분석이다 — 「바뀐 게 없다」(`features: []` 이면서 `comparedTo` 가 있는 경우)와
- * 다른 상태다. `getDocument` 의 `reproducibility.verdict: 'first'` 와 같은 구분이다.
+ * `comparedTo: null` 은 견줄 상대가 없다는 뜻이고 — 같은 저장소·브랜치의 첫 분석이다 —
+ * 「바뀐 게 없다」(`features: []` 이면서 `comparedTo` 가 있는 경우)와 다른 상태다.
  */
 export type AnalysisDiff = {
   comparedTo: string | null;

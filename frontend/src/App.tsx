@@ -1,19 +1,7 @@
-// Screen routing for the journey the docs describe (user-journey flow 1 → 2):
-// 권한 부여 → 키 등록 → Repositories (list + connect form, one screen) → Analysis.
-//
-// The first two are the mockup's two steps (`STP-grant-repo-access`,
-// `STP-register-llm-key`), split apart from one `CredentialsSetup` screen by
-// 수렴 슬라이스 ⑦. Grant hands off by itself the moment the installation exists —
-// the mockup goes straight from GitHub's consent page to 키 등록 — so the only way
-// back to it is the key screen's appbar `‹`, which is also the way to change what
-// GitHub may read. Going back that way suppresses the hand-off, or the two screens
-// would bounce.
-//
-// Still a state machine rather than a router dependency, with one addition: Analysis Progress is
-// *addressable* (`#/analyses/<id>`). AC1.5 requires that closing the app and coming
-// back shows the same run (test/01 시나리오 5), and a screen you cannot navigate
-// straight to cannot demonstrate that. The hash is enough — no history API, no
-// server-side route table, no dependency.
+// A state machine rather than a router dependency, with one addition: the analysis
+// screens are *addressable* (`#/analyses/<id>`), because a screen you cannot
+// navigate straight to cannot demonstrate that its content is server state. A hash
+// is enough — no history API, no server-side route table, no dependency.
 
 import { useEffect, useState } from 'react';
 import { AnalysisDiff } from './AnalysisDiff';
@@ -29,7 +17,6 @@ import { RegisterLlmKey } from './RegisterLlmKey';
 
 type Screen = 'grant' | 'key' | 'home';
 
-/** Which analysis screen a hash addresses, if any. */
 export type AnalysisRoute = {
   id: string;
   view:
@@ -40,25 +27,10 @@ export type AnalysisRoute = {
     | 'acceptance'
     | 'dependencies'
     | 'diff';
-  /** Only for `dependencies`: AC2.4 traces **one** feature, so the address names it. */
   featureKey?: string;
 };
 
-/**
- * `#/analyses/<id>` → Analysis Progress, `.../cross-cutting` → Cross-cutting Concerns, `.../discovery-strategy` → Discovery Strategy,
- * `.../candidates` → Feature Candidates, `.../acceptance` → Feature Acceptance, null otherwise.
- *
- * All five are addressable for the same reason Analysis Progress is (AC1.5): a screen you cannot
- * navigate straight to cannot demonstrate that its content is server state. For Discovery Strategy
- * and Feature Candidates it is also what makes the review resumable — a reviewer who leaves
- * mid-decision comes back to the list the server has, not to a lost draft, which is
- * the whole of the mockup's "여기까지 저장하고 나가기". Feature Acceptance is addressable for a third
- * reason: `JRN-review-feature` is entered "나중에 특정 기능의 문서가 미심쩍어서 다시
- * 들어옴", i.e. by address rather than by walking the pipeline again.
- */
 export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
-  // Feature Dependencies is the one address with two variables — the analysis and
-  // the feature — because a dependency trace is per-feature (AC2.4), not per-run.
   const traced = /^#\/analyses\/([^/?#]+)\/features\/([^/?#]+)\/dependencies$/.exec(hash);
   if (traced) {
     return {
@@ -80,8 +52,8 @@ export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('grant');
-  // Cleared when the user walks *back* into 권한 부여, so that screen stays put
-  // instead of handing off to 키 등록 again.
+  // 권한 부여 hands off to 키 등록 the moment an installation exists, so walking
+  // *back* into it must suppress the hand-off — otherwise the two screens bounce.
   const [handOff, setHandOff] = useState(true);
   // Bumped after a run is queued so the home list refetches the new job.
   const [homeEpoch, setHomeEpoch] = useState(0);
@@ -100,24 +72,19 @@ export function App() {
     setScreen('home');
   }
 
-  /** Home → 자격증명. Lands on 키 등록 when the installation already exists. */
   function openCredentials() {
     setHandOff(true);
     setScreen('grant');
   }
 
-  /** 키 등록 → 권한 부여 (appbar `‹`), i.e. "change what GitHub may read". */
   function backToGrant() {
     setHandOff(false);
     setScreen('grant');
   }
 
   /**
-   * After logout the app returns to 권한 부여, which re-reads `/api/me` on mount
-   * and, finding no user, hands off to the Sign In screen (`SignIn.tsx`) — the
-   * mockup's `data-goto="STP-sign-in"` destination. The hash is cleared first:
-   * an analysis route left behind would otherwise re-render a signed-in screen over
-   * the entry one.
+   * The hash is cleared first: an analysis route left behind would otherwise
+   * re-render a signed-in screen over the entry one.
    */
   function afterLogout() {
     window.location.hash = '';
@@ -127,7 +94,6 @@ export function App() {
     setScreen('grant');
   }
 
-  /** Leaving Analysis Progress clears the hash, which is what re-renders the home screen. */
   function leaveAnalysis() {
     window.location.hash = '';
     setRoute(null);
@@ -139,56 +105,33 @@ export function App() {
     setRoute({ id, view: 'progress' });
   }
 
-  /** Analysis Progress → Cross-cutting Concerns, for a run whose cross-cutting stage has produced its document. */
   function openCrossCutting(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/cross-cutting`;
     setRoute({ id, view: 'cross-cutting' });
   }
 
-  /** Analysis Progress → Discovery Strategy, for a run whose discovery-strategy stage has proposed one (AC1.3). */
   function openDiscoveryStrategy(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/discovery-strategy`;
     setRoute({ id, view: 'discovery-strategy' });
   }
 
-  // Discovery Strategy → Feature Candidates. The mockup wires it exactly here: `이 전략으로 후보 뽑기` carries
-  // `data-goto="STP-sift-candidates"`, so the button that approves a strategy is
-  // also the way into the list it produces. Analysis Progress draws no entry of its own.
-  /** Discovery Strategy → Feature Candidates, for a run whose feature-candidates stage has extracted a list (AC1.4). */
   function openCandidates(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/candidates`;
     setRoute({ id, view: 'candidates' });
   }
 
-  /**
-   * Analysis Progress → 달라진 것 (AC2.6). Addressable like every other analysis
-   * screen, and for the same reason: a diff you cannot link to cannot be the thing
-   * the journey's 알림 sends a reader to.
-   */
   function openDiff(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/diff`;
     setRoute({ id, view: 'diff' });
   }
 
-  /** Feature Dependencies → Feature Acceptance, the document this feature's trace belongs to. */
   function openAcceptance(id: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/acceptance`;
     setRoute({ id, view: 'acceptance' });
   }
 
-  // Feature Dependencies has no in-app entry either, and for the same reason as the
-  // paragraph below: the mockup puts the way in on `STP-verify-evidence`, the step
-  // this slice does not implement. A button that mockup does not draw would be copy
-  // carried as a deviation. The address is the entry (AC1.5's reason, again).
-
-  // Feature Acceptance has no in-app entry yet: the mockup puts one on the *confirmed list*
-  // (`END-features-confirmed`), which is the screen slice 5b brings in. Until then
-  // the address is the entry — which is also how the journey describes re-entry
-  // ("나중에 특정 기능의 문서가 미심쩍어서 다시 들어옴"). Adding a button the Feature
-  // Candidates mockup does not draw would be copy this repo would have to carry as a deviation.
-
-  // The hash wins over the state machine: a deep link must land on Analysis Progress or Cross-cutting Concerns even on
-  // a cold load, before the user has walked the journey in this session.
+  // The hash is read before the state machine: a deep link must land on its screen
+  // even on a cold load, before the user has walked the journey in this session.
   if (route !== null) {
     if (route.view === 'dependencies' && route.featureKey !== undefined) {
       return (

@@ -73,10 +73,8 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       });
       expect(key.ok(), 'an active LLM key is the entry condition').toBeTruthy();
 
-      // 화면 라우팅은 서버 게이트가 아니라 상태 머신이라, 셋업이 API로 됐어도 로드는
-      // 자격증명 화면에서 시작한다. 슬라이스 ⑦ 이후 그 경로는 두 화면이다 — 설치가
-      // 이미 서 있으면 권한 부여 화면이 스스로 키 등록으로 넘기고, 등록된 키가 있으면
-      // `저장하고 계속` 한 번이 pre-flight 를 거쳐 홈으로 데려간다(선례: sc01-05).
+      // 셋업을 API 로 끝냈어도 로드는 자격증명 화면에서 시작한다 — 라우팅이 서버
+      // 게이트가 아니라 상태 머신이기 때문이다.
       await page.goto('/');
       const save = page.getByTestId('register-key');
       await expect(save).toBeEnabled();

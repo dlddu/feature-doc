@@ -1,18 +1,5 @@
 // Grant Repository Access — the screen behind
 // docs/mockups/JRN-connect-repo.html#STP-grant-repo-access (AC4.1).
-//
-// The step the mockup draws under that anchor is **GitHub's own** install-consent
-// page (`data-owner="github.com"`): scope radio, repository checkboxes,
-// `Install & Authorize`. FeatureDoc does not render it — it hands the browser over
-// and waits for the round trip. That structural deviation is the 원장's 제3자 소유
-// row, and it is why this screen draws only the part that is ours: what we are
-// about to ask for, and the door to GitHub.
-//
-// Split out of `CredentialsSetup.tsx` by 수렴 슬라이스 ⑦ (rct_20260919-0007). The
-// 2026-09-18 authority-order ruling put the screen composition on the mockup's
-// side — 권한 부여 and 키 등록 are two steps, so they are two screens. Once the
-// installation exists there is nothing left to ask here, so the screen hands off
-// to `RegisterLlmKey.tsx` instead of drawing a second state.
 
 import { useEffect, useState } from 'react';
 import { getConnection, getInstallUrl, getMe } from './api';
@@ -24,12 +11,10 @@ function messageOf(e: unknown): string {
 }
 
 type Props = {
-  /** The installation exists — `RegisterLlmKey` owns everything from here. */
   onInstalled: () => void;
 };
 
 export function GrantRepoAccess({ onInstalled }: Props) {
-  // undefined = still loading the session
   const [me, setMe] = useState<User | null | undefined>(undefined);
   const [connection, setConnection] = useState<Connection | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -52,10 +37,6 @@ export function GrantRepoAccess({ onInstalled }: Props) {
 
   const installed = connection?.installed ?? false;
 
-  // A user who already installed the App has nothing to do on this step. The
-  // mockup goes straight from GitHub's consent page to 키 등록, so the hand-off
-  // runs the moment the connection says so rather than behind a button this
-  // screen's mockup does not draw.
   useEffect(() => {
     if (installed) onInstalled();
   }, [installed, onInstalled]);
