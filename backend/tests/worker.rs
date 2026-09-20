@@ -1,12 +1,3 @@
-//! The worker queue protocol (AC4.5): authentication, atomic claim, lease
-//! reclaim, and stage reporting.
-//!
-//! These run against the router in-process, so the safety properties that make
-//! horizontal scaling correct are gated by `cargo test` — no cluster required.
-//! The cluster-level half (worker pods actually scaled to 0 and to 2) is asserted
-//! by `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` (down and
-//! recovery) and `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (scale to 2).
-
 mod common;
 
 use axum::body::Body;
@@ -67,7 +58,6 @@ async fn json_body(resp: axum::response::Response) -> serde_json::Value {
     serde_json::from_slice(&bytes).unwrap()
 }
 
-/// Enqueues one analysis for `repo` and returns its id.
 async fn enqueue(state: &AppState, session: &str, repo: &str) -> String {
     let resp = build_router(state.clone())
         .oneshot(user_post(
@@ -91,8 +81,6 @@ async fn claim(state: &AppState, worker_id: &str) -> axum::response::Response {
         .await
         .unwrap()
 }
-
-// ── authentication ────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn internal_routes_reject_without_or_with_a_wrong_token() {
@@ -122,8 +110,6 @@ async fn internal_routes_reject_without_or_with_a_wrong_token() {
     assert_eq!(wrong.status(), StatusCode::UNAUTHORIZED);
 }
 
-/// A deployment with no worker secret must not expose the queue at all — an unset
-/// token is "closed", never "open".
 #[tokio::test]
 async fn internal_routes_are_closed_when_no_worker_token_is_configured() {
     let (mut state, _p) = stub_state().await;
@@ -141,8 +127,6 @@ async fn internal_routes_are_closed_when_no_worker_token_is_configured() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 }
-
-// ── enqueue seeds the pipeline ────────────────────────────────────────────────
 
 #[tokio::test]
 async fn enqueue_seeds_one_row_per_pipeline_stage() {
@@ -166,16 +150,12 @@ async fn enqueue_seeds_one_row_per_pipeline_stage() {
     }
 }
 
-// ── claim ─────────────────────────────────────────────────────────────────────
-
 #[tokio::test]
 async fn claim_returns_no_content_when_the_queue_is_empty() {
     let (state, _p) = stub_state().await;
     assert_eq!(claim(&state, "w1").await.status(), StatusCode::NO_CONTENT);
 }
 
-/// The property horizontal scaling rests on: two workers racing for one job
-/// produce exactly one winner, and the loser is told the queue is empty.
 #[tokio::test]
 async fn two_workers_racing_for_one_job_produce_exactly_one_winner() {
     let (state, _p) = stub_state().await;
@@ -200,7 +180,6 @@ async fn two_workers_racing_for_one_job_produce_exactly_one_winner() {
     assert!(claimed_by[0] == "w1" || claimed_by[0] == "w2");
 }
 
-/// Two queued jobs and two workers: each takes a different one, none is taken twice.
 #[tokio::test]
 async fn concurrent_workers_take_disjoint_jobs() {
     let (state, _p) = stub_state().await;
@@ -222,9 +201,8 @@ async fn concurrent_workers_take_disjoint_jobs() {
     assert_eq!(ids, expected, "each queued job is claimed exactly once");
 }
 
-/// The same property under real thread contention rather than cooperative
-/// interleaving: six workers on four runtime threads racing over six jobs must
-/// still produce six distinct claims and zero duplicates.
+/// Plain `#[tokio::test]` interleaves cooperatively on one thread, so the race
+/// above does not by itself prove the claim is safe under real thread contention.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn many_workers_racing_never_claim_the_same_job_twice() {
     let (state, _p) = stub_state().await;
@@ -268,10 +246,8 @@ async fn claim_hands_over_the_target_and_the_executable_stage() {
     assert_eq!(body["repoOwner"], "stub-account");
     assert_eq!(body["repoName"], "payments-api");
     assert_eq!(body["branch"], "main");
-    // Widened again by slice 4b-1: stage 3 (`discovery_strategy`, AC1.3) is now
-    // implemented, so the queue offers it alongside `fetch` and `cross_cutting`.
-    // Stage 4 stays unoffered — it is both unimplemented *and* gated on the user
-    // approving the strategy (AC1.3), which `tests/strategy.rs` asserts separately.
+    // Stage 4's absence has two independent causes — unimplemented, *and* gated on
+    // the user approving the strategy — so implementing it alone will not offer it.
     assert_eq!(
         body["executableStages"],
         serde_json::json!(["fetch", "cross_cutting", "discovery_strategy"])
@@ -281,8 +257,6 @@ async fn claim_hands_over_the_target_and_the_executable_stage() {
     assert!(body["installationToken"].is_string());
 }
 
-/// A worker that dies mid-job must not strand it: once the lease lapses, the next
-/// claim takes it back (test/04 scenario 7's "워커 복구 후 처리").
 #[tokio::test]
 async fn an_expired_lease_returns_the_job_to_the_queue() {
     let (state, _p) = stub_state().await;
@@ -290,7 +264,6 @@ async fn an_expired_lease_returns_the_job_to_the_queue() {
     let id = enqueue(&state, &s, "payments-api").await;
 
     assert_eq!(claim(&state, "dead-worker").await.status(), StatusCode::OK);
-    // Nothing else is claimable while the lease holds.
     assert_eq!(claim(&state, "w2").await.status(), StatusCode::NO_CONTENT);
 
     sqlx::query("UPDATE analyses SET lease_expires_at = ? WHERE id = ?")
@@ -304,8 +277,6 @@ async fn an_expired_lease_returns_the_job_to_the_queue() {
     assert_eq!(retaken.status(), StatusCode::OK);
     assert_eq!(json_body(retaken).await["id"], id);
 }
-
-// ── progress reporting ────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn stage_reports_persist_and_finish_closes_the_job() {
@@ -357,8 +328,6 @@ async fn stage_reports_persist_and_finish_closes_the_job() {
     assert_eq!(status, "succeeded");
     assert_eq!(detail.as_deref(), Some("766 files · 2.2 MB"));
 
-    // Only the executed stage moved; the unimplemented ones stay pending rather
-    // than being marked done (AC1.2~AC1.4 are not in this slice).
     let pending: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM analysis_stages WHERE analysis_id = ? AND status = 'pending'",
     )
@@ -378,7 +347,6 @@ async fn stage_reports_persist_and_finish_closes_the_job() {
     assert_eq!(lease, None, "finishing releases the lease");
 }
 
-/// A worker whose job was reclaimed must not be able to overwrite its successor.
 #[tokio::test]
 async fn a_worker_without_the_lease_cannot_report() {
     let (state, _p) = stub_state().await;
@@ -449,8 +417,6 @@ async fn unknown_stage_or_status_is_rejected() {
     );
 }
 
-/// AC4.5's headline: the API keeps answering with no worker in sight, and the
-/// job simply waits. (The cluster-level version of this is e2e scenario 7.)
 #[tokio::test]
 async fn the_api_serves_and_the_queue_holds_while_no_worker_claims() {
     let (state, _p) = stub_state().await;

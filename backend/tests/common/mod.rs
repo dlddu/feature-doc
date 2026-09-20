@@ -16,14 +16,10 @@ use featuredoc::state::AppState;
 /// Distinguishes two calls that land inside the same clock tick.
 ///
 /// `SystemTime::now().as_nanos()` is *not* unique here: the wall clock advances in
-/// coarser steps than a nanosecond, so tests running in parallel repeatedly drew
-/// the same value and shared one database file — one of them then queried while
-/// the other was still migrating, which surfaced as an intermittent
-/// "no such table: users". The counter makes the path unique per process by
-/// construction instead of by luck.
+/// coarser steps than a nanosecond, so parallel tests drew the same value and shared
+/// one database file. The counter makes the path unique by construction, not by luck.
 static DB_SEQ: AtomicU64 = AtomicU64::new(0);
 
-/// The worker token every test state is built with (see `tests/worker.rs`).
 pub const WORKER_TOKEN: &str = "test-worker-token";
 
 pub fn temp_db_url() -> (String, PathBuf) {
@@ -42,8 +38,6 @@ pub async fn stub_state() -> (AppState, PathBuf) {
     state_with(Mode::Stub, "https://api.github.com").await
 }
 
-/// Real-mode state whose GitHub API base points wherever the caller says — a local
-/// stand-in server, in tests that exercise the real-mode branches.
 pub async fn real_state(api_base: &str) -> (AppState, PathBuf) {
     state_with(Mode::Real, api_base).await
 }
@@ -80,7 +74,6 @@ async fn state_with(mode: Mode, api_base: &str) -> (AppState, PathBuf) {
     )
 }
 
-/// Pulls a cookie value out of a `Set-Cookie` header string.
 pub fn cookie_value(set_cookie: &str, name: &str) -> Option<String> {
     let prefix = format!("{name}=");
     set_cookie

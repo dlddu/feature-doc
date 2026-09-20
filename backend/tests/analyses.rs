@@ -1,7 +1,3 @@
-//! Analysis enqueue surface (AC1.1): list accessible repos, pre-flight estimate,
-//! trigger an analysis (queued), and reject out-of-scope targets without queuing.
-//! Runs in stub mode, so the GitHub boundary is answered by in-process doubles.
-
 mod common;
 
 use axum::body::Body;
@@ -14,8 +10,6 @@ use featuredoc::github_api::GithubUser;
 use featuredoc::state::AppState;
 use featuredoc::{build_router, installations, session, users};
 
-/// A logged-in user whose (stub) App installation grants the stub repository set
-/// (stub-account/{payments-api,checkout-web,notif-worker}).
 async fn login_installed(state: &AppState) -> String {
     let gh = GithubUser {
         id: 1,
@@ -142,7 +136,6 @@ async fn trigger_enqueues_a_queued_analysis() {
     assert_eq!(body["repoName"], "payments-api");
     assert_eq!(body["branch"], "main");
 
-    // The queued job is visible on the home list.
     let resp = build_router(state)
         .oneshot(get("/api/analyses", &token))
         .await
@@ -169,7 +162,6 @@ async fn out_of_scope_target_is_rejected_and_nothing_queued() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
-    // Nothing was queued.
     let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM analyses")
         .fetch_one(&state.db)
         .await

@@ -26,68 +26,63 @@
 | `tools/check-mockup-render.py` · `tools/check-journey-mockup.py` · `tools/check-scenario-e2e.py` (`tools/` 체커 축 — 정적 게이트 3파일) | 112 | `8b41c689f8bb34951e205c72d855e4354a6f07fc9569e209ab481bcc1bc41ab7` | 순 제거 101행(형제 게이트 셋이 각자 한 벌씩 적은 SSOT·면제 통로 서술 14 · `data-sample`·`data-variant` 규약 전문 22 — 주석 스스로 `docs/mockups/README.md` 를 복원처로 지목하고 그 포인터의 절 제목마저 이미 낡아 있었다 · 인라인 규칙 마커 21(M0~M7 · R0~R11 · S0~S5 — 파일 머리 목록과 `fail()`·`print()` 문면의 세 번째 벌) · 절 제목 13 · 여정 밖 분기 설명의 다섯 벌 중 셋 7 · M7 블록 머리의 두 번째 벌 5 · 의존성 0·`--verbose` 사용법 5 · R6·R10 규칙 재진술 4 — diff 기준 152행 삭제 · 6행 재작성, 차이는 파이썬 docstring 51행이 지문에 안 보이기 때문) · 유지 112행 · 판단이 갈려 남긴 것 17건 · **파일 머리의 규칙 목록 M0~M7·R0~R11·S0~S5 는 원본이라 보존**(워크플로 셋이 「무엇을 검사하는지는 이 헤더에 있다」로 가리킨다 — 2026-09-18 판정이 `check-journey-prototype.js` 의 P1~P7 을 남긴 것과 같은 결정) · 기계 판독 `// 검증 시나리오:` 선언 1건(S1 항목) 보존 · **AST 동일 3/3** — [passes/2026-09-20-tools-checker-axis.md](passes/2026-09-20-tools-checker-axis.md) |
 | `backend/src/github_app.rs` · `backend/src/github.rs` · `backend/src/github_api.rs` · `backend/src/github_tokens.rs` · `backend/src/auth.rs` · `backend/src/session.rs` · `backend/src/cookies.rs` · `backend/src/installations.rs` · `backend/src/users.rs` · `backend/tests/github.rs` · `backend/tests/auth.rs` · `e2e/tests/sc04-01-app-install-and-scope.spec.ts` · `e2e/tests/sc04-11-unauthenticated-block-and-signin.spec.ts` · `e2e/tests/sc04-12-logout-session-invalidation.spec.ts` (GitHub App · 인증 경계 축 14파일) | 71 | `261ad97902dd63b0f049c13eed08d8c02118e7c2074b965ebeb7a99136967259` | 순 제거 152행(선언·시그니처만 영어로 풀어 쓴 `///` 요약 19건 · AC 꼬리표 `(AC4.1)`·`(AC4.3)`·`(AC4.7)`·`(AC4.8)` 전건 · 시나리오 원문 축자 인용과 본문 절 제목 (AC4.8 검증 방법의 복사) · 작업 흔적(분리 이력 · 정정 이력 · `rct_20260916-0002`) · **네 벌까지 복제된 명제 중 잉여** — Setup URL `installation_id` 스푸핑 4벌 · OAuth 토큰 보관 사유 3벌 · 미리보기 state 태깅 3벌 · adoption best-effort 2벌) · 유지 71행 · 판단이 갈려 남긴 것 2건 · **낡아서 거짓이 된 주석 2건 적발**(`github.rs` 의 「distinct users → distinct ids」 — 식은 `rem_euclid(90_000)` 이라 충돌한다 / `tests/auth.rs` 머리가 테스트 넷을 열거하는데 파일에는 여섯 개다) · 기계 판독 `// 검증 시나리오:` 3건 · `mock-exception:` 6건 보존 · **주석 제거 후 부모와 바이트 동일 14/14** — [passes/2026-09-20-github-app-auth-axis.md](passes/2026-09-20-github-app-auth-axis.md) |
 | `backend/tests/llmkey.rs` · `e2e/tests/sc04-13-unsupported-provider-rejection.spec.ts` · `e2e/tests/sc04-04-revoked-key-blocks-calls.spec.ts` · `e2e/tests/sc04-03-llm-key-registration.spec.ts` · `e2e/tests/sc04-05-credential-log-exposure.spec.ts` · `backend/tests/security.rs` · `backend/src/audit.rs` · `backend/tests/crypto.rs` (자격증명 · LLM 키 경계 축 8파일 — `backend/src/crypto.rs` 는 **D2 사람 게이트 풀**로 보류) | 42 | `96636e7917d30bcacf740813a2cafe519bba1d3638f2644f38f628029856a22a` | 순 제거 104행(단정·선언 재진술 — 주석 바로 아래 한두 줄이 그 문장 자체인 것 · 시그니처만 영어로 풀어 쓴 `///` 1건 · **테스트 이름을 다시 쓴 파일 머리 `//!` 3건** · 시나리오 원문 축자 인용 2건(시나리오 4·13) · **「자동화 밖 잔여」 4건 전건**(정본은 doc-tracker 「e2e 매핑」의 마지막 열이고 주석 스스로 그렇게 적는다) · AC 꼬리표 전건 · 작업 흔적(분리 이력 `rct_20260916-0002` 3벌 · 슬라이스 ⑦ 3건 · 목업 식별자 인용) · **4벌까지 복제된 명제 중 잉여** — 「App 연결이 선행돼야 한다」 4벌 중 3벌 제거하고 `sc04-03` 을 정본으로 · backdate 사유 2벌 중 뒤의 벌 압축 — diff 기준 125행 삭제 · 18행 재작성, 차이는 불변식·함정 주석을 지우지 않고 되풀이된 절반만 걷어 다시 썼기 때문) · 유지 42행 · 판단이 갈려 남긴 것 2건 · **낡아서 거짓이 된 주석 1건 적발**(`tests/crypto.rs` 머리가 테스트를 셋 열거하는데 파일에는 다섯이다 — `cargo test --test crypto` 5 passed 로 실측; 12차 패스의 `tests/auth.rs` 와 같은 유형의 두 번째 사례) · 기계 판독 `// 검증 시나리오:` 4건 보존(spec 당 정확히 1개) · `backend/tests/crypto.rs` 는 전건 제거로 주석 0행이 되어 지문의 파일 집합에서 빠졌다(8파일 판정 → 지문 `files=7`) · **주석 제거 후 부모와 바이트 동일 8/8** · **필수 status 판정기 `✅ 변경 없음`**(9파일 트리는 D2 로 `⚠️` 였다 — `crypto.rs` 13행은 판정만 마치고 잔여에 남긴다) · `cargo test` 16 passed · 문서 게이트 3종 rc=0 — [passes/2026-09-20-credential-llm-key-axis.md](passes/2026-09-20-credential-llm-key-axis.md) |
+| `backend/tests/worker.rs` · `backend/tests/common/mod.rs` · `backend/tests/analyses.rs` · `scripts/e2e.sh` · `e2e/tests/sc02-02-acceptance-from-tests.spec.ts` (테스트 하네스 축 5파일) | 20 | `8b8764df56b28c69c1419f82a0f65c23c0316815315a37e6b0e9d09af544fc9c` | 순 제거 68행(테스트 이름이 그대로 말하는 `///` 10 · 절 제목 7 · 인라인 단정 재진술 5 · 시그니처·이름 재진술 5 · **테스트 이름을 열거한 파일 머리 `//!` 2건 11행**(12·13차가 같은 유형의 낡은 주석을 둘 적발했다) · 시나리오 2 기대 결과 **축자 인용 2벌 4행**(`검증 시나리오:` 마커가 이미 가리킨다) · AC2.2 제목 축자 · `sc02-03` 교차 참조 · spec 11개 열거 · 슬라이스 번호 · **워커 임대 문단 4행 → 1행**(정본은 `e2e/support/cluster.ts`)) · 유지 20행 · 판단이 갈려 남긴 것 **0건** · 기계 판독 `// 검증 시나리오:` 1건 보존 · `backend/tests/analyses.rs` 는 전건 제거로 주석 0행이 되어 지문의 파일 집합에서 빠졌다(5파일 판정 → 지문 `files=4`) · **주석 제거 후 부모와 동일 5/5** · `cargo test --tests` 159 passed(3회 연속) · 문서 게이트 3종 rc=0 · **판정기 `✅ 변경 없음`** · **원장 정정: 후보 ① `tools/check-data-format-change.py` 는 D6 로, `deploy/k8s/pvc.yaml` 은 D5 로 경로 매칭돼 무인 머지 경로가 없다**(음성 대조 실측) — [passes/2026-09-20-test-harness-axis.md](passes/2026-09-20-test-harness-axis.md) |
 
-**합계**: 판정 **88파일**(지문의 파일 집합 기준으로는 86 — `format.ts` 와 `backend/tests/crypto.rs`
-가 전건 제거로 주석 0행이 되어 빠졌다) · 순 제거 누적 **1,824행**(직전 1,720 + 이 패스 104 — 전부
-새 범위이고 증분 재판정은 없다) · 판정 범위의 현재 합계 **2,029행**(판정 시점 트리 `4a4b593` +
-이 패스 실측). **판정 범위 안에 남은 미판정 증분은 없다** — 1~12행 전건을 `4a4b593` 에서 재계산해
-줄수·지문이 **12/12 바이트 동일**이다(587 / `6b77b15a…` · 140 / `ddacce0b…` · 142 / `93be69ea…` ·
-141 / `e38dcf20…` · 190 / `632b0475…` · 112 / `e2ff313a…` · 132 / `a0354a08…` · 140 / `d46c9262…` ·
-140 / `03babd78…` · 80 / `641e9457…` · 112 / `8b41c689…` · 71 / `261ad979…`). 12차 패스 이후 main 에
-끼어든 커밋이 없어 기준선이 움직이지 않았다.
+**합계**: 판정 **93파일**(지문의 파일 집합 기준으로는 90 — `format.ts` · `backend/tests/crypto.rs` ·
+`backend/tests/analyses.rs` 가 전건 제거로 주석 0행이 되어 빠졌다. **파일 수는 지문의 `files` 가 아니라
+행의 목록 길이로 센다**) · 순 제거 누적 **1,892행**(직전 1,824 + 이 패스 68 — 전부 새 범위이고 증분
+재판정은 없다) · 판정 범위의 현재 합계 **2,049행**(직전 2,029 + 이 패스 잔여 20). **판정 범위 안에 남은
+미판정 증분은 없다** — 13차 패스 이후 main 에 끼어든 커밋이 없어 1~13행의 기준선이 움직이지 않았다.
 
-**미판정 잔여**: **24파일 / 368행**
-(이 패스 병합 후 트리 기준 — 전역 `lines=2397 files=110`). 이 수치는 전역 지문의 파일 목록에서
-판정 88파일을 **집합으로 뺀** 값이다. 「행 없는 파일」만 세거나 전역에서 판정 합계를 빼는 방식은
-`format.ts`·`tests/crypto.rs` 처럼 주석이 0행이 되어 지문 파일 집합에서 빠진 판정 파일과 어긋난다
-— 집합 차로 계산하고, 두 방식이 같은 값을 주는지 대조한다(368 == 2,397 − 2,029).
+**미판정 잔여**: **19파일 / 280행**
+(이 패스 병합 후 트리 기준 — 전역 `lines=2329 files=109`). 전역 지문의 파일 목록에서 판정 93파일을
+**집합으로 뺀** 값이며, 뺄셈과도 일치한다(280 == 2,329 − 2,049).
 
-잔여는 **세 몫**으로 갈린다(8 + 4 + 12 = 24파일 · 139 + 44 + 185 = 368행). 앞의 둘은 **사람
-게이트**라 무인 슬라이스의 후보 풀이 아니다 — 이 구분을 원장이 갖지 않으면 다음 패스가 같은 벽에
-부딪힌다(13차 패스가 `crypto.rs` 로 그랬다).
+잔여는 **네 몫**으로 갈린다(8 + 4 + 2 + 5 = 19파일 · 139 + 44 + 59 + 38 = 280행). 앞의 **셋**은 **사람
+게이트**라 무인 슬라이스의 후보 풀이 아니다.
 
 - **`backend/migrations/*.sql` 8파일 / 139행** — 본문 「적용된 마이그레이션」 절의 전용 PR ·
-  수동 repair · 사람 승인 게이트를 거치는 **별도 패스**다. 다른 정리와 섞지 않는다. 이번
-  트리거로 움직이지 않았다. 12차 패스가 `0002_github_tokens.sql:3` 에서 「Setup URL 의
-  `installation_id` 는 스푸핑 가능」의 **4벌째**를 확인했으므로, 그 패스는 12차가 정한 정본
-  (`github_app.rs`)을 이어받으면 된다.
+  수동 repair · 사람 승인 게이트를 거치는 **별도 패스**다. 다른 정리와 섞지 않는다. 12차 패스가
+  `0002_github_tokens.sql:3` 에서 「Setup URL 의 `installation_id` 는 스푸핑 가능」의 **4벌째**를
+  확인했으므로, 그 패스는 12차가 정한 정본(`github_app.rs`)을 이어받으면 된다.
 - **D2 「저장 계층 핵심」 4파일 / 44행 — `backend/src/db.rs` 17 · `backend/src/crypto.rs` 13 ·
   `backend/tests/migrations.rs` 13 · `backend/src/models.rs` 1** (다섯 번째인
-  `backend/src/pipeline.rs` 는 범위 안 주석이 0행이라 잔여에 없다). **무인 슬라이스에서 영구
-  제외**다. `tools/check-data-format-change.py` 의 D2 규칙은 이 다섯의 **경로 소속만** 보므로
-  (D3 와 달리 「주석 아닌 줄」 예외가 없다) 주석 한 줄만 고쳐도 판정이 `needs_review=true` 가 되고,
-  워크플로 `data-format-review.yml` 이 commit status **`review/data-format` 을 붙이지 않는다**.
-  그 status 는 main 룰셋의 **필수 체크**(`ci-gate` 와 둘)라 없으면 `mergeable_state=blocked` 이
-  **해소되지 않는다** — 사람이 status 를 붙이거나 룰을 풀어야 머지된다. 그래서 마이그레이션 8파일과
-  **같은 성격의 사람 게이트 풀**이며, 셋 이상 모아 한 번의 사람 리뷰로 끝내는 것이 싸다.
-  `crypto.rs` 13행은 13차 패스가 **판정까지 마쳐 뒀다**(제거 6 · 유지 7 —
+  `backend/src/pipeline.rs` 는 범위 안 주석이 0행이라 잔여에 없다). `crypto.rs` 13행은 13차 패스가
+  **판정까지 마쳐 뒀다**(제거 6 · 유지 7 —
   [passes/2026-09-20-credential-llm-key-axis.md](passes/2026-09-20-credential-llm-key-axis.md)
   「보류분의 판정 결과」).
-- **자유 풀 12파일 / 185행** — 13차 패스가 「자격증명 · LLM 키 경계」 8파일 146행을 가져가
-  **자격증명 계층의 자동 정리 가능한 몫을 닫았다**(`llmkey.rs` 44 는 원장 1행이 이미 판정한
-  상태였다). 다만 11차 패스의 경고대로 **「닫았다」는 그 시점 트리에서만 참이다** — 열린 PR 이
-  `backend/src` 에 파일을 더하면 곧바로 거짓이 된다. **다음 축으로는 둘이 잡힌다**: 단일 파일
-  최대인 `tools/check-data-format-change.py` **58**(#64 가 들여놓았고 아직 아무도 안 봤다)과,
-  **테스트 하네스 축 3파일 58행** — `backend/tests/worker.rs` 35 · `backend/tests/common/mod.rs` 16 ·
-  `backend/tests/analyses.rs` 7. 하네스 축에서 `backend/tests/migrations.rs` 13 을 **뺀 값**임에
-  주의하라 — 그것이 D2 다섯 중 하나라, 섞으면 축 전체가 위의 벽에 막힌다. 그 다음은 `sc02-02` 23 ·
-  `deploy/k8s/kustomization.yaml` 15 · `util.rs` 12 · `scripts/e2e.sh` 7 · `error.rs` 5 ·
-  `main.rs` 5 · `state.rs` 1 · `deploy/k8s/pvc.yaml` 1.
+- **D6 · D5 경로 규칙 2파일 / 59행 — `tools/check-data-format-change.py` 58 ·
+  `deploy/k8s/pvc.yaml` 1. 14차 패스가 새로 가른 몫이다.** 직전 판은 이 둘을 자유 풀에 넣고
+  `check-data-format-change.py` 를 **다음 축 후보 ①로 지목**했으나, 그 파일은 판정기 자신의
+  **D6 「판정기 자신」**(`SELF_PATHS`)에, `pvc.yaml` 은 **D5** `is_pvc()` 에 **경로로** 걸린다.
+  D3 와 달리 이 규칙들에는 「주석 아닌 줄」 예외가 없어 **주석 한 줄만 고쳐도**
+  `needs_review=true` 가 되고 필수 체크 `review/data-format` 이 붙지 않는다 — D2 와 같은 벽이다.
+  14차 패스가 음성 대조로 실측했다(둘 다 `⚠️ 사람 리뷰 필요`, 같은 트리의 5파일은 `✅ 변경 없음`).
+  **그러므로 무인 자유 풀은 직전 판이 적은 185행이 아니라 126행이었다.**
+- **자유 풀 5파일 / 38행** — 14차 패스가 테스트 하네스 축 5파일 88행을 가져갔고, 위 정정으로 59행이
+  사람 게이트로 옮겨 갔다. 남은 것은 `deploy/k8s/kustomization.yaml` **15** ·
+  `backend/src/util.rs` **12** · `backend/src/main.rs` **5** · `backend/src/error.rs` **5** ·
+  `backend/src/state.rs` **1**. `kustomization.yaml` 이 자유 풀에 남는 것은 비-pvc `deploy/**/*.yaml`
+  의 D5 가 **줄 단위**이고 그 코드가 `if not text.strip().startswith("#")` 로 주석 줄을 먼저 거르기
+  때문이고, `backend/src` 넷은 D3 가 줄 단위이고 `is_comment_only()` 가 `//` 를 거르기 때문이다 —
+  **다만 집기 전에 판정기를 직접 돌려 확인할 것**(아래).
 
-**경합 0 · 열린 PR 3건** (2026-09-20T14:2xZ `/pulls?state=open` 전수 실측 — #91 반응형
-레이아웃 · #92 슬라이스 6a LLM 보조 문서 수정 · #93 OpenAI strict 스키마 fix). 셋 다 base 가 `f5a2937`
-이고 이 패스의 base 는 `4a4b593` 이지만, **판정 9파일과 파일 겹침은 0** 이다(각 PR 의
-`/pulls/<n>/files` 전수 대조 — #92 가 `backend/tests/migrations.rs` 를 건드리나 그것은 잔여
-D2 풀이고 이 범위 밖이다). 셋 다 in-scope 주석 파일을 건드리므로 **먼저 머지되면 전역 지문의
-절대값은 움직인다**(#92 는 주석을 가진 새 파일을 여럿 더한다) — 그래서 이 패스의 완료 기준도
-절대 지문이 아니라 **「부모 대비 순 제거 104행」**이고, 위 13행의 범위 지문은 이 8파일만의
-값이라 자매 머지에 무관하다.
+**슬라이스 전 필수 절차 — 판정기를 돌린다.** 원장이 다음 축을 파일·행수까지 지목해도, 집기 전에
+후보 트리에서 `python3 tools/check-data-format-change.py --base <main tip> --head <probe> --verbose`
+를 돌려 **`✅ 변경 없음`** 을 확인한다. 경로 규칙은 D2 하나가 아니다(D1 · D2 · D5-pvc · D6) —
+「D2 목록에 없다」는 충분한 근거가 아니고, 판정기 출력만이 충분하다. 14차 패스가 원장의 후보 ①에서
+이것으로 벽을 미리 찾아냈다.
 
-그래서 **`backend/src` 는 닫히지 않았다.** 13차 패스가 `audit.rs` 를 치웠지만 `db.rs` 17 ·
-`crypto.rs` 13 · `util.rs` 12 · `main.rs` 5 · `error.rs` 5 · `state.rs` 1 · `models.rs` 1 이 남아
-있고(앞의 둘과 `models.rs` 는 D2 사람 게이트), 열린 PR #92·#93 이 이 디렉터리에 파일과 주석을
-더하는 중이다. **디렉터리 단위 종료를 선언하지 않는다** — 11차 패스가 `tools/` 에서 배운
-그대로다.
+**경합 0 · 열린 PR 3건** (2026-09-20T15:3xZ `/pulls?state=open` 전수 실측 — #91 반응형 레이아웃 ·
+#92 슬라이스 6a · #93 OpenAI strict fix, 셋 다 base `f5a2937`). 각 PR 의 `/pulls/<n>/files` 를
+판정 5파일과 대조해 **겹침 0**. 셋 다 in-scope 주석 파일을 건드리므로 **먼저 머지되면 전역 지문의
+절대값은 움직인다** — 그래서 이 패스의 완료 기준도 절대 지문이 아니라 **「부모 대비 순 제거 68행」**
+이고, 위 14행의 범위 지문은 이 5파일만의 값이라 자매 머지에 무관하다.
+
+그래서 **`backend/tests` 도 `backend/src` 도 닫히지 않았다.** `backend/tests` 에는
+`migrations.rs`(D2)가 남고, `backend/src` 에는 `db.rs`·`crypto.rs`·`models.rs`(D2)와 `util.rs`·
+`main.rs`·`error.rs`·`state.rs` 가 남아 있으며, 열린 PR #92·#93 이 이 디렉터리에 파일과 주석을
+더하는 중이다. **디렉터리 단위 종료를 선언하지 않는다** — 11차 패스가 `tools/` 에서 배운 그대로다.
 
 > **①의 경합 분류는 이 패스를 준비하는 동안 무효가 됐다 — 다음 감지가 다시 나눈다.** 직전 판까지
 > 잔여를 가르던 기준은 「열린 draft PR #43·#49 가 건드리는 46파일 / 1,440행」이었는데, **#49는
