@@ -24,6 +24,7 @@ test('AC4.2: 잘못된 키 거부 → 등록 → 교체 → 등록된 키가 분
   await page.goto('/api/auth/login?as=ac42');
 
   // 키가 실제로 쓰일 수 있는지 확인하려면 App 연결이 선행돼야 한다(AC4.1의 화면을 경유만 한다).
+  // 설치가 서면 권한 부여 화면이 스스로 키 등록 화면으로 넘긴다.
   await page.getByTestId('connect-app').click();
   await expect(page.getByTestId('connection')).toBeVisible();
 
@@ -46,11 +47,13 @@ test('AC4.2: 잘못된 키 거부 → 등록 → 교체 → 등록된 키가 분
   await page.getByTestId('register-key').click();
   await expect(page.getByTestId('active-key')).toContainText('openai');
 
-  // 시나리오의 임의 분석 트리거: 준비됐음을 확인하고 진행한다.
-  const cont = page.getByTestId('continue');
-  await expect(cont).toBeEnabled();
-  await cont.click();
-  await expect(page.getByTestId('ready')).toBeVisible();
+  // 시나리오의 임의 분석 트리거: 준비됐음을 확인하고 진행한다. 입력이 빈 채로 누른
+  // `저장하고 계속`(목업의 `btn-savekey`)이 pre-flight 를 거쳐 Home 으로 넘긴다 —
+  // 슬라이스 ⑦ 이전의 별도 `continue` 버튼이 하던 일이다.
+  const save = page.getByTestId('register-key');
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(page.getByTestId('repo-card').first()).toBeVisible();
 
   // 등록된 키가 분석 호출의 위임 대상이 됨 — pre-flight가 교체된 제공자를 가리킨다.
   const delegated = await page.request.get('/api/llm-keys/preflight');

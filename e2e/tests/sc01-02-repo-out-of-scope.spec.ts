@@ -23,11 +23,9 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
   await page.getByTestId('register-key').click();
   await expect(page.getByTestId('active-key')).toBeVisible();
 
-  // Continue confirms readiness, then carries the user into Home.
-  const cont = page.getByTestId('continue');
-  await cont.click();
-  await expect(page.getByTestId('ready')).toBeVisible();
-  await cont.click();
+  // 같은 버튼(목업의 `저장하고 계속`)이, 입력이 빈 채로 눌리면 pre-flight 로 준비를
+  // 확인하고 Home 으로 넘긴다.
+  await page.getByTestId('register-key').click();
 
   const cards = page.getByTestId('repo-card');
   await expect(cards).toHaveCount(3);

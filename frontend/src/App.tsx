@@ -1,5 +1,13 @@
 // Screen routing for the journey the docs describe (user-journey flow 1 → 2):
-// Credentials → Repositories (list + connect form, one screen) → Analysis.
+// 권한 부여 → 키 등록 → Repositories (list + connect form, one screen) → Analysis.
+//
+// The first two are the mockup's two steps (`STP-grant-repo-access`,
+// `STP-register-llm-key`), split apart from one `CredentialsSetup` screen by
+// 수렴 슬라이스 ⑦. Grant hands off by itself the moment the installation exists —
+// the mockup goes straight from GitHub's consent page to 키 등록 — so the only way
+// back to it is the key screen's appbar `‹`, which is also the way to change what
+// GitHub may read. Going back that way suppresses the hand-off, or the two screens
+// would bounce.
 //
 // Still a state machine rather than a router dependency, with one addition: Analysis Progress is
 // *addressable* (`#/analyses/<id>`). AC1.5 requires that closing the app and coming
@@ -15,10 +23,11 @@ import { DiscoveryStrategy } from './DiscoveryStrategy';
 import { FeatureAcceptance } from './FeatureAcceptance';
 import { FeatureCandidates } from './FeatureCandidates';
 import { FeatureDependencies } from './FeatureDependencies';
-import { CredentialsSetup } from './CredentialsSetup';
+import { GrantRepoAccess } from './GrantRepoAccess';
 import { HomeRepositories } from './HomeRepositories';
+import { RegisterLlmKey } from './RegisterLlmKey';
 
-type Screen = 'credentials' | 'home';
+type Screen = 'grant' | 'key' | 'home';
 
 /** Which analysis screen a hash addresses, if any. */
 export type AnalysisRoute = {
@@ -70,7 +79,10 @@ export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
 }
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>('credentials');
+  const [screen, setScreen] = useState<Screen>('grant');
+  // Cleared when the user walks *back* into 권한 부여, so that screen stays put
+  // instead of handing off to 키 등록 again.
+  const [handOff, setHandOff] = useState(true);
   // Bumped after a run is queued so the home list refetches the new job.
   const [homeEpoch, setHomeEpoch] = useState(0);
   const [route, setRoute] = useState<AnalysisRoute | null>(() =>
@@ -88,10 +100,22 @@ export function App() {
     setScreen('home');
   }
 
+  /** Home → 자격증명. Lands on 키 등록 when the installation already exists. */
+  function openCredentials() {
+    setHandOff(true);
+    setScreen('grant');
+  }
+
+  /** 키 등록 → 권한 부여 (appbar `‹`), i.e. "change what GitHub may read". */
+  function backToGrant() {
+    setHandOff(false);
+    setScreen('grant');
+  }
+
   /**
-   * After logout the app returns to Credentials Setup, which re-reads `/api/me` on
-   * mount and, finding no user, hands off to the Sign In screen (`SignIn.tsx`) —
-   * the mockup's `data-goto="STP-sign-in"` destination. The hash is cleared first:
+   * After logout the app returns to 권한 부여, which re-reads `/api/me` on mount
+   * and, finding no user, hands off to the Sign In screen (`SignIn.tsx`) — the
+   * mockup's `data-goto="STP-sign-in"` destination. The hash is cleared first:
    * an analysis route left behind would otherwise re-render a signed-in screen over
    * the entry one.
    */
@@ -99,7 +123,8 @@ export function App() {
     window.location.hash = '';
     setRoute(null);
     setHomeEpoch((n) => n + 1);
-    setScreen('credentials');
+    setHandOff(true);
+    setScreen('grant');
   }
 
   /** Leaving Analysis Progress clears the hash, which is what re-renders the home screen. */
@@ -239,12 +264,21 @@ export function App() {
     return (
       <HomeRepositories
         key={homeEpoch}
-        onOpenCredentials={() => setScreen('credentials')}
+        onOpenCredentials={openCredentials}
         onOpenAnalysis={openAnalysis}
         onLoggedOut={afterLogout}
         onAnalysisQueued={backToHome}
       />
     );
   }
-  return <CredentialsSetup onReady={() => setScreen('home')} />;
+  if (screen === 'key') {
+    return <RegisterLlmKey onBack={backToGrant} onReady={() => setScreen('home')} />;
+  }
+  return (
+    <GrantRepoAccess
+      onInstalled={() => {
+        if (handOff) setScreen('key');
+      }}
+    />
+  );
 }
