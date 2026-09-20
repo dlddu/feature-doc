@@ -28,10 +28,6 @@ SSOT 방향:
   R10 보조 레이어 — 문서 메타가 기본 닫힌 <details> 안에만 있다 (규칙 5b)
   R11 허브 단계 주석 — 허브가 실재하는 단계 화면 옆에서 그 반대를 주장하지 않는다
 
-규칙 5 의 (c)(d)(e) 는 정적 대조로 확인할 수 없다 — 파일을 읽어 속성만 세면
-배선이 끊긴 버튼과 살아 있는 버튼이 구분되지 않는다. 그쪽은 DOM 하네스
-tools/check-journey-prototype.js 가 같은 CI 게이트에서 집행한다.
-
 화면 본문을 원본과 바이트 동일하게 고정하는 검사(구 R6 의 data-sha256)는
 쓰지 않는다. 지문으로 화면을 못 박으면 실제 입력 요소와 상태 변형을 넣을 길이
 구조적으로 막힌다 — 여정 페이지의 화면은 복제해 온 스냅샷이 아니라 그 자체가 원본이다.
@@ -93,7 +89,6 @@ def table_rows(block):
     return rows[1:] if rows else []  # 헤더 제외
 
 
-# ── 1. 여정 문서 파싱 (SSOT) ──────────────────────────────────────
 def parse_journeys():
     out = {}
     for p in sorted(UJ.glob("JRN-*.md")):
@@ -129,7 +124,6 @@ def parse_journeys():
     return out
 
 
-# ── 2. 목업 페이지 파싱 ───────────────────────────────────────────
 def parse_pages():
     out = {}
     for p in sorted(MK.glob("*.html")):
@@ -144,8 +138,6 @@ def parse_pages():
         if bodytag is None:
             fail("R2", "`%s` 에 <body> 태그가 없다" % p.name)
         sections = re.findall(r'<section [^>]*\bid="([^"]+)"[^>]*>', s)
-        # 여정 밖 분기(handoff) 선언과 그 섹션 본문. 갈래가 다른 여정의 단계로
-        # 이어질 때, 그 끝 블록이 대상을 선언한다 — 선언은 한 곳에만 둔다.
         handoffs = {}
         section_html = {}
         for sm in re.finditer(r'<section\b([^>]*)>(.*?)</section>', s, re.S):
@@ -168,8 +160,6 @@ def parse_pages():
 JOURNEYS = parse_journeys()
 PAGES = parse_pages()
 
-# 어떤 단계가 어느 여정의 것인가 — 여정 문서에서 파생한다. §4 의 「이어지는 단계」가
-# 이 인덱스에서 다른 여정으로 나오면 그 갈래는 여정 밖 분기(handoff)다.
 STEP_OWNER = {}
 for _jid, _jr in JOURNEYS.items():
     for _sid in _jr["step_ids"]:
@@ -178,10 +168,8 @@ README = read(MK / "README.md")
 HUB = read(DOCS / "index.html")
 TRACKER = read(sorted((DOCS / "doc-tracker").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9].md"))[-1])
 
-# ── R0 · README 기계 판독 구간 ────────────────────────────────────
 jmap_block = marked(README, "jmap")
 
-# ── 예외 등재 (규칙 8) — SSOT 는 doc-tracker 「수용된 위험」 ──────
 accepted = TRACKER[TRACKER.index("## 수용된 위험"):TRACKER.index("\n## ", TRACKER.index("## 수용된 위험") + 1)] if "## 수용된 위험" in TRACKER else ""
 exempt_journeys = set()
 for cells in table_rows(accepted):
@@ -190,7 +178,6 @@ for cells in table_rows(accepted):
         if g:
             exempt_journeys.add(g.group(1))
 
-# ── R1 · 여정 → 목업 페이지 ──────────────────────────────────────
 declared = {}
 declared_page = {}
 if jmap_block:
@@ -245,7 +232,6 @@ for jid in sorted(owners):
     elif len(owners[jid]) > 1:
         fail("R1", "`%s` 를 선언한 목업 페이지가 %d개다 (%s) — 여정당 1개여야 한다" % (jid, len(owners[jid]), owners[jid]))
 
-# ── R7 · 이관 래칫 ───────────────────────────────────────────────
 # 화면 단위 목업(`sNN-*.html`)과 그 이관 대기 원장은 2026-09-03 화면 ID 폐지로
 # 함께 사라졌다. 화면은 더 이상 이름을 가진 단위가 아니라 여정 단계 안의 자리이므로,
 # 목업 페이지는 전부 여정 페이지여야 한다. 남은 래칫은 이관 대기 상한 하나다.
@@ -262,7 +248,6 @@ waiting = [j for j, st in declared.items() if "이관 대기" in st]
 if wait_cap_n is not None and len(waiting) > wait_cap_n:
     fail("R7", "이관 대기 여정 %d개가 상한 %d을 넘는다" % (len(waiting), wait_cap_n))
 
-# ── R2 · 목업 페이지 → 여정 ──────────────────────────────────────
 for name, pg in sorted(PAGES.items()):
     n = len(pg["journeys"])
     if n == 1:
@@ -272,7 +257,6 @@ for name, pg in sorted(PAGES.items()):
     else:
         fail("R2", "`%s` 이 data-journey 를 %d개 선언한다 — 정확히 1개여야 한다 (%s)" % (name, n, pg["journeys"]))
 
-# ── R3~R6 · 여정 페이지 내부 ─────────────────────────────────────
 for name in journey_files:
     pg = PAGES[name]
     if len(pg["journeys"]) != 1:
@@ -282,7 +266,6 @@ for name in journey_files:
     if jr is None:
         continue  # R1 이 이미 보고
 
-    # R3 단계 집합 양방향 일치
     page_steps = pg["steps"]
     if len(page_steps) != len(set(page_steps)):
         fail("R3", "`%s` 에 중복된 data-step 이 있다: %s" % (name, page_steps))
@@ -304,9 +287,6 @@ for name in journey_files:
     page_branches = []
     for m in re.finditer(r'<li><span class="sit">(.*?)</span>.*?<button [^>]*data-goto="([^"]+)"', pg["text"], re.S):
         goto = m.group(2)
-        # 여정 밖 분기는 이 여정의 끝(END-*)으로 가고, 그 끝 블록이 대상 여정·단계를
-        # 선언한다. 실효 대상은 그 선언에서 읽는다 — 페이지가 다른 여정의 단계 id 를
-        # 직접 data-goto 로 쓰면 갈 곳이 없어 R5 가 잡는다.
         decl = pg["handoffs"].get(goto)
         if decl and "#" in decl:
             goto = decl.split("#", 1)[1]
@@ -319,7 +299,6 @@ for name in journey_files:
         if want != got:
             fail("R4", "`%s` 의 분기 %d번이 여정 문서 §4 와 다르다: 문서 %s / 페이지 %s" % (name, i + 1, want, got))
 
-    # R5 앵커 무결성
     ids = set(pg["sections"])
     dangling = sorted(t for t in pg["gotos"] if t not in ids)
     if dangling:
@@ -354,8 +333,6 @@ for name in journey_files:
             fail("R5", "`%s` 의 `%s` 가 `%s` 에 없는 단계 `%s` 로 넘긴다 "
                        "(그 여정 문서의 단계: %s)" % (name, sec_id, tj, tstep, JOURNEYS[tj]["step_ids"]))
             continue
-        # 넘기는 자리는 실제로 눌러 갈 수 있어야 한다. 대상 여정에 페이지가 있으면
-        # 그 단계 앵커로, 아직 없으면 여정 문서를 reader 로 연다(.md 직결은 R8 금지).
         target_pages = owners.get(tj, [])
         want = ("./%s#%s" % (target_pages[0], tstep) if target_pages
                 else "../reader.html?doc=user-journey/%s.md" % tj)
@@ -364,14 +341,10 @@ for name in journey_files:
                        "(대상 여정에 페이지가 %s)" % (name, sec_id, want,
                                                     "있다" if target_pages else "아직 없다"))
 
-    # R6 원본성 — 금지된 기법이 되살아나지 않았는지 — 화면을 원본과 바이트 동일하게 못 박는 방식은
-    # 실제 입력 요소·상태 변형을 넣을 길을 구조적으로 막는다(모델 규칙 5).
     if re.search(r"\bdata-sha256=", pg["text"]) or "<!--embed:" in pg["text"]:
         fail("R6", "`%s` 에 바이트 동일 임베드 흔적(data-sha256 / <!--embed:)이 있다 — "
                    "여정 페이지의 화면은 복제본이 아니라 그 자체가 원본이어야 한다" % name)
 
-    # R10 보조 레이어 — 문서 메타(단계 번호·식별자·터치포인트·연결 AC)는 제품 화면과
-    # 같은 평면에 상시 노출되지 않아야 한다(규칙 5b). 기본으로 접힌 <details> 안에만 둔다.
     layers = re.findall(r'<details\b[^>]*\bdata-meta="doc"[^>]*>', pg["text"])
     if len(layers) != 1:
         fail("R10", "`%s` 에 문서 메타 보조 레이어 <details data-meta=\"doc\"> 가 %d개다 — 1개여야 한다"
@@ -392,7 +365,6 @@ for name in journey_files:
             fail("R10", "`%s` 의 제품 화면 평면에 문서 메타가 노출돼 있다: %s (규칙 5b — 보조 레이어로 옮길 것)"
                  % (name, leaked))
 
-# ── R8 · docs/ 상대 링크 무결성 ──────────────────────────────────
 def strip_code(md):
     md = re.sub(r"```.*?```", "", md, flags=re.S)
     return re.sub(r"`[^`]*`", "", md)
@@ -445,7 +417,6 @@ for p in sorted(DOCS.rglob("*")):
 
 notes.append("docs/ 상대 링크 %d건 확인" % link_count)
 
-# ── R9 · 집계 일치 ───────────────────────────────────────────────
 n_j = len(JOURNEYS)
 n_ex = len(exempt_journeys & set(JOURNEYS))
 n_target = n_j - n_ex
@@ -462,7 +433,6 @@ else:
     if got != want:
         fail("R9", "README 집계 선언 %s 이 실측 %s 과 다르다 (여정 · 예외 · 판정 대상 · 이관 완료 · 이관 대기)" % (got, want))
 
-# 이관 완료 여정의 단계 표가 문서와 같은가
 for jid in sorted(declared):
     if "이관 완료" not in declared.get(jid, ""):
         continue
@@ -480,7 +450,6 @@ for jid in sorted(declared):
             fail("R9", "README 의 `%s` 단계 표 순서/식별자가 문서와 다르다: %r vs %s" % (jid, row[1], st["id"]))
             continue
 
-# 허브 요약 수치
 def hub_summary(label):
     m = re.search(r'<span class="summary-value">(\d+)</span>\s*<span class="meta-label">%s</span>' % re.escape(label), HUB)
     return int(m.group(1)) if m else None
@@ -516,7 +485,6 @@ else:
     if got != want:
         fail("R9", "doc-tracker 목업 집계 %s 이 실측 %s 과 다르다 (총 · 여정 페이지)" % (got, want))
 
-# ── R11 · 허브 단계 주석 ─────────────────────────────────────────
 # 허브가 단계 링크 옆에 다는 곁텍스트는 그 단계의 시각화 상태를 독자에게 주장한다.
 # R8 은 앵커가 실재하는지만 보고 R9 는 숫자만 대조하므로, 살아 있는 화면으로 들어가는
 # 링크 옆에 「시각화 없음」이 남아 있어도 둘 다 초록이었다 — 규칙 7(허브 동기화)이
@@ -543,7 +511,6 @@ for li in re.findall(r"<li>(.*?)</li>", HUB, re.S):
 
 notes.append("허브 단계 링크 %d건 주석 대조" % annotated)
 
-# ── 보고 ─────────────────────────────────────────────────────────
 print("여정 %d (예외 %d · 이관 완료 %d · 이관 대기 %d) · 목업 페이지 %d · 문서 %d"
       % (n_j, n_ex, n_done, n_wait, len(PAGES), n_docs))
 for n in notes:

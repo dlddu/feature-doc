@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 # 목업 ↔ 구현 렌더링 정합성 게이트 (reconciler `tbm_feature-doc-mockup-render`).
 #
-# 시각의 단일 소스(SSOT)는 `docs/mockups/` 다. 이 스크립트는 "구현 화면이 대응 목업과
-# 어긋나는가"를 기계로 판정한다. 판정 결과가 붉으면 두 길 중 하나로만 닫는다 —
-# **구현을 목업에 맞추거나**, `docs/doc-tracker.md` 의 원장에 **사유·해소 시점과 함께
-# 등재하거나**. 원장이 유일한 면제 통로이며, 스크립트는 원장 자체의 무결성도 검사한다.
-#
-# 의존성 0 (python3 stdlib). 형제 게이트 `check-journey-mockup.py` 와 같은 방침이다.
-#
 # ── 규칙 ──────────────────────────────────────────────────────────────────
 #  M0 파싱 무결성   문서의 세 표(활성 대조 · 대조 보류 · 편차 원장)가 파싱되고,
 #                   활성 대조 대상이 1건 이상이다.
@@ -39,10 +32,9 @@
 #    사각지대에 정확히 들어앉기 때문이다 — 슬롯이 통째로 빠져도 카피는 한 글자도 줄지
 #    않아 M3 가 영원히 초록이다(2026-09-18, 우측 자리표시자 부재 3건이 그렇게 숨어 있었다).
 #  * 실행 스크린샷 픽셀 비교는 모델 정의상 범위 밖이다.
-#  * 구현측 카피 추출(M3B)은 **JSX 텍스트 노드 · 한글 포함 문자열 리터럴 ·
-#    JSX children 위치의 문자열 리터럴**만 본다. 모듈 상수 테이블에 영문으로만 적힌
-#    라벨(예: `STATUS_BADGE` 의 `Queued`)은 잡지 못한다 — 그런 라벨을 가진 화면은
-#    「대조 보류」에 있어야 하고, 보류 상한이 그 사실을 붙잡아 둔다.
+#  * 구현측 카피 추출(M3B)은 모듈 상수 테이블에 영문으로만 적힌 라벨(예: `STATUS_BADGE`
+#    의 `Queued`)을 잡지 못한다 — 그런 라벨을 가진 화면은 「대조 보류」에 있어야 하고,
+#    보류 상한이 그 사실을 붙잡아 둔다.
 #    반대 방향의 새는 곳도 하나 막혀 있다 — 인라인 스타일의 **CSS 길이 값**
 #    (`letterSpacing: '0.1em'`)은 `=` 앞이 아니라 `:` 앞이라 속성 값 필터에 걸리지
 #    않고 카피로 새어 들었다. 길이 리터럴은 제품 카피일 수 없으므로 TECHNICAL 이
@@ -54,7 +46,6 @@
 #    `aria-label` 을 뽑아 대조 집합에 넣는다. 이것은 규칙 5 의 사각지대를 닫는 것이
 #    **아니다** — M3A 의 건초더미는 화면 전체를 이어 붙인 부분 문자열 검색이라
 #    (`앱 닫고 나가기` 가 `나가기` 를 덮는다) 여전히 관대한 쪽으로 튄다.
-#  추출 결과는 `--verbose` 로 전부 출력된다. 무엇이 비교됐는지 눈으로 확인할 것.
 
 import html
 import re
@@ -90,12 +81,8 @@ def note(message: str) -> None:
         print(f"    · {message}")
 
 
-# ── 마크다운 표 파싱 ────────────────────────────────────────────────────────
 def table_after(doc: str, heading: str) -> list[list[str]]:
-    """heading 다음에 처음 나오는 파이프 표의 본문 행(구분선 아래)을 돌려준다.
-
-    표 헤더를 키워드로 거르지 않는다 — 구분선(`|---|`) 기준이 유일하게 안전하다.
-    """
+    """표 헤더를 키워드로 거르지 않는다 — 구분선(`|---|`) 기준이 유일하게 안전하다."""
     start = doc.find(heading)
     if start < 0:
         return []
@@ -119,7 +106,6 @@ def table_after(doc: str, heading: str) -> list[list[str]]:
 
 
 def is_reference(token: str) -> bool:
-    """식별자·파일 경로는 카피가 아니라 참조다 — 문자열 대조 대상에서 뺀다."""
     return token.startswith("STP-") or token.endswith((".tsx", ".html", ".md")) or "/" in token
 
 
@@ -128,24 +114,13 @@ def ticked(cell: str) -> list[str]:
     return [norm(html.unescape(t)) for t in re.findall(r"`([^`]+)`", cell)]
 
 
-# ── 목업 파싱 ───────────────────────────────────────────────────────────────
-# ── 예시값 표기 규약 (`data-sample`) ────────────────────────────────────────
-# 목업이 그리는 문자열 중에는 **그 자리에 실제 데이터가 렌더된다**는 뜻일 뿐인 것이 있다
-# (분석 결과 항목명, 근거 파일 경로 …). 구현은 같은 자리에 서버가 준 값을 그리므로 리터럴
-# 카피 대조가 성립하지 않는다. 그런 값을 담은 **잎 요소**에 `data-sample` 을 붙이면 카피
-# 대조에서 빠진다. 규약 전문은 docs/mockups/README.md 「예시값 표기 규약」.
-#
-# 잎에만 붙이는 이유: 값을 감싼 행 전체에 붙이면 같은 행의 제품 카피(예: `근거 없음` 태그)
-# 까지 함께 사라진다. 숨김은 최소 범위여야 한다.
 SAMPLE_OPEN = re.compile(r"<(\w+)(?=[^>]*\bdata-sample\b)([^>]*)>")
 
-# 예시값으로 위장해 대조를 빠져나갈 수 없게 한다 — 상호작용하는 것은 제품 카피다.
 INTERACTIVE_ATTR = re.compile(r"\b(data-goto|data-goto-journey|data-cta|id|href|onclick)\b")
 INTERACTIVE_TAG = {"a", "button"}
 
 
 def drop_samples(body: str) -> str:
-    """`data-sample` 이 붙은 요소를 내용째 걷어 낸다(같은 태그명 중첩을 세어 짝을 찾는다)."""
     while True:
         m = SAMPLE_OPEN.search(body)
         if not m:
@@ -163,7 +138,6 @@ def drop_samples(body: str) -> str:
 
 
 def sample_misuse() -> list[str]:
-    """규약 위반을 사람 리뷰가 아니라 게이트가 잡는다."""
     bad = []
     for path in sorted(MOCKUP_DIR.glob("*.html")):
         src = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.S)
@@ -179,29 +153,13 @@ def sample_misuse() -> list[str]:
     return bad
 
 
-# ── 제공자 변이 표기 규약 (`data-variant`) ──────────────────────────────────
-# 목업이 그리는 자리 중에는 **사용자의 선택에 따라 문면이 갈리는** 것이 있다(LLM 제공자를
-# 고르면 키 형식 안내와 입력 예시가 함께 갈린다). 정적 HTML 은 그런 자리에 첫 변이 한 벌만
-# 그릴 수 있고, 구현은 선택을 따라 보간해 그린다 — 그래서 리터럴 대조가 **한 방향으로만**
-# 성립한다. `data-variant="<축>"` 으로 묶인 요소는 그 비대칭을 그대로 표기한다:
-#
-#   * M3A(목업→구현) 에서 **빠진다** — 구현은 한 번에 한 변이만 그리므로 모든 변이가
-#     구현에 실재하기를 요구하면 영원히 붉다.
-#   * M3B(구현→목업) 의 건초더미에는 **남는다** — 목업이 열거한 변이 **밖**의 문면을
-#     구현이 그리면 그것은 여전히 편차다. 열거가 곧 허용 집합이다.
-#
-# 그래서 이 표기는 면제가 아니라 **열거 의무**다. `data-sample` 과 다른 점이 여기다 —
-# 예시값은 양방향에서 빠지지만(구현도 리터럴을 갖지 않는다), 변이는 구현이 그중 하나를
-# 리터럴로 갖는다. 규약 전문은 docs/mockups/README.md 「제공자 변이 표기 규약」.
 VARIANT_OPEN = re.compile(r"<(\w+)(?=[^>]*\bdata-variant=)([^>]*)>")
 VARIANT_KEY = re.compile(r'\bdata-variant="([^"]*)"')
 VOID_TAGS = {"input", "img", "br", "hr", "meta", "source", "area", "col", "embed"}
-# 전진 행동은 변이로 감출 수 없다 — 무엇을 눌러 다음 단계로 가는지는 선택과 무관한 제품 카피다.
 VARIANT_FORBIDDEN = re.compile(r"\b(data-goto|data-goto-journey|data-cta)\b")
 
 
 def split_variants(body: str) -> tuple[str, str]:
-    """`data-variant` 요소를 M3A 판정 대상에서 떼어 내고 따로 모아 돌려준다."""
     kept: list[str] = []
     taken: list[str] = []
     pos = 0
@@ -230,7 +188,6 @@ def split_variants(body: str) -> tuple[str, str]:
 
 
 def variant_misuse() -> list[str]:
-    """열거 의무를 게이트가 지킨다 — 변이가 하나뿐이면 그것은 열거가 아니라 은닉이다."""
     bad = []
     for path in sorted(MOCKUP_DIR.glob("*.html")):
         src = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.S)
@@ -256,12 +213,7 @@ def variant_misuse() -> list[str]:
 
 
 def mockup_steps(path: Path) -> dict[str, dict[str, list[str]]]:
-    """`data-step` 섹션별 가시 텍스트(+ placeholder).
-
-    단계마다 두 벌을 돌려준다 — `judged` 는 M3A 가 「구현에 실재해야 한다」고 요구하는
-    카피이고, `pool` 은 M3B 가 「구현이 그려도 되는 것」으로 인정하는 건초더미다. 변이
-    (`data-variant`)는 뒤쪽에만 들어간다.
-    """
+    """`data-step` 섹션별 가시 텍스트(+ placeholder·aria-label)."""
     src = path.read_text(encoding="utf-8")
     steps: dict[str, list[str]] = {}
     for part in re.split(r'(?=<section id=")', src):
@@ -287,7 +239,6 @@ def mockup_steps(path: Path) -> dict[str, dict[str, list[str]]]:
 
 
 def all_mockup_text() -> str:
-    """공전 행 검사용 — 모든 목업 파일의 원문(주석 제외)을 이어 붙인 건초더미."""
     parts = []
     for path in sorted(MOCKUP_DIR.glob("*.html")):
         src = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.S)
@@ -301,11 +252,6 @@ UNIT_ONLY = re.compile(r"(?i)(min|mins|sec|secs|hr|hrs|mb|kb|gb|b)")
 
 
 def is_copy(chunk: str) -> bool:
-    """샘플 수치·기호를 걸러 내고 '제품 카피'만 남긴다.
-
-    `847 · 2.3 MB` · `~6 min` · `~$0.80` 같은 예시 값은 카피가 아니다 — 구현은 실제
-    값을 그리므로 문자열로 대조할 대상이 아니며, 대조하면 영구히 붉은 행이 된다.
-    """
     if len(chunk) < 2:
         return False
     letters = re.sub(r"[^A-Za-z가-힣]", "", chunk)
@@ -314,7 +260,6 @@ def is_copy(chunk: str) -> bool:
     return not UNIT_ONLY.fullmatch(letters)
 
 
-# ── 구현 파싱 ───────────────────────────────────────────────────────────────
 def strip_comments(src: str) -> str:
     src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
     return re.sub(r"(?m)^\s*//.*$", "", src)
@@ -341,16 +286,13 @@ CODE_ISH = re.compile(r"[;=]")
 
 
 def jsx_text_nodes(src: str) -> list[str]:
-    """태그 사이의 순수 텍스트.
-
-    ⚠️ TypeScript 제네릭(`useState<string | null>(null); const …`)도 `>`…`<` 사이에
+    """⚠️ TypeScript 제네릭(`useState<string | null>(null); const …`)도 `>`…`<` 사이에
     걸린다. JSX 텍스트에는 `;` 나 `=` 가 나타나지 않으므로 그것으로 코드를 가른다.
     """
     return [norm(t) for t in re.findall(r">([^<>{}]+)<", src) if not CODE_ISH.search(t)]
 
 
 def is_attribute_value(src: str, start: int) -> bool:
-    """리터럴 바로 앞이 `=` 또는 `={` 이면 속성 값이다(카피가 아니다)."""
     i = start - 1
     while i >= 0 and src[i] in " \t\n":
         i -= 1
@@ -365,7 +307,6 @@ HANGUL = re.compile(r"[가-힣]")
 
 
 def impl_copy(path: Path) -> list[str]:
-    """구현 화면이 실제로 그리는 카피(보수적 추출 — 헤더의 한계 설명 참조)."""
     src = strip_comments(path.read_text(encoding="utf-8"))
     found: list[str] = [t for t in jsx_text_nodes(src) if t]
     for start, raw in literal_spans(src):
@@ -384,12 +325,6 @@ def impl_copy(path: Path) -> list[str]:
 
 
 def impl_haystack(paths: list[Path]) -> str:
-    """목업→구현 방향의 건초더미.
-
-    태그 이름(`<main>`)이 카피로 오인되지 않도록 원문이 아니라 **문자열 리터럴 +
-    JSX 텍스트 노드**만 모은다. 속성 값(testid 등)도 포함하는 관대한 집합이라,
-    '없는데 있다고 판정'하는 쪽이 아니라 '있는데 없다고 판정'하는 쪽으로만 튄다.
-    """
     parts: list[str] = []
     for path in paths:
         src = strip_comments(path.read_text(encoding="utf-8"))
@@ -398,12 +333,10 @@ def impl_haystack(paths: list[Path]) -> str:
     return " \x01 ".join(p for p in parts if p)
 
 
-# ── M1 매핑 발견 ────────────────────────────────────────────────────────────
 MAPPING_REF = re.compile(r"docs/mockups/([A-Za-z0-9._-]+\.html)((?:#STP-[a-z0-9-]+)?)")
 
 
 def discover_screens() -> dict[str, list[tuple[str, str]]]:
-    """상단 주석에 목업 매핑이 있는 tsx → [(목업파일, 앵커)]."""
     screens: dict[str, list[tuple[str, str]]] = {}
     for path in sorted(SRC_DIR.glob("*.tsx")):
         header = path.read_text(encoding="utf-8")[:2000]
@@ -413,12 +346,6 @@ def discover_screens() -> dict[str, list[tuple[str, str]]]:
     return screens
 
 
-# ── M7 앱바 슬롯 ────────────────────────────────────────────────────────────
-# 앱바는 목업 전 페이지에서 **슬롯의 나열**이다 — 좌·중앙·우가 각각 하나씩이거나(3슬롯),
-# `JRN-connect-repo` 의 홈 계열처럼 제목 + 링크 둘이거나(2슬롯). 카피 대조는 이 축을 볼 수
-# 없다: 자리표시자(`icon-btn ghost`)는 글자가 없고, 제목을 감싼 래퍼가 바뀌어도 텍스트는
-# 그대로다. 그래서 슬롯 **수**만 따로 센다. 어느 컨트롤이 어느 슬롯에 있어야 하는가는
-# 여전히 카피 대조와 원장의 몫이다.
 APPBAR_MARKER = "(앱바 구조)"
 SLOT_CLASSES = {"icon-btn", "appbar-title", "appbar-sub", "btn-link"}
 CLASS_ATTR = re.compile(r'class(?:Name)?="([^"]*)"')
@@ -458,7 +385,6 @@ def root_tokens(text: str) -> dict[str, str]:
 def main() -> int:
     doc = TRACKER.read_text(encoding="utf-8")
 
-    # ── M0 ──────────────────────────────────────────────────────────────
     active_rows = table_after(doc, H_ACTIVE)
     pending_rows = table_after(doc, H_PENDING)
     ledger_rows = table_after(doc, H_LEDGER)
@@ -483,7 +409,6 @@ def main() -> int:
         note(f"활성 {screen} ↔ {(ticked(mockup_cell) or ['?'])[0]} {active[screen]}")
     pending = {(ticked(r[0]) or [""])[0] for r in pending_rows}
 
-    # ── M1 ──────────────────────────────────────────────────────────────
     screens = discover_screens()
     steps_by_file: dict[str, dict[str, dict[str, list[str]]]] = {}
     for screen, refs in screens.items():
@@ -503,7 +428,6 @@ def main() -> int:
             fail("M1", f"대조 범위 표의 {ghost} 는 매핑을 가진 화면이 아니다(유령 행)")
     print(f"M1 매핑 완비 — 화면 {len(screens)}개, dangling 앵커 0, 범위 표 일치")
 
-    # ── M2 ──────────────────────────────────────────────────────────────
     ds_section = DESIGN_SYSTEM.read_text(encoding="utf-8")
     ds_start = ds_section.find("### 5.2")
     spec = root_tokens(ds_section[ds_start:]) if ds_start >= 0 else {}
@@ -519,7 +443,6 @@ def main() -> int:
             fail("M2", f"토큰 {name} 값 불일치 — 목업 `{spec[name]}` vs 구현 `{impl[name]}`")
     print(f"M2 토큰 1:1 — {len(spec)}개 이름·값 일치")
 
-    # ── 원장 인덱스 ─────────────────────────────────────────────────────
     exempt_steps: set[str] = set()
     exempt_strings: set[str] = set()
     appbar_exempt: set[str] = set()
@@ -533,7 +456,6 @@ def main() -> int:
         exempt_strings.update(ticked(impl_cell))
         note(f"원장 {(ticked(target_cell) or ['?'])[0]}: 목업{tokens} 구현{ticked(impl_cell)}")
 
-    # ── M3A 목업 → 구현 ─────────────────────────────────────────────────
     active_steps = {s for steps in active.values() for s in steps}
     haystack = impl_haystack([ROOT / s for s in screens])
     undocumented: list[str] = []
@@ -555,7 +477,6 @@ def main() -> int:
     print(f"M3A 목업→구현 — 활성 단계 {len(active_steps)}개 / 카피 {judged}건 대조, "
           f"미등재 {len(undocumented)}건")
 
-    # ── M3B 구현 → 목업 ─────────────────────────────────────────────────
     extra: list[str] = []
     checked = 0
     for screen, steps in active.items():
@@ -576,7 +497,6 @@ def main() -> int:
         fail("M3B", f"구현 카피가 목업에 없고 원장에도 없다 — {item}")
     print(f"M3B 구현→목업 — 활성 쌍 {len(active)}개 / 카피 {checked}건 대조, 미등재 {len(extra)}건")
 
-    # ── M4 원장 무결성 ──────────────────────────────────────────────────
     mockup_text = all_mockup_text()
     phantom = 0
     for target_cell, mockup_cell, impl_cell, kind_cell, why_cell, when_cell in ledger_rows:
@@ -605,7 +525,6 @@ def main() -> int:
         for token in ticked(impl_cell):
             if is_reference(token):
                 continue
-            # 소스는 줄바꿈·들여쓰기로 카피를 쪼개 놓으므로 정규화 후 대조한다.
             if files and not any(token in norm((ROOT / t).read_text(encoding="utf-8"))
                                  for t in files):
                 fail("M4", f"원장 행 [{label}] 의 구현 문자열 `{token}` 이 그 파일에 없다(공전 행)")
@@ -617,7 +536,6 @@ def main() -> int:
         fail("M4", f"원장 캡션 집계 {caption.group(1)}건 ≠ 실제 행 수 {len(ledger_rows)}건")
     print(f"M4 원장 무결성 — 행 {len(ledger_rows)}건, 공전 행 {phantom}건")
 
-    # ── M5 래칫 ─────────────────────────────────────────────────────────
     for label, pattern, actual in (
         ("미해소 편차", r"미해소 편차 상한:\s*\*\*(\d+)\*\*", len(ledger_rows)),
         ("대조 보류", r"대조 보류 상한:\s*\*\*(\d+)\*\*", len(pending_rows)),
@@ -634,7 +552,6 @@ def main() -> int:
         else:
             print(f"M5 래칫 — {label} {actual}/{cap}")
 
-    # ── M6 예시값 표기 규약 ─────────────────────────────────────────────
     marked = sum(len(SAMPLE_OPEN.findall(re.sub(r"<!--.*?-->", "", p.read_text(encoding="utf-8"),
                                                 flags=re.S)))
                  for p in sorted(MOCKUP_DIR.glob("*.html")))
@@ -647,7 +564,6 @@ def main() -> int:
     print(f"M6 예시값·변이 표기 — `data-sample` {marked}건 · `data-variant` {varied}건, "
           f"오용 {len(misuse)}건")
 
-    # ── M7 앱바 슬롯 ────────────────────────────────────────────────────
     compared = 0
     mismatched = 0
     exempted = 0

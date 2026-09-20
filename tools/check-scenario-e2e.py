@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 # 테스트 시나리오 ↔ e2e 1:1 정합성 게이트 (reconciler `tbm_feature-doc-scenario-e2e`).
 #
-# 시나리오의 단일 소스(SSOT)는 `docs/test/` 의 `### 시나리오 N: …` 헤딩이다. 이 스크립트는
-# "모든 시나리오가 자기를 주검증하는 spec 파일을 정확히 1개 갖는가"를 기계로 판정한다.
-# 붉으면 닫는 길은 셋뿐이다 — **전용 spec 을 만들거나**, `docs/doc-tracker.md` 의
-# 「e2e 매핑」 절 **예외 목록**(규칙 4: 자동화가 곤란)이나 **구현 대기 표**(규칙 6: 기능
-# 미구현)에 사유와 함께 **등재하거나**. 등재가 유일한 면제 통로이며, 스크립트는 등재 자체의
-# 무결성도 검사한다.
-#
-# 의존성 0 (python3 stdlib). 형제 게이트 `check-journey-mockup.py` ·
-# `check-mockup-render.py` 와 같은 방침이다.
-#
 # ── 규칙 ──────────────────────────────────────────────────────────────────
 #  S0 파싱 무결성   「e2e 매핑」 절의 네 표(매핑 · 예외 · 구현 대기 · 미매핑 잔여)와
 #                   집계 문단이 파싱되고, 표 캡션의 건수가 실제 행 수와 같다.
@@ -36,7 +26,6 @@
 #  * **AC ↔ 시나리오 층**은 범위 밖이다(모델 정의: 그 층은 제품 문서 체계의 몫).
 #  * `e2e/smoke.sh` · `playwright.config.ts` · `package.json` · `e2e/support/` 는
 #    매칭 단위가 아니므로 세지 않는다.
-#  대조된 내역은 `--verbose` 로 전부 출력된다. 무엇이 비교됐는지 눈으로 확인할 것.
 
 import re
 import sys
@@ -77,10 +66,8 @@ def key(doc: str, num: int) -> str:
     return f"{doc}#시나리오 {num}"
 
 
-# ── 실측: 시나리오 집합 ────────────────────────────────────────────────────
 
 def read_scenarios() -> dict[str, list[int]]:
-    """docs/test/*.md → {문서 파일명: [시나리오 번호…]} (선언 순서 그대로)."""
     found: dict[str, list[int]] = {}
     for path in sorted(TEST_DOC_DIR.glob("*.md")):
         nums = [
@@ -92,10 +79,8 @@ def read_scenarios() -> dict[str, list[int]]:
     return found
 
 
-# ── 실측: spec 선언 ────────────────────────────────────────────────────────
 
 def read_declarations(scenarios: dict[str, list[int]]) -> dict[str, str]:
-    """e2e/tests/*.spec.ts → {시나리오 키: 파일명}. S1·S2 를 함께 판정한다."""
     declared: dict[str, str] = {}
     owner: dict[str, str] = {}
     for path in sorted(SPEC_DIR.glob("*.spec.ts")):
@@ -153,7 +138,6 @@ def read_declarations(scenarios: dict[str, list[int]]) -> dict[str, str]:
     return declared
 
 
-# ── 등재: doc-tracker 「e2e 매핑」 절 ─────────────────────────────────────
 
 def slice_section(text: str) -> list[str] | None:
     lines = text.splitlines()
@@ -170,7 +154,6 @@ def slice_section(text: str) -> list[str] | None:
 
 
 def split_blocks(section: list[str]) -> dict[str, list[str]]:
-    """굵은 소제목(**…**)을 경계로 절을 나눈다. 키는 소제목 줄 전체."""
     blocks: dict[str, list[str]] = {}
     current: str | None = None
     for line in section:
@@ -190,7 +173,6 @@ def find_block(blocks: dict[str, list[str]], prefix: str) -> tuple[str, list[str
 
 
 def table_rows(body: list[str]) -> list[str]:
-    """마크다운 표의 데이터 행만(헤더·구분선 제외)."""
     rows = []
     for line in body:
         s = line.strip()
@@ -212,7 +194,6 @@ def caption_numbers(head: str) -> dict[str, int]:
 
 
 def collect(head: str, body: list[str], rule: str, label: str) -> tuple[list[str], dict[str, int]]:
-    """표 행에서 시나리오 토큰을 뽑고, 캡션 건수와 행 수의 일치를 본다."""
     rows = table_rows(body)
     keys: list[str] = []
     for row in rows:
@@ -279,7 +260,6 @@ def main() -> int:
     if failures and not buckets.get("매핑"):
         return report()
 
-    # S3 — 등재 시나리오의 실재성과 버킷 간 배타성
     for name, keys in buckets.items():
         for k in keys:
             if k not in all_keys:
@@ -295,7 +275,6 @@ def main() -> int:
             if overlap:
                 fail("S3", f"{a} 와 {b} 에 같은 시나리오가 있다 — {' · '.join(sorted(overlap))}")
 
-    # S3 — 매핑 표 ↔ 실제 파일 선언
     table_map = dict(mapping_pairs)
     for k, fname in sorted(table_map.items()):
         if k not in declared:
@@ -307,7 +286,6 @@ def main() -> int:
             fail("S3", f"매핑: `{fname}` 이 `{k}` 를 선언하는데 등재 표에 없다(누락 행)")
     note(f"등재 대조 — 매핑 {len(table_map)} · 선언 {len(declared)}")
 
-    # S4 — 집계·불변식
     counted = {name: len(keys) for name, keys in buckets.items()}
     covered = sum(counted.values())
     if covered != total:
@@ -340,7 +318,6 @@ def main() -> int:
     target = total - counted["예외"] - counted["구현 대기"]
     note(f"불변식 목표 (시나리오 {total} − 예외 {counted['예외']} − 구현 대기 {counted['구현 대기']}) = {target} · 실제 매칭 파일 {len(declared)}")
 
-    # S5 — 래칫
     computed = sorted(all_keys - set(buckets["매핑"]) - set(buckets["예외"]) - set(buckets["구현 대기"]))
     listed = sorted(set(buckets["미매핑"]))
     if computed != listed:
