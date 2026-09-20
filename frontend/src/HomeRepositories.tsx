@@ -137,11 +137,6 @@ export function HomeRepositories({
     };
   }
 
-  /**
-   * 목록의 저장소를 누르면 아래 「새 저장소 연결」 폼의 Repository URL 칸이 채워진다 —
-   * 목업 `renderHome()`의 repo-item 클릭 핸들러와 같은 동작(`github.com/<owner/repo>`).
-   * 목업처럼 Branch는 건드리지 않고, `edit`을 거쳐 이전 추정을 무효화한다.
-   */
   function pick(fullName: string) {
     edit(setRepoUrl)('github.com/' + fullName);
   }
@@ -271,7 +266,6 @@ export function HomeRepositories({
                     className="section-action"
                     type="button"
                     onClick={(e) => {
-                      // 카드 클릭(폼 채우기)으로 번지지 않게 — 이 버튼은 진행 상황만 연다.
                       e.stopPropagation();
                       onOpenAnalysis(row.latest!.id);
                     }}
