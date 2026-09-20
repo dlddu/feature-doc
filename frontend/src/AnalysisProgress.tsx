@@ -26,7 +26,10 @@ function toneOf(status: Stage['status']): string {
 }
 
 function subOf(stage: Stage): string {
-  if (stage.status === 'failed') return stage.error ?? '실패했어요';
+  // The server's reason is not drawn here: the mockup answers a failed stage with
+  // one standing sentence (below the list), and 시나리오 6 only asks that the stage
+  // can be re-run.
+  if (stage.status === 'failed') return '실패했어요';
   if (stage.detail) return stage.detail;
   if (stage.status === 'running') return '진행 중';
   if (stage.status === 'succeeded') return '완료';
@@ -44,7 +47,6 @@ type Props = {
   /** Analysis Progress → Home (back, close, or "Run in background" — the job keeps running). */
   onBack: () => void;
   onOpenCrossCutting: () => void;
-  onOpenDiscoveryStrategy: () => void;
   onOpenDiff: () => void;
 };
 
@@ -52,7 +54,6 @@ export function AnalysisProgress({
   id,
   onBack,
   onOpenCrossCutting,
-  onOpenDiscoveryStrategy,
   onOpenDiff,
 }: Props) {
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
@@ -123,6 +124,8 @@ export function AnalysisProgress({
 
   const { stages, stagesDone, stagesTotal } = analysis;
   const percent = stagesTotal === 0 ? 0 : Math.round((stagesDone / stagesTotal) * 100);
+  // At most one stage is failed at a time — the pipeline stops there.
+  const failed = stages.find((stage) => stage.status === 'failed');
 
   return (
     <main className="screen">
@@ -159,18 +162,10 @@ export function AnalysisProgress({
               <span className="time">{elapsedOf(stage, now)}</span>
             </div>
             {/* A stage that produced a document gets a way into it. Gated on the
-                stage having succeeded, so the link never leads to a 404. */}
-            {stage.key === 'discovery_strategy' && stage.status === 'succeeded' && (
-              <button
-                className="btn btn-secondary block"
-                type="button"
-                style={{ marginTop: 12 }}
-                onClick={onOpenDiscoveryStrategy}
-                data-testid="open-discovery-strategy"
-              >
-                탐색 전략 검토하기
-              </button>
-            )}
+                stage having succeeded, so the link never leads to a 404.
+                Stage 3 is deliberately not one of them: the mockup walks this
+                journey 진행 → 횡단 관심사 → 탐색 전략, so the way in is the
+                cross-cutting screen's own CTA. */}
             {stage.key === 'cross_cutting' && stage.status === 'succeeded' && (
               <button
                 className="btn btn-secondary block"
@@ -209,6 +204,13 @@ export function AnalysisProgress({
           </div>
         ))}
       </div>
+
+      {failed !== undefined && (
+        <div className="notice err" style={{ marginTop: 16 }} data-testid="stage-failed">
+          <strong>{failed.title}</strong>
+          {' 단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.'}
+        </div>
+      )}
 
       {analysis.status === 'awaiting_pipeline' && (
         <p className="body sm" style={{ marginTop: 14 }} data-testid="awaiting-pipeline">

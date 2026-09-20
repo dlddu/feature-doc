@@ -198,7 +198,6 @@ export function App() {
         id={route.id}
         onBack={leaveAnalysis}
         onOpenCrossCutting={() => openCrossCutting(route.id)}
-        onOpenDiscoveryStrategy={() => openDiscoveryStrategy(route.id)}
         onOpenDiff={() => openDiff(route.id)}
       />
     );

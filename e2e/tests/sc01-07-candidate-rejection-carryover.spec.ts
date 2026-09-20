@@ -105,7 +105,8 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
 
       await page.goto(`/#/analyses/${first}/discovery-strategy`);
       await page.getByTestId('strategy-approve').click();
-      await expect(page.getByTestId('strategy-approved')).toBeVisible();
+      // 승인되면 버튼이 다음 동선으로 바뀐다(원장 ⑼ — 별도의 완료 문구는 없다).
+      await expect(page.getByTestId('strategy-open-candidates')).toBeVisible();
 
       await expect
         .poll(() => candidatesOf(page, first).then((l) => l.extracted), {
@@ -125,6 +126,7 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
       }
       expect(extracted.undecided).toBe(extracted.candidates.length);
 
+      await expect(page.getByTestId('strategy-open-candidates')).toBeEnabled();
       await page.getByTestId('strategy-open-candidates').click();
       await expect(page.getByTestId('candidate')).toHaveCount(extracted.candidates.length);
       await expect(page.getByTestId('undecided-count')).toHaveText(
