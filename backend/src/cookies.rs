@@ -4,7 +4,6 @@ use axum_extra::extract::cookie::{Cookie, SameSite};
 
 use crate::state::AppState;
 
-/// Builds an HttpOnly, SameSite=Lax, Path=/ cookie (Secure when configured).
 pub fn make(state: &AppState, name: &'static str, value: String) -> Cookie<'static> {
     let mut c = Cookie::new(name, value);
     c.set_http_only(true);
@@ -14,7 +13,6 @@ pub fn make(state: &AppState, name: &'static str, value: String) -> Cookie<'stat
     c
 }
 
-/// Builds the matching removal cookie (same name + path) for clearing.
 pub fn removal(name: &'static str) -> Cookie<'static> {
     let mut c = Cookie::new(name, "");
     c.set_path("/");

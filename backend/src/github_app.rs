@@ -1,9 +1,7 @@
-//! GitHub App credentials: short-lived installation tokens (minted on demand,
-//! never persisted — AC4.1) and installation metadata.
+//! GitHub App credentials and installation metadata.
 //!
-//! `Mode::Stub` answers everything in-process. Real mode signs an App JWT with the
-//! App private key and calls the GitHub API. Error messages never include the JWT,
-//! the token, or the key (AC4.3).
+//! Upstream failures are mapped to fixed strings rather than interpolated: the App
+//! JWT, the installation token, and the private key must never reach a log line.
 
 use serde::{Deserialize, Serialize};
 
@@ -12,12 +10,8 @@ use crate::error::AppError;
 use crate::state::AppState;
 use crate::util::{now_unix, rfc3339_to_unix};
 
-/// The minimal, read-only scopes the App requests — shown to the user before they
-/// install (journey F1) and alongside the installed state (mockup).
 pub const REQUESTED_PERMISSIONS: &[&str] = &["contents:read", "metadata:read"];
 
-/// A short-lived installation access token. Returned to callers for immediate use;
-/// it is never written to the database.
 pub struct InstallationToken {
     pub token: String,
     pub expires_at: i64,
@@ -29,7 +23,6 @@ pub struct InstallationInfo {
     pub repository_selection: Option<String>,
 }
 
-/// Mints a fresh installation access token for `installation_id`.
 pub async fn mint_installation_token(
     state: &AppState,
     installation_id: i64,
@@ -76,7 +69,6 @@ pub async fn mint_installation_token(
     }
 }
 
-/// Looks up installation metadata (account + repository selection) via the App JWT.
 pub async fn fetch_installation(
     state: &AppState,
     installation_id: i64,
@@ -131,9 +123,7 @@ pub async fn fetch_installation(
     }
 }
 
-/// A repository the installation can access — the subset the user granted at install
-/// time. `size_kb` is GitHub's reported size, used only for pre-flight estimates,
-/// never for access decisions.
+/// `size_kb` is GitHub's reported size: a pre-flight estimate, never an access decision.
 pub struct RepoRef {
     pub owner: String,
     pub name: String,
@@ -142,9 +132,6 @@ pub struct RepoRef {
     pub size_kb: i64,
 }
 
-/// Lists the repositories the installation can access. Stub returns a deterministic
-/// set whose count matches [`repository_count`]; real mode pages
-/// `/installation/repositories`.
 pub async fn list_repositories(
     state: &AppState,
     installation_id: i64,
@@ -217,7 +204,7 @@ pub async fn list_repositories(
     }
 }
 
-/// Deterministic stub repository set (3 repos → matches the stub `repository_count`).
+/// Three repos — the count must stay in step with [`repository_count`]'s stub arm.
 fn stub_repositories() -> Vec<RepoRef> {
     [
         ("payments-api", "main", 2300),
@@ -235,7 +222,6 @@ fn stub_repositories() -> Vec<RepoRef> {
     .collect()
 }
 
-/// Best-effort count of repositories the installation can access (for display).
 pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<i64> {
     match state.config.doubles.github_app {
         // mock-exception: EXT-02 — 저장소 개수 조회는 실제 설치 토큰이 필요
@@ -266,8 +252,6 @@ pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<
     }
 }
 
-/// One installation of *this* App that the signed-in user can reach, as
-/// `GET /user/installations` reports it.
 pub struct UserInstallation {
     pub installation_id: i64,
     pub account_login: Option<String>,
@@ -275,8 +259,6 @@ pub struct UserInstallation {
     pub repository_selection: Option<String>,
 }
 
-/// Lists the user's installations of this App, using their OAuth token.
-///
 /// The endpoint is already scoped to the App that issued the token, so there is
 /// nothing to filter by app id. Stub mode has no GitHub to ask and reports none —
 /// the stub install flow writes its row through the Setup URL instead.
@@ -343,10 +325,8 @@ pub async fn list_user_installations(
         .collect())
 }
 
-/// Verifies the signed-in user actually has access to `installation_id` before we
-/// link it. The Setup URL's installation_id is spoofable (GitHub docs), so in real
-/// mode we list the user's installations with their OAuth token and require a
-/// match. Stub mode trusts the synthetic id.
+/// The Setup URL's `installation_id` is attacker-controlled (GitHub does not sign
+/// it), so real mode must confirm it against the user's own installation list.
 pub async fn verify_user_owns_installation(
     state: &AppState,
     user_id: &str,
@@ -367,10 +347,8 @@ pub async fn verify_user_owns_installation(
     }
 }
 
-/// Signs a short-lived (≈9 min) RS256 App JWT with the App private key, using the
-/// client ID as the `iss` claim — GitHub's recommended identifier as of 2024-05
-/// (the numeric App ID also works, but compatibility with future features relies
-/// on the client ID).
+/// `iss` is the client ID, not the numeric App ID: both authenticate today, but
+/// GitHub ties forward compatibility to the client ID (guidance as of 2024-05).
 fn app_jwt(state: &AppState) -> Result<String, AppError> {
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 

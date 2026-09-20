@@ -1,9 +1,7 @@
 //! Thin GitHub client for the user-authorization (login) flow.
 //!
-//! In `Mode::Stub` every call is answered by a deterministic in-process double so
-//! tests and the kind e2e never touch the network (plan: "테스트 더블로 모킹").
-//! Error messages here are deliberately generic — tokens and secrets never appear
-//! in them (AC4.3).
+//! Upstream failures are mapped to fixed strings rather than interpolated: the
+//! client secret, the OAuth code, and the access token must not reach a log line.
 
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -12,7 +10,6 @@ use crate::config::Mode;
 use crate::error::AppError;
 use crate::state::AppState;
 
-/// The subset of a GitHub user we persist.
 pub struct GithubUser {
     pub id: i64,
     pub login: String,
@@ -20,14 +17,11 @@ pub struct GithubUser {
     pub avatar_url: Option<String>,
 }
 
-/// Result of resolving a login: the user plus, in real mode, their OAuth token
-/// (kept to verify installation ownership later; `None` in stub mode).
 pub struct AuthOutcome {
     pub user: GithubUser,
     pub token: Option<String>,
 }
 
-/// Exchanges an authorization `code` for the authenticated GitHub user.
 pub async fn exchange_code_for_user(
     state: &AppState,
     code: &str,
@@ -121,8 +115,7 @@ async fn fetch_user(state: &AppState, token: &str) -> Result<GithubUser, AppErro
     })
 }
 
-/// Deterministic stub identity derived from the OAuth `code`. Distinct codes yield
-/// distinct users, which lets the isolation tests log in as A and B at will.
+/// Distinct `code`s must yield distinct users — `?as=<handle>` spec isolation rests on it.
 fn stub_user_from_code(code: &str) -> GithubUser {
     GithubUser {
         id: stable_id(code),
