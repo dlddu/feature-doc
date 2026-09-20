@@ -64,7 +64,7 @@ async fn migrations_create_expected_tables() {
     let _ = std::fs::remove_file(&path);
 }
 
-// Pins the file bytes accepted by main at PR #PRNUM — a comment-only pass whose
+// Pins the file bytes accepted by main at PR #98 — a comment-only pass whose
 // production `_sqlx_migrations` repair was done by hand before the merge.
 // This SHA-256 guard is not evidence of deployed DB repair; sqlx stores SHA-384.
 // See migrations/README.md for provenance and the release preflight.

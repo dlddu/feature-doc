@@ -7,7 +7,7 @@
   `0008_feature_dependencies.sql`
 - **기준 트리**: 부모 **`7724b46`** (main, 15차 패스 병합 직후)
 - **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260920-0009`
-- **PR**: #PRNUM (squash)
+- **PR**: #98 (squash)
 - ⚠️ **이 패스는 무인 머지 경로가 없다.** 운영 DB의 `_sqlx_migrations` 체크섬을 사람이 손으로
   고친 **뒤에만** 머지한다 — 아래 [repair 명세](#repair-명세--사람이-하는-일).
 
