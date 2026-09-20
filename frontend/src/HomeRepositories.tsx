@@ -261,7 +261,6 @@ export function HomeRepositories({
               data-testid="repo-card"
               role="button"
               tabIndex={0}
-              aria-label={`${row.fullName} 연결 폼에 채우기`}
               onClick={() => pick(row.fullName)}
               onKeyDown={(e) => {
                 if (e.target !== e.currentTarget) return;
