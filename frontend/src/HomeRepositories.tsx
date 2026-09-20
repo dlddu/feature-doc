@@ -137,6 +137,15 @@ export function HomeRepositories({
     };
   }
 
+  /**
+   * 목록의 저장소를 누르면 아래 「새 저장소 연결」 폼의 Repository URL 칸이 채워진다 —
+   * 목업 `renderHome()`의 repo-item 클릭 핸들러와 같은 동작(`github.com/<owner/repo>`).
+   * 목업처럼 Branch는 건드리지 않고, `edit`을 거쳐 이전 추정을 무효화한다.
+   */
+  function pick(fullName: string) {
+    edit(setRepoUrl)('github.com/' + fullName);
+  }
+
   async function check() {
     setPhase('checking');
     setError(null);
@@ -219,7 +228,21 @@ export function HomeRepositories({
         {rows.map((row) => {
           const badge = row.latest ? badgeFor(row.latest.status) : null;
           return (
-            <div className="card" key={row.key} data-testid="repo-card">
+            <div
+              className="card pickable"
+              key={row.key}
+              data-testid="repo-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => pick(row.fullName)}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  pick(row.fullName);
+                }
+              }}
+            >
               <div className="row between top">
                 <div className="grow">
                   <div className="body" style={{ fontWeight: 600 }}>
@@ -247,7 +270,11 @@ export function HomeRepositories({
                   <button
                     className="section-action"
                     type="button"
-                    onClick={() => onOpenAnalysis(row.latest!.id)}
+                    onClick={(e) => {
+                      // 카드 클릭(폼 채우기)으로 번지지 않게 — 이 버튼은 진행 상황만 연다.
+                      e.stopPropagation();
+                      onOpenAnalysis(row.latest!.id);
+                    }}
                     data-testid="open-progress"
                   >
                     진행 상황
