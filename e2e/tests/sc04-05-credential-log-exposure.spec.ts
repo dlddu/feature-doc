@@ -20,6 +20,11 @@ test('AC4.3: 등록한 키는 식별자로만 표시되고 평문은 재노출�
 }) => {
   await page.goto('/api/auth/login?as=ac43');
 
+  // 키 등록 화면은 App 설치 뒤에 선다(슬라이스 ⑦ 의 두 화면 분할) — 이 spec 의 검증
+  // 대상이 아니라 도달 경로다. 설치가 서면 권한 부여 화면이 스스로 넘긴다.
+  await page.getByTestId('connect-app').click();
+  await expect(page.getByTestId('connection')).toBeVisible();
+
   await page.getByTestId('provider-anthropic').click();
   await page.getByTestId('key-input').fill(SENTINEL);
   await page.getByTestId('register-key').click();

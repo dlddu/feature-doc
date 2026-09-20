@@ -777,3 +777,17 @@ button.ico { cursor: pointer; }
 .dep:last-child { border-bottom: 0; }
 .dep .dname { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary); }
 .dep .esrc { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
+
+/* ext-note — 목업 JRN-connect-repo.html 의 같은 규칙을 그대로 옮긴다. 슬라이스 ⑦ 이
+   권한 부여 화면에서 「다음은 GitHub 이 그리는 화면」임을 알리는 자리에 쓴다. */
+.ext-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 14px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+.ext-note .mk { flex: none; color: var(--info); }
+.ext-note b { color: var(--text-secondary); font-weight: 500; }

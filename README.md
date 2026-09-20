@@ -54,10 +54,10 @@ backend/                   # axum 0.8 — /hello + 자격증명 API(GitHub App·
 └── src/                   # lib(config·db·auth·github·llmkey·crypto·audit·pipeline·worker_api…) + main
     └── bin/worker.rs      # 분석 워커 — DB를 열지 않고 API의 /internal 큐로 claim·보고 (AC4.5)
 
-frontend/                  # Vite 8 + React 19 — Credentials Setup 화면 (디자인 시스템 토큰)
+frontend/                  # Vite 8 + React 19 — 여정 단계별 화면 (디자인 시스템 토큰)
 ├── package.json
 ├── index.html
-└── src/{App.tsx, CredentialsSetup.tsx, api.ts, main.tsx, index.css}
+└── src/{App.tsx, GrantRepoAccess.tsx, RegisterLlmKey.tsx, …, api.ts, main.tsx, index.css}
 
 deploy/
 ├── k8s/                   # 정식 매니페스트 = kustomize 베이스 (API·워커 deployment·service·pvc; secret은 외부 제공)

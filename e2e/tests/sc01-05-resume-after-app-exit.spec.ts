@@ -81,10 +81,11 @@ test.describe('AC1.5: 비동기 진행 가시성과 복귀', () => {
       await expect(page.locator('[data-stage="fetch"]')).toContainText('766 files · 2.2 MB');
 
       await page.goto('/');
-      const cont = page.getByTestId('continue');
-      await cont.click();
-      await expect(page.getByTestId('ready')).toBeVisible();
-      await cont.click();
+      // 설치·키가 이미 서 있으면 권한 부여 화면은 스스로 키 등록으로 넘기고, 거기서
+      // `저장하고 계속` 한 번이 홈으로 데려간다(슬라이스 ⑦ 의 두 화면 분할).
+      const save = page.getByTestId('register-key');
+      await expect(save).toBeEnabled();
+      await save.click();
       const card = page.getByTestId('repo-card').filter({ hasText: 'stub-account/payments-api' });
       await expect(card).toContainText('step 3 of 5');
       await card.getByTestId('open-progress').click();

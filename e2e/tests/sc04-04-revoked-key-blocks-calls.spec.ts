@@ -32,7 +32,8 @@ test('AC4.2: 폐기한 뒤에는 신규 호출이 차단된다 — 사유 메시
   await page.getByTestId('key-input').fill(ANTHROPIC_KEY);
   await page.getByTestId('register-key').click();
   await expect(page.getByTestId('active-key')).toBeVisible();
-  await expect(page.getByTestId('continue')).toBeEnabled();
+  // 등록된 키가 있으면 `저장하고 계속`(슬라이스 ⑦ 이후 진행 버튼)이 열린다.
+  await expect(page.getByTestId('register-key')).toBeEnabled();
 
   // 키를 폐기한다.
   await page.getByTestId('remove-key').click();
@@ -45,6 +46,6 @@ test('AC4.2: 폐기한 뒤에는 신규 호출이 차단된다 — 사유 메시
   const body = await blocked.text();
   expect(body, `거부 사유가 응답에 실려야 한다: ${body}`).toContain('폐기');
 
-  // 그리고 화면의 새 분석 트리거도 차단된다.
-  await expect(page.getByTestId('continue')).toBeDisabled();
+  // 그리고 화면의 새 분석 트리거도 차단된다 — 키도 입력도 없으면 진행 버튼이 닫힌다.
+  await expect(page.getByTestId('register-key')).toBeDisabled();
 });

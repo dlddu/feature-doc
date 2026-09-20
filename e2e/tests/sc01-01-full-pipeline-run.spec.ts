@@ -74,13 +74,13 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       expect(key.ok(), 'an active LLM key is the entry condition').toBeTruthy();
 
       // 화면 라우팅은 서버 게이트가 아니라 상태 머신이라, 셋업이 API로 됐어도 로드는
-      // 자격증명 화면에서 시작한다 — continue 두 번이 실제 홈 진입 경로다(선례: sc01-05).
+      // 자격증명 화면에서 시작한다. 슬라이스 ⑦ 이후 그 경로는 두 화면이다 — 설치가
+      // 이미 서 있으면 권한 부여 화면이 스스로 키 등록으로 넘기고, 등록된 키가 있으면
+      // `저장하고 계속` 한 번이 pre-flight 를 거쳐 홈으로 데려간다(선례: sc01-05).
       await page.goto('/');
-      const cont = page.getByTestId('continue');
-      await expect(cont).toBeEnabled();
-      await cont.click();
-      await expect(page.getByTestId('ready')).toBeVisible();
-      await cont.click();
+      const save = page.getByTestId('register-key');
+      await expect(save).toBeEnabled();
+      await save.click();
       // 시작 전에는 어떤 저장소도 실행 이력이 없다.
       await expect(page.getByTestId('repo-card')).not.toHaveCount(0);
       await expect(page.locator('[data-testid="repo-card"] .badge')).toHaveCount(0);
