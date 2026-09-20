@@ -1,8 +1,7 @@
 //! Uniform HTTP error type.
 //!
-//! Client-facing messages are intentionally terse and never echo credential
-//! material. `Internal` carries an operator-only detail that is logged (never
-//! returned) — and even that is constructed by us, so secrets never flow in.
+//! No variant ever echoes credential material: the detail on `Internal` is always
+//! constructed by us, never woven from caller input or an upstream response body.
 
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
