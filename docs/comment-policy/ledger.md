@@ -15,38 +15,37 @@
 |---|---|---|---|
 | `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일) | 587 | `6b77b15a4cb16a13e9acdddfc86e94a935f3d4d5b02cd7e5f1c0452eb8850ba9` | 순 제거 58행(구분선 16 · 빈 주석 행 3 · 문서·선언 재진술·작업 흔적 39 — 총 62행 제거 중 불변식 보존 2행 재작성) · 유지 507행 · 판단 갈림 3건 — [passes/2026-09-17-backend-concentrated.md](passes/2026-09-17-backend-concentrated.md) · **증분 재판정 ①**(2026-09-18): #55가 더한 `llm.rs` 21행은 stub↔real 충실도 경계라 **전건 유지**, 제거 후보 3행(테스트 case 라벨)은 `llm.rs`가 #49와 경합이라 보류 · **증분 재판정 ②**(2026-09-18): #43이 `analysis.rs`·`worker_api.rs`에 더한 40행을 판정해 **순 제거 10행**(AC 조항 재진술 · 호출자·구조체 본문 재진술 · rustdoc 링크만의 교차 참조) · 유지 30행(리스 계약 · 게이트는 큐의 성질 · `acceptance_pending`의 술어 함정 · `work_remains`의 경합) · **증분 재판정 ③**(2026-09-19): #71이 `worker_api.rs`에 더한 37행을 판정해 **순 제거 18행**(라우트 선택 근거의 세 벌째 · AC 꼬리표 · 함수 이름 재진술 · SQL이 이미 말하는 「승인된 후보만」 · rustdoc 링크만의 교차 참조) · 유지 19행(요청 행이 곧 게이트 · 실패는 재시도되지 않음 · 같은 트랜잭션에서 행 교체) — [passes/2026-09-19-dependencies-axis.md](passes/2026-09-19-dependencies-axis.md) · **증분 재판정 ④**(2026-09-19): #71이 `analysis.rs`에 더한 36행과 #75가 더한 24행, 합 **60행**을 판정해 **순 제거 29행**(절 제목 · AC 조항 재진술 6 · 여정·목업 인용 · 선언 재진술 · 라우트 테이블과 핸들러 doc 의 두 벌 중 한 벌) · 유지 31행(`(created_at, rowid)` 정렬 이유 · 「묻지 않은 것 ≠ 없던 것」과 0008 의 두 테이블 분리 · 재큐잉 없는 요청은 아무도 돌리지 않는다는 한 트랜잭션 계약 · 실패 후 재요청이 행을 `queued` 로 되돌린다) — [passes/2026-09-19-reanalysis-diff-axis.md](passes/2026-09-19-reanalysis-diff-axis.md) · **미판정 증분 없음** |
 | `tools/check-journey-prototype.js` · `backend/src/config.rs` (열린 통합 PR 무접촉 2파일) | 140 | `ddacce0b4fcb83672a018383ad5845e7a63cbce655d520c31e06643debf6329f` | 순 제거 35행(파일 머리 되풀이 인라인 마커 8 · 등록부 존재 이유 되풀이 · 같은 문구 5회 반복 5 · 절 제목 5 · 선언 재진술 — diff 기준 56행 삭제 · 4행 재작성, 차이는 블록 주석 본문이 지문에 안 보이기 때문) · 유지 130행 · 판단 갈려 남긴 것 11건 — [passes/2026-09-18-uncontested-harness-config.md](passes/2026-09-18-uncontested-harness-config.md) · **증분 재판정 ①**(2026-09-18): #60이 `config.rs`에 `Mode`·`Doubles` doc으로 더한 23행을 판정해 **순 제거 13행**(variant·시그니처 재진술 · 경계 식별자 필드 doc 6 · 정책 문서 인용 2) · 유지 10행(경계별 선택 불변식 · 안전 기본값) |
-| `e2e/tests/sc01-01-full-pipeline-run.spec.ts` · `e2e/tests/sc01-06-partial-retry.spec.ts` · `e2e/support/cluster.ts` · `e2e/smoke.sh` · `e2e/playwright.config.ts` (e2e 하네스 비경합 5파일) | 191 | `a736f329faca47d85dff2c0f6560a6bddff15ec482a4ab9f748767d66a9cf126` | 순 제거 49행(시나리오 문서 인용 10 · 절 제목 18 · 제목+AC 2 · 작업 흔적 2 · `finally` 재진술 2 · smoke 머리·인라인 6 · 나머지 선언 재진술 — diff 기준 52행 삭제 · 3행 재작성) · 유지 142행(`playwright.config.ts`는 전건 유지) · 기계 판독 `// 검증 시나리오:` 선언 2개 보존 — [passes/2026-09-18-e2e-uncontested.md](passes/2026-09-18-e2e-uncontested.md) |
+| `e2e/tests/sc01-01-full-pipeline-run.spec.ts` · `e2e/tests/sc01-06-partial-retry.spec.ts` · `e2e/support/cluster.ts` · `e2e/smoke.sh` · `e2e/playwright.config.ts` (e2e 하네스 비경합 5파일) | 142 | `0e5c3d31474b356f84960e1be87169d5c72d693b41ac26263ddec5deebec5e4f` | 순 제거 49행(시나리오 문서 인용 10 · 절 제목 18 · 제목+AC 2 · 작업 흔적 2 · `finally` 재진술 2 · smoke 머리·인라인 6 · 나머지 선언 재진술 — diff 기준 52행 삭제 · 3행 재작성) · 유지 142행(`playwright.config.ts`는 전건 유지) · 기계 판독 `// 검증 시나리오:` 선언 2개 보존 — [passes/2026-09-18-e2e-uncontested.md](passes/2026-09-18-e2e-uncontested.md) · **증분 재판정 ①**(2026-09-19): #79가 `sc01-01`에 더한 순증 3행을 판정해 **순 제거 3행**(슬라이스 번호를 단 작업 흔적 2행 제거 · 목업 인용을 뺀 단정 의미 1행만 유지) · 범위는 145행 → 142행으로 돌아왔으나 **지문은 `fb27e0db…`가 아니라 `0e5c3d31…`**이다(살아남은 줄의 문면이 #79 이전과 다르다) — [passes/2026-09-19-pipeline-cross-cutting-axis.md](passes/2026-09-19-pipeline-cross-cutting-axis.md) · **미판정 증분 없음** |
 | `backend/src/acceptance.rs` · `backend/tests/acceptance.rs` · `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` · `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx` (인수 축 비경합 6파일) | 141 | `e38dcf201e4bd74600fd17c664a64a9aa4cb81003fd7f0b8652435e88d6864d0` | 순 제거 127행(PRD-2 AC2.1~AC2.3 조항 재진술 · doc-tracker 등재 편차 재진술 10 · 절 제목 9 · 목업 카피·페인포인트 인용 · 단언 재진술 · 이름 재진술 — diff 기준 180행 삭제 · 52행 재작성) · 유지 141행 · 판단이 갈려 남긴 것 4건 · 기계 판독 `// 검증 시나리오:` 2건과 `mock-exception:` 2건 보존 — [passes/2026-09-18-acceptance-axis.md](passes/2026-09-18-acceptance-axis.md) |
 | `backend/src/bin/worker.rs` · `deploy/e2e/kustomization.yaml` · `deploy/k8s/deployment.yaml` · `deploy/k8s/secret.yaml.example` · `deploy/k8s/worker-deployment.yaml` · `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (워커 · 더블 배선 축 비경합 7파일) | 190 | `632b0475182bf04b9ec8c21f3b69c5b91172ecee41e417f7a58b98cdb15ba66d` | 순 제거 122행(5단계 열거·선언 재진술 · 시나리오 본문 인용 12 · 더블 배선 설명 14 · AC 조항 인용 9 · 3중 복제된 경위 서술 19 · 작업 흔적 8 · 절 제목 3 · 세 벌 중복 중 두 벌 — diff 기준 185행 삭제 · 63행 재작성) · 유지 185행 · 판단이 갈려 남긴 것 3건 · 기계 판독 `// 검증 시나리오:` 2건 보존 — [passes/2026-09-18-worker-double-axis.md](passes/2026-09-18-worker-double-axis.md) · **증분 재판정 ①**(2026-09-19): #71이 `bin/worker.rs`에 더한 12행을 판정해 **순 제거 7행**(같은 문장의 네 번째 벌 · AC 꼬리표 · 라우트 선택 근거) · 유지 5행(한 feature 의 실패가 잡을 죽이지 않는다는 격리 계약) — [passes/2026-09-19-dependencies-axis.md](passes/2026-09-19-dependencies-axis.md) |
 | `backend/src/dependencies.rs` · `backend/tests/dependencies.rs` · `frontend/src/FeatureDependencies.tsx` · `e2e/support/dependencies.ts` · `e2e/tests/sc02-05-dependency-extraction.spec.ts` · `e2e/tests/sc02-06-dependency-reverse-query.spec.ts` · `e2e/tests/sc02-07-dependency-export.spec.ts` (의존성 축 비경합 7파일) | 112 | `e2ff313a778df1e7388fc7bbb07bd72c323ead751d854c5db743c3c2eee133e9` | 순 제거 137행(PRD-2 AC2.4·AC2.5 조항 재진술 17 · 목업·여정·doc-tracker 인용 21 · 시나리오 문서 인용 22 · 테스트 이름을 다시 쓴 doc 11 · 단정 재진술 18 · 선언 재진술 19 · 구분선 3 · 세 벌 중복 중 두 벌 — diff 기준 189행 삭제 · 50행 재작성) · 유지 112행 · 판단이 갈려 남긴 것 6건 · 기계 판독 `// 검증 시나리오:` 3건과 `mock-exception:` 1건 보존 — [passes/2026-09-19-dependencies-axis.md](passes/2026-09-19-dependencies-axis.md) |
 | `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일) | 132 | `a0354a08cf044961cf4a88f1e07188fc2f8029091e09d889ab12c68bae3f234c` | 순 제거 168행(화면 두 개의 머리 주석 50 — 목업·여정·doc-tracker 인용과 「이 슬라이스가 그리지 않는 것」 목록이 원장에 이미 있다고 주석 스스로 적는다 · 시나리오 문서 인용 12 · 선언·시그니처 재진술 41(rustdoc 링크만의 교차 참조와 이미 낡은 `(future)` 포함) · 테스트 이름을 다시 쓴 doc 27 · 네 벌까지 복제된 명제 중 잉여 18 · 구분선 8 · AC 꼬리표) · 유지 132행 · 판단이 갈려 남긴 것 5건 · 기계 판독 `// 검증 시나리오:` 1건 · `mock-exception:` 1건 · **화면 머리의 목업 매핑 2건**(M1 이 읽는다) 보존 — [passes/2026-09-19-reanalysis-diff-axis.md](passes/2026-09-19-reanalysis-diff-axis.md) |
 | `backend/src/discovery_strategy.rs` · `backend/src/feature_candidates.rs` · `backend/tests/strategy.rs` · `backend/tests/candidates.rs` · `frontend/src/DiscoveryStrategy.tsx` · `frontend/src/FeatureCandidates.tsx` · `e2e/tests/sc01-04-strategy-edit-and-approve.spec.ts` · `e2e/tests/sc01-07-candidate-rejection-carryover.spec.ts` (후보·전략 축 비경합 8파일) | 140 | `d46c92626168878bf48e2c9605bb8636d3eead6b3bbd6165fcc23fedfaeb911f` | 순 제거 222행(파일 머리 넷의 AC1.3·AC1.4 검증 방법 재진술 56 · 목업·여정·doc-tracker 인용 27 · 구분선 21 · AC 꼬리표 · 선언·시그니처 재진술 · 테스트 이름을 다시 쓴 doc · **여섯 벌까지 복제된 명제 중 잉여** — diff 기준 290행 삭제 · 65행 재작성) · 유지 140행 · 판단이 갈려 남긴 것 6건 · 기계 판독 `// 검증 시나리오:` 2건 · `mock-exception:` 3건 · **화면 머리의 목업 매핑 2건**(M1 이 읽는다) 보존 — [passes/2026-09-19-candidate-strategy-axis.md](passes/2026-09-19-candidate-strategy-axis.md) |
+| `backend/src/pipeline.rs` · `backend/src/cross_cutting.rs` · `backend/tests/documents.rs` · `backend/tests/progress.rs` · `frontend/src/CrossCuttingConcerns.tsx` · `e2e/tests/sc01-02-repo-out-of-scope.spec.ts` · `e2e/tests/sc01-03-cross-cutting-determinism.spec.ts` · `e2e/tests/sc01-05-resume-after-app-exit.spec.ts` · `e2e/tests/sc02-03-contradiction-separation.spec.ts` (파이프라인 · 횡단 관심사 축 비경합 9파일) | 139 | `b313af22be5ab70962138ca67e50503c5a39a21699c55a0642c58457005b8f01` | 순 제거 198행(AC1.2 조항·시나리오 2·3·5 본문 재진술 · **13벌까지 복제된 워커 임대 문단** · 목업·여정 인용 · 작업 흔적(PR·슬라이스·task id) · 선언·시그니처 재진술 · 구분선 25 · 단정을 산문으로 옮긴 주석 6) · 유지 139행 · 판단이 갈려 남긴 것 5건 · **낡아서 거짓이 된 주석 2건 적발**(`cross_cutting.rs`의 「목업은 4축만 그린다 · 편차 등재됨」 — 목업은 5축을 그리고 doc-tracker는 「등재하지 않는다」고 적는다 / `sc01-05`의 「3 of 5」 — 같은 트리의 `pipeline.rs`는 「다섯 단계 모두 돈다」고 적는다) · 기계 판독 `// 검증 시나리오:` 4건 · `mock-exception:` 2건 · **화면 머리의 목업 매핑 1건**(M1 이 읽는다) 보존 — [passes/2026-09-19-pipeline-cross-cutting-axis.md](passes/2026-09-19-pipeline-cross-cutting-axis.md) |
 
-**합계**: 판정 **46파일** · 순 제거 누적 **995행**(직전 773 + 이 패스 222) · 판정 범위의 현재 합계 **1,584행**(판정 시점 트리 `e963a5f` + 이 패스 실측). **판정 범위 안에 남은 미판정 증분은 없다** — 7행 전건을 `e963a5f` 에서 재계산해 줄수·지문이 바이트 동일임을 확인했다.
+**합계**: 판정 **55파일** · 순 제거 누적 **1,196행**(직전 995 + 이 패스 201 = 새 범위 198 + 3행 증분 재판정 3) · 판정 범위의 현재 합계 **1,723행**(판정 시점 트리 `48a4a87` + 이 패스 실측). **판정 범위 안에 남은 미판정 증분은 없다** — 9행 전건을 `48a4a87` 에서 재계산해 줄수·지문을 대조했고, `#79` 가 3행에 연 증분은 이 패스의 증분 재판정 ① 이 닫았다.
 
-**미판정 잔여**: **65파일 / 1,483행**
-(이 패스 병합 후 트리 기준 — 전역 `lines=3067 files=111`에서 판정 46파일 / 1,584행을 뺀 값).
+**미판정 잔여**: **55파일 / 1,162행**
+(이 패스 병합 후 트리 기준 — 전역 `lines=2885 files=110`에서 판정 55파일 / 1,723행을 뺀 값).
 셋으로 갈린다.
 
 - **`backend/migrations/*.sql` 8파일 / 139행** — 본문 「적용된 마이그레이션」 절의 전용 PR ·
   수동 repair · 사람 승인 게이트를 거치는 **별도 패스**다. 다른 정리와 섞지 않는다. 이번
   트리거로 움직이지 않았다.
-- **열린 PR 접촉(경합) 7파일 / 296행** (2026-09-19T04:5xZ `/pulls/<n>/files` 전수 실측) —
-  `tools/check-mockup-render.py` 91행(**#26**) · `frontend/src/App.tsx` 53행(**#79**) ·
-  `frontend/src/index.css` 42행(**#79**·**#17**) ·
-  `frontend/src/CredentialsSetup.tsx` 40행(**#17**) ·
-  `e2e/tests/sc01-02-repo-out-of-scope.spec.ts` 31행(**#79**) ·
-  `frontend/src/HomeRepositories.tsx` 27행(**#79**·**#17**) ·
-  `frontend/src/ConnectRepository.tsx` 12행(**#79**·**#17**). 열린 PR 은 #79·#64·#26·#17 넷이고
-  **#64 는 in-scope 주석 파일이 0건이라 경합이 아니다**. **#77 은 머지돼 경합에서 빠졌고**, 그
-  덕에 `api.ts`(96)가 자유 풀로 돌아왔다. 반대로 **#79 가 새로 열려** `sc01-02`·`App.tsx` 를
-  경합으로 끌어갔다. 각 PR 이 닫힌 뒤 나머지를 집는다.
-- **자유 풀 나머지 50파일 / 1,048행** — 지금 판정 가능한 범위다. 큰 후보:
-  `frontend/src/api.ts` 96 · `tools/check-journey-mockup.py` 55 ·
-  `e2e/tests/sc01-03-cross-cutting-determinism.spec.ts` 45 · `tools/check-scenario-e2e.py` 44 ·
-  `backend/src/pipeline.rs` 40 · `e2e/tests/sc01-05-resume-after-app-exit.spec.ts` 39 ·
-  `frontend/src/CrossCuttingConcerns.tsx` 38 · `backend/tests/progress.rs` 38 ·
-  `e2e/tests/sc02-03-contradiction-separation.spec.ts` 36 · `backend/src/github_app.rs` 35.
+- **열린 PR 접촉(경합) 4파일 / 217행** (2026-09-19T06:2xZ `/pulls/<n>/files` 전수 실측) —
+  `tools/check-mockup-render.py` 91행(**#26**) · `frontend/src/index.css` 44행(**#17**) ·
+  `frontend/src/HomeRepositories.tsx` 42행(**#17**) ·
+  `frontend/src/CredentialsSetup.tsx` 40행(**#17**). 열린 PR 은 #64·#26·#17 셋이고
+  **#64 는 in-scope 주석 파일이 신규 추가뿐이라 경합이 아니다**. **#79 는 머지돼 경합에서
+  빠졌고**, 그 덕에 `App.tsx`(53)·`sc01-02`(35)가 자유 풀로 돌아왔다. `#79` 가
+  `ConnectRepository.tsx` 를 `HomeRepositories.tsx` 로 **병합해 없앤 것**이 전역 파일 수가
+  111 → 110 이 된 이유다. 각 PR 이 닫힌 뒤 나머지를 집는다.
+- **자유 풀 나머지 43파일 / 806행** — 지금 판정 가능한 범위다. 큰 후보:
+  `frontend/src/api.ts` 96 · `tools/check-journey-mockup.py` 62 · `frontend/src/App.tsx` 53 ·
+  `tools/check-scenario-e2e.py` 44 · `backend/src/github_app.rs` 35 ·
+  `backend/tests/worker.rs` 35 · `backend/src/cross_cutting.rs` 는 이 패스가 닫았다.
+  **`api.ts` 와 `App.tsx` 가 둘 다 비경합이 되어**, 6차 패스가 예고한 「프런트 데이터 계층을 한
+  범위로」가 다음 패스에서 가능해졌다.
 
 > **①의 경합 분류는 이 패스를 준비하는 동안 무효가 됐다 — 다음 감지가 다시 나눈다.** 직전 판까지
 > 잔여를 가르던 기준은 「열린 draft PR #43·#49 가 건드리는 46파일 / 1,440행」이었는데, **#49는
@@ -192,6 +191,43 @@
 > - **경합 집합은 감지 브리프와 다르다.** detector 가 넘긴 「경합 5파일 / 212행」은 #79 가 열리기
 >   전 값이다. 계획 시점 전수 실측은 **7파일 / 296행**이다 — 열린 PR 목록은 계획 직전에 다시
 >   재는 것이 규칙이다.
+> - 지문 계산 규약은 앞 블록과 같다: 원장의 **범위 지문**은 후행 개행을 **포함**하고
+>   (`echo "$HITS" | sha256sum`), 모델의 **전역 지문**은 versionScript 그대로 후행 개행을
+>   **제외**한다(`printf '%s'`). 같은 입력에도 두 값은 다르다.
+
+> **9차 패스 기준 갱신 (2026-09-19 · `rct_20260919-0005`).** 위 블록들의 수치는 각 패스의 판정
+> 시점 값이라 그대로 두고, 현재 기준만 여기 적는다.
+>
+> - **8차 패스의 기여는 예고와 정확히 일치했다.** 순 제거 222행 — 부모 `e963a5f` 의
+>   `lines=3289 files=111` 이 #80 머지 뒤 `lines=3067 files=111` / `df0f9019…` 로, 8차 패스가
+>   적은 절대 예고값과 **바이트 동일**하게 착지했다. 그 뒤 #81(+7 · `check-journey-mockup.py`)과
+>   **#79(목업↔구현 수렴 ⑥)** 가 끼어 이 패스의 부모 `48a4a87` 에서는
+>   **`lines=3086 files=110` / `701de5be…`** 다. 파일이 하나 줄어든 것은 #79 가
+>   `ConnectRepository.tsx` 를 `HomeRepositories.tsx` 로 병합했기 때문이다.
+> - **이 패스의 완료 기준도 절대 지문이 아니라 「부모 `48a4a87` 대비 순 제거 **201행**」이다**
+>   (새 범위 9파일 198 + 원장 3행 증분 재판정 3). 판정 시점 절대값은 `lines=2885 files=110` /
+>   `d9be3f73e9d286504b208e95cb6a01294f3ebbc3f8eb400baf56e7b20aea4bac` 이지만, 열린
+>   #64·#26·#17 중 어느 것이 먼저 머지되면 그만큼 움직인다.
+> - **8차 패스가 예고한 「#79 가 여는 원장 3행 증분」이 실제로 열렸고, 이 패스가 닫았다.**
+>   3행은 142행 → **145행**(#79 의 순증 3) → 증분 재판정 ① 로 **142행**이다. **지문은 #79
+>   이전 값(`fb27e0db…`)으로 돌아가지 않는다** — `0e5c3d31…` 다. 줄 수 일치를 원상 복구로
+>   읽지 말 것.
+> - **원장 1·2·4·5·6·7·8행은 부모 트리 재계산에서 바이트 동일**이라 재판정이 필요 없었다
+>   (587 / `6b77b15a…` · 140 / `ddacce0b…` · 141 / `e38dcf20…` · 190 / `632b0475…` ·
+>   112 / `e2ff313a…` · 132 / `a0354a08…` · 140 / `d46c9262…`).
+> - **`docs/**.md` 를 더하는 패스는 허브 등재가 함께 가야 한다.** 이 패스가 `passes/` 에 판정
+>   상세를 하나 더하면서 `docs/index.html` 에 링크를 넣고 `Documents` 집계를 **34 → 35** 로
+>   올렸다. 빠뜨리면 `check-journey-mockup.py` 의 **R8·R9 가 3건 실패**한다(실제로 한 번
+>   관측하고 고쳤다). 허브는 주석 지문 범위 밖이라 판정 수치에는 영향이 없다.
+> - **낡아서 거짓이 된 주석이 두 건 나왔다** — 제거 근거를 강화하는 유형이다.
+>   `cross_cutting.rs` 머리는 「목업이 5축 중 4축만 그리고 그 편차가 등재돼 있다」고 적었지만
+>   목업은 5축을 그리고(`JRN-discover-features.html:1048`) `docs/doc-tracker/2026-08.md` 는
+>   「이 항목은 원장에 등재하지 않는다」고 적는다. `sc01-05` 는 「3 of 5」라 적었는데 같은
+>   트리의 `pipeline.rs` 는 「다섯 단계 모두 돈다」고 적는다.
+> - **`.rs` 파일의 목업 URL 은 게이트 입력이 아니다.** `check-mockup-render.py::discover_screens()`
+>   는 `frontend/src/*.tsx` 만 훑으므로(`SRC_DIR`), `pipeline.rs` 머리의
+>   `docs/mockups/…#STP-leave-and-return` 인용은 지워도 M1 이 영향을 받지 않는다. tsx 머리의
+>   매핑은 **여전히 M1 의 입력이므로 제거 후보가 아니다**.
 > - 지문 계산 규약은 앞 블록과 같다: 원장의 **범위 지문**은 후행 개행을 **포함**하고
 >   (`echo "$HITS" | sha256sum`), 모델의 **전역 지문**은 versionScript 그대로 후행 개행을
 >   **제외**한다(`printf '%s'`). 같은 입력에도 두 값은 다르다.

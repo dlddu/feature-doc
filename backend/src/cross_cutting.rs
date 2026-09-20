@@ -1,22 +1,14 @@
-//! Stage 2 (`cross_cutting`): extract the repository's cross-cutting concerns (AC1.2).
+//! Stage 2 of the analysis pipeline.
 //!
-//! AC1.2 names five axes — 인프라, 저장소 구조, 아키텍처, 프레임워크/런타임,
-//! 미들웨어 — and requires that every extracted item carry the file path or symbol
-//! it was inferred from. Those five are the contract this module encodes; the Cross-cutting Concerns
-//! mockup draws four of them (it omits 저장소 구조), and the PRD is the SSOT, so the
-//! extra axis is implemented and the difference is registered as a known
-//! mockup↔implementation deviation rather than silently dropped.
-//!
-//! The input is the file-path list stage 1 measured. Paths alone are enough for the
-//! evidence AC1.2 asks for and keep the stage from having to fetch blob contents;
-//! the list is sorted and truncated deterministically so the same repository
-//! produces the same prompt.
+//! The input is the file-path list stage 1 measured — paths only, never blob
+//! contents: a path is enough evidence for what this stage has to cite, and
+//! fetching bodies would put the whole tree through the LLM boundary.
 
 use serde_json::{json, Value};
 
 use crate::llm::{self, Ask};
 
-/// The five axes AC1.2 enumerates, in the order the PRD lists them.
+/// In PRD order — the screen renders the axes in this order, not the document's.
 pub const AXES: [(&str, &str); 5] = [
     ("infrastructure", "인프라 (배포 매니페스트 · IaC)"),
     ("repository_structure", "저장소 구조 (monorepo 여부 · 모듈 구분)"),
@@ -37,8 +29,7 @@ Every item must cite at least one path from the list as its evidence.
 If an axis has no supporting evidence in the tree, return an empty item list for it
 rather than guessing.";
 
-/// The JSON shape the answer is constrained to. Nothing but JSON Schema goes in
-/// here — it is sent to the provider verbatim (see [`crate::llm::Ask`]).
+/// Nothing but JSON Schema goes in here — it is sent to the provider verbatim.
 fn schema() -> Value {
     let axis_keys: Vec<&str> = AXES.iter().map(|(key, _)| *key).collect();
     json!({
@@ -76,18 +67,14 @@ fn schema() -> Value {
     })
 }
 
-/// Deterministic stand-in for the model's answer.
-///
-/// It is derived from the actual path list rather than hard-coded, so the e2e can
-/// assert the real property AC1.2 asks for — every item cites a path that exists in
-/// the analyzed tree — instead of asserting a fixed string.
+/// Derived from the actual path list rather than hard-coded, so a test can assert
+/// the real evidence property instead of asserting a fixed string.
 fn stub_answer(paths: &[String]) -> Value {
     let categories: Vec<Value> = AXES
         .iter()
         .enumerate()
         .map(|(i, (key, label))| {
-            // One item per axis, citing a path chosen by position so different
-            // axes cite different files and the same repo always maps the same way.
+            // Chosen by position so different axes cite different files.
             let items: Vec<Value> = paths
                 .get(i % paths.len().max(1))
                 .map(|path| {
@@ -119,7 +106,6 @@ fn prompt(owner: &str, name: &str, branch: &str, paths: &[String]) -> String {
     )
 }
 
-/// Sorted, truncated view of the tree — the stage's actual model input.
 pub fn input_paths(paths: &[String]) -> Vec<String> {
     let mut sorted = paths.to_vec();
     sorted.sort();
@@ -128,7 +114,6 @@ pub fn input_paths(paths: &[String]) -> Vec<String> {
     sorted
 }
 
-/// Runs stage 2 and returns the document to persist.
 pub async fn extract(
     http: &reqwest::Client,
     mode: crate::config::Mode,
@@ -159,7 +144,7 @@ pub async fn extract(
     .await
 }
 
-/// The one-liner Analysis Progress renders under the step, mirroring stage 1's "766 files · 2.2 MB".
+/// Shaped to match stage 1's own detail line, which the same row renders.
 pub fn detail(doc: &Value) -> String {
     let items: usize = doc
         .get("categories")
@@ -200,8 +185,6 @@ mod tests {
         assert_eq!(a, sorted);
     }
 
-    /// AC1.2's verification method: every item carries the path it was inferred
-    /// from, and that path is one the analysis actually saw.
     #[tokio::test]
     async fn every_extracted_item_cites_a_path_from_the_tree() {
         let http = reqwest::Client::new();
@@ -237,7 +220,6 @@ mod tests {
         assert!(items_seen > 0);
     }
 
-    /// The determinism clause: the same tree must reproduce exactly.
     #[tokio::test]
     async fn the_same_tree_reproduces_the_same_document() {
         let http = reqwest::Client::new();

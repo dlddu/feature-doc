@@ -1,31 +1,20 @@
-// Cross-cutting Concerns — the real screen behind
-// docs/mockups/JRN-discover-features.html#STP-review-landscape (Cross-cutting Concerns, AC1.2).
+// docs/mockups/JRN-discover-features.html#STP-review-landscape
 //
-// Everything here comes from `GET /api/analyses/{id}/documents/cross-cutting`:
-// the document stage 2 produced and stored, never anything derived client-side.
+// Everything rendered here is the stored document, never anything derived
+// client-side.
 //
-// One deliberate difference from the mockup as drawn:
-//   · The mockup's per-item evidence is a single path. AC1.2 says "파일 경로/심볼
-//     참조" without capping it at one, so an item renders every path it cites.
-// The axis headings are no longer one: the mockup caught up to AC1.2's five axes on
-// 2026-09-18 (#57) and this screen took its Korean captions in the convergence slice
-// that followed, so the two sides read the same now.
+// Two places where this screen has no mockup counterpart to compare against: an
+// item renders *every* path it cites where the mockup draws one, and the
+// reproducibility line is drawn nowhere in the mockup at all.
 //
-// The reproducibility line has no mockup counterpart at all: AC1.2's verification
-// method requires that a re-analysis either reproduce deterministically *or* state
-// the difference, and a screen that never mentions it cannot satisfy that clause.
-//
-// The way out to Discovery Strategy is the mockup's: this screen does not edit its own result, it
-// points at the strategy screen where the correction actually lands. It is gated on
-// stage 3 having succeeded — the same rule Analysis Progress uses for its per-stage entry points,
-// so the link never leads to a 404. Stages finish in order but not instantly, so
-// arriving here says nothing about whether the strategy exists yet.
+// Arriving here says nothing about whether the strategy exists yet — stages finish
+// in order but not instantly — so the way out is gated rather than always offered.
 
 import { useEffect, useState } from 'react';
 import { getAnalysis, getCrossCutting } from './api';
 import type { CrossCuttingDocument } from './api';
 
-/** AC1.2's five axes, in PRD order, with the label each one renders under. */
+/** Insertion order is PRD order — `AXIS_ORDER` below takes it from these keys. */
 const AXIS_LABELS: Record<string, string> = {
   infrastructure: '인프라',
   repository_structure: '저장소 구조',
@@ -40,7 +29,6 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** What the reproducibility badge says, per AC1.2's determinism clause. */
 function reproText(doc: CrossCuttingDocument): string {
   switch (doc.reproducibility.verdict) {
     case 'unchanged':
@@ -54,9 +42,7 @@ function reproText(doc: CrossCuttingDocument): string {
 
 type Props = {
   id: string;
-  /** Cross-cutting Concerns → Analysis Progress (back to the run this document came from). */
   onBack: () => void;
-  /** Cross-cutting Concerns → Discovery Strategy, offered only once stage 3 has a strategy to review. */
   onOpenDiscoveryStrategy: () => void;
 };
 
@@ -76,9 +62,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
     };
   }, [id]);
 
-  // Whether the way out is offered is a fact about the run, not about this
-  // document — so it is a separate read, and its failure never blocks the page
-  // this screen exists to show.
+  // A separate read, so its failure never blocks the page this screen exists to show.
   useEffect(() => {
     let active = true;
     getAnalysis(id)
@@ -111,16 +95,15 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
     return (
       <main className="screen">
         <Appbar onBack={onBack} />
-        {/* The mockup draws no waiting copy, so the wait is an empty place rather than
-            a sentence this screen invented (docs/doc-tracker.md 문서 권위 순서). */}
+        {/* The mockup draws no waiting copy, so the wait is an empty place rather
+            than a sentence this screen invented. */}
         <div style={{ marginTop: 22 }} data-testid="concerns-loading" />
       </main>
     );
   }
 
-  // Render in AC1.2's order regardless of the order the document arrived in, and
-  // include an axis the document omitted entirely as an explicit empty section —
-  // a silently missing heading would read as "this axis was not required".
+  // An axis the document omitted entirely still gets its heading: a silently
+  // missing one would read as "this axis was not required".
   const byAxis = new Map(doc.content.categories.map((c) => [c.axis, c.items]));
   const sections = AXIS_ORDER.map((axis) => ({
     axis,
@@ -227,12 +210,6 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
   );
 }
 
-/**
- * Three slots, like the mockup's `STP-review-landscape`: `‹ back`, the title as a direct
- * `span.appbar-title`, and a right-hand `icon-btn ghost` placeholder. The run id that
- * used to sit here as an `appbar-sub` is gone — the mockup draws no subtitle, no upper
- * document asks for one, and the id is already in the address (`#/analyses/{id}/…`).
- */
 function Appbar({ onBack }: { onBack: () => void }) {
   return (
     <header className="appbar">
