@@ -1,47 +1,33 @@
-//! The analysis pipeline's stage list — one place, mirrored by the Analysis Progress mockup.
+//! The analysis pipeline's stage list.
 //!
-//! `docs/mockups/JRN-discover-features.html#STP-leave-and-return` renders exactly these five steps
-//! ("Pipeline · 3 of 5"), so the screen and the persisted rows cannot drift apart.
 //! Every analysis is seeded with one `analysis_stages` row per entry at enqueue.
 //!
-//! All five stages run today. The last one to land is [`ACCEPTANCE_DEPENDENCIES`],
-//! whose wire key still names the two halves of PRD-2 that the roadmap once put in
-//! one slice. Only the acceptance half is implemented (AC2.1~AC2.3); the dependency
-//! half (AC2.4~AC2.6) is a *per-feature* action in `docs/test/02` 시나리오 5, not a
-//! pipeline step, which is also why the Analysis Progress mockup draws this step as
-//! 「인수 시나리오 생성」. The key is a wire contract (`/internal/.../stages/{key}`,
-//! `analysis_documents.kind`) and stays; the title says what actually runs.
+//! [`ACCEPTANCE_DEPENDENCIES`]'s wire key names two halves that the roadmap once put
+//! in one slice; only the acceptance half is a pipeline step. The key is a wire
+//! contract (`/internal/.../stages/{key}`, `analysis_documents.kind`) and stays —
+//! the title, not the key, says what actually runs.
 
-/// One step of the pipeline as the user sees it on Analysis Progress.
 pub struct Stage {
     /// 1-based position; also the `analysis_stages.seq` column.
     pub seq: i64,
     /// Stable identifier used on the wire (`/internal/analyses/{id}/stages/{key}`).
     pub key: &'static str,
-    /// Label rendered by Analysis Progress.
     pub title: &'static str,
 }
 
 /// The one stage that is executable without an LLM (repository fetch + measure).
 pub const FETCH: &str = "fetch";
 
-/// Stage 2 (AC1.2): cross-cutting concerns, the first LLM-backed stage.
 pub const CROSS_CUTTING: &str = "cross_cutting";
 
-/// Stage 3 (AC1.3): the discovery strategy the user reviews and approves.
 pub const DISCOVERY_STRATEGY: &str = "discovery_strategy";
 
-/// Stage 4 (AC1.4): feature candidate extraction. Withheld from the queue until the
-/// user approves the discovery strategy stage 3 proposed — AC1.3's gate is
-/// expressed as a property of the queue, not a rule each worker remembers.
+/// Withheld from the queue until the user approves the strategy stage 3 proposed —
+/// the gate is a property of the queue, not a rule each worker remembers.
 pub const FEATURE_CANDIDATES: &str = "feature_candidates";
 
-/// Stage 5 (AC2.1~AC2.3): the acceptance scenarios a reviewer reads on Feature Acceptance.
-///
-/// Gated one step further along than stage 4: a scenario is *about a feature*, so
-/// this stage is withheld until the reviewer has approved at least one candidate.
-/// Same mechanism as AC1.3's gate — a property of the queue, not a rule each worker
-/// remembers.
+/// Withheld one step further along than stage 4: a scenario is *about a feature*, so
+/// the queue holds it back until the reviewer has approved at least one candidate.
 pub const ACCEPTANCE_DEPENDENCIES: &str = "acceptance_dependencies";
 
 pub const STAGES: [Stage; 5] = [
@@ -52,14 +38,12 @@ pub const STAGES: [Stage; 5] = [
     Stage { seq: 5, key: ACCEPTANCE_DEPENDENCIES, title: "Acceptance scenarios" },
 ];
 
-/// Looks a stage up by its wire key.
 pub fn stage(key: &str) -> Option<&'static Stage> {
     STAGES.iter().find(|s| s.key == key)
 }
 
 /// Analysis lifecycle values that live in `analyses.status`.
 pub mod status {
-    /// Enqueued, waiting for a worker to claim it.
     pub const QUEUED: &str = "queued";
     /// Claimed by a worker and within its lease.
     pub const RUNNING: &str = "running";
@@ -79,7 +63,6 @@ pub mod stage_status {
     pub const SUCCEEDED: &str = "succeeded";
     pub const FAILED: &str = "failed";
 
-    /// Whether a worker-reported stage status is one we accept.
     pub fn is_reportable(s: &str) -> bool {
         matches!(s, RUNNING | SUCCEEDED | FAILED)
     }

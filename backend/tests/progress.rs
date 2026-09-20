@@ -1,15 +1,8 @@
-//! Async progress and partial retry (AC1.5).
-//!
-//! The two things Analysis Progress needs from the API: read the persisted progress of one
-//! analysis, and re-run a single failed stage. Both run against the router
-//! in-process, so the contract is gated by `cargo test`; the screens that render
-//! them are asserted by `e2e/tests/sc01-05-resume-after-app-exit.spec.ts`
-//! (progress) and `e2e/tests/sc01-06-partial-retry.spec.ts` (retry).
+//! Async progress and partial retry, against the router in-process.
 //!
 //! Stage transitions here are driven through the worker's own `/internal` routes
 //! rather than by writing rows directly — a fixture that hand-wrote
 //! `analysis_stages` could drift from what a worker actually produces.
-
 mod common;
 
 use axum::body::Body;
@@ -102,7 +95,6 @@ async fn detail(state: &AppState, session: &str, id: &str) -> serde_json::Value 
     json_body(resp).await
 }
 
-/// The stage entry with the given key, from a detail payload.
 fn stage<'a>(detail: &'a serde_json::Value, key: &str) -> &'a serde_json::Value {
     detail["stages"]
         .as_array()
@@ -147,8 +139,6 @@ async fn finish(state: &AppState, id: &str, status: &str, error: Option<&str>) {
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 }
 
-/// Drives one analysis to "stage 1 succeeded, stage 2 failed, job failed" — the
-/// state test/01 시나리오 6 starts from (earlier stages done, one stage failed).
 async fn run_until_second_stage_fails(state: &AppState, id: &str) {
     let claimed = claim(state).await;
     assert_eq!(claimed["id"], id);
@@ -169,7 +159,6 @@ async fn run_until_second_stage_fails(state: &AppState, id: &str) {
     finish(state, id, "failed", Some("llm call limit exceeded")).await;
 }
 
-// ── read: Analysis Progress's progress ──────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn detail_reports_every_pipeline_stage_of_the_owner_s_analysis() {
@@ -194,8 +183,7 @@ async fn detail_reports_every_pipeline_stage_of_the_owner_s_analysis() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// Another user's analysis is `404`, not `403` — the API does not confirm that an
-/// id it will not serve exists (AC4.7).
+/// `404`, not `403` — the API does not confirm that an id it will not serve exists.
 #[tokio::test]
 async fn detail_is_scoped_to_the_owner() {
     let (state, path) = stub_state().await;
@@ -211,9 +199,8 @@ async fn detail_is_scoped_to_the_owner() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// test/01 시나리오 5 — the app is closed mid-analysis and reopened. Progress is
-/// server state, so a second read returns exactly what the first one did, including
-/// the work a worker did in between.
+/// Progress is server state, so the second read also sees work a worker did between
+/// the two reads — not just a replay of the first response.
 #[tokio::test]
 async fn progress_is_persisted_so_a_later_read_sees_the_same_run() {
     let (state, path) = stub_state().await;
@@ -245,7 +232,7 @@ async fn progress_is_persisted_so_a_later_read_sees_the_same_run() {
     let again = detail(&state, &token, &id).await;
     assert_eq!(again, reopened, "a re-entry must show the same progress");
 
-    // And the home list carries the same fraction, so Home can say "1 of 5".
+    // The home list carries the same fraction, from the same rows.
     let list = json_body(
         build_router(state.clone())
             .oneshot(get("/api/analyses", &token))
@@ -258,10 +245,7 @@ async fn progress_is_persisted_so_a_later_read_sees_the_same_run() {
     let _ = std::fs::remove_file(&path);
 }
 
-// ── partial retry ─────────────────────────────────────────────────────────────
 
-/// test/01 시나리오 6 — retrying the failed stage leaves the finished ones alone and
-/// puts the job back where a worker will pick it up again.
 #[tokio::test]
 async fn retry_resets_only_the_failed_stage_and_requeues_the_job() {
     let (state, path) = stub_state().await;
@@ -285,23 +269,19 @@ async fn retry_resets_only_the_failed_stage_and_requeues_the_job() {
     assert_eq!(resp.status(), StatusCode::OK);
     let after = json_body(resp).await;
 
-    // The retried stage is clean again…
     let retried = stage(&after, "cross_cutting");
     assert_eq!(retried["status"], "pending");
     assert!(retried["error"].is_null());
     assert!(retried["startedAt"].is_null());
     assert!(retried["finishedAt"].is_null());
 
-    // …the stage that already succeeded is untouched, measurement and all…
     assert_eq!(stage(&after, "fetch"), &fetch_before);
     assert_eq!(after["stagesDone"], 1);
 
-    // …the stages that never ran are still waiting…
     for key in ["discovery_strategy", "feature_candidates", "acceptance_dependencies"] {
         assert_eq!(stage(&after, key)["status"], "pending");
     }
 
-    // …and the job is queued again, so the existing worker path re-runs it.
     assert_eq!(after["status"], "queued");
     assert!(after["error"].is_null());
     let reclaimed = claim(&state).await;
@@ -331,7 +311,6 @@ async fn retry_is_refused_for_a_stage_that_did_not_fail() {
         assert_eq!(resp.status(), StatusCode::CONFLICT, "{key} did not fail");
     }
 
-    // The refusals changed nothing.
     let body = detail(&state, &token, &id).await;
     assert_eq!(body["status"], "failed");
     assert_eq!(stage(&body, "fetch")["status"], "succeeded");
@@ -374,7 +353,6 @@ async fn retry_is_scoped_to_the_owner() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
-    // The owner's job is untouched by the refused retry.
     let body = detail(&state, &owner, &id).await;
     assert_eq!(body["status"], "failed");
     assert_eq!(stage(&body, "cross_cutting")["status"], "failed");

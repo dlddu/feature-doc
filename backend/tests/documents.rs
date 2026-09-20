@@ -1,15 +1,9 @@
-//! Pipeline document storage and the reproducibility verdict (AC1.2).
-//!
-//! What Cross-cutting Concerns needs from the API: read the cross-cutting document one analysis
-//! produced, and see whether re-analyzing the same target reproduced it. Both run
-//! against the router in-process, so the contract is gated by `cargo test`; the
-//! screen that renders it is asserted by
-//! `e2e/tests/sc01-03-cross-cutting-determinism.spec.ts`.
+//! Pipeline document storage and the reproducibility verdict, against the router
+//! in-process.
 //!
 //! Documents are written through the worker's own `/internal` route rather than by
 //! inserting rows directly — a hand-written fixture could drift from what a worker
 //! actually submits, which is the whole point of gating the contract here.
-
 mod common;
 
 use axum::body::Body;
@@ -106,7 +100,6 @@ async fn claim(state: &AppState) -> serde_json::Value {
     json_body(resp).await
 }
 
-/// Submits a document the way the worker does, and asserts it was accepted.
 async fn submit(state: &AppState, id: &str, content: serde_json::Value) -> StatusCode {
     let resp = build_router(state.clone())
         .oneshot(worker_post(
@@ -167,8 +160,6 @@ async fn claim_offers_the_cross_cutting_stage() {
     assert!(job["llmApiKey"].is_null());
 }
 
-/// Lease-guarded like every other worker write: a caller without the lease cannot
-/// store a document.
 #[tokio::test]
 async fn a_worker_without_the_lease_cannot_store_a_document() {
     let (state, _path) = stub_state().await;
@@ -213,8 +204,6 @@ async fn the_first_analysis_reports_no_comparison() {
     assert_eq!(body["content"]["categories"][0]["axis"], "infrastructure");
 }
 
-/// AC1.2's determinism clause, both halves: re-analyzing the same target reports
-/// `unchanged` when the result reproduced and `changed` when it did not.
 #[tokio::test]
 async fn a_reanalysis_reports_whether_the_result_reproduced() {
     let (state, _path) = stub_state().await;
@@ -224,7 +213,6 @@ async fn a_reanalysis_reports_whether_the_result_reproduced() {
     claim(&state).await;
     submit(&state, &first, doc(1)).await;
 
-    // Same target again, identical result.
     let second = enqueue(&state, &s, "payments-api").await;
     claim(&state).await;
     submit(&state, &second, doc(1)).await;
@@ -232,7 +220,6 @@ async fn a_reanalysis_reports_whether_the_result_reproduced() {
     assert_eq!(body["reproducibility"]["verdict"], "unchanged");
     assert_eq!(body["reproducibility"]["comparedTo"], first);
 
-    // Same target once more, different result.
     let third = enqueue(&state, &s, "payments-api").await;
     claim(&state).await;
     submit(&state, &third, doc(2)).await;
@@ -260,8 +247,6 @@ async fn a_different_repository_is_not_treated_as_a_rerun() {
     assert_eq!(body["reproducibility"]["verdict"], "first");
 }
 
-/// A re-run of the stage (AC1.5's partial retry) replaces this analysis's document
-/// rather than adding a second one.
 #[tokio::test]
 async fn resubmitting_replaces_the_analysis_own_document() {
     let (state, _path) = stub_state().await;
@@ -283,7 +268,6 @@ async fn resubmitting_replaces_the_analysis_own_document() {
     assert_eq!(rows.0, 1, "one row per (analysis, kind)");
 }
 
-/// Owner-scoped like every other analysis read (AC4.7).
 #[tokio::test]
 async fn another_users_document_is_not_readable() {
     let (state, _path) = stub_state().await;
@@ -300,8 +284,8 @@ async fn another_users_document_is_not_readable() {
     );
 }
 
-/// A stage that has not produced its document yet is a 404, not an empty document —
-/// Cross-cutting Concerns must be able to tell "not run" from "ran and found nothing".
+/// 404, not an empty document — the screen must be able to tell "not run" from
+/// "ran and found nothing".
 #[tokio::test]
 async fn a_document_that_was_never_produced_is_not_found() {
     let (state, _path) = stub_state().await;
