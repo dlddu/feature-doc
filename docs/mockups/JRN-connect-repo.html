@@ -863,8 +863,12 @@ body {
   font: inherit;
 }
 .repo-item:hover { background: var(--bg-hover); }
+.repo-item:focus-visible { border-color: var(--border-strong); }
 .repo-item .rn { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-primary); }
 .repo-item .rm { display: block; margin-top: 4px; font-size: 10.5px; color: var(--text-tertiary); }
+/* 감춘 변이는 `.rm` 의 display:block 을 이겨야 한다. */
+.repo-item .rm[hidden] { display: none; }
+.repo-item .rr { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 
 .end-card { text-align: center; padding: 30px 18px; }
 .end-card .em { font-size: 26px; }
@@ -1133,7 +1137,41 @@ body {
       <div class="section-title" style="margin-top:16px">
         <span>연결된 저장소</span><span class="count" id="home-count">0</span>
       </div>
-      <div class="stack" id="home-list" style="margin-top:10px"></div>
+      <!-- 홈 목록 항목은 정적 HTML 이 열거하고 script 는 보이고 감추기만 한다 —
+           문면을 script 가 조립하면 정적 파일에 한 벌도 남지 않아 대조가 성립하지 않는다
+           (선택 변이 표기 규약, docs/mockups/README.md). 항목이 그리는 것:
+           최근 실행의 상태 배지 · 그 실행으로 돌아가는 길(AC1.5) · 설치 범위 상태. -->
+      <div class="stack" id="home-list" style="margin-top:10px">
+        <div class="repo-item" id="repo-item-analyzed" data-repo="dlddu/payments-api" role="button" tabindex="0">
+          <span class="grow">
+            <span class="rn" data-sample>dlddu/payments-api</span>
+            <span class="rm">⎇ <span data-sample>main</span> · <span data-sample>3분 전</span></span>
+            <span class="rm" data-variant="repo-scope">App 접근 허용됨</span>
+            <span class="rm" data-variant="repo-scope" hidden>App 설치 범위 밖 — 다시 분석하려면 설치 범위에 추가해 주세요.</span>
+          </span>
+          <span class="rr">
+            <!-- 배지 어휘는 큐·워커의 실제 상태 집합이라 한 실행은 한 벌만 그린다.
+                 다섯 벌을 다 열거하고(`data-variant="run-status"`) 그중 하나만 보인다. -->
+            <span class="badge info">
+              <span class="dot"></span>
+              <span data-variant="run-status">Analyzing</span>
+              <span data-variant="run-status" hidden>Queued</span>
+              <span data-variant="run-status" hidden>Fetched</span>
+              <span data-variant="run-status" hidden>Synced</span>
+              <span data-variant="run-status" hidden>Failed</span>
+            </span>
+            <button type="button" class="section-action" id="btn-open-run" data-goto="END-open-run">진행 상황</button>
+          </span>
+        </div>
+        <div class="repo-item" id="repo-item-fresh" data-repo="dlddu/featuredoc" role="button" tabindex="0">
+          <span class="grow">
+            <span class="rn" data-sample>dlddu/featuredoc</span>
+            <!-- 예시값과 잇는 말을 각자 잎으로 감싼다 — 한 덩어리로 두면 값이 빠진 자리에서
+                 구현이 결코 만들 수 없는 카피가 대조 대상이 된다. -->
+            <span class="rm">⎇ <span data-sample>main</span> <span>· not analyzed</span></span>
+          </span>
+        </div>
+      </div>
       <p class="body sm" id="home-empty" style="margin-top:10px;color:var(--text-tertiary)">아직 분석한 저장소가 없어요. 아래에서 첫 저장소를 연결해 보세요.</p>
 
       <hr class="divider" style="margin:22px 0">
@@ -1303,6 +1341,29 @@ body {
   </div>
 </section>
 
+<!-- 여정 밖 분기의 끝 — 진행 중인 실행으로 돌아가는 길(AC1.5)은 이 여정이 아니라
+     분석 진행 여정의 것이다. 대상 선언이 data-goto-journey 다. -->
+<section id="END-open-run" class="stp" data-goto-journey="JRN-discover-features#STP-leave-and-return">
+  <div class="frame">
+    <div class="statusbar">
+      <span>9:41</span>
+      <span class="ind"><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span>
+    </div>
+    <div class="screen">
+      <div class="card end-card" style="margin-top:150px">
+        <div class="em">↪</div>
+        <h1 class="h-display" style="margin-top:14px">돌던 분석으로 돌아갑니다</h1>
+        <p class="h-display-sub" style="margin-top:8px">앱을 닫아도 분석은 서버에서 계속 돌아요. 진행 상황은 분석 화면에서 이어서 볼 수 있습니다.</p>
+      </div>
+      <div class="stack" style="margin-top:26px">
+        <a class="btn btn-primary block" id="lnk-open-run" href="./JRN-discover-features.html#STP-leave-and-return">진행 상황 열기</a>
+        <button class="btn btn-ghost block" data-goto="STP-pick-target">저장소 목록으로</button>
+      </div>
+    </div>
+    <div class="home-indicator"></div>
+  </div>
+</section>
+
 <section id="END-saved-for-later" class="stp">
   <div class="frame">
     <div class="statusbar">
@@ -1440,26 +1501,25 @@ body {
   });
 
   /* ── 홈 저장소 목록 ───────────────────────────────────────── */
+  /* 항목은 정적 HTML 에 있다 — 여기서는 허용된 저장소만 보이게 하고 개수를 맞춘다.
+     innerHTML 로 다시 지어 올리면 그 문면이 정적 파일에서 사라진다. */
   function renderHome() {
-    var list = $('home-list');
-    list.innerHTML = '';
-    state.granted.forEach(function (name) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'repo-item';
-      b.setAttribute('data-repo', name);
-      b.innerHTML = '<span class="grow"><span class="rn">' + name + '</span>' +
-                    '<span class="rm">App 접근 허용됨 · 아직 분석하지 않음</span></span>';
-      b.addEventListener('click', function () {
-        var input = $('in-repo');
-        input.value = 'github.com/' + name;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      });
-      list.appendChild(b);
+    all('#home-list .repo-item').forEach(function (el) {
+      el.hidden = state.granted.indexOf(el.getAttribute('data-repo')) === -1;
     });
     $('home-count').textContent = String(state.granted.length);
     $('home-empty').style.display = state.granted.length ? 'none' : 'block';
   }
+
+  all('#home-list .repo-item').forEach(function (el) {
+    el.addEventListener('click', function (ev) {
+      // 카드 안의 버튼(진행 상황)은 자기 일을 한다 — 폼 채우기로 번지지 않게.
+      if (ev.target !== el && ev.target.closest('button')) return;
+      var input = $('in-repo');
+      input.value = 'github.com/' + el.getAttribute('data-repo');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
 
   /* ── STP-sign-in ───────────────────────────────────────────────── */
   $('btn-signin').addEventListener('click', function () {
