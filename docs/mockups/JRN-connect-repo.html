@@ -1087,12 +1087,15 @@ body {
         </div>
         <div class="field" id="fld-key">
           <label for="in-key">API Key</label>
-          <input type="password" id="in-key" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+          <input type="password" id="in-key" data-variant="provider" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
         </div>
       </div>
 
       <div id="key-error" class="notice err" style="margin-top:12px">
-        키 형식이 올바르지 않아요. <span id="key-hint">Anthropic 키는 <code>sk-ant-</code>로 시작합니다.</span>
+        키 형식이 올바르지 않아요.
+        <span id="key-hint-anthropic" class="key-hint" data-variant="provider">Anthropic 키는 <code>sk-ant-</code>로 시작합니다.</span>
+        <span id="key-hint-openai" class="key-hint" data-variant="provider" hidden>OpenAI 키는 <code>sk-</code>로 시작합니다.</span>
+        <span id="key-hint-google" class="key-hint" data-variant="provider" hidden>Google 키는 <code>AIza</code>로 시작합니다.</span>
       </div>
 
       <div class="card row top" style="margin-top:16px;gap:12px">
@@ -1513,7 +1516,14 @@ body {
   function syncKey() {
     var v = $('in-key').value.trim();
     var ok = keyValid();
-    $('key-hint').innerHTML = KEY_RULES[$('in-provider').value].label;
+    /* 변이는 정적 HTML 이 세 벌을 다 열거해 두고(`data-variant="provider"`), 선택된 한 벌만
+       보인다 — 문면을 script 가 조립하면 정적 파일에 첫 항목 한 벌만 남아 게이트가 나머지
+       두 벌을 보지 못한다. */
+    var pick = $('in-provider').value;
+    ['anthropic', 'openai', 'google'].forEach(function (id) {
+      $('key-hint-' + id).hidden = id !== pick;
+    });
+    $('in-key').placeholder = KEY_RULES[pick].prefix + '…';
     $('btn-savekey').disabled = !ok;
     $('fld-key').classList.toggle('bad', v.length > 0 && !ok);
     toggle($('key-error'), v.length > 0 && !ok);

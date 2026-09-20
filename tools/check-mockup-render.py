@@ -25,7 +25,8 @@
 #                   대상 파일에 실재하고, 캡션 집계가 실제 행 수와 같다.
 #  M5 래칫          미해소 편차 상한과 대조 보류 상한. 늘면 실패 — 줄이면 상한을 낮추라고
 #                   실패한다(형제 게이트의 원장 래칫과 같은 방침).
-#  M6 예시값 표기   `data-sample` 규약의 오용(잎이 아닌 자리·상호작용 요소)을 잡는다.
+#  M6 표기 규약     `data-sample` 규약의 오용(잎이 아닌 자리·상호작용 요소)과
+#                   `data-variant` 규약의 오용(열거 없는 단독 변이·전진 행동)을 잡는다.
 #  M7 앱바 슬롯     활성 (화면, 단계) 쌍마다 목업 `<header class="appbar">` 의 슬롯 수와
 #                   구현 앱바의 슬롯 수를 대조한다. 슬롯은 `icon-btn`·`appbar-title`·
 #                   `appbar-sub`·`btn-link` 중 하나를 클래스로 가진 요소다. 원장 행의
@@ -178,8 +179,89 @@ def sample_misuse() -> list[str]:
     return bad
 
 
-def mockup_steps(path: Path) -> dict[str, list[str]]:
-    """`data-step` 섹션별 가시 텍스트(+ placeholder)."""
+# ── 제공자 변이 표기 규약 (`data-variant`) ──────────────────────────────────
+# 목업이 그리는 자리 중에는 **사용자의 선택에 따라 문면이 갈리는** 것이 있다(LLM 제공자를
+# 고르면 키 형식 안내와 입력 예시가 함께 갈린다). 정적 HTML 은 그런 자리에 첫 변이 한 벌만
+# 그릴 수 있고, 구현은 선택을 따라 보간해 그린다 — 그래서 리터럴 대조가 **한 방향으로만**
+# 성립한다. `data-variant="<축>"` 으로 묶인 요소는 그 비대칭을 그대로 표기한다:
+#
+#   * M3A(목업→구현) 에서 **빠진다** — 구현은 한 번에 한 변이만 그리므로 모든 변이가
+#     구현에 실재하기를 요구하면 영원히 붉다.
+#   * M3B(구현→목업) 의 건초더미에는 **남는다** — 목업이 열거한 변이 **밖**의 문면을
+#     구현이 그리면 그것은 여전히 편차다. 열거가 곧 허용 집합이다.
+#
+# 그래서 이 표기는 면제가 아니라 **열거 의무**다. `data-sample` 과 다른 점이 여기다 —
+# 예시값은 양방향에서 빠지지만(구현도 리터럴을 갖지 않는다), 변이는 구현이 그중 하나를
+# 리터럴로 갖는다. 규약 전문은 docs/mockups/README.md 「제공자 변이 표기 규약」.
+VARIANT_OPEN = re.compile(r"<(\w+)(?=[^>]*\bdata-variant=)([^>]*)>")
+VARIANT_KEY = re.compile(r'\bdata-variant="([^"]*)"')
+VOID_TAGS = {"input", "img", "br", "hr", "meta", "source", "area", "col", "embed"}
+# 전진 행동은 변이로 감출 수 없다 — 무엇을 눌러 다음 단계로 가는지는 선택과 무관한 제품 카피다.
+VARIANT_FORBIDDEN = re.compile(r"\b(data-goto|data-goto-journey|data-cta)\b")
+
+
+def split_variants(body: str) -> tuple[str, str]:
+    """`data-variant` 요소를 M3A 판정 대상에서 떼어 내고 따로 모아 돌려준다."""
+    kept: list[str] = []
+    taken: list[str] = []
+    pos = 0
+    while True:
+        m = VARIANT_OPEN.search(body, pos)
+        if not m:
+            kept.append(body[pos:])
+            return "".join(kept), "".join(taken)
+        kept.append(body[pos : m.start()])
+        tag = m.group(1).lower()
+        if tag in VOID_TAGS:
+            end = m.end()
+        else:
+            depth, i = 1, m.end()
+            step = re.compile(r"</?%s\b[^>]*>" % re.escape(tag))
+            while depth and i < len(body):
+                n = step.search(body, i)
+                if not n:
+                    i = len(body)
+                    break
+                depth += -1 if n.group(0).startswith("</") else 1
+                i = n.end()
+            end = i
+        taken.append(body[m.start() : end])
+        pos = end
+
+
+def variant_misuse() -> list[str]:
+    """열거 의무를 게이트가 지킨다 — 변이가 하나뿐이면 그것은 열거가 아니라 은닉이다."""
+    bad = []
+    for path in sorted(MOCKUP_DIR.glob("*.html")):
+        src = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.S)
+        for part in re.split(r'(?=<section id=")', src):
+            head = re.match(r'<section id="([^"]+)"([^>]*)>', part)
+            if not head or "data-step=" not in head.group(2):
+                continue
+            seen: dict[str, int] = {}
+            for m in VARIANT_OPEN.finditer(part):
+                attrs = m.group(2)
+                key = (VARIANT_KEY.search(attrs) or [None, ""])[1]
+                seen[key] = seen.get(key, 0) + 1
+                hit = VARIANT_FORBIDDEN.search(attrs)
+                if hit:
+                    bad.append(f"docs/mockups/{path.name}#{head.group(1)}: `data-variant` "
+                               f"요소가 전진 속성 `{hit.group(1)}` 을 갖는다 — 선택과 무관한 제품 카피다")
+            for key, count in sorted(seen.items()):
+                if count < 2:
+                    bad.append(f"docs/mockups/{path.name}#{head.group(1)}: "
+                               f"`data-variant=\"{key}\"` 가 {count}개뿐이다 — 변이는 "
+                               f"**열거**해야 한다(2개 이상). 한 벌만 숨기는 것은 면제다")
+    return bad
+
+
+def mockup_steps(path: Path) -> dict[str, dict[str, list[str]]]:
+    """`data-step` 섹션별 가시 텍스트(+ placeholder).
+
+    단계마다 두 벌을 돌려준다 — `judged` 는 M3A 가 「구현에 실재해야 한다」고 요구하는
+    카피이고, `pool` 은 M3B 가 「구현이 그려도 되는 것」으로 인정하는 건초더미다. 변이
+    (`data-variant`)는 뒤쪽에만 들어간다.
+    """
     src = path.read_text(encoding="utf-8")
     steps: dict[str, list[str]] = {}
     for part in re.split(r'(?=<section id=")', src):
@@ -190,11 +272,17 @@ def mockup_steps(path: Path) -> dict[str, list[str]]:
         body = re.sub(r"<style.*?</style>", "", body, flags=re.S)
         body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
         body = drop_samples(body)
-        placeholders = re.findall(r'placeholder="([^"]*)"', body)
-        aria = re.findall(r'aria-label="([^"]*)"', body)
-        text = re.sub(r"<[^>]+>", "\x00", body).split("\x00")
-        chunks = [norm(html.unescape(t)) for t in text + placeholders + aria]
-        steps[head.group(1)] = [c for c in chunks if c]
+        judged_body, variant_body = split_variants(body)
+
+        def harvest(part: str) -> list[str]:
+            placeholders = re.findall(r'placeholder="([^"]*)"', part)
+            aria = re.findall(r'aria-label="([^"]*)"', part)
+            text = re.sub(r"<[^>]+>", "\x00", part).split("\x00")
+            return [c for c in (norm(html.unescape(t))
+                                for t in text + placeholders + aria) if c]
+
+        judged = harvest(judged_body)
+        steps[head.group(1)] = {"judged": judged, "pool": judged + harvest(variant_body)}
     return steps
 
 
@@ -397,7 +485,7 @@ def main() -> int:
 
     # ── M1 ──────────────────────────────────────────────────────────────
     screens = discover_screens()
-    steps_by_file: dict[str, dict[str, list[str]]] = {}
+    steps_by_file: dict[str, dict[str, dict[str, list[str]]]] = {}
     for screen, refs in screens.items():
         for filename, anchor in refs:
             path = MOCKUP_DIR / filename
@@ -454,7 +542,7 @@ def main() -> int:
         for step, chunks in steps.items():
             if step not in active_steps or step in exempt_steps:
                 continue
-            for chunk in chunks:
+            for chunk in chunks["judged"]:
                 if not is_copy(chunk):
                     continue
                 judged += 1
@@ -475,7 +563,7 @@ def main() -> int:
             chunk
             for filename in steps_by_file
             for step in steps
-            for chunk in steps_by_file[filename].get(step, [])
+            for chunk in steps_by_file[filename].get(step, {}).get("pool", [])
         )
         for chunk in impl_copy(ROOT / screen):
             checked += 1
@@ -550,9 +638,14 @@ def main() -> int:
     marked = sum(len(SAMPLE_OPEN.findall(re.sub(r"<!--.*?-->", "", p.read_text(encoding="utf-8"),
                                                 flags=re.S)))
                  for p in sorted(MOCKUP_DIR.glob("*.html")))
-    for message in sample_misuse():
+    varied = sum(len(VARIANT_OPEN.findall(re.sub(r"<!--.*?-->", "", p.read_text(encoding="utf-8"),
+                                                 flags=re.S)))
+                 for p in sorted(MOCKUP_DIR.glob("*.html")))
+    misuse = sample_misuse() + variant_misuse()
+    for message in misuse:
         fail("M6", message)
-    print(f"M6 예시값 표기 — `data-sample` {marked}건, 오용 0건")
+    print(f"M6 예시값·변이 표기 — `data-sample` {marked}건 · `data-variant` {varied}건, "
+          f"오용 {len(misuse)}건")
 
     # ── M7 앱바 슬롯 ────────────────────────────────────────────────────
     compared = 0
