@@ -217,6 +217,10 @@ body {
   border-radius: 14px;
   padding: 14px 16px;
 }
+/* 누르면 연결 폼을 채우는 저장소 카드 (목업 .repo-item:hover) */
+.card.pickable { cursor: pointer; }
+.card.pickable:hover { background: var(--bg-hover); }
+.card.pickable:focus-visible { outline: none; border-color: var(--border-strong); }
 
 /* ── input field — caps mono label + value ── */
 .input {

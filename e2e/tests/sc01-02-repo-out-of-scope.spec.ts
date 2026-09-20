@@ -43,7 +43,10 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
   // Nothing was queued by the refused attempt.
   await expect(page.locator('[data-testid="repo-card"] .badge')).toHaveCount(0);
 
-  await page.getByTestId('repo-url').fill('stub-account/payments-api');
+  // 목업처럼 목록의 저장소를 누르면 Repository URL 칸이 채워진다 — 직접 타이핑하지 않는다.
+  await cards.filter({ hasText: 'stub-account/payments-api' }).click();
+  await expect(page.getByTestId('repo-url')).toHaveValue('github.com/stub-account/payments-api');
+  await expect(page.getByTestId('no-access')).toHaveCount(0);
   await page.getByTestId('check-access').click();
   const estimate = page.getByTestId('estimate');
   await expect(estimate).toBeVisible();
