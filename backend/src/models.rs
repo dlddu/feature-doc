@@ -1,4 +1,4 @@
-//! Database row types.
+//! Database row types. (data-format-review 동작 확인용 테스트 — 머지 금지)
 
 #[derive(Clone, sqlx::FromRow)]
 pub struct User {
