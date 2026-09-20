@@ -27,20 +27,15 @@ pub fn routes() -> Router<AppState> {
 
 #[derive(Deserialize, Default)]
 struct LoginParams {
-    /// Stub-mode only: pick which synthetic identity to log in as.
     #[serde(rename = "as")]
     as_user: Option<String>,
 }
 
-/// Begins login. Real mode redirects to GitHub's App user-authorization page;
-/// stub mode bounces straight back to our callback with a synthetic code.
 async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
     Query(params): Query<LoginParams>,
 ) -> Result<(CookieJar, Redirect), AppError> {
-    // The cookie holds the *whole* state, `pr-<id>~` prefix included, so the
-    // callback's CSRF check below stays a plain equality test.
     let nonce = util::oauth_state(state.config.preview_id.as_deref());
     let jar = jar.add(cookies::make(&state, STATE_COOKIE, nonce.clone()));
 
@@ -51,10 +46,9 @@ async fn login(
             format!("/api/auth/callback?code={code}&state={nonce}")
         }
         Mode::Real => {
-            // Must be the origin registered on the App, not necessarily our own:
-            // on a preview that is production, whose redirect proxy sends the
-            // code back here. `github_api::exchange_code` re-derives the same
-            // value, since GitHub rejects a mismatch at the token exchange.
+            // A preview cannot register its own callback URL with the App, so it
+            // tags the state with its PR number and lets the redirect proxy on the
+            // registered origin route the callback back — that origin, not ours.
             let redirect_uri = format!(
                 "{}/api/auth/callback",
                 state.config.oauth_redirect_base_url
@@ -81,8 +75,6 @@ struct CallbackParams {
     state: String,
 }
 
-/// Completes login: validates the CSRF state, resolves the GitHub user, upserts
-/// it, opens a session, and redirects to the SPA.
 async fn callback(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -95,7 +87,6 @@ async fn callback(
 
     let outcome = github_api::exchange_code_for_user(&state, &params.code).await?;
     let user = users::upsert(&state.db, &outcome.user).await?;
-    // Keep the OAuth token (real mode) so setup can verify installation ownership.
     if let Some(gh_token) = outcome.token {
         github_tokens::store(&state.db, &state.config.kek, &user.id, &gh_token).await?;
     }
@@ -109,7 +100,6 @@ async fn callback(
     Ok((jar, Redirect::to("/")))
 }
 
-/// Ends the session and clears the cookie.
 async fn logout(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -121,7 +111,6 @@ async fn logout(
     Ok((jar, StatusCode::NO_CONTENT))
 }
 
-/// Returns the authenticated user, or 401.
 async fn me(CurrentUser(user): CurrentUser) -> Json<UserView> {
     Json(UserView::from(user))
 }
@@ -146,8 +135,6 @@ impl From<User> for UserView {
     }
 }
 
-/// Extractor that resolves the session cookie to the current [`User`], or rejects
-/// with 401. Protected handlers take this to require authentication.
 pub struct CurrentUser(pub User);
 
 impl FromRequestParts<AppState> for CurrentUser {

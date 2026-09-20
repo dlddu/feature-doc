@@ -1,5 +1,4 @@
-//! GitHub App installation surface: install URL, post-install setup callback, and
-//! the connection status the Credentials Setup screen renders.
+//! GitHub App installation surface for the Credentials Setup screen.
 
 use axum::extract::{Query, State};
 use axum::response::Redirect;
@@ -30,18 +29,13 @@ struct InstallUrlView {
     url: String,
 }
 
-/// Returns where to send the user to install the App. Real mode points at GitHub's
-/// installation page; stub mode points back at our own setup callback so the
-/// browser e2e completes the loop without GitHub.
 async fn install_url(
     State(state): State<AppState>,
     jar: CookieJar,
     CurrentUser(user): CurrentUser,
 ) -> Result<(CookieJar, Json<InstallUrlView>), AppError> {
-    // Prefixed on previews for the same reason as login: the App's Setup URL is a
-    // single registered origin, so the redirect proxy there needs the PR number
-    // to send the installation back. Harmless when GitHub drops the state — see
-    // the best-effort check in `setup` below.
+    // The App's Setup URL is a single registered origin too, so the state carries
+    // the PR number for the redirect proxy there.
     let nonce = util::oauth_state(state.config.preview_id.as_deref());
     let jar = jar.add(cookies::make(&state, SETUP_STATE_COOKIE, nonce.clone()));
 
@@ -72,8 +66,7 @@ struct SetupParams {
     state: Option<String>,
 }
 
-/// GitHub App "Setup URL" callback after the user installs/selects repositories.
-/// Links the installation to the current user, then returns to the SPA.
+/// GitHub's post-install "Setup URL" callback.
 async fn setup(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -91,8 +84,6 @@ async fn setup(
         }
     }
 
-    // The Setup URL's installation_id is spoofable; confirm the signed-in user has
-    // access to it before linking (AC4.7).
     github_app::verify_user_owns_installation(&state, &user.id, params.installation_id).await?;
 
     let info = github_app::fetch_installation(&state, params.installation_id).await?;
@@ -133,12 +124,9 @@ struct ConnectionView {
     account: Option<AccountView>,
     repository_selection: Option<String>,
     repository_count: Option<i64>,
-    /// The read-only scopes the App requests — always present so the screen can
-    /// show them before installation too.
     permissions: Vec<String>,
 }
 
-/// Reports the current user's installation state for the Credentials Setup screen.
 async fn connection(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -150,11 +138,8 @@ async fn connection(
 
     let linked = match installations::get_for_user(&state.db, &user.id).await? {
         Some(inst) => Some(inst),
-        // Nothing linked locally. That row is only ever written by the Setup URL
-        // callback, so a user who installed the App before this row existed — or
-        // whose callback never landed — reads as "not installed" and gets handed
-        // `installations/new`, which opens a *second* installation instead of the
-        // one they already have. Ask GitHub once and adopt what it reports.
+        // No local row. It is only ever written by the Setup URL callback, so a
+        // user whose callback never landed would be offered a *second* install.
         None => adopt_existing_installation(&state, &user.id).await,
     };
 
@@ -183,13 +168,9 @@ async fn connection(
     }
 }
 
-/// Links whatever installations GitHub already reports for this user and returns
-/// the one the screen should render.
-///
-/// Best-effort by design: a GitHub outage, a revoked App, or an OAuth token we can
-/// no longer use should leave Credentials Setup reading "not installed" — the same state it had
-/// before — rather than failing the screen. The reverse (claiming installed when
-/// we could not confirm it) would hide the connect button behind an error.
+/// Best-effort by design: an outage, a revoked App, or an unusable OAuth token must
+/// leave Credentials Setup reading "not installed" rather than failing the screen —
+/// erroring out would hide the connect button behind a failure the user cannot act on.
 async fn adopt_existing_installation(state: &AppState, user_id: &str) -> Option<Installation> {
     let found = match github_app::list_user_installations(state, user_id).await {
         Ok(found) if !found.is_empty() => found,
@@ -218,8 +199,6 @@ async fn adopt_existing_installation(state: &AppState, user_id: &str) -> Option<
         }
     }
 
-    // Distinct from `github.install`: this link was inferred from GitHub's state,
-    // not observed as an install we walked the user through.
     crate::audit::record(
         &state.db,
         Some(user_id),
@@ -234,7 +213,6 @@ async fn adopt_existing_installation(state: &AppState, user_id: &str) -> Option<
         .flatten()
 }
 
-/// Deterministic per-user stub installation id (distinct users → distinct ids).
 fn stub_installation_id(github_id: i64) -> i64 {
     10_000 + github_id.rem_euclid(90_000)
 }

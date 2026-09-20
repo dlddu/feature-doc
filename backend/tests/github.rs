@@ -1,5 +1,4 @@
-//! GitHub App installation surface: connection state, full stub setup round-trip,
-//! and short-lived installation tokens that are never persisted.
+//! GitHub App installation surface.
 
 mod common;
 
@@ -86,7 +85,6 @@ async fn setup_round_trip_marks_connection_installed() {
     let (state, path) = stub_state().await;
     let token = login_user(&state, "alice", 1).await;
 
-    // 1) ask for the install URL + capture the setup-state cookie.
     let resp = build_router(state.clone())
         .oneshot(
             Request::builder()
@@ -107,7 +105,6 @@ async fn setup_round_trip_marks_connection_installed() {
     let setup_state = cookie_value(&set_cookie, "fd_setup_state").unwrap();
     let url = json_body(resp).await["url"].as_str().unwrap().to_string();
 
-    // 2) follow the setup callback with both cookies.
     let resp = build_router(state.clone())
         .oneshot(
             Request::builder()
@@ -123,7 +120,6 @@ async fn setup_round_trip_marks_connection_installed() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
-    // 3) connection now reports installed + the mockup's repo count / account.
     let resp = build_router(state)
         .oneshot(
             Request::builder()
@@ -189,7 +185,6 @@ async fn github_token_store_load_roundtrips_encrypted() {
         .unwrap();
     assert_eq!(loaded.as_deref(), Some("gho_secret_token_value"));
 
-    // Unknown user -> None.
     assert!(featuredoc::github_tokens::load(&state.db, &state.config.kek, "nobody")
         .await
         .unwrap()
@@ -206,8 +201,6 @@ async fn github_token_store_load_roundtrips_encrypted() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// A throwaway stand-in for GitHub's API: answers `GET /user/installations` with
-/// `body` and nothing else. Returns the origin to point `api_base` at.
 async fn fake_github(body: serde_json::Value) -> String {
     let app = axum::Router::new().route(
         "/user/installations",
@@ -222,9 +215,7 @@ async fn fake_github(body: serde_json::Value) -> String {
     format!("http://{addr}")
 }
 
-/// The App is installed on GitHub but nothing links it locally — the state a user
-/// lands in when the Setup URL callback never completed. The screen must report
-/// the installation it already has rather than offering to make a second one.
+// The user installed the App but the Setup URL callback never landed.
 #[tokio::test]
 async fn connection_adopts_an_installation_github_already_reports() {
     let api = fake_github(serde_json::json!({
@@ -276,8 +267,6 @@ async fn connection_adopts_an_installation_github_already_reports() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// Adoption is best-effort: with no usable OAuth token the lookup fails, and the
-/// screen must fall back to "not installed" rather than erroring out.
 #[tokio::test]
 async fn connection_without_a_usable_token_reports_not_installed() {
     let api = fake_github(serde_json::json!({ "total_count": 0, "installations": [] })).await;

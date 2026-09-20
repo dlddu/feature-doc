@@ -24,43 +24,47 @@
 | `backend/src/pipeline.rs` · `backend/src/cross_cutting.rs` · `backend/tests/documents.rs` · `backend/tests/progress.rs` · `frontend/src/CrossCuttingConcerns.tsx` · `e2e/tests/sc01-02-repo-out-of-scope.spec.ts` · `e2e/tests/sc01-03-cross-cutting-determinism.spec.ts` · `e2e/tests/sc01-05-resume-after-app-exit.spec.ts` · `e2e/tests/sc02-03-contradiction-separation.spec.ts` (파이프라인 · 횡단 관심사 축 비경합 9파일) | 140 | `03babd782b097f5022f5b81b1954b83ab20584408db686318656aa4cc8b1142a` | 순 제거 198행(AC1.2 조항·시나리오 2·3·5 본문 재진술 · **13벌까지 복제된 워커 임대 문단** · 목업·여정 인용 · 작업 흔적(PR·슬라이스·task id) · 선언·시그니처 재진술 · 구분선 25 · 단정을 산문으로 옮긴 주석 6) · 유지 139행 · 판단이 갈려 남긴 것 5건 · **낡아서 거짓이 된 주석 2건 적발**(`cross_cutting.rs`의 「목업은 4축만 그린다 · 편차 등재됨」 — 목업은 5축을 그리고 doc-tracker는 「등재하지 않는다」고 적는다 / `sc01-05`의 「3 of 5」 — 같은 트리의 `pipeline.rs`는 「다섯 단계 모두 돈다」고 적는다) · 기계 판독 `// 검증 시나리오:` 4건 · `mock-exception:` 2건 · **화면 머리의 목업 매핑 1건**(M1 이 읽는다) 보존 — [passes/2026-09-20-pipeline-cross-cutting-axis.md](passes/2026-09-20-pipeline-cross-cutting-axis.md) · **증분 재판정 ①**(2026-09-20): #83 이 `sc01-02`(+1) · `sc01-05`(+2) 에 연 순증 3행을 판정해 **순 제거 2행**(목업 카피 인용 · 슬라이스 ⑦ 작업 흔적) · 유지 2행(같은 버튼을 연달아 두 번 누르는 코드가 복사 실수로 읽히지 않게 하는 한 줄씩) · 139행이 아니라 **140행**으로 내려온다 — [passes/2026-09-20-frontend-shell-axis.md](passes/2026-09-20-frontend-shell-axis.md) · **증분 재판정 ②**(2026-09-20): #85(제품 fix)가 `sc01-02` 에 연 순증 1행을 판정해 **순 제거 1행**(목업 카피 인용 · 바로 아래 세 줄의 단정이 그 문장 자체) · 유지 0행 · 줄 수와 지문이 **둘 다 #85 이전 값으로 되돌아왔다**(140 / `03babd78…` — #85 의 부모 `e340bdc` 실측과 바이트 동일) — [passes/2026-09-20-tools-checker-axis.md](passes/2026-09-20-tools-checker-axis.md) · **미판정 증분 없음** |
 | `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일) | 80 | `641e9457a5fe0b1592e0953c6f3b2b21b9f25665540441df7388ece3c1804668` | 순 제거 260행(절 제목 33 + `api.ts` AC 꼬리표 절 제목 5 · 선언·시그니처 재진술 · AC 조항·시나리오·목업 카피 인용 · 작업 흔적(슬라이스 ⑥⑦ · task id · 판정일) · **4벌까지 복제된 인계 계약과 404 명제 중 잉여** — diff 기준 367행 삭제 · 57행 재작성) · 유지 80행 · 판단이 갈려 남긴 것 12건 · **낡아서 거짓이 된 주석 1건 적발**(`SignIn.tsx` 머리가 #83 이 지운 `CredentialsSetup.tsx` 를 현재형으로 서술) · `format.ts` 는 전건 제거로 주석 0행이 되어 지문의 파일 집합에서 빠졌다(8파일 판정 → 지문 `files=7`) · **화면 머리의 목업 매핑 4건**(M1 이 읽는다) 보존 — [passes/2026-09-20-frontend-shell-axis.md](passes/2026-09-20-frontend-shell-axis.md) · **증분 재판정 ①**(2026-09-20): #85(제품 fix)가 `HomeRepositories.tsx`(+5) · `index.css`(+1) 에 연 순증 6행을 판정해 **순 제거 6행**(`pick()` JSDoc 4 — 본문 한 줄과 여섯 줄 위 `edit()` 의 재진술 + 목업 `renderHome()` 인용 · `stopPropagation` 인라인 1 · CSS 선택자 재진술 1) · 유지 0행 · 줄 수와 지문이 **둘 다 #85 이전 값으로 되돌아왔다**(80 / `641e9457…` — 부모 `e340bdc` 실측과 바이트 동일) — [passes/2026-09-20-tools-checker-axis.md](passes/2026-09-20-tools-checker-axis.md) · **미판정 증분 없음** |
 | `tools/check-mockup-render.py` · `tools/check-journey-mockup.py` · `tools/check-scenario-e2e.py` (`tools/` 체커 축 — 정적 게이트 3파일) | 112 | `8b41c689f8bb34951e205c72d855e4354a6f07fc9569e209ab481bcc1bc41ab7` | 순 제거 101행(형제 게이트 셋이 각자 한 벌씩 적은 SSOT·면제 통로 서술 14 · `data-sample`·`data-variant` 규약 전문 22 — 주석 스스로 `docs/mockups/README.md` 를 복원처로 지목하고 그 포인터의 절 제목마저 이미 낡아 있었다 · 인라인 규칙 마커 21(M0~M7 · R0~R11 · S0~S5 — 파일 머리 목록과 `fail()`·`print()` 문면의 세 번째 벌) · 절 제목 13 · 여정 밖 분기 설명의 다섯 벌 중 셋 7 · M7 블록 머리의 두 번째 벌 5 · 의존성 0·`--verbose` 사용법 5 · R6·R10 규칙 재진술 4 — diff 기준 152행 삭제 · 6행 재작성, 차이는 파이썬 docstring 51행이 지문에 안 보이기 때문) · 유지 112행 · 판단이 갈려 남긴 것 17건 · **파일 머리의 규칙 목록 M0~M7·R0~R11·S0~S5 는 원본이라 보존**(워크플로 셋이 「무엇을 검사하는지는 이 헤더에 있다」로 가리킨다 — 2026-09-18 판정이 `check-journey-prototype.js` 의 P1~P7 을 남긴 것과 같은 결정) · 기계 판독 `// 검증 시나리오:` 선언 1건(S1 항목) 보존 · **AST 동일 3/3** — [passes/2026-09-20-tools-checker-axis.md](passes/2026-09-20-tools-checker-axis.md) |
+| `backend/src/github_app.rs` · `backend/src/github.rs` · `backend/src/github_api.rs` · `backend/src/github_tokens.rs` · `backend/src/auth.rs` · `backend/src/session.rs` · `backend/src/cookies.rs` · `backend/src/installations.rs` · `backend/src/users.rs` · `backend/tests/github.rs` · `backend/tests/auth.rs` · `e2e/tests/sc04-01-app-install-and-scope.spec.ts` · `e2e/tests/sc04-11-unauthenticated-block-and-signin.spec.ts` · `e2e/tests/sc04-12-logout-session-invalidation.spec.ts` (GitHub App · 인증 경계 축 14파일) | 71 | `261ad97902dd63b0f049c13eed08d8c02118e7c2074b965ebeb7a99136967259` | 순 제거 152행(선언·시그니처만 영어로 풀어 쓴 `///` 요약 19건 · AC 꼬리표 `(AC4.1)`·`(AC4.3)`·`(AC4.7)`·`(AC4.8)` 전건 · 시나리오 원문 축자 인용과 본문 절 제목 (AC4.8 검증 방법의 복사) · 작업 흔적(분리 이력 · 정정 이력 · `rct_20260916-0002`) · **네 벌까지 복제된 명제 중 잉여** — Setup URL `installation_id` 스푸핑 4벌 · OAuth 토큰 보관 사유 3벌 · 미리보기 state 태깅 3벌 · adoption best-effort 2벌) · 유지 71행 · 판단이 갈려 남긴 것 2건 · **낡아서 거짓이 된 주석 2건 적발**(`github.rs` 의 「distinct users → distinct ids」 — 식은 `rem_euclid(90_000)` 이라 충돌한다 / `tests/auth.rs` 머리가 테스트 넷을 열거하는데 파일에는 여섯 개다) · 기계 판독 `// 검증 시나리오:` 3건 · `mock-exception:` 6건 보존 · **주석 제거 후 부모와 바이트 동일 14/14** — [passes/2026-09-20-github-app-auth-axis.md](passes/2026-09-20-github-app-auth-axis.md) |
 
-**합계**: 판정 **66파일**(지문의 파일 집합 기준으로는 65 — `format.ts` 가 전건 제거로 주석 0행이
-되어 빠졌다) · 순 제거 누적 **1,568행**(직전 1,460 + 이 패스 108 = 새 범위 101 + 증분 재판정 7) ·
-판정 범위의 현재 합계 **1,916행**(판정 시점 트리 `7a232f9` + 이 패스 실측). **판정 범위 안에 남은
-미판정 증분은 없다** — 1~8행 전건을 `7a232f9` 에서 재계산해 줄수·지문이 **8/8 바이트 동일**이고
-(587 / `6b77b15a…` · 140 / `ddacce0b…` · 142 / `93be69ea…` · 141 / `e38dcf20…` · 190 / `632b0475…` ·
-112 / `e2ff313a…` · 132 / `a0354a08…` · 140 / `d46c9262…`), `#85` 가 9행(+1)·10행(+6)에 연 증분은
-이 패스의 증분 재판정 ②·① 이 닫았다.
+**합계**: 판정 **80파일**(지문의 파일 집합 기준으로는 79 — `format.ts` 가 전건 제거로 주석 0행이
+되어 빠졌다) · 순 제거 누적 **1,720행**(직전 1,568 + 이 패스 152 — 전부 새 범위이고 증분 재판정은
+없다) · 판정 범위의 현재 합계 **1,987행**(판정 시점 트리 `f5a2937` + 이 패스 실측). **판정 범위
+안에 남은 미판정 증분은 없다** — 1~11행 전건을 `f5a2937` 에서 재계산해 줄수·지문이 **11/11 바이트
+동일**이다(587 / `6b77b15a…` · 140 / `ddacce0b…` · 142 / `93be69ea…` · 141 / `e38dcf20…` ·
+190 / `632b0475…` · 112 / `e2ff313a…` · 132 / `a0354a08…` · 140 / `d46c9262…` · 140 / `03babd78…` ·
+80 / `641e9457…` · 112 / `8b41c689…`). 11차 패스 이후 main 에 끼어든 커밋이 없어 기준선이 움직이지
+않았다.
 
-**미판정 잔여**: **46파일 / 737행**
-(이 패스 병합 후 트리 기준 — 전역 `lines=2653 files=111`). 이 수치는 전역 지문의 파일 목록에서
-판정 66파일을 **집합으로 뺀** 값이다. 「행 없는 파일」만 세거나 전역에서 판정 합계를 빼는 방식은
+**미판정 잔여**: **32파일 / 514행**
+(이 패스 병합 후 트리 기준 — 전역 `lines=2501 files=111`). 이 수치는 전역 지문의 파일 목록에서
+판정 80파일을 **집합으로 뺀** 값이다. 「행 없는 파일」만 세거나 전역에서 판정 합계를 빼는 방식은
 `format.ts` 처럼 주석이 0행이 되어 지문 파일 집합에서 빠진 판정 파일과 어긋난다 — 집합 차로
-계산하고, 두 방식이 같은 값을 주는지 대조한다(737 == 2,653 − 1,916).
+계산하고, 두 방식이 같은 값을 주는지 대조한다(514 == 2,501 − 1,987).
 
 - **`backend/migrations/*.sql` 8파일 / 139행** — 본문 「적용된 마이그레이션」 절의 전용 PR ·
   수동 repair · 사람 승인 게이트를 거치는 **별도 패스**다. 다른 정리와 섞지 않는다. 이번
-  트리거로 움직이지 않았다.
-- **자유 풀 38파일 / 598행** — 가장 큰 항목은 **이 패스를 준비하는 동안 들어온**
-  `tools/check-data-format-change.py` 58(#64) 이고, 나머지는 **backend 쪽과 sc04 계열 e2e** 로
-  갈린다. 큰 후보: `backend/tests/worker.rs` 35 · `backend/src/github_app.rs` 35 ·
-  `sc04-12` 33 · `backend/tests/llmkey.rs` 33 · `backend/src/github.rs` 33 · `sc04-13` 30 ·
-  `sc04-04` 24 · `sc04-03` 23 · `sc02-02` 23 · `backend/tests/auth.rs` 22.
-  **다음 축은 「GitHub App · 인증 경계」로 잡힌다** — `github_app.rs` 35 · `github.rs` 33 ·
-  `github_api.rs` 15 · `github_tokens.rs` 7 · `auth.rs` 17 · `tests/github.rs` 15 ·
-  `tests/auth.rs` 22 + sc04 계열. 상류 API 의 문서화되지 않은 거부 조건이 몰려 있는 자리라
-  **유지 판정 비율이 높을 축**이고, 판정 밀도가 앞 패스들보다 낮을 것을 예상해 두어야 한다.
+  트리거로 움직이지 않았다. 12차 패스가 `0002_github_tokens.sql:3` 에서 「Setup URL 의
+  `installation_id` 는 스푸핑 가능」의 **4벌째**를 확인했으므로, 그 패스는 12차가 정한 정본
+  (`github_app.rs`)을 이어받으면 된다.
+- **자유 풀 24파일 / 375행** — **다음 축은 「자격증명 · LLM 키 경계」로 잡힌다**:
+  `backend/tests/llmkey.rs` 33 · `sc04-13` 30 · `sc04-04` 24 · `sc04-03` 23 · `sc04-05` 18 ·
+  `crypto.rs` 13 · `tests/security.rs` 8 · `audit.rs` 7 · `tests/crypto.rs` 3 — 합 **159행**.
+  `llmkey.rs`(44)는 원장 1행이 이미 판정했으므로 이 축을 집으면 자격증명 계층이 닫힌다 — 다만
+  11차 패스의 경고대로 **「닫았다」는 그 시점 트리에서만 참이다**. 그 다음 후보는
+  `tools/check-data-format-change.py` 58(#64 가 들여놓았고 아직 아무도 안 봤다) ·
+  `backend/tests/worker.rs` 35 · `sc02-02` 23 · `backend/src/db.rs` 17 ·
+  `backend/tests/common/mod.rs` 16 · `deploy/k8s/kustomization.yaml` 15.
 
-**경합 0 · 열린 PR 0건** (2026-09-20T11:0xZ `/pulls?state=open` 전수 실측). 계획 시점에 유일하게
-열려 있던 **#64 는 이 패스를 준비하는 동안 머지됐다**(`b2724da`). 파일 겹침은 0 이었으므로 판정과
-지문에는 영향이 없지만, 그 PR 이 들여놓은 `tools/check-data-format-change.py` **주석 58행**이
-새 미판정 파일로 잔여에 들어왔다.
+**경합 0 · 열린 PR 3건** (2026-09-20T13:2xZ `/pulls?state=open` 전수 실측 — #91 반응형
+레이아웃 · #92 슬라이스 6a LLM 보조 문서 수정 · #93 OpenAI strict 스키마 fix). 셋 다 base 가 `f5a2937` 로
+이 패스와 같고, **판정 14파일과 파일 겹침이 0** 이다(각 PR 의 `/pulls/<n>/files` 전수 대조).
+셋 다 in-scope 주석 파일을 건드리므로 **먼저 머지되면 전역 지문의 절대값은 움직인다** — 그래서
+이 패스의 완료 기준도 절대 지문이 아니라 **「부모 대비 순 제거 152행」**이다.
 
-그래서 **`tools/` 는 닫히지 않았다.** 이 패스는 그 디렉터리의 판정 대상이던 4파일 전량
-(`check-journey-prototype.js` 는 원장 2행)을 닫았지만, 같은 사이클에 다섯 번째 파일이 들어왔다.
-「디렉터리 종료」는 *그 시점 트리의 판정 대상 전량*을 말하는 것이지 그 디렉터리가 영구히
-닫혔다는 뜻이 아니다 — **`frontend/src` 의 종료도 같은 의미로 읽어야 한다.**
+그래서 **`backend/src` 는 닫히지 않았다.** 이 패스가 인증 경계의 소형 파일까지 쓸어 담았지만
+`db.rs` 17 · `crypto.rs` 13 · `util.rs` 12 · `audit.rs` 7 · `main.rs` 5 · `error.rs` 5 ·
+`state.rs` 1 · `models.rs` 1 이 남아 있다. **디렉터리 단위 종료를 선언하지 않는다** — 11차
+패스가 `tools/` 에서 배운 그대로다.
 
 > **①의 경합 분류는 이 패스를 준비하는 동안 무효가 됐다 — 다음 감지가 다시 나눈다.** 직전 판까지
 > 잔여를 가르던 기준은 「열린 draft PR #43·#49 가 건드리는 46파일 / 1,440행」이었는데, **#49는
@@ -327,6 +331,55 @@
 >   하나 더하면서 `docs/index.html` 에 링크를 넣고 `Documents` 집계를 **36 → 37** 로 올렸다.
 >   빠뜨리면 `check-journey-mockup.py` 의 R8·R9 가 실패한다. 허브는 주석 지문 범위 밖이라 판정
 >   수치에는 영향이 없다.
+> - 지문 계산 규약은 앞 블록과 같다: 원장의 **범위 지문**은 후행 개행을 **포함**하고
+>   (`echo "$HITS" | sha256sum`), 모델의 **전역 지문**은 versionScript 그대로 후행 개행을
+>   **제외**한다(`printf '%s'`). 같은 입력에도 두 값은 다르다.
+
+> **12차 패스 기준 갱신 (2026-09-20 · `rct_20260920-0005`).** 위 블록들의 수치는 각 패스의 판정
+> 시점 값이라 그대로 두고, 현재 기준만 여기 적는다.
+>
+> - **11차 패스 이후 main 이 움직이지 않았다 — 이 원장에서 처음이다.** 부모 `f5a2937` 에서 잰
+>   전역 지문이 11차 패스가 적어 둔 착지값과 **바이트 동일**하다
+>   (`lines=2653 files=111` / `15cb6b24…`). 그래서 원장 1~11행 전건이 재계산에서 **11/11 바이트
+>   동일**이고 증분 재판정이 한 건도 없었다. 다음 패스가 같은 상황을 기대해서는 안 된다 —
+>   **열린 PR 이 0건이 아니라 3건**이고, 셋 다 in-scope 주석 파일을 건드린다.
+> - **이 패스의 완료 기준도 절대 지문이 아니라 「부모 대비 순 제거 **152행**」이다**
+>   (전부 새 범위 14파일, 증분 재판정 0). 착지값은
+>   **`lines=2501 files=111` / `4e81c916e413f7badaa79eac340f5cd6685857ec2e5e90b0271e0a36ccac8dd8`**
+>   이지만, #91·#92·#93 중 하나라도 먼저 머지되면 그 절대값은 지난다. **순 제거 152 는 그래도
+>   불변이다** — 셋 다 이 14파일과 겹침이 0 이다.
+> - **지문 감소와 diff 삭제 줄 수가 이번엔 같다(둘 다 152).** 11차 패스에서 둘이 갈렸던 이유
+>   (파이썬 docstring 이 지문에 안 보인다)가 이 범위엔 없다 — Rust·TypeScript 뿐이고 제거·재작성이
+>   전부 줄머리 `//`·`///`·`//!` 이다. **파일 수도 111 로 불변이다** — 주석이 0행이 된 파일이
+>   없어 10차 패스의 `format.ts` 같은 어긋남이 이번엔 생기지 않았다.
+> - **검증은 AST 가 아니라 「주석 제거 후 바이트 동일」로 했다.** 이 범위엔 파이썬이 없어
+>   `ast.dump` 를 쓸 수 없다. 문자열·문자 리터럴을 인식하는 stripper 로 줄 주석(`//`·`///`·`//!`)과
+>   블록 주석을 걷어낸 뒤 부모와 바이트 비교해 **14/14 IDENTICAL** 을 얻었다. 「비주석 diff 0줄」은
+>   주석 재작성에 딸려 사라진 선언을 놓치므로 쓰지 않았다(10차 패스의 경고).
+> - **복제된 명제는 「정본을 어디에 둘 것인가」로 판정했다.** 이 축에서 네 벌까지 복제된 명제가
+>   여섯 건 나왔고(Setup URL 스푸핑 4 · OAuth 토큰 보관 사유 3 · 미리보기 state 태깅 3 ·
+>   adoption best-effort 2 · 두 번째 설치 유도 2 · 기본 stub 사용자 소유 3), 전부 **그 명제를
+>   강제하는 코드 옆**을 정본으로 골랐다. 테스트 쪽 복사본은 대개 fn 이름이 이미 복원한다.
+> - **딱 한 명제만 두 벌을 일부러 남겼다** — 「상류 실패를 고정 문자열로 사상하고 끼워 넣지
+>   않는다」. `github_app.rs` 와 `github_api.rs` 는 각자 자기 `map_err` 에서 다른 비밀을 버리므로
+>   (App JWT·설치 토큰·개인키 / client secret·OAuth code·access token), 정책이 유지 대상으로
+>   이름 붙인 「불변식이 **왜 그 자리에서** 지켜져야 하는지」에 해당한다.
+> - **선례와 어긋나는 판정은 하지 않았다.** 세 spec 의 「Runs against the e2e deployment
+>   (FEATUREDOC_DOUBLE_*=stub)」 블록은 `docs/e2e-mocking-policy.md` 의 env 표로 걷을 여지가
+>   있었지만, **9차 패스가 `sc01-02` 에서 같은 모양을 「유지」로 닫아 두었다.** 같은 명제를
+>   패스마다 반대로 판정하면 그 자체가 drift 다. **뒤집으려면 `sc01-02` 를 포함한 증분 재판정으로
+>   한 번에 해야 한다.**
+> - **`docs/**.md` 를 더하는 패스는 허브 등재가 함께 간다.** 이 패스가 `passes/` 에 판정 상세를
+>   하나 더하면서 `docs/index.html` 에 링크를 넣고 `Documents` 집계를 **37 → 38** 로 올렸다.
+>   빠뜨리면 `check-journey-mockup.py` 의 R8·R9 가 실패한다. 허브는 주석 지문 범위 밖이라 판정
+>   수치에는 영향이 없다.
+> - **범위 밖에서 적발한 것 하나 — `backend/src/llm.rs:494-499` 의 주석이 거짓이고, 그 거짓이
+>   실제 flake 를 덮고 있다.** 「no other test reads this variable, so parallel test runs cannot
+>   race on it」이라 적혀 있는데 같은 파일 449행의 `stub_answer` 가 `FEATUREDOC_STUB_LLM_FAIL` 을
+>   읽고 `stub_is_deterministic_for_the_same_ask` 가 그 경로를 탄다. 실측 **15회 중 1회** 그
+>   테스트가 실패한다(부모 `f5a2937` 에서도 재현 — 이 패스와 무관하다). `llm.rs` 는 원장 1행의
+>   범위라 **증분 재판정**이고, 주석만 고쳐서는 flake 가 남으므로 **테스트 수정이 따라붙는 별개
+>   작업**이다. 여기서는 등재만 한다.
 > - 지문 계산 규약은 앞 블록과 같다: 원장의 **범위 지문**은 후행 개행을 **포함**하고
 >   (`echo "$HITS" | sha256sum`), 모델의 **전역 지문**은 versionScript 그대로 후행 개행을
 >   **제외**한다(`printf '%s'`). 같은 입력에도 두 값은 다르다.

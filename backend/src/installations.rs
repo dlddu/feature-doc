@@ -13,7 +13,6 @@ pub struct NewInstallation<'a> {
     pub repository_selection: Option<&'a str>,
 }
 
-/// Links (or refreshes) an installation under `user_id`. Unique per (user, installation).
 pub async fn upsert(
     db: &SqlitePool,
     user_id: &str,
@@ -71,7 +70,6 @@ pub async fn upsert(
     })
 }
 
-/// The user's most recent installation, if any.
 pub async fn get_for_user(
     db: &SqlitePool,
     user_id: &str,

@@ -7,7 +7,6 @@ use crate::github_api::GithubUser;
 use crate::models::User;
 use crate::util::now_unix;
 
-/// Inserts a new user or refreshes the profile of an existing one, keyed by `github_id`.
 pub async fn upsert(db: &SqlitePool, gh: &GithubUser) -> Result<User, AppError> {
     let existing = sqlx::query_as::<_, User>("SELECT * FROM users WHERE github_id = ?")
         .bind(gh.id)

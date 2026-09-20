@@ -1,8 +1,5 @@
-//! Persistence for the user's GitHub OAuth token, envelope-encrypted at rest.
-//!
-//! We keep this only to verify installation ownership at setup time (the Setup
-//! URL's installation_id is spoofable). It is decrypted just-in-time and never
-//! logged or returned to clients.
+//! The user's GitHub OAuth token, kept for one purpose only: confirming at setup
+//! time that they really can reach the installation they are linking.
 
 use sqlx::SqlitePool;
 
@@ -10,7 +7,6 @@ use crate::crypto::{self, Envelope};
 use crate::error::AppError;
 use crate::util::now_unix;
 
-/// Stores (or replaces) the user's OAuth token, sealed under the KEK.
 pub async fn store(
     db: &SqlitePool,
     kek: &[u8; 32],
@@ -37,7 +33,6 @@ pub async fn store(
     Ok(())
 }
 
-/// Loads and decrypts the user's OAuth token, if one is stored.
 pub async fn load(
     db: &SqlitePool,
     kek: &[u8; 32],
