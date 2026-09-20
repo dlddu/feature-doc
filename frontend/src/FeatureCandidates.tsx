@@ -164,7 +164,7 @@ export function FeatureCandidates({ id, onBack }: Props) {
         </div>
       )}
 
-      <div style={{ marginTop: 16 }} data-testid="candidate-list">
+      <div className="collection" style={{ marginTop: 16 }} data-testid="candidate-list">
         {shown.map((candidate) => (
           <Card
             key={candidate.key}

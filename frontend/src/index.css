@@ -323,6 +323,9 @@ button.ico { cursor: pointer; }
 .screen > *:nth-child(4) { animation-delay: 0.12s; }
 .screen > *:nth-child(5) { animation-delay: 0.16s; }
 .screen > *:nth-child(n+6) { animation-delay: 0.2s; }
+/* the tab bar is fixed chrome, not content: rise's transform would replace its
+   translateX(-50%) centering and push it half off the right edge */
+.screen > .tabbar { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .screen > * { animation: none; }
 }
@@ -721,3 +724,57 @@ button.ico { cursor: pointer; }
 }
 .ext-note .mk { flex: none; color: var(--info); }
 .ext-note b { color: var(--text-secondary); font-weight: 500; }
+
+/* ── Responsive layout — design-system §3.4 ─────────────────────────────
+   Compact(< 600) is the base design above. Wider windows change placement
+   only; tokens, type scale and component internals stay the same.
+   In the browser the app window is the viewport, so the §3.4 thresholds are
+   @media here. (A container on an ancestor would become the containing block
+   of the fixed tab bar, which lives inside .screen, and pin it to the page.) */
+@media (min-width: 600px) {
+  .screen {
+    max-width: none;
+    padding: 28px 32px 56px;
+  }
+  /* centered content column; the tab bar is fixed and not part of it */
+  .screen > :not(.tabbar) {
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* bottom tab bar → left rail: same element, same 4 slots (§4.7) */
+  .tabbar {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    transform: none;
+    width: 72px;
+    max-width: none;
+    height: auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 20px 0 0;
+    border-top: 0;
+    border-right: 1px solid var(--border-subtle);
+  }
+  .tabbar .tab { flex: none; height: 64px; }
+  .screen.has-tabbar { padding-left: calc(72px + 32px); padding-bottom: 56px; }
+}
+
+@media (min-width: 1024px) {
+  .screen { padding: 36px 40px 64px; }
+  .screen > :not(.tabbar) { max-width: 640px; }
+  .screen.has-tabbar { padding-left: calc(72px + 40px); padding-bottom: 64px; }
+
+  /* only repeated card lists widen out of the column, into 2 columns */
+  .screen > .collection {
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
+  .collection > * + *,
+  .collection > .cand + .cand { margin-top: 0; }
+}
