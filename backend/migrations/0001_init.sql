@@ -1,4 +1,3 @@
--- Credentials and identity schema.
 -- Multi-user: every credential row is owned by a user and queried under that scope.
 -- Timestamps are unix epoch seconds (INTEGER). Ids are opaque TEXT (uuid v4).
 

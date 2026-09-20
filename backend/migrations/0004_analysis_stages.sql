@@ -1,13 +1,9 @@
--- Worker workload separation: the queue gains a lease so a *separate* worker
--- process can claim work, and each analysis gains one row per pipeline stage.
---
 -- The worker never opens this database. It claims and reports over the API's
 -- `/internal/*` routes, so the API stays the single writer and the SQLite
--- invariant in db.rs (one pod, one mount, `Recreate`) survives untouched.
+-- invariant that rests on it (one pod, one mount, `Recreate`) survives untouched.
 
--- Lease + lifecycle columns. `claimed_by` is a worker identity (pod name), kept
--- for operator visibility; `lease_expires_at` is what makes a dead worker's job
--- reclaimable by the next claim.
+-- `claimed_by` is a worker identity (pod name), kept for operator visibility;
+-- `lease_expires_at` is what makes a dead worker's job reclaimable by the next claim.
 ALTER TABLE analyses ADD COLUMN claimed_by       TEXT;
 ALTER TABLE analyses ADD COLUMN claimed_at       INTEGER;
 ALTER TABLE analyses ADD COLUMN lease_expires_at INTEGER;
@@ -18,7 +14,7 @@ ALTER TABLE analyses ADD COLUMN error            TEXT;
 -- The claim selector scans by (status, created_at) — FIFO within the queue.
 CREATE INDEX idx_analyses_queue ON analyses(status, created_at);
 
--- One row per pipeline stage, seeded at enqueue from pipeline::STAGES (the code
+-- One row per pipeline stage, seeded at enqueue from the stage list in code (the
 -- SSOT). A stage with no executor stays 'pending'. `detail` carries the
 -- operator/user-facing one-liner for that stage ("847 files · 2.3 MB").
 CREATE TABLE analysis_stages (
