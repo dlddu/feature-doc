@@ -1,4 +1,4 @@
-//! Append-only audit trail for credential-touching actions (AC4.3).
+//! Append-only audit trail for credential-touching actions.
 //!
 //! `detail` must only ever carry non-secret context (provider name, account login,
 //! row id) — never a key, token, or ciphertext.
@@ -18,8 +18,7 @@ pub fn routes() -> Router<AppState> {
     Router::new().route("/api/audit", get(list))
 }
 
-/// Records an action. Best-effort: a failure to write the audit row is logged but
-/// must not fail the user's request.
+/// Best-effort: a failure to write the audit row must not fail the user's request.
 pub async fn record(db: &SqlitePool, user_id: Option<&str>, action: &str, detail: Option<&str>) {
     let res = sqlx::query(
         "INSERT INTO audit_log (id, user_id, action, detail, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -45,7 +44,6 @@ struct AuditView {
     created_at: i64,
 }
 
-/// The current user's own audit history (AC4.3: usage history is user-visible).
 async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,

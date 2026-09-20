@@ -1,5 +1,3 @@
-//! Envelope encryption: round-trip, tamper detection, wrong-KEK rejection.
-
 use featuredoc::crypto::{open, seal, Envelope};
 
 #[test]
@@ -8,7 +6,6 @@ fn seal_then_open_round_trips() {
     let secret = b"sk-ant-api03-super-secret-value";
     let env = seal(&kek, secret).unwrap();
 
-    // The ciphertext must not contain the plaintext bytes.
     assert!(!contains(&env.ciphertext, secret));
 
     let recovered = open(&kek, &env).unwrap();
@@ -34,7 +31,6 @@ fn distinct_seals_use_distinct_nonces() {
     let kek = [9u8; 32];
     let a = seal(&kek, b"same-input").unwrap();
     let b = seal(&kek, b"same-input").unwrap();
-    // Random per-record nonces => identical plaintext seals to different ciphertext.
     assert_ne!(a.ciphertext, b.ciphertext);
     assert_ne!(a.nonce, b.nonce);
 }

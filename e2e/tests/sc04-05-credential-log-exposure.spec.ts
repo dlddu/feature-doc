@@ -1,18 +1,11 @@
 // 검증 시나리오: 04-platform.md#시나리오 5
 //
-// 「자격증명의 로그 노출 검증」 전용 spec (AC4.3) — 사용자에게 도달하는 절반:
-// 등록한 키의 평문은 화면·API 어디에도 다시 나타나지 않고(식별자만), 자격증명을
-// 다루는 경로는 사용자가 조회할 수 있는 감사 이력으로 남는다.
-//
 // Runs against the e2e deployment (FEATUREDOC_DOUBLE_GITHUB_AUTH=stub) and signs in as its own
 // stub identity (`?as=ac43`) so the sentinel key it registers belongs to no other spec.
-//
-// 자동화 밖 잔여: 운영 로그·오류 메시지의 평문 노출 점검은 클러스터 로그 수집에
-// 의존한다. 응답 본문 수준의 평문 미노출은 `e2e/smoke.sh`가 별도로 지킨다
-// (doc-tracker "e2e 매핑" 참조).
 import { expect, test } from '@playwright/test';
 
-// 이 spec에서만 쓰는 유일한 평문. 어디에도 다시 나타나면 안 된다.
+// 이 평문은 레포 어디에도 두 번 나타나지 않아야 관측이 성립한다 — 다른 spec 과 값을
+// 공유하면 여기서 잡은 부재가 저 spec 의 부재로 읽힌다.
 const SENTINEL = 'sk-ant-api03-PLAINTEXTSENTINEL0002';
 
 test('AC4.3: 등록한 키는 식별자로만 표시되고 평문은 재노출되지 않으며, 사용 이력은 조회 가능하다', async ({
@@ -20,8 +13,6 @@ test('AC4.3: 등록한 키는 식별자로만 표시되고 평문은 재노출�
 }) => {
   await page.goto('/api/auth/login?as=ac43');
 
-  // 키 등록 화면은 App 설치 뒤에 선다(슬라이스 ⑦ 의 두 화면 분할) — 이 spec 의 검증
-  // 대상이 아니라 도달 경로다. 설치가 서면 권한 부여 화면이 스스로 넘긴다.
   await page.getByTestId('connect-app').click();
   await expect(page.getByTestId('connection')).toBeVisible();
 
@@ -29,24 +20,21 @@ test('AC4.3: 등록한 키는 식별자로만 표시되고 평문은 재노출�
   await page.getByTestId('key-input').fill(SENTINEL);
   await page.getByTestId('register-key').click();
 
-  // 화면에는 제공자 접두사만 남은 마스킹 식별자가 보인다.
   const active = page.getByTestId('active-key');
   await expect(active).toBeVisible();
   await expect(active).toContainText('sk-ant-');
   await expect(active).not.toContainText('PLAINTEXTSENTINEL0002');
 
-  // 렌더된 문서 전체(입력값이 지워진 뒤)에도 평문은 남지 않는다.
+  // reload 해야 입력 필드가 아직 들고 있는 평문이 아니라 서버가 되돌려 준 문서를 본다.
   await page.reload();
   await expect(page.getByTestId('active-key')).toBeVisible();
   expect(await page.content()).not.toContain('PLAINTEXTSENTINEL0002');
 
-  // 자격증명을 노출할 수 있는 응답 어디에도 평문이 없다.
   for (const endpoint of ['/api/llm-keys', '/api/me', '/api/audit']) {
     const body = await (await page.request.get(endpoint)).text();
     expect(body).not.toContain('PLAINTEXTSENTINEL0002');
   }
 
-  // 자격증명을 다룬 경로는 사용자가 볼 수 있는 감사 이력으로 남는다.
   const audit = (await (await page.request.get('/api/audit')).json()) as { action: string }[];
   expect(audit.map((entry) => entry.action)).toContain('llm_key.register');
 });

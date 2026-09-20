@@ -1,6 +1,3 @@
-//! Cross-cutting credential safety: secret redaction (AC4.3), per-user isolation
-//! across resources (AC4.7 / test#10), and audit recording without secret leakage.
-
 mod common;
 
 use axum::body::Body;
@@ -83,7 +80,6 @@ fn config_debug_redacts_secrets() {
     assert!(!dump.contains("super-secret-value"), "client secret leaked: {dump}");
     assert!(!dump.contains("BEGIN RSA PRIVATE KEY"), "private key leaked");
     assert!(!dump.contains("ababab"), "kek bytes leaked");
-    // The public client id is still shown.
     assert!(dump.contains("Iv1.public"));
 }
 
@@ -93,7 +89,6 @@ async fn one_users_credentials_are_invisible_to_another() {
     let alice = login_user(&state, "alice", 1).await;
     let bob = login_user(&state, "bob", 2).await;
 
-    // Alice connects an installation and registers a key.
     let alice_user: (String,) = sqlx::query_as("SELECT id FROM users WHERE login = 'alice'")
         .fetch_one(&state.db)
         .await
@@ -113,7 +108,6 @@ async fn one_users_credentials_are_invisible_to_another() {
     let resp = build_router(state.clone()).oneshot(post_key(&alice)).await.unwrap();
     assert_eq!(resp.status(), StatusCode::CREATED);
 
-    // Bob's view of every credential resource is empty / not-installed.
     let conn = json(
         build_router(state.clone())
             .oneshot(get("/api/github/connection", &bob))
@@ -132,7 +126,6 @@ async fn one_users_credentials_are_invisible_to_another() {
     .await;
     assert_eq!(keys.as_array().unwrap().len(), 0);
 
-    // Alice still sees her own installation.
     let conn = json(
         build_router(state)
             .oneshot(get("/api/github/connection", &alice))
@@ -181,7 +174,6 @@ async fn register_and_revoke_are_audited_without_leaking_the_key() {
     assert!(actions.contains(&"llm_key.register"));
     assert!(actions.contains(&"llm_key.revoke"));
 
-    // The whole audit payload must not contain the plaintext key anywhere.
     assert!(!audit.to_string().contains(VALID_KEY), "audit leaked the key");
     let _ = std::fs::remove_file(&path);
 }
