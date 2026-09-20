@@ -1,24 +1,6 @@
 // Home — Repositories — the real, stateful screen behind
 // docs/mockups/JRN-connect-repo.html#STP-pick-target and its pre-flight area
 // docs/mockups/JRN-connect-repo.html#STP-confirm-cost (Home + Connect, AC1.1 · AC4.6 pre-flight).
-//
-// One screen, not two. The journey's `STP-confirm-cost` touchpoint reads
-// "저장소 연결(pre-flight 추정 영역 + 시작 버튼)" — the estimate is an *area* of the
-// connect screen, and the connect form in turn lives under the same app bar as the
-// repository list. The implementation used to split that into a list screen and a
-// separate connect screen; slice ⑥ moves the composition back onto the mockup, which
-// is what lets this screen be compared step-for-step instead of sitting in 대조 보류.
-//
-// Reads the slice-2a enqueue contract: the repositories the GitHub App can reach
-// (`GET /api/repositories`) and the analysis jobs the user has triggered
-// (`GET /api/analyses`), which carries each job's pipeline fraction so a card can say
-// "step 1 of 5" and open Analysis Progress (AC1.5).
-//
-// The single primary action stays two-phase: a target must pass pre-flight
-// (`POST /api/analyses/preflight`) before it can be triggered, so the expected scale
-// and cost are always on screen *before* anything is enqueued (AC1.1 + 비용 사전 안내).
-// A target outside the App's granted access never reaches the trigger — the screen
-// shows the reason and the recovery path, and nothing is queued (test/01 시나리오 2).
 
 import { useEffect, useState } from 'react';
 import {
@@ -32,7 +14,6 @@ import {
 import type { Analysis, Preflight, Repository } from './api';
 import { formatAgo, formatCost, formatSize } from './format';
 
-/** How an analysis status renders as a status badge (design-system §4.2 tag). */
 const STATUS_BADGE: Record<string, { tone: string; label: string }> = {
   queued: { tone: 'info', label: 'Queued' },
   running: { tone: 'info', label: 'Analyzing' },
@@ -53,7 +34,6 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** A repository row: the repo itself plus its most recent analysis, if any. */
 type Row = {
   key: string;
   fullName: string;
@@ -63,9 +43,9 @@ type Row = {
 };
 
 /**
- * Accessible repositories first (each carrying its newest analysis), then any
- * repository that only appears in the analysis history — a job whose repo has since
- * left the App's installation scope must not silently vanish from the home list.
+ * A job whose repository has since left the App's installation scope must not
+ * silently vanish from the list, so history is unioned in rather than filtered by
+ * what is reachable today.
  */
 function buildRows(repos: Repository[], analyses: Analysis[]): Row[] {
   const newestFor = (owner: string, name: string): Analysis | null =>
@@ -98,13 +78,9 @@ function buildRows(repos: Repository[], analyses: Analysis[]): Row[] {
 }
 
 type Props = {
-  /** Home → Credentials Setup (Keys tab). */
   onOpenCredentials: () => void;
-  /** Home → Analysis Progress, for a repository that has been analyzed at least once. */
   onOpenAnalysis: (analysisId: string) => void;
-  /** The session ended; the app goes back to the signed-out entry screen. */
   onLoggedOut: () => void;
-  /** A run was queued from this screen — the caller refetches the list. */
   onAnalysisQueued: () => void;
 };
 
@@ -139,10 +115,7 @@ export function HomeRepositories({
 
   const rows = buildRows(repos ?? [], analyses);
 
-  // The mockup puts 로그아웃 in this screen's app bar (`STP-pick-target`, the
-  // `btn-link` beside the title) and 여정 분기 「로그아웃」 leaves from here; the
-  // server-side invalidation it triggers is what test/04 시나리오 12 verifies. A
-  // failure is shown rather than swallowed — a logout the user believes happened
+  // A failure is shown rather than swallowed — a logout the user believes happened
   // but did not is the one outcome worth interrupting for.
   async function signOut() {
     setSigningOut(true);
@@ -293,7 +266,6 @@ export function HomeRepositories({
 
       <hr className="divider" style={{ marginTop: 22, marginBottom: 22 }} />
 
-      {/* 「새 저장소 연결」 — the mockup's connect form, on this same screen. */}
       <div>
         <h1 className="page-h1">새 저장소 연결</h1>
         <p className="h-display-sub" style={{ marginTop: 6 }}>
@@ -382,14 +354,11 @@ export function HomeRepositories({
             disabled={busy || repoUrl.trim() === ''}
             data-testid="check-access"
           >
-            {/* In-flight is shown by the disabled button alone — the mockup draws no
-                waiting copy, so none is invented here (문서 권위 순서). */}
             {'비용 확인하기'}
           </button>
         </div>
       )}
 
-      {/* pre-flight 추정 영역 — 목업 `STP-confirm-cost`. 별도 화면이 아니라 이 화면의 아래쪽이다. */}
       {estimate?.hasAccess && (
         <>
           <div style={{ marginTop: 20 }}>
