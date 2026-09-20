@@ -39,6 +39,7 @@ async fn migrations_create_expected_tables() {
         "analysis_stages",
         "feature_dependency_requests",
         "feature_dependencies",
+        "feature_doc_edits",
     ] {
         assert!(
             names.contains(&expected.to_string()),
@@ -67,7 +68,7 @@ async fn migrations_create_expected_tables() {
 // Pins the file bytes accepted by main at PR #44 (4aa5590b6af1c0476a7c52d11065c86daf545ab5).
 // This SHA-256 guard is not evidence of deployed DB repair; sqlx stores SHA-384.
 // See migrations/README.md for provenance and the release preflight.
-const APPLIED: [(&str, &str); 8] = [
+const APPLIED: [(&str, &str); 9] = [
     ("0001_init.sql", "26be98f6ae14fc837a05149f7d1c56af2ff3963a7ab6c4951a57accc48edf864"),
     ("0002_github_tokens.sql", "a62a0ecb0a7cdd303a1e06bc2420d7ab9a853836af36db9aabc6a35caa05514b"),
     ("0003_analyses.sql", "f54521bba0ecbc3ea480821a89c6abbc0a52a2a3dc17b6be8b5655ff5a548800"),
@@ -76,6 +77,7 @@ const APPLIED: [(&str, &str); 8] = [
     ("0006_discovery_strategies.sql", "b61a51b87b03ae7523ecc8e5c0199b8a6b44abf9b91d3522f75dc72a8f96e6b9"),
     ("0007_feature_candidates.sql", "17fa78ff03cffcd3160e13f41b931f2fc574077234500271ff17b4cad7eaf6b5"),
     ("0008_feature_dependencies.sql", "e5538cdb6bece38ed028fb2aa36e6248793d9fe38102f5d781e0e5a7b9e7b74d"),
+    ("0009_feature_doc_edits.sql", "54486e675514eafcdb3e7cb3d8fcfb4bc317311ca4e96ab6ce71ba6ea04edc26"),
 ];
 
 fn migrations_dir() -> std::path::PathBuf {

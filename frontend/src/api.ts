@@ -524,3 +524,96 @@ export async function getAnalysisDiff(id: string): Promise<AnalysisDiff> {
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as AnalysisDiff;
 }
+
+/** 한 시나리오의 세 문장. 서버가 저장·제안·이력에서 모두 이 모양을 쓴다. */
+export type Sentences = {
+  given: string;
+  when: string;
+  then: string;
+};
+
+export type EditContext = {
+  featureKey: string;
+  featureName: string | null;
+  scenarioIndex: number;
+  scenarioCount: number;
+  target: Sentences;
+  rejectedCount: number;
+  rejectedReason: string | null;
+};
+
+export type EditProposal = {
+  id: string;
+  featureKey: string;
+  scenarioIndex: number;
+  status: string;
+  /** AC3.4 의 출처. 「바꾼 주체」가 읽는 값이다. */
+  source: string;
+  request: string;
+  before: Sentences;
+  /** 그 자리에 설 시나리오들. 한 건이면 고쳐 쓴 것이고, 여럿이면 사례가 늘어난 것이다. */
+  after: Sentences[];
+  removed: string[];
+  added: string[];
+  changedLines: number;
+};
+
+export async function getEditContext(
+  id: string,
+  key: string,
+  scenario: number,
+): Promise<EditContext> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/features/edit-context` +
+      `?key=${encodeURIComponent(key)}&scenario=${scenario}`,
+    { credentials: 'same-origin' },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as EditContext;
+}
+
+/** 제안을 만든다. 문서는 승인 전까지 그대로다. */
+export async function proposeEdit(
+  id: string,
+  key: string,
+  scenarioIndex: number,
+  request: string,
+): Promise<EditProposal> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/features/edit-proposals`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: json,
+    body: JSON.stringify({ key, scenarioIndex, request }),
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as EditProposal;
+}
+
+export async function getEditProposal(id: string, proposal: string): Promise<EditProposal> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/features/edit-proposals/${encodeURIComponent(proposal)}`,
+    { credentials: 'same-origin' },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as EditProposal;
+}
+
+/** 승인이면 그 자리에 얹히고, 거부면 다음 제안이 피해야 할 것이 된다. */
+export async function decideEdit(
+  id: string,
+  proposal: string,
+  decision: 'approve' | 'reject',
+  reason?: string,
+): Promise<EditProposal> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/features/edit-proposals/${encodeURIComponent(proposal)}/decision`,
+    {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: json,
+      body: JSON.stringify({ decision, reason }),
+    },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as EditProposal;
+}
