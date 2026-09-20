@@ -1,4 +1,4 @@
-# 판정 상세 — 파이프라인 · 횡단 관심사 축 비경합 9파일 (2026-09-19)
+# 판정 상세 — 파이프라인 · 횡단 관심사 축 비경합 9파일 (2026-09-20)
 
 판정 범위: `backend/src/pipeline.rs` · `backend/src/cross_cutting.rs` ·
 `backend/tests/documents.rs` · `backend/tests/progress.rs` ·
