@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# End-to-end: build → kind load → apply → port-forward → smoke + playwright → cleanup.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -7,8 +6,6 @@ CLUSTER_NAME="${CLUSTER_NAME:-featuredoc}"
 IMAGE="${IMAGE:-featuredoc:dev}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
-# CI builds ${IMAGE} beforehand through the buildx cache and sets SKIP_BUILD=1;
-# a local run builds it here.
 SKIP_BUILD="${SKIP_BUILD:-0}"
 
 PF_PID=""
@@ -58,10 +55,8 @@ kubectl apply -k "${ROOT}/deploy/e2e/"
 
 echo "[5/7] wait for rollout (API + worker)"
 kubectl rollout status deployment/featuredoc --timeout=180s
-# The worker is a separate workload (AC4.5) and the overlay starts it at 0
-# replicas — the specs that need it (sc04-07, sc01-05, and every spec that has to see a
-# pipeline stage actually run: sc01-03 … sc01-07, sc02-01 … sc02-04) lease it: scale up,
-# assert, scale back to 0. This still confirms the Deployment applied cleanly.
+# Worth waiting on even though the overlay holds the worker at 0 replicas: a rollout
+# that reports complete still proves the Deployment itself applied cleanly.
 kubectl rollout status deployment/featuredoc-worker --timeout=180s
 
 echo "[6/7] port-forward svc/featuredoc ${LOCAL_PORT}:8080"
