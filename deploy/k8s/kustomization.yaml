@@ -1,21 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Production base. Points at the image CI publishes (ghcr.io/dlddu/featuredoc)
-# at an immutable commit-SHA tag. CI's `pin` job rewrites that tag in the two
-# Deployments and publishes the result to the `deploy` branch after each main
-# build (Flux tracks `deploy`), so this directory on `deploy` always states
-# exactly which commit is running — no rolling tag, no :latest,
-# and no imagePullPolicy needed (IfNotPresent is correct for an immutable tag).
-#
-# Two workloads out of that one image (AC4.5): `featuredoc` serves the API and
-# owns the SQLite volume; `featuredoc-worker` drains the analysis queue over the
-# API's /internal routes and mounts nothing.
-#
-# The Deployment consumes `featuredoc-secrets` via envFrom. That Secret is
-# provisioned out-of-band (copy secret.yaml.example -> secret.yaml, fill in, and
-# apply it) and is intentionally NOT generated here, so no credentials — not even
-# placeholders — are committed.
 resources:
   - deployment.yaml
   - worker-deployment.yaml
