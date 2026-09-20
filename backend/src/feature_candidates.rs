@@ -31,11 +31,13 @@ fn schema() -> Value {
                 "items": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["name", "location", "rationale"],
+                    "required": ["name", "location", "symbol", "rationale"],
                     "properties": {
                         "name": { "type": "string" },
                         "location": { "type": "string" },
-                        "symbol": { "type": "string" },
+                        // Required-but-nullable rather than optional: OpenAI's `strict`
+                        // mode rejects any property missing from `required` (400).
+                        "symbol": { "type": ["string", "null"] },
                         "rationale": { "type": "string" },
                     },
                 },
@@ -242,6 +244,11 @@ pub fn detail(doc: &Value) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn schema_is_accepted_by_openai_strict_mode() {
+        crate::llm::assert_strict_schema(&schema());
+    }
+
     use super::*;
 
     fn tree() -> Vec<String> {
