@@ -1,5 +1,3 @@
--- Discovery strategy review and approval.
---
 -- Stage 3 writes its *generated* strategy to `analysis_documents` like every other
 -- stage output, so reproducibility (content_hash) keeps working the same way. This
 -- table is the other half: the copy the **user** edits and approves.
@@ -17,8 +15,8 @@
 -- the next analysis of the same target, which is the one query that needs it.
 --
 -- `approved_at IS NULL` means draft. Only an approved strategy feeds the next
--- stage; that is enforced against this column in worker_api::claim, which
--- withholds the next stage from the queue until it is set.
+-- stage; the claim path enforces that against this column, withholding the next
+-- stage from the queue until it is set.
 CREATE TABLE discovery_strategies (
     analysis_id TEXT    PRIMARY KEY REFERENCES analyses(id) ON DELETE CASCADE,
     entries     TEXT    NOT NULL,

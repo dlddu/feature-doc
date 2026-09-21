@@ -65,18 +65,19 @@ async fn migrations_create_expected_tables() {
     let _ = std::fs::remove_file(&path);
 }
 
-// Pins the file bytes accepted by main at PR #44 (4aa5590b6af1c0476a7c52d11065c86daf545ab5).
+// Pins the file bytes accepted by main at PR #98 — a comment-only pass whose
+// production `_sqlx_migrations` repair was done by hand before the merge.
 // This SHA-256 guard is not evidence of deployed DB repair; sqlx stores SHA-384.
 // See migrations/README.md for provenance and the release preflight.
 const APPLIED: [(&str, &str); 9] = [
-    ("0001_init.sql", "26be98f6ae14fc837a05149f7d1c56af2ff3963a7ab6c4951a57accc48edf864"),
+    ("0001_init.sql", "d318541ba2d08dd74d917f424c42657d6859a7692294d7c9b478238dabe59d3b"),
     ("0002_github_tokens.sql", "a62a0ecb0a7cdd303a1e06bc2420d7ab9a853836af36db9aabc6a35caa05514b"),
-    ("0003_analyses.sql", "f54521bba0ecbc3ea480821a89c6abbc0a52a2a3dc17b6be8b5655ff5a548800"),
-    ("0004_analysis_stages.sql", "51fd924b91ed5828e2378a3244323c5d29d833dfa4f89a29356721f5102372e9"),
-    ("0005_analysis_documents.sql", "6d2c9aad99ad8175ae2bbc9526a4e40cf34daa7b16282859fe38fb14b7862afd"),
-    ("0006_discovery_strategies.sql", "b61a51b87b03ae7523ecc8e5c0199b8a6b44abf9b91d3522f75dc72a8f96e6b9"),
-    ("0007_feature_candidates.sql", "17fa78ff03cffcd3160e13f41b931f2fc574077234500271ff17b4cad7eaf6b5"),
-    ("0008_feature_dependencies.sql", "e5538cdb6bece38ed028fb2aa36e6248793d9fe38102f5d781e0e5a7b9e7b74d"),
+    ("0003_analyses.sql", "097542fd1927f845c0a09d43a8666c5de1d92a39f09a8e1ecd278aa8da72856e"),
+    ("0004_analysis_stages.sql", "a6c24aa861fbad9e4624ba51342d04d7f930796761de5b9efe4ecb36ad279953"),
+    ("0005_analysis_documents.sql", "2cf2c26fcb7df17794d7963e8aa2d2d5707584d4c26277a6e62162ff1dbade06"),
+    ("0006_discovery_strategies.sql", "9b76ecb4e66bb84a58135689b8512cc1adf690371513e7f1e6e06b60573cc694"),
+    ("0007_feature_candidates.sql", "ff481a86036a7d8813ba054a332549e5fea7bec70f2dc876d49728bccc52b9f4"),
+    ("0008_feature_dependencies.sql", "505d83149609b64f1632ac794c3632cb802876038b82c2e87c3df33ae8dcf8f6"),
     ("0009_feature_doc_edits.sql", "9ca4cdc6d0b75bcc996581f1d3f5cd9583b4920ca14036ba0653ca7f22b4faa8"),
 ];
 
