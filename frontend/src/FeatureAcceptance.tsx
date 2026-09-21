@@ -114,7 +114,7 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
         </span>
       </div>
 
-      <div style={{ marginTop: 12 }} data-testid="scenario-list">
+      <div className="collection" style={{ marginTop: 12 }} data-testid="scenario-list">
         {current.scenarios.map((scenario, index) => (
           <Scenario key={scenario.evidence + index} scenario={scenario} index={index} />
         ))}

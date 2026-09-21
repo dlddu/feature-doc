@@ -1,11 +1,11 @@
 # Design System
 
-> FeatureDoc 모바일 UX의 디자인 토큰·컴포넌트·원칙. 다크 톤, 단일 sans, 액센트 거의 없음.
+> FeatureDoc UX의 디자인 토큰·컴포넌트·원칙. 모바일 우선, 태블릿·데스크톱까지 반응형. 다크 톤, 단일 sans, 액센트 거의 없음.
 
-이 문서는 `feature-doc` 모바일 UX의 단일 진실 원천이에요. 새 화면을 만들거나 기존 화면을 수정할 때 토큰·컴포넌트·원칙을 여기서 가져와 일관성을 유지합니다.
+이 문서는 `feature-doc` UX의 단일 진실 원천이에요. 기본 설계는 모바일(Compact)이고, 넓은 창에서의 배치는 §3.4 가 정합니다. 새 화면을 만들거나 기존 화면을 수정할 때 토큰·컴포넌트·원칙을 여기서 가져와 일관성을 유지합니다.
 
 - **Audience** — 디자이너, 프론트엔드 엔지니어, LLM 어시스턴트
-- **Status** — v0.1 (mockup-derived)
+- **Status** — v0.2 (mockup-derived · §3.4 반응형 레이아웃 추가)
 - **Theme** — Dark only
 
 ---
@@ -120,8 +120,10 @@
 | 10    | 카드 사이                                |
 | 14    | section 내부 여백                        |
 | 18    | 카드 grouping 사이                       |
-| 22    | 화면 좌우 패딩 (모바일)                  |
+| 22    | 화면 좌우 패딩 (Compact)                 |
 | 28    | subsection 사이                          |
+| 32    | 화면 좌우 최소 패딩 (Medium)             |
+| 40    | 화면 좌우 최소 패딩 (Expanded)           |
 | 38    | mock frame radius                        |
 | 56    | section 사이 (page level)                |
 
@@ -136,7 +138,7 @@
 | 9      | button                      |
 | 11     | input                       |
 | 14     | card                        |
-| 38     | mobile frame                |
+| 38     | mobile frame (목업 전용)    |
 | 50%    | dot, status indicator       |
 
 **규칙**: 크기와 라디우스가 함께 자람. 작은 요소엔 작은 라디우스, 큰 컨테이너에만 큰 라디우스.
@@ -146,6 +148,23 @@
 - 모든 보더는 **1px**
 - `box-shadow`, `text-shadow`, `filter: drop-shadow()`, `gradient` 사용 금지
 - 깊이는 **background 톤 차이**로만 표현 (4단계: base / elevated / card / input)
+
+
+### 3.4 Responsive layout
+
+모바일(Compact)이 기본 설계이고, 넓은 창은 **배치만** 바꿉니다. 토큰·타이포 스케일·컴포넌트 내부는 폭에 따라 바뀌지 않아요 — 데스크톱이라고 헤딩을 키우지 않고(원칙 5), 여백 단계로 위계를 만드는 방식도 그대로입니다(원칙 8).
+
+**폭 판정은 기기가 아니라 앱 창 폭**으로 합니다. 브라우저에서는 앱 창이 곧 뷰포트라서 구현은 같은 기준값의 `@media (min-width: …)` 로 분기합니다. 목업은 한 페이지 안에 앱 창(`.frame`)을 그려야 하므로 `.frame` 을 `container: app / inline-size` 로 두고 `@container app (…)` 로 분기합니다. 구현에서 앱 루트에 `container` 를 달지 않는 이유는, 컨테이너가 그 안의 `position: fixed` 요소(탭바)의 기준 상자가 되어 탭바가 화면이 아니라 페이지에 붙어 버리기 때문이에요.
+
+| Class        | 앱 창 폭      | 내비게이션                  | 화면 좌우 패딩 | 콘텐츠 컬럼 | 카드 목록 (`.collection`) |
+| ------------ | ------------- | --------------------------- | -------------- | ----------- | ------------------------- |
+| **Compact**  | < 600         | 하단 탭바 (§4.7)            | 22             | 100%        | 1열                       |
+| **Medium**   | 600 – 1023    | 좌측 rail 72px (§4.7)       | ≥ 32           | 560, 가운데 | 1열                       |
+| **Expanded** | ≥ 1024        | 좌측 rail 72px (§4.7)       | ≥ 40           | 640, 가운데 | 960 까지 넓혀 2열, gap 10 |
+
+- **컬럼이 기본값** — 폼·본문·앱바·block 버튼은 콘텐츠 컬럼 폭을 넘지 않습니다. 입력 칸과 primary 버튼이 창 전체로 늘어나지 않게 하기 위함이에요.
+- **넓어지는 것은 반복 카드 목록 하나** — 같은 종류의 카드가 반복되는 목록(시나리오, 기능 후보 등)만 `.collection` 을 달고, Expanded 에서 컬럼 좌우로 대칭으로 넓어져 2열이 됩니다. 성격이 다른 요소가 섞인 묶음에는 달지 않습니다.
+- **상태바·홈 인디케이터는 Compact 목업에만** — 넓은 창에는 기기 크롬이 없습니다.
 
 ---
 
@@ -226,6 +245,7 @@ caps mono 라벨 + mono value. 한 컴포넌트가 라벨·값·부가 액션 (�
 화면 내비게이션. 4개 슬롯 고정, 활성은 색만 흰색 (액센트 사용 금지).
 
 - 9px mono caps · UPPER · tracking .1em
+- **Medium 이상에서는 좌측 rail** — 같은 요소·같은 4 슬롯이 창 왼쪽에 세로로 섭니다. 폭 72px · 슬롯 높이 64px · 위 20px 여백 · 오른쪽 1px `--border-subtle`. 활성 표현은 탭바와 같습니다(색만 흰색). 새 컴포넌트가 아니라 배치 변형이에요.
 
 ### 4.8 Code block
 
@@ -366,6 +386,37 @@ html, body {
   font-feature-settings: "ss01", "cv11";
 }
 ```
+
+### 5.4 Responsive shell
+
+§3.4 를 옮긴 기준 CSS. 아래는 목업용(`.frame` = 앱 창, container query)이고, 구현(`frontend/src/index.css` 끝의 Responsive layout 블록)은 같은 기준값을 `@media` 로 쓰며 컬럼을 `.screen > *` 의 `max-width` 로 잡습니다.
+
+```css
+.frame { container: app / inline-size; }
+
+@container app (min-width: 600px) {           /* Medium */
+  .statusbar, .home-indicator { display: none; }
+  .screen { top: 0; padding: 28px max(32px, (100cqi - 560px) / 2) 56px; }
+  .tabbar {                                   /* bottom tab bar → left rail */
+    top: 0; right: auto; bottom: 0; width: 72px; height: auto;
+    flex-direction: column; justify-content: flex-start; padding: 20px 0 0;
+    border-top: 0; border-right: 1px solid var(--border-subtle);
+  }
+  .tabbar .tab { flex: none; height: 64px; }
+  .screen.has-tabbar { left: 72px; bottom: 0; }
+}
+
+@container app (min-width: 1024px) {          /* Expanded */
+  .screen { padding: 36px max(40px, (100cqi - 640px) / 2) 64px; }
+  .collection {
+    --wide: min(960px, 100cqi - 80px);
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+    margin-inline: calc((640px - var(--wide)) / 2);
+  }
+}
+```
+
+rail 이 있는 화면(`.has-tabbar`)은 컬럼 계산에서 `100cqi` 대신 `100cqi - 72px` 를 씁니다. 전체 규칙은 목업 파일 안의 「반응형 레이아웃」 블록이 원본입니다.
 
 ---
 
