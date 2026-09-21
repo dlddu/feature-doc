@@ -25,6 +25,20 @@ function toneOf(status: Stage['status']): string {
   return 'todo';
 }
 
+// Display titles keyed by the wire `key`. The server's `title` is persisted per analysis at
+// enqueue, so rows seeded before a copy change would keep the old text — the screen owns the copy.
+const STAGE_TITLES: Record<string, string> = {
+  fetch: '저장소 내려받기',
+  cross_cutting: '횡단 관심사 추출',
+  discovery_strategy: '탐색 전략 생성',
+  feature_candidates: 'feature 후보 추출',
+  acceptance_dependencies: '인수 시나리오 생성',
+};
+
+function titleOf(stage: Stage): string {
+  return STAGE_TITLES[stage.key] ?? stage.title;
+}
+
 function subOf(stage: Stage): string {
   // The server's reason is not drawn here: the mockup answers a failed stage with
   // one standing sentence (below the list), and 시나리오 6 only asks that the stage
@@ -154,7 +168,7 @@ export function AnalysisProgress({
             <div className={`step ${toneOf(stage.status)}`}>
               <span className="ic">{stage.status === 'succeeded' && <CheckIcon />}</span>
               <div className="body-col">
-                <div className="label">{stage.title}</div>
+                <div className="label">{titleOf(stage)}</div>
                 <div className="sub" data-testid="stage-sub">
                   {subOf(stage)}
                 </div>
@@ -207,7 +221,7 @@ export function AnalysisProgress({
 
       {failed !== undefined && (
         <div className="notice err" style={{ marginTop: 16 }} data-testid="stage-failed">
-          <strong>{failed.title}</strong>
+          <strong>{titleOf(failed)}</strong>
           {' 단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.'}
         </div>
       )}
