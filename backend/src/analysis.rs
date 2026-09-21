@@ -342,6 +342,8 @@ async fn document(
 
     let mut content: serde_json::Value = serde_json::from_str(&row.content)
         .map_err(|_| AppError::BadRequest("stored document is unreadable".into()))?;
+    // 사람이 확정한 추가(AC3.2)는 편집 겹침보다 먼저 얹는다 — 더해진 feature 도 편집의 대상이다.
+    crate::feature_add::overlay(&state, &id, &mut content).await?;
 
     doc_edit::overlay(&state, &id, &mut content).await?;
 
@@ -1475,7 +1477,8 @@ struct DependentRow {
     evidence: Option<String>,
 }
 
-/// Dependencies are traced for **confirmed** features only.
+/// Dependencies are traced for **confirmed** features only — an approved
+/// candidate, or a feature the person added themselves and confirmed (AC3.2).
 async fn approved_candidate_name(
     state: &AppState,
     analysis_id: &str,
@@ -1490,7 +1493,12 @@ async fn approved_candidate_name(
     .bind(DECISION_APPROVED)
     .fetch_optional(&state.db)
     .await?;
-    row.map(|(name,)| name).ok_or(AppError::NotFound)
+    if let Some((name,)) = row {
+        return Ok(name);
+    }
+    crate::feature_add::confirmed_name(state, analysis_id, key)
+        .await?
+        .ok_or(AppError::NotFound)
 }
 
 async fn load_feature_dependencies(

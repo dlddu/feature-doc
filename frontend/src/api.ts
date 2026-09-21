@@ -386,7 +386,8 @@ export type AcceptanceScenario = {
   then: string;
   evidence: string;
   symbol: string | null;
-  source: 'logic' | 'test';
+  /** 두 자동 패스, 또는 사람이 직접 더한 feature 의 출처(AC3.2·AC3.4). */
+  source: 'logic' | 'test' | 'user_llm' | 'user_direct';
 };
 
 export type AcceptanceContradiction = {
@@ -401,7 +402,8 @@ export type AcceptanceContradiction = {
 export type FeatureAcceptance = {
   key: string;
   name: string;
-  location: string;
+  /** `null` 은 사람이 근거 없이 직접 더한 feature 다 — 위치가 없는 것이 기록된 사실이다. */
+  location: string | null;
   symbol: string | null;
   scenarios: AcceptanceScenario[];
   contradictions: AcceptanceContradiction[];
@@ -613,4 +615,87 @@ export async function decideEdit(
   );
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as EditProposal;
+}
+
+export type DraftScenario = {
+  given: string;
+  when: string;
+  then: string;
+  evidence: string;
+};
+
+export type DraftDependency = {
+  category: string;
+  name: string;
+  evidence: string | null;
+};
+
+export type FeatureAddition = {
+  id: string;
+  key: string;
+  name: string;
+  request: string;
+  status: string;
+  /** 근거를 찾았는가. 「근거 있음」 배지와 「근거 없음」 안내가 이 값으로 갈린다. */
+  evidenceFound: boolean;
+  /** AC3.4 의 출처. 확정 전에는 아직 어느 쪽도 아니다. */
+  source: string | null;
+  scenarios: DraftScenario[];
+  dependencies: DraftDependency[];
+};
+
+export type FeatureAdditions = {
+  approvedCandidates: number;
+  confirmedAdditions: number;
+  /** 확정될 목록의 수 — 승인된 후보 + 직접 추가. */
+  finalCount: number;
+  additions: FeatureAddition[];
+};
+
+export async function getAdditions(id: string): Promise<FeatureAdditions> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/features/additions`, {
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as FeatureAdditions;
+}
+
+/** 초안을 만든다. 근거를 못 찾으면 초안은 비어 오고, 문서는 확정 전까지 그대로다. */
+export async function draftAddition(id: string, request: string): Promise<FeatureAddition> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/features/additions`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: json,
+    body: JSON.stringify({ request }),
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as FeatureAddition;
+}
+
+export async function getAddition(id: string, addition: string): Promise<FeatureAddition> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/features/additions/${encodeURIComponent(addition)}`,
+    { credentials: 'same-origin' },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as FeatureAddition;
+}
+
+/** 확정이면 feature 가 되어 문서 끝에 얹히고, 취소면 시도로만 남는다. */
+export async function decideAddition(
+  id: string,
+  addition: string,
+  decision: 'confirm' | 'cancel',
+): Promise<FeatureAddition> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/features/additions/${encodeURIComponent(addition)}/decision`,
+    {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: json,
+      body: JSON.stringify({ decision }),
+    },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as FeatureAddition;
 }

@@ -31,9 +31,11 @@ type Filter = 'all' | 'undecided' | 'approved' | 'rejected';
 type Props = {
   id: string;
   onBack: () => void;
+  /** 미결정이 0건일 때 열리는 다음 단계 — 빠진 기능을 직접 더하는 화면(AC3.2). */
+  onFinish: () => void;
 };
 
-export function FeatureCandidates({ id, onBack }: Props) {
+export function FeatureCandidates({ id, onBack, onFinish }: Props) {
   const [list, setList] = useState<CandidateList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
@@ -232,6 +234,15 @@ export function FeatureCandidates({ id, onBack }: Props) {
       )}
 
       <div className="stack" style={{ marginTop: 20 }}>
+        <button
+          className="btn btn-primary block"
+          type="button"
+          disabled={list.undecided !== 0}
+          onClick={onFinish}
+          data-testid="finish-sift"
+        >
+          결정 끝 — 빠진 기능 확인
+        </button>
         <button
           className="btn btn-ghost block"
           type="button"
