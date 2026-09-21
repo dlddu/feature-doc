@@ -243,3 +243,35 @@ optional: OpenAI's `strict` mode rejects any property missing from `required` (4
 `sc01-04` 에 더한 미판정 증분**으로, 이 재판정의 창 밖이라 판정하지 않았다(직전 절이 「#79 가
 머지되면 3행에 증분이 열린다」고 적은 것과 같은 형태 — 이번엔 8행에도 열렸다). 비주석 코드 무접촉
 (스트립 잔여 265 == 265).
+
+## 증분 재판정 ② — `sc01-04` +5행 · `sc01-07` +1행 · `DiscoveryStrategy.tsx` +5행 (2026-09-21 · `rct_20260921-0003`)
+
+`#99`(`899800e`, 자매 모델의 수렴 슬라이스 ⑩)가 승인 완료 태그·로딩 문구를 걷고 primary CTA 하나로
+동선을 모으면서 쓴 주석 11행(지문 기준)을 판정했다. **제거 10 · 유지 1**(diff 기준 11행 삭제 · 1행
+재작성), 지문 밖 JSX 블록 연속행 3행은 함께 제거. 증분 재판정 ① 이 창 밖으로 미뤄 둔 「11행」이
+이것이다(그 절은 `sc01-04` 만 적었지만 실제 구성은 `sc01-04` 5 · `sc01-07` 1 · `DiscoveryStrategy.tsx`
+5 다).
+
+| 파일 | 줄 | 판정 · 복원 경로 |
+|---|---|---|
+| `sc01-04` | 「승인의 관측은 「승인 완료」 문구가 아니라 화면이 다음 동선으로 넘어가는 것이다 (원장 ⑼). 편집 컨트롤이 사라지는 것과 서버의 `approved` 가 확정의 증거다」 2행 | 제거 — ① 바로 아래 세 단정(`strategy-open-candidates` 가시 · `strategy-drop`/`strategy-add` 0개 · `approved === true`)이 그 문장 자체 · ② doc-tracker ⑼ · ③ PR 계획 1 |
+| `sc01-04` | 「진행 화면에는 전략 진입 버튼이 없다(원장 ⒃) — 목업의 선형 동선대로 횡단 관심사 화면을 거쳐 돌아온다」 2행 | 제거 — `sc01-01` 의 같은 문장과 동일(② doc-tracker ⒃ · ③ PR 계획 2 · ① 두 클릭) |
+| `sc01-04` | 「돌아와도 승인은 그대로다 — 편집 컨트롤이 없고 버튼이 다음 동선이다」 1행 | 제거 — ① 바로 아래 두 단정의 재진술 |
+| `sc01-07` | 「승인되면 버튼이 다음 동선으로 바뀐다(원장 ⑼ — 별도의 완료 문구는 없다)」 1행 | 제거 — ① 바로 아래 단정 · ② doc-tracker ⑼ |
+| `DiscoveryStrategy.tsx` | `/** Matches \`AnalysisProgress\` — the other screen that waits on a stage to finish. */` (`POLL_MS`) 1행 | 제거 — 이름과 값(`2_000`, `AnalysisProgress.tsx:12` 와 동일값)만으로 복원되는 교차 참조. 「링크를 위해서만 문장을 남기지 않는다」(본문 「유지 대상」) · 1행 ②·7행 1차 판정이 같은 유형을 제거한 선례 |
+| `DiscoveryStrategy.tsx` | 「The approved strategy re-queues stage 4; the candidates only exist once it has run. Polled rather than read once because the wait spans this screen」 2행 | **1행으로 재작성** — 앞 문장은 ② doc-tracker 「실제로는 승인 직후 4단계가 아직 돌지 않는다」 · ③ PR 계획 1 · `sc01-01` 의 기존 주석 「승인이 분석을 재큐잉해 4단계를 실행한다」 로 복원돼 걷고, **뒤 문장(폴링을 택한 이유)은 어디에도 없어 유지** — 「Polled rather than read once because the wait spans this screen.」 |
+| `DiscoveryStrategy.tsx` | 「A failed read just means the next tick tries again」(빈 `catch` 안) 1행 | 제거 — ① 빈 `catch {}` 와 `setInterval` 이 그 문장 자체. 이 레포엔 eslint 가 없어 빈 블록이 게이트에 걸리지 않는다(`frontend/package.json` devDependencies 실측) |
+| `DiscoveryStrategy.tsx` | `{/* One primary CTA, as the mockup has it. Before approval it approves; after, it is the way on to the candidates. Waiting is the disabled state, not a line of copy: between approval and the extraction finishing there is nothing to walk into yet. */}` 1행 + 연속 3행 | 제거 — ② doc-tracker ⑼ 「대기는 primary CTA 의 비활성으로 표현하고, 승인 뒤에는 목업대로 같은 버튼이 후보 화면으로 가는 문이 된다」 축자 · ③ PR 계획 1 · ① 바로 아래 `disabled={… \|\| (strategy.approved && !extracted)}` 와 `onClick` 삼항 · 목업 `STP-tune-strategy` |
+
+**판단이 갈려 남긴 것 1건** — 폴링 근거. `useEffect` 의 제어 흐름은 「승인됐고 아직 미추출이면
+2초마다 `getCandidates` 를 읽는다」 까지는 말하지만 「왜 한 번 읽고 말지 않는가」는 말하지 않고,
+doc-tracker 는 대기가 화면에 걸쳐 있다는 사실이 아니라 대기의 *표현*(버튼 비활성)만 적는다.
+비용이 비대칭이므로 남겼다.
+
+**건드리지 않은 것**: 세 파일의 `// 검증 시나리오:` · 화면 머리의 목업 매핑 · 1차 판정 유지분 ·
+동작 코드. stripper 잔여가 부모(#100 tip)와 **바이트 동일**(sc01-04 6,423 · sc01-07 8,266 ·
+DiscoveryStrategy 6,755 — 셋 다 ==). 빈 `catch {` `}` 의 두 줄 형태는 그대로 뒀다(한 줄로 접으면
+비주석 줄이 바뀐다). `tsc -b && vite build` · `check-scenario-e2e.py` 통과.
+
+결과: 범위 지문 `4f140458…`(151, 증분 재판정 ① 직후) → **`a431e905…`(141)**. 1차 판정 값
+`d46c9262…`(140) 로 돌아가지 않는 1행이 위 재작성분이다.

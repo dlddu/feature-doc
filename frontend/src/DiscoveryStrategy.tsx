@@ -13,7 +13,6 @@ import {
 } from './api';
 import type { DiscoveryStrategy as Strategy } from './api';
 
-/** Matches `AnalysisProgress` — the other screen that waits on a stage to finish. */
 const POLL_MS = 2_000;
 
 function messageOf(e: unknown): string {
@@ -43,8 +42,7 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
     };
   }, [id]);
 
-  // The approved strategy re-queues stage 4; the candidates only exist once it has
-  // run. Polled rather than read once because the wait spans this screen.
+  // Polled rather than read once because the wait spans this screen.
   const approved = strategy?.approved ?? false;
   useEffect(() => {
     if (!approved || extracted) return;
@@ -54,7 +52,6 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
         const list = await getCandidates(id);
         if (active && list.extracted) setExtracted(true);
       } catch {
-        // A failed read just means the next tick tries again.
       }
     }
     void check();
@@ -203,10 +200,6 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
       )}
 
       <div className="stack" style={{ marginTop: 24 }}>
-        {/* One primary CTA, as the mockup has it. Before approval it approves; after,
-            it is the way on to the candidates. Waiting is the disabled state, not a
-            line of copy: between approval and the extraction finishing there is
-            nothing to walk into yet. */}
         <button
           className="btn btn-primary block"
           type="button"
