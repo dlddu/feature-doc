@@ -66,7 +66,7 @@ async function stageOf(page: Page, id: string, key: string): Promise<StageRow> {
 test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () => {
   test.describe.configure({ mode: 'serial', timeout: 300_000 });
 
-  test('실패한 단계와 그 사유가 보이고, 재시도는 그 단계만 다시 실행한다', async ({ page }) => {
+  test('실패한 단계가 안내와 함께 보이고, 재시도는 그 단계만 다시 실행한다', async ({ page }) => {
     try {
       // The overlay already rests at 0; make the precondition explicit so a queued
       // job cannot drain before the setup below.
@@ -101,7 +101,13 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
 
       await page.goto(`/#/analyses/${failing}`);
       const failedStage = page.locator('[data-stage="fetch"]');
-      await expect(failedStage).toContainText('github tree rejected (404)');
+      // 화면은 목업의 정적 안내로 수렴했다(원장 ⑿) — 서버 사유는 이제 화면이 아니라
+      // API 가 들고 있고, 아래 `afterRetry.error` 단정이 그것을 계속 관측한다.
+      // 시나리오 6 원문이 요구하는 것은 「그 단계만 재시도」뿐이다.
+      await expect(failedStage.getByTestId('retry')).toBeVisible();
+      await expect(page.getByTestId('stage-failed')).toContainText(
+        '단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.',
+      );
       await expect(page.getByTestId('pipeline-count')).toHaveText('0 of 5');
 
       const beforeRetry = await stageOf(page, failing, 'fetch');
@@ -154,7 +160,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
   // stage-4 프롬프트에만 실재하는 문구라 단계 1-3의 ask에는 발화하지 않는다 —
   // 실패가 정확히 원문이 지목한 단계에 착지하고, 기대 결과의 「횡단 분석·탐색 전략
   // 유지」가 실제 성공 상태로 검증된다.
-  test('LLM 한도 초과로 실패한 단계의 사유가 보이고, 재시도는 그 단계만 다시 실행한다', async ({
+  test('LLM 한도 초과로 실패한 단계가 안내와 함께 보이고, 재시도는 그 단계만 다시 실행한다', async ({
     page,
   }) => {
     try {
@@ -218,7 +224,12 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
 
       await page.goto(`/#/analyses/${llmFailing}`);
       const failedStage = page.locator('[data-stage="feature_candidates"]');
-      await expect(failedStage).toContainText('LLM rejected the request (429)');
+      // 사유의 관측은 위 폴링(`failed: LLM rejected the request (429)`)과 아래
+      // `afterRetry.error` 가 API 에서 계속 진다 — 화면 쪽은 원장 ⑿ 로 수렴했다.
+      await expect(failedStage.getByTestId('retry')).toBeVisible();
+      await expect(page.getByTestId('stage-failed')).toContainText(
+        '단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.',
+      );
       await expect(page.getByTestId('pipeline-count')).toHaveText('3 of 5');
 
       const beforeRetry = await stageOf(page, llmFailing, 'feature_candidates');

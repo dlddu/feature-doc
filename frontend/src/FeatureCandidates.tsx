@@ -109,17 +109,6 @@ export function FeatureCandidates({ id, onBack }: Props) {
     );
   }
 
-  if (!list.extracted) {
-    return (
-      <main className="screen">
-        <Appbar onBack={onBack} />
-        <p className="body sm" style={{ marginTop: 22 }} data-testid="candidates-empty">
-          {NOT_EXTRACTED}
-        </p>
-      </main>
-    );
-  }
-
   const shown = list.candidates.filter((c) => {
     if (c.mergedInto !== null) return false;
     return filter === 'all' || c.decision === filter;
@@ -400,7 +389,6 @@ function nameOf(list: CandidateList, key: string): string {
 }
 
 const LOADING = '불러오는 중…';
-const NOT_EXTRACTED = '후보 추출 단계가 아직 끝나지 않았어요.';
 const MERGE_PICK = '합칠 후보로 고르기';
 const MERGE_PICKED = '고름 해제';
 const MERGE_INTO = '여기에 합치기';

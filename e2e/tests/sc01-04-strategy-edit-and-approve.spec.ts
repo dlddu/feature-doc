@@ -125,7 +125,9 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       expect(edited.approved).toBe(false);
 
       await page.getByTestId('strategy-approve').click();
-      await expect(page.getByTestId('strategy-approved')).toBeVisible();
+      // 승인의 관측은 「승인 완료」 문구가 아니라 화면이 다음 동선으로 넘어가는 것이다
+      // (원장 ⑼). 편집 컨트롤이 사라지는 것과 서버의 `approved` 가 확정의 증거다.
+      await expect(page.getByTestId('strategy-open-candidates')).toBeVisible();
       await expect(page.getByTestId('strategy-drop')).toHaveCount(0);
       await expect(page.getByTestId('strategy-add')).toHaveCount(0);
       expect((await strategyOf(page, first)).approved).toBe(true);
@@ -137,8 +139,13 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
 
       await page.goto(`/#/analyses/${first}`);
       await expect(page.locator('[data-stage="discovery_strategy"]')).toContainText('entry points');
-      await page.getByTestId('open-discovery-strategy').click();
-      await expect(page.getByTestId('strategy-approved')).toBeVisible();
+      // 진행 화면에는 전략 진입 버튼이 없다(원장 ⒃) — 목업의 선형 동선대로
+      // 횡단 관심사 화면을 거쳐 돌아온다.
+      await page.getByTestId('open-cross-cutting').click();
+      await page.getByTestId('to-discovery-strategy').click();
+      // 돌아와도 승인은 그대로다 — 편집 컨트롤이 없고 버튼이 다음 동선이다.
+      await expect(page.getByTestId('strategy-open-candidates')).toBeVisible();
+      await expect(page.getByTestId('strategy-drop')).toHaveCount(0);
 
       const second = await enqueue(page, 'payments-api');
       await expect
