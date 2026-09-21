@@ -666,6 +666,12 @@ async fn submit_document(
     .execute(&state.db)
     .await?;
 
+    // 인수 문서가 서는 순간이 직전 분석의 편집을 이어받을 자리다(AC3.5) — 저장과 같은
+    // 요청 안에서 해야 워커가 5단계를 `succeeded` 로 보고하기 전에 충돌이 서 있다.
+    if kind == pipeline::ACCEPTANCE_DEPENDENCIES {
+        crate::doc_conflict::inherit(&state, &id, &req.content).await?;
+    }
+
     Ok(StatusCode::NO_CONTENT)
 }
 

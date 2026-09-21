@@ -15,6 +15,7 @@ import { FeatureCandidates } from './FeatureCandidates';
 import { FeatureDependencies } from './FeatureDependencies';
 import { GrantRepoAccess } from './GrantRepoAccess';
 import { RequestEdit } from './RequestEdit';
+import { ResolveConflict } from './ResolveConflict';
 import { HomeRepositories } from './HomeRepositories';
 import { RegisterLlmKey } from './RegisterLlmKey';
 
@@ -32,10 +33,12 @@ export type AnalysisRoute = {
     | 'diff'
     | 'edit'
     | 'proposal'
-    | 'add';
+    | 'add'
+    | 'conflict';
   featureKey?: string;
   scenarioIndex?: number;
   proposalId?: string;
+  conflictId?: string;
 };
 
 export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
@@ -55,6 +58,14 @@ export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
       id: decodeURIComponent(deciding[1]),
       view: 'proposal',
       proposalId: decodeURIComponent(deciding[2]),
+    };
+  }
+  const conflicting = /^#\/analyses\/([^/?#]+)\/conflicts\/([^/?#]+)$/.exec(hash);
+  if (conflicting) {
+    return {
+      id: decodeURIComponent(conflicting[1]),
+      view: 'conflict',
+      conflictId: decodeURIComponent(conflicting[2]),
     };
   }
   const adding = /^#\/analyses\/([^/?#]+)\/features\/add$/.exec(hash);
@@ -178,6 +189,11 @@ export function App() {
     setRoute({ id, view: 'add' });
   }
 
+  function openConflict(id: string, conflictId: string) {
+    window.location.hash = `#/analyses/${encodeURIComponent(id)}/conflicts/${encodeURIComponent(conflictId)}`;
+    setRoute({ id, view: 'conflict', conflictId });
+  }
+
   function openProposal(id: string, proposalId: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/proposals/${encodeURIComponent(proposalId)}`;
     setRoute({ id, view: 'proposal', proposalId });
@@ -225,6 +241,17 @@ export function App() {
         />
       );
     }
+    if (route.view === 'conflict' && route.conflictId !== undefined) {
+      return (
+        <ResolveConflict
+          key={`${route.id}-rc-${route.conflictId}`}
+          id={route.id}
+          conflictId={route.conflictId}
+          onBack={() => openDiff(route.id)}
+          onSaved={() => openCandidates(route.id)}
+        />
+      );
+    }
     if (route.view === 'diff') {
       return (
         <AnalysisDiff
@@ -232,6 +259,7 @@ export function App() {
           id={route.id}
           onBack={() => openAnalysis(route.id)}
           onOpenFeature={() => openAcceptance(route.id)}
+          onOpenConflict={(conflictId) => openConflict(route.id, conflictId)}
         />
       );
     }

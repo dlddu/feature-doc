@@ -771,3 +771,93 @@ export async function restoreFeature(id: string, deletion: string): Promise<Feat
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as FeatureDeletion;
 }
+
+/** 자동 재분석이 사람이 고쳐 둔 문장과 같은 자리에서 갈린 것(AC3.5). 열린 동안 문서에는 자동 결과가 선다. */
+export type DocConflict = {
+  id: string;
+  featureKey: string;
+  featureName: string;
+  scenarioIndex: number;
+  status: 'open' | 'auto' | 'mine' | 'merged';
+  source: string;
+  request: string;
+  mine: Sentences[];
+  before: Sentences;
+  auto: Sentences;
+  mineDecidedAt: number;
+  previousAnalysisId: string;
+  mergeProposal: MergeProposal | null;
+  decidedAt: number | null;
+};
+
+export type MergeProposal = {
+  id: string;
+  status: string;
+  after: Sentences[];
+  removed: string[];
+  added: string[];
+  changedLines: number;
+};
+
+export type DocConflictList = {
+  open: number;
+  conflicts: DocConflict[];
+};
+
+export async function listConflicts(id: string): Promise<DocConflictList> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/conflicts`, {
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as DocConflictList;
+}
+
+export async function getConflict(id: string, conflict: string): Promise<DocConflict> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/conflicts/${encodeURIComponent(conflict)}`,
+    { credentials: 'same-origin' },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as DocConflict;
+}
+
+/** `auto` 는 그대로 닫고 `mine` 은 사용자 문장을 다시 세운다 — 둘 다 고른 순간이 결정이다. */
+export async function decideConflict(
+  id: string,
+  conflict: string,
+  decision: 'auto' | 'mine',
+): Promise<DocConflict> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/conflicts/${encodeURIComponent(conflict)}/decision`,
+    { method: 'POST', credentials: 'same-origin', headers: json, body: JSON.stringify({ decision }) },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as DocConflict;
+}
+
+/** 합친 문장을 제안받는다. 제안은 결정이 아니라 확정해야 문서에 선다. */
+export async function proposeMerge(
+  id: string,
+  conflict: string,
+  keepMine: boolean,
+): Promise<DocConflict> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/conflicts/${encodeURIComponent(conflict)}/merge`,
+    { method: 'POST', credentials: 'same-origin', headers: json, body: JSON.stringify({ keepMine }) },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as DocConflict;
+}
+
+export async function decideMerge(
+  id: string,
+  conflict: string,
+  decision: 'approve' | 'reject',
+): Promise<DocConflict> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/conflicts/${encodeURIComponent(conflict)}/merge-decision`,
+    { method: 'POST', credentials: 'same-origin', headers: json, body: JSON.stringify({ decision }) },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as DocConflict;
+}

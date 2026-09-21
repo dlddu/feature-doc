@@ -278,6 +278,16 @@ fn prompt(
 /// string — the same reason stages 2-4 do it. A constant would still match if the
 /// wiring were cut, so the e2e would keep passing over a dead stage.
 fn stub_logic(subjects: &[Subject], paths: &[String]) -> Value {
+    // 트리에 규정 파일이 들어오면 첫 문장이 달라진다 — 코드가 바뀌어 같은 시나리오를
+    // 다르게 읽게 된 재분석의 결정적 재현이다(`repo_scan::Revision::Third`).
+    let rewritten = paths
+        .iter()
+        .any(|p| p.ends_with(crate::repo_scan::REWRITE_MARKER));
+    let first_then = if rewritten {
+        "요청한 대로 처리되고, 환불 규정이 바뀐 뒤에는 그 규정이 결과와 함께 표시됩니다"
+    } else {
+        "요청한 대로 처리되고 결과를 화면에서 바로 확인할 수 있습니다"
+    };
     let features: Vec<Value> = subjects
         .iter()
         .take(MAX_FEATURES)
@@ -285,7 +295,7 @@ fn stub_logic(subjects: &[Subject], paths: &[String]) -> Value {
             let mut scenarios = vec![json!({
                 "given": format!("{} 을(를) 아직 한 번도 쓰지 않은 사용자가", subject.name),
                 "when": format!("{} 을(를) 처음 실행하면", subject.name),
-                "then": "요청한 대로 처리되고 결과를 화면에서 바로 확인할 수 있습니다".to_string(),
+                "then": first_then,
                 "evidence": subject.location,
                 "symbol": subject.symbol,
             })];
@@ -612,6 +622,34 @@ mod tests {
         let feature = &doc["features"][0];
         assert!(!feature["scenarios"].as_array().unwrap().is_empty());
         assert!(feature["contradictions"].as_array().unwrap().is_empty());
+    }
+
+    /// 리비전 2 는 문장을 바꾸지 않고(02#시나리오 8 의 「시나리오 문장은 그대로다」),
+    /// 리비전 3 만 첫 문장을 다르게 쓴다 — 그것도 그 한 문장뿐이다.
+    #[test]
+    fn only_the_rewrite_marker_changes_a_sentence_and_only_the_first() {
+        use crate::repo_scan::{stub_scan_at, Revision};
+        let scan = |r| stub_scan_at("payments-api", "main", r).unwrap().paths;
+        let logic = |paths: &[String]| stub_logic(&subjects(), paths);
+        let (first, second, third) = (
+            logic(&scan(Revision::First)),
+            logic(&scan(Revision::Second)),
+            logic(&scan(Revision::Third)),
+        );
+        assert_eq!(first, second);
+        assert_ne!(second, third);
+        let then = |doc: &Value, i: usize| doc["features"][0]["scenarios"][i]["then"].clone();
+        assert_ne!(then(&second, 0), then(&third, 0));
+        assert_eq!(then(&second, 1), then(&third, 1));
+        assert_eq!(
+            doc_len(&second),
+            doc_len(&third),
+            "리비전은 문장을 고쳐 쓸 뿐 자리를 늘리지 않는다"
+        );
+    }
+
+    fn doc_len(doc: &Value) -> usize {
+        doc["features"][0]["scenarios"].as_array().unwrap().len()
     }
 
     #[test]
