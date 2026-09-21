@@ -219,3 +219,107 @@ PR **#49**가 건드리는 파일이고, 이 축은 「열린 통합 차량의 �
 주석·빈 줄을 걷어낸 나머지가 부모 `ebe8657`과 **바이트 동일**이고, 두 파일 diff의 주석 아닌
 `+`/`-` 행은 0건이다. 자세한 대조는 [2026-09-18-acceptance-axis.md](2026-09-18-acceptance-axis.md)
 「검증」 절에 함께 적었다.
+
+## 증분 재판정 ⑤ — `#93` 의 「required-but-nullable」 9행 (2026-09-21 · `rct_20260921-0001`)
+
+`#93`(`8205b7a`, 「스키마 선택 필드를 required+nullable 로 — OpenAI strict 400 해소」)이 **이미
+판정된 네 범위**에 주석 9행을 들여왔다 — 원장 1행의 `backend/src/llm.rs` 5행 · 4행의
+`backend/src/acceptance.rs` 1행 · 6행의 `backend/src/dependencies.rs` 1행 · 8행의
+`backend/src/feature_candidates.rs` 2행. 아홉 줄이 **한 명제를 둘러싼 한 묶음**이라 상세는 정본이
+있는 이 파일에 한 절로 적고, 다른 세 패스 파일에는 포인터만 둔다(원장 4·6·8행이 그 포인터를 링크한다).
+같은 커밋이 `cross_cutting.rs`·`discovery_strategy.rs` 에 더한 것은 테스트 fn 뿐이라 지문 델타 0 이다.
+
+- **창**: 부모 `7724b46`(15차 패스) → `8205b7a`. 부모에서 versionScript 를 재실행한 값이 저장된
+  baseline `lines=2310` / `7d1ddd5f…` 과 바이트 동일 — 유입 전부가 #93 단독 귀속이다.
+- **판정 결과**: **9행 중 제거 6 · 유지 3** (`llm.rs` 5 → 3 재작성 · `acceptance.rs` −1 ·
+  `dependencies.rs` −1 · `feature_candidates.rs` −2). 비주석 코드는 한 글자도 건드리지 않았다.
+
+### 명제는 하나다 — 정본을 강제하는 코드 옆에 두고 사본을 걷었다
+
+아홉 줄이 말하는 것은 한 명제 **P** = 「OpenAI 는 `strict: true` 아래에서 `required` 에 없는
+property 를 400 으로 거부하므로, 선택 필드는 optional 이 아니라 required-but-nullable
+(`["string","null"]`)로 적는다」이다. #93 은 P 를 **네 자리에 다섯 벌**로 적었고, 동시에 P 를
+**강제하는 코드**도 들여왔다 — `llm.rs::assert_strict_schema`(모든 object 의 `additionalProperties:
+false` 와 「모든 property 가 `required` 에 있음」을 단정하고, 단정 메시지가 「strict mode needs every
+property in `required`; make it nullable instead of optional」이라 축자로 적는다)와, 스키마를 가진
+네 모듈 각각의 테스트 `schema_is_accepted_by_openai_strict_mode`.
+
+12차 패스가 세운 규칙(「복제된 명제는 그 명제를 강제하는 코드 옆 **한 벌만** 남긴다」 —
+[2026-09-20-github-app-auth-axis.md](2026-09-20-github-app-auth-axis.md) 「복제된 명제」 표)을 그대로
+적용했다. 그 표의 「Setup URL 의 `installation_id` 는 스푸핑 가능」 행과 모양이 같다 — 정본은
+**검증하는 함수 자신** 옆에, 호출 자리의 사본은 **호출 이름이 이미 말하므로** 걷는다.
+
+| 자리 | 줄 | 판정 | 근거 |
+|---|---|---|---|
+| `llm.rs` `assert_strict_schema` doc | 5 → 3 | **정본. 명제 단위로 잘라 2행 제거** | 아래 절 |
+| `feature_candidates.rs:36-37` | 2 | **제거** | P 의 사본. 같은 파일의 테스트 `schema_is_accepted_by_openai_strict_mode` 가 **이름으로** 정본 자리를 가리키고(①), 단정 메시지가 「make it nullable instead of optional」을 말한다(①). 12차 규칙의 「호출 이름이 말한다」 형 |
+| `acceptance.rs:71` · `dependencies.rs:78` | 1 + 1 | **제거** | `// Required-but-nullable; see feature_candidates::schema.` — 앞 절반은 두 줄 위 `required` 배열과 바로 아래 `"type": ["string","null"]` 의 **축자 재진술**(①), 뒤 절반은 **다른 파일 주석으로의 교차 참조뿐**(본문 「링크를 위해서만 문장을 남기지 않는다」). 게다가 **같은 문장의 두 벌**이다. 걷고 나니 두 범위의 줄 수·지문이 #93 이전 값으로 **정확히 되돌아왔다**(141 / `e38dcf20…` · 112 / `e2ff313a…`) |
+
+**지식은 한 줄도 사라지지 않았다.** P 의 두 요소 — 상류 거부 조건(400)과 그 처방(nullable) — 는
+`llm.rs` 의 정본 doc 과 `assert_strict_schema` 의 단정 메시지에 남아 있고, 스키마를 가진 네 파일
+어느 곳에서 출발해도 같은 파일의 테스트 이름 → `assert_strict_schema` 로 두 번에 닿는다.
+
+### `llm.rs` 의 정본 doc — 명제 단위로 잘랐다
+
+`#[cfg(test)] pub(crate) fn assert_strict_schema` 의 `///` 5행은 네 명제가 줄에 걸쳐 있었다.
+줄 단위가 아니라 명제 단위로 판정해 **5행 → 3행**으로 재작성했다.
+
+| 명제 | 판정 | 근거 |
+|---|---|---|
+| 「every object closes `additionalProperties` and lists *every* property in `required`」 | 제거 | 함수 본문의 두 `assert_eq!`/`assert!` 가 그대로다(①) — 본문 「doc 주석 본문이 시그니처·동작을 되풀이하는 부분」 |
+| 「A property left out of `required` is a 400 before the model runs」 | **유지** | 상류 API 의 거부 조건 — 본문 「유지 대상」이 이름으로 든 항목(OpenAI Responses 의 400). 「모델 실행 *전*」이라는 시점은 코드 어디에도 없다 |
+| 「it only shows up against the real provider — stub mode never sends the schema anywhere」 | **유지** | stub↔real 충실도 경계. 증분 재판정 ① 이 `llm.rs` 의 같은 계열 21행을 전건 유지한 선례와 일치 |
+| 「Optional fields are spelled required-but-nullable (`["string", "null"]`)」 | 제거 | 단정 메시지 「make it nullable instead of optional」(①)과 네 스키마 리터럴 자체(①)가 말한다 |
+
+남긴 3행은 `pub(crate)` 항목의 요약 1줄 + 복원 불가능한 두 명제다.
+
+### 선례와의 정합 — 뒤집은 판정은 없다
+
+- 9·10차 패스가 `cross_cutting.rs` 의 「스키마는 프로바이더에 그대로 가므로 stub 답이 그 안에
+  있으면 안 된다 — OpenAI 는 `strict` 아래에서 모르는 키워드를 거부한다」를 **유지**로 닫았다
+  ([2026-09-20-pipeline-cross-cutting-axis.md](2026-09-20-pipeline-cross-cutting-axis.md)). 그것은
+  **다른 명제 Q**(모르는 키워드 거부)이고 이번에 손대지 않았다. 「상류 거부 조건은 유지」라는 그
+  판정은 이번에도 같다 — P 의 거부 조건은 `llm.rs` 정본에 **남아 있다**. 걷은 것은 조건이 아니라
+  **사본**이다.
+- 복원 경로 ③④ 도 열려 있었다(PR #93 본문 「## 원인」이 P 를 축자로 재진술하고, 커밋 제목이
+  「OpenAI strict 400 해소」다). 그러나 본문 「유지 대상」이 상류 거부 조건을 **이름으로** 유지 목록에
+  둔 이상, ③④ 만을 근거로 정본까지 걷지는 않는다 — 12차 패스 「자격증명 비노출 불변식만은 두 벌을
+  일부러 남겼다」와 같은 결의 판단이다. 정본 한 벌은 남기고 사본만 걷는 것이 두 규칙을 동시에
+  만족하는 유일한 형태다.
+- **판단이 갈려 남긴 것: 0건.** 네 자리 모두 정본이 코드 두 번 거리 안에 있어 「애매하면 남긴다」가
+  발동할 자리가 없었다.
+
+### 판정 표면 밖에서 본 것 (이번에 고치지 않음)
+
+**Q 는 지금 `llm.rs` 에 세 벌 + `cross_cutting.rs` 에 한 벌**이다 — `Ask::schema` 필드 doc(`llm.rs:59-61`)
+· `openai_body` 의 인라인(`:334-335`) · 테스트 `openai_request_schema_holds_only_the_schema` 의
+doc(`:666-667`) · `cross_cutting.rs::the_schema_is_only_a_schema` 의 doc(`:265-266`). 1차·9·10차
+패스가 각각 유지로 닫은 자리라 원장 규칙(「같은 명제를 패스마다 반대로 판정하면 그 자체가 drift」)상
+**한 패스에서 네 벌을 함께** 다시 봐야 한다. 이번 창의 유입이 아니므로 열지 않았다 — 다음에 1행이
+열릴 때의 첫 항목으로 남긴다. 12차 규칙을 적용하면 정본은 `openai_body` 의 `"strict": true` 를 쓰는
+자리(`:334`)이고 나머지 셋이 사본 후보다.
+
+### 검증 (판정 시점 로컬 실측, 부모 = main `899800e`)
+
+1. **동작 코드 무접촉**: 문자열·문자 리터럴을 인식하는 스트리퍼로 주석·빈 줄을 걷어낸 잔여가
+   부모와 **네 파일 전부 바이트 동일**(`llm.rs` 547 == 547 · `acceptance.rs` 526 == 526 ·
+   `dependencies.rs` 450 == 450 · `feature_candidates.rs` 265 == 265 줄). diff 의 주석 아닌
+   `+`/`-` 행 0건.
+2. **범위 지문**: 1행 `b328c080…`(592) → **`9757b6b5a0251379c55161ab6768da3b3f05548f1866b2a98f82f98b4f4dea87`**(590) ·
+   4행 `474321bd…`(142) → **`e38dcf20…`**(141, #93 이전 값) · 6행 `6058883e…`(113) →
+   **`e2ff313a…`**(112, #93 이전 값) · 8행 `71dc18f5…`(153) →
+   **`4f140458be956f26747278ba012e5afa626bf3e6dae7b0af98c05b029fce476c`**(151 — 그중 11행은 #99 가
+   `sc01-04` 에 더한 미판정 증분).
+3. **전역 as-is**: 부모 `lines=2349 files=108` / `e917bb5e…` → **`lines=2343 files=108` /
+   `60eb8b5b47e21c8b6a5b870d502b3245366146384c8dd1cd22d97da08da33a95`**(순 제거 6). 절대값은
+   자매 머지로 움직이므로 완료 기준은 **「부모 대비 순 제거 6행」**이다.
+4. **데이터 저장 형식 판정기**: `python3 tools/check-data-format-change.py --base main --head <probe>
+   --verbose` → `✅ 변경 없음` (네 파일 모두 검사 대상이되 D1·D2·D5·D6 어느 규칙에도 걸리지 않음)
+   ⇒ 필수 체크 `review/data-format` 이 붙는다.
+5. **허브 등재**: 새 문서를 만들지 않았으므로 `docs/index.html` 의 `Documents` 집계는 움직이지 않는다.
+
+### 범위 밖 (같은 창에 들어온 다른 유입)
+
+- **#91(`3567755`)이 10행 `frontend/src/index.css` 에 더한 5행** — `rct_20260921-0002` 가 열려 있다.
+- **#99(`899800e`)가 3행 `sc01-01` 에 더한 14행 · 8행 `sc01-04` 에 더한 11행** — 이 재판정의 창
+  밖(감지 대기). 8행의 줄 수 151 에는 포함돼 있고 원장이 「미판정 증분 11행」으로 표기한다.

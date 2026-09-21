@@ -75,7 +75,6 @@ fn schema() -> Value {
                     "properties": {
                         "category": { "type": "string", "enum": CATEGORIES },
                         "name": { "type": "string" },
-                        // Required-but-nullable; see `feature_candidates::schema`.
                         "evidence": { "type": ["string", "null"] },
                     },
                 },

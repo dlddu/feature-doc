@@ -229,3 +229,17 @@ proposal is only reviewable if it points at things that exist」 등), `strategy
   `+6 −4` 로 건드린다. 다음 감지가 그 이동을 발화시킨다.
 - 직전 패스의 「발견」이 남긴 제외 패턴 확장 판단(`docs/mockups/.*\.html#STP-`)은 여전히
   control plane 몫이다. 그때까지 **화면 머리의 목업 매핑 줄은 제거 후보로 보지 않는다.**
+
+## 증분 재판정 ① — `backend/src/feature_candidates.rs` +2행 (2026-09-21 · `rct_20260921-0001`)
+
+`#93`(`8205b7a`)이 `schema()` 의 `"symbol"` 위에 더한 2행(「Required-but-nullable rather than
+optional: OpenAI's `strict` mode rejects any property missing from `required` (400)」)을
+**제거**했다. 상류 거부 조건 자체는 유지 대상이지만, 같은 커밋이 그 명제를 **강제하는 코드**
+`llm.rs::assert_strict_schema` 와 그 정본 doc 을 함께 들여왔고 이 파일의 테스트
+`schema_is_accepted_by_openai_strict_mode` 가 그 자리를 이름으로 가리키므로, 12차 패스의 「복제된
+명제는 강제하는 코드 옆 한 벌만」 규칙대로 사본을 걷었다 — 조건은 정본에 남아 있다. 근거 전체는
+[2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑤」.
+결과: 범위 지문 `71dc18f5…`(153) → **`4f140458…`(151)**. 151 중 **11행은 #99(`899800e`)가
+`sc01-04` 에 더한 미판정 증분**으로, 이 재판정의 창 밖이라 판정하지 않았다(직전 절이 「#79 가
+머지되면 3행에 증분이 열린다」고 적은 것과 같은 형태 — 이번엔 8행에도 열렸다). 비주석 코드 무접촉
+(스트립 잔여 265 == 265).

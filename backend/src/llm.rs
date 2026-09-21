@@ -464,11 +464,9 @@ fn stub_answer(ask: &Ask<'_>) -> Result<Answer, String> {
     })
 }
 
-/// Asserts a stage schema is one OpenAI accepts under `strict: true`: every object
-/// closes `additionalProperties` and lists *every* property in `required`. A
-/// property left out of `required` is a 400 before the model runs, and it only
-/// shows up against the real provider — stub mode never sends the schema anywhere.
-/// Optional fields are spelled required-but-nullable (`["string", "null"]`).
+/// Asserts a stage schema is one OpenAI accepts under `strict: true`. A property
+/// left out of `required` is a 400 before the model runs, and it only shows up
+/// against the real provider — stub mode never sends the schema anywhere.
 #[cfg(test)]
 pub(crate) fn assert_strict_schema(schema: &Value) {
     fn walk(node: &Value, at: &str) {
