@@ -28,9 +28,6 @@ pub struct Doubles {
     pub github_app: Mode,
     pub llm_key: Mode,
     pub llm: Mode,
-    /// 저장소 트리 스캔. 1단계는 워커의 것이지만, 사람이 feature 를 직접 더할 때의
-    /// 근거 찾기는 이 프로세스가 같은 스캔을 한 번 더 한다 — `llm` 과 같은 방식으로
-    /// 워커와 이름만 공유한다.
     pub repo_scan: Mode,
 }
 

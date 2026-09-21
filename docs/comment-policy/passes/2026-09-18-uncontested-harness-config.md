@@ -233,3 +233,23 @@ P1~P7 각각을 이미 한 줄씩 정의하고, 각 블록의 `ok(cond, 'P6', �
 결과: 2행의 줄 수·지문이 #92 이전 값 **140 / `ddacce0b…`** 으로 되돌아왔다(부모 `19d58fa`
 재계산과 바이트 동일). `config.rs` 주석 제거 후 부모와 바이트 동일(stripper md5 `057df9b5`).
 새 파일 쪽 판정은 [2026-09-21-doc-edit-axis.md](2026-09-21-doc-edit-axis.md).
+
+## 증분 재판정 ③ — `#107` 이 `config.rs` 에 더한 3행 (2026-09-21 · `rct_20260921-0010`)
+
+`#107`(`89a1625`, 슬라이스 6b)이 `Doubles` 에 다섯 번째 경계 `pub repo_scan: Mode` 를 더하며 그 필드에만
+쓴 doc 3행 「저장소 트리 스캔. 1단계는 워커의 것이지만, 사람이 feature 를 직접 더할 때의 근거 찾기는 이
+프로세스가 같은 스캔을 한 번 더 한다 — `llm` 과 같은 방식으로 워커와 이름만 공유한다」를 판정해 **전건
+제거**했다 — ② 와 같은 형이다.
+
+- 「저장소 트리 스캔」 — ① 필드 이름 `repo_scan` · `from_env("FEATUREDOC_DOUBLE_REPO_SCAN")`.
+- 「사람이 feature 를 직접 더할 때의 근거 찾기는 이 프로세스가 같은 스캔을 한 번 더 한다」 — ② doc-tracker
+  `2026-09.md` 슬라이스 6b 행 「워커가 1단계에서 본 경로 목록은 저장되지 않으므로 같은 스캔을 한 번 더
+  한다」 · ② `docs/e2e-mocking-policy.md` EXT-03 배선 표(#109 가 `FEATUREDOC_DOUBLE_REPO_SCAN` 을 「API ·
+  워커」로 등재) · ③ PR #107 본문.
+- 「`llm` 과 같은 방식으로 워커와 이름만 공유한다」 — ① 바로 위 `Doubles` doc(증분 재판정 ① 이 「경계별
+  선택 불변식」으로 유지한 「**the analysis worker holds its own set**」) · ② 가 `llm` 필드의 같은 문장을 걷은
+  판정 그대로.
+
+결과: 2행의 줄 수·지문이 #107 이전 값 **140 / `ddacce0b…`** 으로 되돌아왔다(부모 `24f488d` 재계산과
+바이트 동일). `config.rs` 는 주석 제거 후 부모와 바이트 동일(stripper md5 `223cc58e`). 새 파일 쪽 판정은
+[2026-09-21-feature-add-axis.md](2026-09-21-feature-add-axis.md).

@@ -273,3 +273,24 @@ for」 — `CredentialsSetup.tsx` 는 `#83` 이 `GrantRepoAccess.tsx` + `Registe
 결과: 10행의 줄 수·지문은 #92 이전 값(81 / `af9fbb9d…`)으로 **돌아가지 않는다** — 유지 2행만큼
 **83 / `ec54e678…`** 이다(트리거 `51daa9c` 의 88 / `4346a888…` 에서 −5). `api.ts`·`App.tsx` 는 주석
 제거 후 부모와 바이트 동일(stripper md5 `2995df01` · `2fa2b7b0`), `npm run build` rc=0.
+
+## 증분 재판정 ④ — 원장 10행에 #107 이 연 +7행 (2026-09-21 · `rct_20260921-0010`)
+
+`#107`(`89a1625`, 슬라이스 6b)이 `api.ts` 에 추가 API 네 함수·타입 넷을 더하고 `AcceptanceScenario.source` ·
+`FeatureAcceptance.location` 의 타입을 넓히며 쓴 주석 7행을 판정해 **제거 5 · 유지 2** — ③ 과 같은 모양이다.
+새 화면 `AddFeature.tsx` 는 새 파일이라 이 행이 아니라 [2026-09-21-feature-add-axis.md](2026-09-21-feature-add-axis.md)
+의 새 행이다.
+
+| 줄 | 판정 · 복원 경로 |
+|---|---|
+| `/** 두 자동 패스, 또는 사람이 직접 더한 feature 의 출처(AC3.2·AC3.4). */` (`AcceptanceScenario.source`) | 제거 — ① 유니언 리터럴 `'logic' \| 'test' \| 'user_llm' \| 'user_direct'` 자체 · 0010 `source` 문단 — AC 꼬리표 |
+| `/** \`null\` 은 사람이 근거 없이 직접 더한 feature 다 — 위치가 없는 것이 기록된 사실이다. */` (`FeatureAcceptance.location`) | 제거 — ① 0010 `key` 문단 「사람이 더한 feature 는 위치가 없을 수 있으므로(근거 없음)」 · `feature_add.rs` `feature_json` 의 `"location": draft.scenarios.first()…` · ② 여정 `JRN-review-feature` 예외 표(「근거 없음」은 기록된 사실) |
+| `/** 근거를 찾았는가. 「근거 있음」 배지와 「근거 없음」 안내가 이 값으로 갈린다. */` (`FeatureAddition.evidenceFound`) | 제거 — ① `AddFeature.tsx` 의 조건 렌더 · `feature_add.rs` `AdditionView.evidence_found` 의 같은 문장도 함께 걷었다 |
+| `/** AC3.4 의 출처. 확정 전에는 아직 어느 쪽도 아니다. */` (`FeatureAddition.source`) | 제거 — ① 0010 「확정 전에는 아직 어느 쪽도 아니므로 NULL」 · Rust 쪽 같은 문장 함께 제거 — AC 꼬리표 |
+| `/** 확정될 목록의 수 — 승인된 후보 + 직접 추가. */` (`FeatureAdditions.finalCount`) | 제거 — ① 이웃 필드 `approvedCandidates`·`confirmedAdditions` · `feature_add.rs` `list()` 의 `final_count: approved + confirmed`(Rust 쪽 `ListView` doc 3행도 함께 걷었다) |
+| `/** 초안을 만든다. 근거를 못 찾으면 초안은 비어 오고, 문서는 확정 전까지 그대로다. */` (`draftAddition`) | **유지** — export 함수의 JSDoc 요약 1줄(정책 유지 대상; ③ 이 `proposeEdit` 를 남긴 것과 같은 모양). `feature_add.rs` `draft()` 의 같은 문장은 private fn 이라 이쪽을 정본으로 걷었다 |
+| `/** 확정이면 feature 가 되어 문서 끝에 얹히고, 취소면 시도로만 남는다. */` (`decideAddition`) | **유지** — 같은 이유. `feature_add.rs` `decide()` 와 `AddFeature.tsx` 내부 `decide` 의 같은 문장은 이쪽을 정본으로 걷었다 |
+
+결과: 10행의 줄 수·지문은 #107 이전 값(83 / `ec54e678…`)으로 **돌아가지 않는다** — 유지 2행만큼
+**85 / `89959a07…`** 이다(트리거 `89a1625`~`269a5f2` 의 90 / `d88323c6…` 에서 −5). `api.ts` 는 주석 제거 후
+부모와 바이트 동일(stripper md5 `2cceebc5`), `npm run build` rc=0.

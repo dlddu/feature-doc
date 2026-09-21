@@ -2,8 +2,7 @@
 //
 // 한 문장을 받아 초안 하나를 만드는 화면. 근거를 찾았는지, 초안이 무엇인지, 확정될
 // 목록이 몇인지는 전부 서버가 준다 — 화면이 기억하는 것은 사람이 지금 치고 있는
-// 문장과 방금 받은 초안뿐이다. 근거를 못 찾으면 초안은 비어 오고, 화면은 그것을
-// 「근거 없음」으로 그대로 보인다(지어내지 않는다).
+// 문장과 방금 받은 초안뿐이다.
 
 import { Fragment, useEffect, useState } from 'react';
 import { decideAddition, draftAddition, getAdditions } from './api';
@@ -58,7 +57,6 @@ export function AddFeature({ id, onBack, onConfirmed }: Props) {
     }
   }
 
-  /** 확정이면 feature 가 된다 — 근거가 있었으면 도움받아, 없었으면 직접. 취소면 시도로만 남는다. */
   async function decide(decision: 'confirm' | 'cancel') {
     if (draft === null || busy) return;
     setBusy(true);

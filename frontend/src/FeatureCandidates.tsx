@@ -31,7 +31,6 @@ type Filter = 'all' | 'undecided' | 'approved' | 'rejected';
 type Props = {
   id: string;
   onBack: () => void;
-  /** 미결정이 0건일 때 열리는 다음 단계 — 빠진 기능을 직접 더하는 화면(AC3.2). */
   onFinish: () => void;
 };
 

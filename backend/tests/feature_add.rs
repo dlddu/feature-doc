@@ -1,13 +1,5 @@
 //! 자동 추출이 놓친 feature 의 직접 추가(AC3.2)와 그 출처 보존(AC3.4) — 라우터를 그대로
 //! 돌려 본다.
-//!
-//! 인수 문서는 워커의 `/internal` 경로로 넣는다(형제 테스트와 같은 방침) — 손으로 행을
-//! 꽂으면 픽스처가 실제 워커 산출물과 어긋날 수 있고, 그 계약이 바로 여기서 지켜야 할 것이다.
-//!
-//! 브라우저에서 관측되는 흐름은 `e2e/tests/sc03-03`·`sc03-04` 가 지킨다. 이 파일이 지키는
-//! 것은 그 아래의 규칙이다 — 근거는 트리 안 경로뿐 · 근거 없음은 빈 초안 · 확정 전 문서
-//! 불변 · 확정 후 끝에 겹침(출처 포함) · 의존성 후보의 행 적재 · 더해진 feature 도 편집
-//! 대상 · 남의 분석에는 닿지 않음.
 mod common;
 
 use axum::body::Body;
@@ -84,7 +76,6 @@ async fn json_body(resp: axum::response::Response) -> serde_json::Value {
     serde_json::from_slice(&bytes).unwrap()
 }
 
-/// 큐에 든 분석 하나 — 5단계가 아직 아무것도 쓰지 않은 상태.
 async fn analysis(state: &AppState, session: &str) -> String {
     let resp = build_router(state.clone())
         .oneshot(user_post(
@@ -98,7 +89,6 @@ async fn analysis(state: &AppState, session: &str) -> String {
     json_body(resp).await["id"].as_str().unwrap().to_string()
 }
 
-/// 인수 문서가 서 있는 분석 하나.
 async fn analysis_with_document(state: &AppState, session: &str) -> String {
     let id = analysis(state, session).await;
 
@@ -242,7 +232,6 @@ async fn a_draft_cites_only_paths_of_this_repository_and_confirming_registers_it
         ));
     }
 
-    // 확정 전에는 아무것도 바뀌지 않는다.
     assert_eq!(features(&state, &s, &id).await.unwrap().len(), 1);
     let (_, listed) = list(&state, &s, &id).await;
     assert_eq!(listed["finalCount"], 0, "결정 전에는 목록에 세지 않는다");
@@ -268,7 +257,6 @@ async fn a_draft_cites_only_paths_of_this_repository_and_confirming_registers_it
     assert_eq!(listed["confirmedAdditions"], 1);
     assert_eq!(listed["finalCount"], 1);
 
-    // 확정한 의존성 후보는 의존성 화면이 읽는 행으로 실렸다.
     let resp = build_router(state.clone())
         .oneshot(get(
             &format!(
@@ -312,7 +300,6 @@ async fn nothing_in_the_tree_means_an_empty_draft_and_a_direct_source() {
     assert_eq!(after[1]["scenarios"], json!([]));
 }
 
-/// 5단계가 아직 문서를 쓰지 않은 분석에서도 등록은 성립하고, 문서 부재의 뜻은 그대로다.
 #[tokio::test]
 async fn registration_does_not_need_the_automatic_document() {
     let (state, _path) = stub_state().await;
@@ -354,7 +341,6 @@ async fn a_cancelled_attempt_stays_out_of_the_document_and_a_decision_is_final()
     assert_eq!(status, StatusCode::BAD_REQUEST, "빈 문장은 트리도 모델도 부르지 않는다");
 }
 
-/// 더해진 feature 는 편집(AC3.1)의 대상이기도 하다 — 추가 겹침이 편집 겹침보다 먼저다.
 #[tokio::test]
 async fn an_added_feature_can_be_edited_like_any_other() {
     let (state, _path) = stub_state().await;
@@ -393,7 +379,6 @@ async fn an_added_feature_can_be_edited_like_any_other() {
     assert_eq!(added["scenarios"].as_array().unwrap().len(), 3, "승인한 편집이 더해진 feature 에 겹쳐지지 않았다");
 }
 
-/// AC4.7 — 남의 분석은 없는 것과 같다. 추가도 그 분석에 매인다.
 #[tokio::test]
 async fn another_users_analysis_cannot_be_added_to() {
     let (state, _path) = stub_state().await;
