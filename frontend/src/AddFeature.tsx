@@ -5,7 +5,7 @@
 // 문장과 방금 받은 초안뿐이다. 근거를 못 찾으면 초안은 비어 오고, 화면은 그것을
 // 「근거 없음」으로 그대로 보인다(지어내지 않는다).
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { decideAddition, draftAddition, getAdditions } from './api';
 import type { DraftDependency, FeatureAddition, FeatureAdditions } from './api';
 
@@ -136,34 +136,31 @@ export function AddFeature({ id, onBack, onConfirmed }: Props) {
             </span>
           </div>
           {draft.scenarios.map((scenario, index) => (
-            <div
-              className="code"
-              style={{ marginTop: 12 }}
-              key={scenario.evidence + index}
-              data-testid="draft-scenario"
-            >
-              <div className="ln">
-                <span className="n">1</span>
-                <span>
-                  <span className="kw">Given</span> <span>{scenario.given}</span>
-                </span>
+            <Fragment key={scenario.evidence + index}>
+              <div className="code" style={{ marginTop: 12 }} data-testid="draft-scenario">
+                <div className="ln">
+                  <span className="n">1</span>
+                  <span>
+                    <span className="kw">Given</span> <span>{scenario.given}</span>
+                  </span>
+                </div>
+                <div className="ln">
+                  <span className="n">2</span>
+                  <span>
+                    <span className="kw">When</span> <span>{scenario.when}</span>
+                  </span>
+                </div>
+                <div className="ln">
+                  <span className="n">3</span>
+                  <span>
+                    <span className="kw">Then</span> <span>{scenario.then}</span>
+                  </span>
+                </div>
               </div>
-              <div className="ln">
-                <span className="n">2</span>
-                <span>
-                  <span className="kw">When</span> <span>{scenario.when}</span>
-                </span>
-              </div>
-              <div className="ln">
-                <span className="n">3</span>
-                <span>
-                  <span className="kw">Then</span> <span>{scenario.then}</span>
-                </span>
-              </div>
-              <p className="legend" style={{ marginTop: 8 }}>
+              <p className="legend" style={{ marginTop: 12 }}>
                 <span className="mk">↳</span> 근거 <span data-testid="draft-evidence">{scenario.evidence}</span>
               </p>
-            </div>
+            </Fragment>
           ))}
           {draft.dependencies.length !== 0 && (
             <div className="stack" style={{ marginTop: 12 }} data-testid="draft-dependencies">
