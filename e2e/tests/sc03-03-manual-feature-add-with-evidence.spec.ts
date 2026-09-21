@@ -62,7 +62,8 @@ test.describe('AC3.2: 자동 추출이 놓친 feature 를 근거와 함께 초�
       await expect(page.getByTestId('no-evidence')).toHaveCount(0);
 
       // 모든 근거가 이 분석의 트리 안 경로이고, 문장이 가리킨 곳이다.
-      const evidence = await page.getByTestId('draft-evidence').allInnerTexts();
+      // `.legend` 가 대문자로 그리므로(text-transform) 렌더 텍스트가 아니라 DOM 텍스트를 읽는다.
+      const evidence = await page.getByTestId('draft-evidence').allTextContents();
       expect(evidence.length, '초안이 근거를 하나는 들어야 한다').toBeGreaterThan(0);
       for (const path of evidence) {
         expect(path, '트리 밖의 경로를 근거로 들었다').toMatch(/^payments-api\//);
@@ -80,7 +81,7 @@ test.describe('AC3.2: 자동 추출이 놓친 feature 를 근거와 함께 초�
       )) {
         expect(CATEGORIES as readonly string[]).toContain(category);
       }
-      for (const path of await page.getByTestId('dependency-evidence').allInnerTexts()) {
+      for (const path of await page.getByTestId('dependency-evidence').allTextContents()) {
         expect(path).toMatch(/^payments-api\//);
       }
 
