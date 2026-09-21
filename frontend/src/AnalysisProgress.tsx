@@ -25,8 +25,6 @@ function toneOf(status: Stage['status']): string {
   return 'todo';
 }
 
-// Display titles keyed by the wire `key`. The server's `title` is persisted per analysis at
-// enqueue, so rows seeded before a copy change would keep the old text — the screen owns the copy.
 const STAGE_TITLES: Record<string, string> = {
   fetch: '저장소 내려받기',
   cross_cutting: '횡단 관심사 추출',
