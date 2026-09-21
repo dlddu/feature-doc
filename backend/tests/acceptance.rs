@@ -284,6 +284,7 @@ async fn run_stage_five(state: &AppState, id: &str, job: &serde_json::Value) -> 
         Mode::Stub,
         Provider::Anthropic,
         None,
+        None,
         "stub-account",
         "payments-api",
         "main",

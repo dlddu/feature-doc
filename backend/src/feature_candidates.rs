@@ -144,6 +144,7 @@ pub async fn extract(
     mode: crate::config::Mode,
     provider: llm::Provider,
     key: Option<&str>,
+    language: Option<llm::Language>,
     owner: &str,
     name: &str,
     branch: &str,
@@ -165,6 +166,7 @@ pub async fn extract(
         key,
         Ask {
             system: SYSTEM,
+            language,
             user: prompt(owner, name, branch, &paths, patterns),
             schema: schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급

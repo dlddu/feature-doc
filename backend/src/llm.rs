@@ -51,10 +51,63 @@ const EFFORT: &str = "medium";
 /// it is an identifier, not part of the prompt.
 const SCHEMA_NAME: &str = "analysis_document";
 
+/// The language the human-readable text of an answer is written in — the user's
+/// own setting, snapshotted onto each analysis when it is triggered.
+///
+/// Only prose moves with it. Paths, symbols, glob patterns, enum values and JSON
+/// keys are what later stages and the screens match on, so the instruction pins
+/// them verbatim; translating one would break the join, not just the wording.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Language {
+    Ko,
+    En,
+}
+
+impl Language {
+    pub fn parse(s: &str) -> Option<Language> {
+        match s.to_ascii_lowercase().as_str() {
+            "ko" => Some(Language::Ko),
+            "en" => Some(Language::En),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Language::Ko => "ko",
+            Language::En => "en",
+        }
+    }
+
+    /// Appended to every stage's system turn. One sentence per concern so a test can
+    /// assert each without pinning the whole wording.
+    fn instruction(self) -> &'static str {
+        match self {
+            Language::Ko => "\
+Write every human-readable text value in your answer (names, titles, summaries, descriptions, \
+scenario steps, rationales) in Korean (한국어).
+Keep file paths, code identifiers, symbols, glob patterns, enum values and JSON keys exactly as \
+they appear in the input or the schema; never translate them.",
+            Language::En => "\
+Write every human-readable text value in your answer (names, titles, summaries, descriptions, \
+scenario steps, rationales) in English.
+Keep file paths, code identifiers, symbols, glob patterns, enum values and JSON keys exactly as \
+they appear in the input or the schema; never translate them.",
+        }
+    }
+}
+
+/// What a user who never chose gets. Matches the column default in the schema,
+/// which is the value an existing user row reads as.
+pub const DEFAULT_LANGUAGE: Language = Language::Ko;
+
 /// One model call: what to ask, the JSON shape the answer must take, and the
 /// answer stub mode hands back instead of calling anyone.
 pub struct Ask<'a> {
     pub system: &'a str,
+    /// `None` adds no instruction — an analysis triggered before the setting
+    /// existed keeps the prompt it was started with.
+    pub language: Option<Language>,
     pub user: String,
     /// JSON Schema the response is constrained to. Sent to the provider verbatim,
     /// so it holds nothing but the schema — OpenAI validates it under
@@ -63,6 +116,16 @@ pub struct Ask<'a> {
     /// What [`Mode::Stub`] answers with. Lives beside the schema rather than
     /// inside it so the two never travel together to a provider.
     pub stub: Value,
+}
+
+impl Ask<'_> {
+    /// The system turn as sent: the stage's own instruction, then the language line.
+    fn system_turn(&self) -> std::borrow::Cow<'_, str> {
+        match self.language {
+            None => std::borrow::Cow::Borrowed(self.system),
+            Some(lang) => std::borrow::Cow::Owned(format!("{}\n{}", self.system, lang.instruction())),
+        }
+    }
 }
 
 /// What a call produced. Token counts are recorded for the cost accounting the
@@ -202,16 +265,18 @@ struct AnthropicUsage {
 struct AnthropicRequest<'a> {
     model: &'a str,
     max_tokens: u32,
-    system: &'a str,
+    system: std::borrow::Cow<'a, str>,
     messages: Vec<Value>,
     output_config: Value,
 }
 
-async fn anthropic(http: &reqwest::Client, key: &str, ask: Ask<'_>) -> Result<Answer, String> {
-    let body = AnthropicRequest {
+/// The request body, built apart from the call for the same reason as
+/// [`openai_body`].
+fn anthropic_body<'a>(ask: &'a Ask<'_>) -> AnthropicRequest<'a> {
+    AnthropicRequest {
         model: ANTHROPIC_MODEL,
         max_tokens: MAX_TOKENS,
-        system: ask.system,
+        system: ask.system_turn(),
         messages: vec![json!({ "role": "user", "content": ask.user })],
         // `effort` bounds how much the model spends before answering; the schema
         // constrains the answer's shape. Neither is a sampling parameter.
@@ -219,7 +284,11 @@ async fn anthropic(http: &reqwest::Client, key: &str, ask: Ask<'_>) -> Result<An
             "effort": "medium",
             "format": { "type": "json_schema", "schema": ask.schema },
         }),
-    };
+    }
+}
+
+async fn anthropic(http: &reqwest::Client, key: &str, ask: Ask<'_>) -> Result<Answer, String> {
+    let body = anthropic_body(&ask);
 
     let resp = http
         .post(ANTHROPIC_URL)
@@ -329,7 +398,7 @@ struct OpenAiUsage {
 fn openai_body(ask: &Ask<'_>) -> Value {
     json!({
         "model": OPENAI_MODEL,
-        "instructions": ask.system,
+        "instructions": ask.system_turn(),
         "input": ask.user,
         // `strict` is what makes the schema binding rather than advisory; it is
         // also why `Ask::schema` may hold nothing but JSON Schema keywords.
@@ -459,7 +528,7 @@ fn stub_answer(ask: &Ask<'_>) -> Result<Answer, String> {
     Ok(Answer {
         content: ask.stub.clone(),
         model: STUB_MODEL.to_string(),
-        input_tokens: (ask.system.len() + ask.user.len()) as i64 / 4,
+        input_tokens: (ask.system_turn().len() + ask.user.len()) as i64 / 4,
         output_tokens: 256,
     })
 }
@@ -504,6 +573,7 @@ mod tests {
     fn an_ask() -> Ask<'static> {
         Ask {
             system: "sys",
+            language: None,
             user: "a\nb\nc".to_string(),
             schema: json!({ "type": "object", "additionalProperties": false }),
             stub: json!({ "categories": [] }),
@@ -671,6 +741,40 @@ mod tests {
         assert!(body["text"]["format"]["schema"]
             .get("stub_answer")
             .is_none());
+    }
+
+    #[test]
+    fn language_parses_only_the_offered_codes() {
+        assert_eq!(Language::parse("ko"), Some(Language::Ko));
+        assert_eq!(Language::parse("EN"), Some(Language::En));
+        assert_eq!(Language::parse("ja"), None);
+        for l in [Language::Ko, Language::En] {
+            assert_eq!(Language::parse(l.as_str()), Some(l));
+        }
+    }
+
+    /// Both providers carry the language in the system turn, after the stage's own
+    /// instruction — and an analysis with no language gets the stage prompt untouched.
+    #[test]
+    fn the_language_line_rides_the_system_turn_on_both_providers() {
+        let plain = an_ask();
+        assert_eq!(openai_body(&plain)["instructions"], "sys");
+        assert_eq!(anthropic_body(&plain).system, "sys");
+
+        for (lang, word) in [(Language::Ko, "Korean"), (Language::En, "English")] {
+            let ask = Ask { language: Some(lang), ..an_ask() };
+            let openai = openai_body(&ask)["instructions"].as_str().unwrap().to_string();
+            let anthropic = anthropic_body(&ask).system.into_owned();
+            assert_eq!(openai, anthropic, "the two providers must be told the same thing");
+            assert!(openai.starts_with("sys\n"), "the stage instruction stays first: {openai}");
+            assert!(openai.contains(word), "{lang:?} must name its language: {openai}");
+            assert!(
+                openai.contains("never translate"),
+                "identifiers must be pinned verbatim: {openai}"
+            );
+            // The user turn is where the input lives; the language must not leak into it.
+            assert_eq!(openai_body(&ask)["input"], "a\nb\nc");
+        }
     }
 
     fn openai_response(output: Value, status: &str, incomplete: Value) -> OpenAiResponse {

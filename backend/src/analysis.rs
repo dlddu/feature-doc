@@ -118,6 +118,9 @@ struct AnalysisView {
     est_llm_calls: i64,
     est_cost_cents: i64,
     created_at: i64,
+    /// The language this run's LLM prose is written in, fixed when it was
+    /// triggered. `None` for a run triggered before the setting existed.
+    llm_language: Option<String>,
     /// Pipeline progress as a fraction, so the Home card can read "step 2 of 5"
     /// without one request per row (AC1.5). The stages themselves belong to Analysis Progress —
     /// see [`detail`].
@@ -170,7 +173,7 @@ struct RunRow {
 fn analysis_columns() -> String {
     format!(
         "a.id, a.repo_owner, a.repo_name, a.branch, a.status, \
-         a.est_llm_calls, a.est_cost_cents, a.created_at, \
+         a.est_llm_calls, a.est_cost_cents, a.created_at, a.llm_language, \
          (SELECT COUNT(*) FROM analysis_stages s WHERE s.analysis_id = a.id) AS stages_total, \
          (SELECT COUNT(*) FROM analysis_stages s \
            WHERE s.analysis_id = a.id AND s.status = '{done}') AS stages_done",
@@ -506,14 +509,18 @@ async fn create(
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = now_unix();
+    // Copied, not referenced: the stages of this analysis are claimed one gate at a
+    // time, and the language they write in must not move with the setting between
+    // them.
+    let language = crate::settings::llm_language(&state.db, &user.id).await?;
 
     // The job and its stage rows land together: a worker that claims between the
     // two would otherwise find a job with no stages to report against.
     let mut tx = state.db.begin().await?;
     sqlx::query(
         "INSERT INTO analyses \
-         (id, user_id, installation_id, repo_owner, repo_name, branch, status, est_llm_calls, est_cost_cents, created_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         (id, user_id, installation_id, repo_owner, repo_name, branch, status, est_llm_calls, est_cost_cents, created_at, llm_language) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&user.id)
@@ -525,6 +532,7 @@ async fn create(
     .bind(est.llm_calls)
     .bind(est.cost_cents)
     .bind(now)
+    .bind(language.as_str())
     .execute(&mut *tx)
     .await?;
     for stage in pipeline::STAGES.iter() {
@@ -561,6 +569,7 @@ async fn create(
             est_llm_calls: est.llm_calls,
             est_cost_cents: est.cost_cents,
             created_at: now,
+            llm_language: Some(language.as_str().to_string()),
             stages_total: pipeline::STAGES.len() as i64,
             stages_done: 0,
         }),

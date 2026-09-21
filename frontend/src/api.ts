@@ -32,6 +32,9 @@ export type LlmKey = {
 
 export type ProviderId = 'anthropic' | 'openai' | 'google';
 
+/** The languages the backend's `llm::Language` accepts. */
+export type LlmLanguage = 'ko' | 'en';
+
 /** Full-page navigation, not fetch — the OAuth redirect chain is the browser's to follow. */
 export const LOGIN_URL = '/api/auth/login';
 
@@ -98,6 +101,23 @@ export async function deleteKey(id: string): Promise<void> {
   if (!res.ok && res.status !== 204) throw new Error(await errorMessage(res));
 }
 
+export async function getLlmLanguage(): Promise<LlmLanguage> {
+  const res = await fetch('/api/settings', { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return ((await res.json()) as { llmLanguage: LlmLanguage }).llmLanguage;
+}
+
+export async function setLlmLanguage(llmLanguage: LlmLanguage): Promise<LlmLanguage> {
+  const res = await fetch('/api/settings', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: json,
+    body: JSON.stringify({ llmLanguage }),
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return ((await res.json()) as { llmLanguage: LlmLanguage }).llmLanguage;
+}
+
 export async function preflight(): Promise<{ provider: string; fingerprint: string }> {
   const res = await fetch('/api/llm-keys/preflight', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(await errorMessage(res));
@@ -120,6 +140,8 @@ export type Analysis = {
   estLlmCalls: number;
   estCostCents: number;
   createdAt: number;
+  /** Fixed when the run was triggered; `null` for a run that predates the setting. */
+  llmLanguage: LlmLanguage | null;
   /** Denormalized onto the list row so a card can show progress without a second fetch. */
   stagesDone: number;
   stagesTotal: number;

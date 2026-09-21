@@ -2,8 +2,16 @@
 // docs/mockups/JRN-connect-repo.html#STP-register-llm-key (AC4.2 · AC4.3).
 
 import { useEffect, useState } from 'react';
-import { deleteKey, getConnection, listKeys, preflight, registerKey } from './api';
-import type { Connection, LlmKey, ProviderId } from './api';
+import {
+  deleteKey,
+  getConnection,
+  getLlmLanguage,
+  listKeys,
+  preflight,
+  registerKey,
+  setLlmLanguage,
+} from './api';
+import type { Connection, LlmKey, LlmLanguage, ProviderId } from './api';
 
 // Screen-only: this order and its first entry decide what a user who has never
 // chosen starts on. The backend's own provider rule (`llm::DEFAULT_PROVIDER`) is a
@@ -29,6 +37,12 @@ function activeProviderOf(keys: LlmKey[]): ProviderId | null {
   return known ? known.id : null;
 }
 
+// Order is display order; labels are each language's own name for itself.
+const LANGUAGES: { id: LlmLanguage; label: string }[] = [
+  { id: 'ko', label: '한국어' },
+  { id: 'en', label: 'English' },
+];
+
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
@@ -47,6 +61,8 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
+  // `null` until the stored value arrives, so no button reads as chosen before then.
+  const [language, setLanguage] = useState<LlmLanguage | null>(null);
 
   useEffect(() => {
     void load();
@@ -54,9 +70,10 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
 
   async function load() {
     try {
-      const [conn, ks] = await Promise.all([getConnection(), listKeys()]);
+      const [conn, ks, lang] = await Promise.all([getConnection(), listKeys(), getLlmLanguage()]);
       setConnection(conn);
       setKeys(ks);
+      setLanguage(lang);
       // Mount only: a later selection must not be overwritten by a reload of the
       // same value.
       const already = activeProviderOf(ks);
@@ -70,6 +87,20 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
     setProvider(p);
     setKeyInput('');
     setKeyError(null);
+  }
+
+  // Saved on tap: the choice is independent of the key form, so it must not wait
+  // for — or be lost with — "저장하고 계속".
+  async function selectLanguage(next: LlmLanguage) {
+    if (next === language) return;
+    const previous = language;
+    setLanguage(next);
+    try {
+      setLanguage(await setLlmLanguage(next));
+    } catch (e) {
+      setLanguage(previous);
+      setKeyError(messageOf(e));
+    }
   }
 
   async function register() {
@@ -245,6 +276,26 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
           {keyError && <span>{keyError}</span>}
         </div>
       )}
+
+      <div className="card stack" style={{ marginTop: 16 }}>
+        <span className="caps">출력 언어</span>
+        <div className="segment" style={{ marginTop: 4 }}>
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              className={`seg${l.id === language ? ' active' : ''}`}
+              onClick={() => selectLanguage(l.id)}
+              disabled={language === null}
+              aria-pressed={l.id === language}
+              data-testid={`lang-${l.id}`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+        <p className="body sm">분석 결과의 문장을 이 언어로 받아요. 다음에 시작하는 분석부터 적용됩니다.</p>
+      </div>
 
       <div className="card row top" style={{ marginTop: 16, gap: 12 }}>
         <span className="ico ico-28">

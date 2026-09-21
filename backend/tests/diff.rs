@@ -306,6 +306,7 @@ async fn trace(state: &AppState, session: &str, id: &str, key: &str, tree: &[Str
         Mode::Stub,
         Provider::Anthropic,
         None,
+        None,
         "stub-account",
         "payments-api",
         "main",

@@ -348,6 +348,7 @@ pub async fn derive(
     mode: crate::config::Mode,
     provider: llm::Provider,
     key: Option<&str>,
+    language: Option<llm::Language>,
     owner: &str,
     name: &str,
     branch: &str,
@@ -374,6 +375,7 @@ pub async fn derive(
         key,
         Ask {
             system: SYSTEM_LOGIC,
+            language,
             user: prompt(owner, name, branch, subjects, &paths, "Files"),
             schema: schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
@@ -395,6 +397,7 @@ pub async fn derive(
                 key,
                 Ask {
                     system: SYSTEM_TESTS,
+                    language,
                     user: prompt(owner, name, branch, subjects, &test_paths, "Test files"),
                     schema: schema(),
                     // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
