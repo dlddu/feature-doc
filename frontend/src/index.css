@@ -725,25 +725,17 @@ button.ico { cursor: pointer; }
 .ext-note .mk { flex: none; color: var(--info); }
 .ext-note b { color: var(--text-secondary); font-weight: 500; }
 
-/* ── Responsive layout — design-system §3.4 ─────────────────────────────
-   Compact(< 600) is the base design above. Wider windows change placement
-   only; tokens, type scale and component internals stay the same.
-   In the browser the app window is the viewport, so the §3.4 thresholds are
-   @media here. (A container on an ancestor would become the containing block
-   of the fixed tab bar, which lives inside .screen, and pin it to the page.) */
 @media (min-width: 600px) {
   .screen {
     max-width: none;
     padding: 28px 32px 56px;
   }
-  /* centered content column; the tab bar is fixed and not part of it */
   .screen > :not(.tabbar) {
     max-width: 560px;
     margin-left: auto;
     margin-right: auto;
   }
 
-  /* bottom tab bar → left rail: same element, same 4 slots (§4.7) */
   .tabbar {
     top: 0;
     bottom: 0;
@@ -767,7 +759,6 @@ button.ico { cursor: pointer; }
   .screen > :not(.tabbar) { max-width: 640px; }
   .screen.has-tabbar { padding-left: calc(72px + 40px); padding-bottom: 64px; }
 
-  /* only repeated card lists widen out of the column, into 2 columns */
   .screen > .collection {
     max-width: 960px;
     display: grid;

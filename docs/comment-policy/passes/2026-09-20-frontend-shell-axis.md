@@ -189,6 +189,52 @@ for」 — `CredentialsSetup.tsx` 는 `#83` 이 `GrantRepoAccess.tsx` + `Registe
 
 9행은 **140행** / `03babd78…` 이다. 판정 이전 값(139)으로 돌아가지 않는다 — 위와 같은 이유다.
 
+## 증분 재판정 — 원장 10행에 #91 이 연 +5행 (2026-09-21 · `rct_20260921-0002`)
+
+**창.** `#91`(`3567755`, 반응형 레이아웃 — Compact·Medium·Expanded 3단 배치)이
+`frontend/src/index.css` 에 지문 기준 **순증 5행**(물리 9줄)을 얹었다(10행 80 → 85). 지문 원본 diff 는
+`>` 5줄뿐이고 파일 집합 불변이라 판정 대상은 이 5행이 전부다. 같은 커밋이 `docs/design-system.md` 에
+§3.4 Responsive layout · §4.7 의 rail 변형 · §5.4 Responsive shell 을 신설했으므로 **복원 경로 ②가
+같은 커밋 안에서 열렸다** — 증분 재판정 ①(#85) 이 「같은 슬라이스가 같은 동작을 세 번 적은」 형이었다면
+이번은 「구현이 자기 문서를 다시 적은」 형이다. 원장 규약대로 새 행을 만들지 않고 10행의 결과 칸을 갱신한다.
+
+| 위치 (`3567755` 트리) | 주석 | 판정 | 근거 |
+|---|---|---|---|
+| `index.css:728-733` (지문 1행 · 물리 6줄) | `/* ── Responsive layout — design-system §3.4 ── Compact(< 600) is the base design above. Wider windows change placement only; tokens, type scale and component internals stay the same. In the browser the app window is the viewport, so the §3.4 thresholds are @media here. (A container on an ancestor would become the containing block of the fixed tab bar, which lives inside .screen, and pin it to the page.) */` | **제거** | 첫 줄은 절 제목(이 패스가 같은 파일에서 33행 지운 유형 ⑤). 본문 두 문장은 §3.4 첫 문단 「모바일(Compact)이 기본 설계이고, 넓은 창은 **배치만** 바꿉니다. 토큰·타이포 스케일·컴포넌트 내부는 폭에 따라 바뀌지 않아요」 와 둘째 문단 「브라우저에서는 앱 창이 곧 뷰포트라서 구현은 같은 기준값의 `@media` 로 분기합니다 … 컨테이너가 그 안의 `position: fixed` 요소(탭바)의 기준 상자가 되어 탭바가 화면이 아니라 페이지에 붙어 버리기 때문이에요」 의 **축자 재진술**(②). 「앱 루트에 container 를 달지 않는 이유」는 함정처럼 읽히지만 문서가 이유까지 적는다. 이름표가 없어져도 §5.4 가 「구현(`frontend/src/index.css` 끝의 Responsive layout 블록)」으로 이 자리를 역참조하므로 문서 → 코드 방향은 닫혀 있다. |
+| `index.css:739` | `centered content column; the tab bar is fixed and not part of it` | **제거** | 바로 아래 선택자 `.screen > :not(.tabbar)` + `max-width` + `margin-left/right: auto` 가 그 문장 자체(① — 증분 재판정 ① 이 같은 파일에서 지운 선택자 재진술과 같은 유형). §3.4 표 「콘텐츠 컬럼 560, 가운데」(②). |
+| `index.css:746` | `bottom tab bar → left rail: same element, same 4 slots (§4.7)` | **제거** | §4.7 「Medium 이상에서는 좌측 rail — 같은 요소·같은 4 슬롯이 창 왼쪽에 세로로 섭니다 … 새 컴포넌트가 아니라 배치 변형이에요」 의 축자(②)이고 §5.4 CSS 블록에 동명 주석 `/* bottom tab bar → left rail */` 이 한 벌 더 있다(②). 딸린 선언 `width: 72px · flex-direction: column · border-right: 1px solid var(--border-subtle)` 가 §4.7 의 수치 그대로(①). |
+| `index.css:770` | `only repeated card lists widen out of the column, into 2 columns` | **제거** | §3.4 불릿 「넓어지는 것은 반복 카드 목록 하나 — … Expanded 에서 … 2열이 됩니다」(②) + 바로 아래 `display: grid; grid-template-columns: repeat(2, …)`(①). |
+| `index.css:326` | `the tab bar is fixed chrome, not content: rise's transform would replace its translateX(-50%) centering and push it half off the right edge` | **유지** | `.screen > .tabbar { animation: none; }` 은 코드만 보면 애니메이션 예외 하나로 읽히고, 지우면 다시 깨지는 **이유**(진입 애니메이션 `rise` 의 `transform` 키프레임이 탭바의 `translateX(-50%)` 중앙 정렬을 덮어써 탭바가 오른쪽으로 절반 밀린다)는 코드·`docs/` 어디에도 없다 — 목업은 탭바를 애니메이션에서 빼지 않아 이 충돌 자체가 없다. 본문 「실패 모드의 함정」 유지 대상이고, 이 패스가 같은 파일에서 남긴 11번(`.esrc` 의 한정 이유)과 같은 형이다. **다만 PR #91 본문 「기존 버그 수정」 절이 원인·수정을 같은 문장으로 적는다(③)** — 감지는 「PR 본문에도 없다」고 넘겼지만 실측은 다르다. 그래도 ③ 은 본문이 「작업 흔적의 자리」로 이름 붙인 경로이고 이 문장은 경위가 아니라 CSS 한 줄을 지키는 함정이라, 「애매하면 남긴다」로 보존한다. **판단이 갈려 남긴 것 13건째.** 뒤집으려면 정책 개정(「③ 만으로 복원되는 함정도 제거」)이 선행이지 다음 패스의 재판정이 아니다. |
+
+**증분 5행 중 제거 4 · 유지 1.** 물리 diff 는 `−9 / +0`(블록 6줄 + 인라인 3줄), 비주석 코드 무접촉 —
+블록 주석과 빈 줄을 걷어 낸 스트립 잔여가 부모와 바이트 동일(17,220자)이고, `vite build` 산출
+`dist/assets/index-BmaRMcZ8.css` 의 sha256(`b8d0f4e5…`)이 부모와 **동일**하다(파일명 해시까지 같다).
+게이트 `check-mockup-render.py` 의 M2 는 `:root` 토큰만 읽으므로 이 블록에 닿지 않는다.
+
+### 10행은 판정 전 값으로 돌아가지 않는다
+
+| 원장 행 | #91 이전 (`8205b7a`) | #91 이후 (`3567755` = main `899800e`) | 이 재판정 뒤 |
+|---|---|---|---|
+| 10행 | 80 / `641e9457…` | 85 / `75b6a8fd…` | **81 / `af9fbb9d…`** |
+
+유지 1행이 남아 80 으로 돌아가지 않는다 — 9차·10차 패스의 경고 그대로 줄 수·지문 칸을 실측값으로
+갱신했다(지문 규약: 범위 파일 경로 접두사 포함 · 정규화·정렬 · 후행 개행 포함 sha256 — `641e9457…` ·
+`75b6a8fd…` 가 이 규약으로 재현됨을 먼저 확인했다). 전역 as-is 는 `lines=2349`/`e917bb5e…` →
+**`lines=2345 files=108`/`97dbbedf…`**(−4, 부모 main `899800e` 기준). 자매 PR #100(`rct_20260921-0001`,
+#93 의 9행)이 먼저 착지하면 절대값은 그만큼 더 내려가고 이 패스의 몫은 **차분 −4** 다 — 원장 합계 문단은
+나중에 착지하는 쪽이 양쪽 증분을 합쳐 실측으로 다시 쓴다.
+
+### 검증
+
+1. 스트립 잔여 바이트 동일 · `npm run build` CSS 산출물 sha256 동일(위).
+2. `python3 tools/check-mockup-render.py` · `check-journey-mockup.py` · `check-scenario-e2e.py` 전부
+   rc=0. 코드 편집 직후엔 셋 다 출력이 부모와 `diff` 0 이었고, 원장·패스 문서를 쓴 뒤에는
+   `check-journey-mockup.py` 의 「docs/ 상대 링크」 계수만 303 → 304 로 움직였다(원장 10행이 이 절로
+   거는 링크 1건 — 그 검사가 링크의 실재를 확인한 것이다). `node tools/check-journey-prototype.js`
+   「여정 프로토타입 5개 · 단언 408건 실행 · 통과」.
+3. `python3 tools/check-data-format-change.py --base main --head <branch>` → `✅ 변경 없음`(D-규칙
+   경로 무접촉).
+
 ## 이 패스 뒤의 잔여
 
 판정한 파일은 **63개**이고, 그중 `format.ts` 는 이 패스로 주석이 0행이 되어 지문의 파일 집합에서
