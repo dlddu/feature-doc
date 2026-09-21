@@ -26,7 +26,6 @@ function quotedRejection(prev: PreviousRejection): string {
   return '“' + prev.reason + '” (' + when + ')';
 }
 
-/** 삭제 사유는 선택이라 비어 있을 수 있다 — 그때는 날짜만 남긴다. */
 function quotedDeletion(prev: PreviousDeletion): string {
   const when = new Date(prev.deletedAt * 1000).toISOString().slice(0, 10);
   return prev.reason === null ? '(' + when + ')' : '“' + prev.reason + '” (' + when + ')';

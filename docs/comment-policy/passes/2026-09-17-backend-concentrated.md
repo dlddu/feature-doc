@@ -360,3 +360,19 @@ doc(`:666-667`) · `cross_cutting.rs::the_schema_is_only_a_schema` 의 doc(`:265
 결과: 1행의 줄 수·지문이 #107 이전 값 **590 / `9757b6b5…`** 으로 되돌아왔다 — 부모 `24f488d` 에서 같은
 4파일을 재계산한 값과 바이트 동일(#107 이 이 4파일에 더한 것이 이 2행뿐이고 전건 제거했으므로).
 `analysis.rs` 는 주석 제거 후 부모와 바이트 동일(stripper md5 `ea2b0ec7`).
+
+## 증분 재판정 ⑧ — `#112` 가 `analysis.rs` 에 더한 5행 (2026-09-21 · `rct_20260921-0012`)
+
+`#112`(`fc6d191`, 자매 모델 `tbm_feature-doc-docs-impl` 의 슬라이스 6c)가 `document()` 핸들러에
+`crate::feature_delete::overlay(&state, &id, &mut content).await?;` 한 줄을 끼우며 그 위에 쓴 1행과,
+`CandidateView` 에 `previously_deleted` 필드를 더하며 쓴 doc 4행을 판정해 **전건 제거**했다. 판정 절차는 ⑥·⑦
+과 같고, 새 파일 쪽 판정은 [2026-09-21-feature-delete-axis.md](2026-09-21-feature-delete-axis.md) 에 있다.
+
+| 줄 | 복원 경로 |
+|---|---|
+| 「지운 feature(AC3.3)는 편집 겹침 앞에서 가린다 — 가려진 feature 의 편집은 얹을 자리가 없다」 | ① `feature_delete::overlay` 의 doc — 이 패스가 「확정된 추가 겹침 **뒤**, 편집 겹침 **앞**에 불러야 한다 — 더해진 feature 도 지울 수 있고, 가려진 feature 의 편집은 얹을 자리가 없다」로 재작성해 순서 계약의 **정본**으로 삼았다(⑦ 이 `feature_add::overlay` 를 정본으로 두고 호출부 사본을 걷은 것과 같은 모양) · ② doc-tracker 6c 행 「확정된 추가 겹침 **뒤**, 편집 겹침 **앞**」 · ③ PR #112 — AC 꼬리표 |
+| `/// AC3.3's "같은 feature가 다음 자동 분석에서 다시 발견되면 '이전에 거부된 항목입니다'로 표시된다", read back the same way: an earlier analysis of the same target deleted this same place and has not restored it. Information, never a decision — the candidate stays `undecided` until the reviewer acts.` 4행 | 앞 두 줄은 PRD AC3.3 의 축자 인용(② `docs/prd/`) · 「an earlier analysis of the same target deleted this same place and has not restored it」은 ① 이 필드를 채우는 `feature_delete::previous_deletion` 의 pub doc 「같은 대상(사용자·저장소·브랜치)의 앞선 분석에서 이 키를 지웠고 아직 되돌리지 않은 가장 최근 삭제」(유지, 정본) · 「Information, never a decision — stays `undecided`」는 ① 통합 테스트 fn 이름 `a_deleted_feature_rediscovered_by_the_next_analysis_is_marked_not_reactivated` 와 단정 메시지 「사용자 확인 없이 다시 활성화됐다」 · ② doc-tracker 6c 행 「표시일 뿐 결정이 아니다 … 결정은 `undecided` 그대로」 · ③ PR 본문. 바로 위 `previously_rejected` 의 doc 4행은 1차 패스가 「후보 검토 계약」으로 유지한 것이고 그 자리가 이 계약의 정본이므로, 「read back the same way」 라고 스스로 가리키는 사본은 걷었다 |
+
+결과: 1행의 줄 수·지문이 #112 이전 값 **590 / `9757b6b5…`** 으로 되돌아왔다 — 부모 `bf48b45` 에서 같은
+4파일을 재계산한 값과 바이트 동일(#112 가 이 4파일에 더한 것이 이 5행뿐이고 전건 제거했으므로).
+`analysis.rs` 는 주석 제거 후 부모와 바이트 동일(stripper md5 `5ae2c305`).

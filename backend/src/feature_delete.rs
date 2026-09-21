@@ -1,20 +1,4 @@
 //! AC3.3: feature 문서의 삭제와 보존.
-//!
-//! 사람이 feature 를 지우면 곧바로 없어지지 않고 **보관소**로 옮겨진다 — 삭제 행이
-//! 열리고, 인수 문서를 읽는 자리가 그 feature 를 가린다([`overlay`]). 보관 기간
-//! ([`RETENTION_DAYS`]) 안에는 되돌릴 수 있고, 되돌리면 행이 닫혀 문서에 다시 보인다.
-//! 기간이 지나면 되돌리기만 거부된다 — 행은 남는다. 「즉시 영구 제거되지 않는다」의
-//! 반대편(영구 제거)은 이 흐름의 요구가 아니라 별도 정리 작업의 몫이고, 여기서는
-//! 아무것도 지우지 않는다.
-//!
-//! **자동 문서를 고치지 않는다.** 편집(AC3.1)·추가(AC3.2)와 같은 이유다 — 자동 산출물의
-//! `content_hash` 는 재현성·재분석 diff 의 기준값이라 사람이 지웠다는 이유로 달라지면 안
-//! 된다. 지운 것은 문서를 내보내는 시점에 걸러 낸다.
-//!
-//! **재발견은 표시일 뿐 결정이 아니다.** 같은 저장소의 다음 자동 분석이 같은 자리를
-//! 다시 후보로 잡으면 후보 목록이 「이전 분석에서 삭제한 항목」을 사유와 함께 싣는다
-//! ([`previous_deletion`]) — 후보 거부의 이월(AC1.4)과 같은 통로다. 후보는 사람이
-//! 승인하기 전까지 `undecided` 이므로 사용자 확인 없이 다시 활성화될 길이 없다.
 
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
@@ -53,7 +37,6 @@ pub struct DeletionView {
     deleted_at: i64,
     restore_until: i64,
     restored_at: Option<i64>,
-    /// 지금 되돌릴 수 있는가 — 열려 있고 기한 안이다.
     restorable: bool,
 }
 
@@ -61,7 +44,6 @@ pub struct DeletionView {
 #[serde(rename_all = "camelCase")]
 struct ListView {
     retention_days: i64,
-    /// 보관소 — 열린(되돌리지 않은) 삭제만, 최근 것부터.
     deletions: Vec<DeletionView>,
 }
 
@@ -124,7 +106,6 @@ async fn list(
     }))
 }
 
-/// 지금 사람이 보는 문서에 있는 feature 만 지울 수 있다 — 이미 지운 것, 없는 것은 404.
 async fn delete(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -199,8 +180,8 @@ async fn restore(
     Ok(Json(view(row, now)))
 }
 
-/// 열린 삭제가 있는 feature 를 문서에서 가린다. 자동 문서·확정된 추가 어느 쪽이든
-/// 같은 규칙이다 — 키가 정체성이므로.
+/// 열린 삭제가 있는 feature 를 문서에서 가린다. 확정된 추가 겹침 **뒤**, 편집 겹침 **앞**에
+/// 불러야 한다 — 더해진 feature 도 지울 수 있고, 가려진 feature 의 편집은 얹을 자리가 없다.
 pub async fn overlay(state: &AppState, analysis_id: &str, doc: &mut Value) -> Result<(), AppError> {
     let rows = open_rows(state, analysis_id).await?;
     if rows.is_empty() {
@@ -294,8 +275,7 @@ async fn row_of(state: &AppState, analysis_id: &str, id: &str) -> Result<Deletio
     .ok_or(AppError::NotFound)
 }
 
-/// 사람이 지금 보는 인수 문서 — 자동 문서 위에 확정된 추가와 열린 삭제를 겹친 것.
-/// 편집 겹침은 이름·키를 바꾸지 않으므로 여기서는 필요 없다.
+/// 사람이 지금 보는 문서 — 편집 겹침은 이름·키를 바꾸지 않으므로 여기서는 얹지 않는다.
 async fn current_document(state: &AppState, analysis_id: &str) -> Result<Value, AppError> {
     let row: Option<(String,)> = sqlx::query_as(
         "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",

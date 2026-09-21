@@ -288,3 +288,16 @@ DiscoveryStrategy 6,755 — 셋 다 ==). 빈 `catch {` `}` 의 두 줄 형태는
 결과: 8행의 줄 수·지문이 #107 이전 값 **141 / `a431e905…`** 으로 되돌아왔다(부모 `24f488d` 재계산과
 바이트 동일). 파일은 주석 제거 후 부모와 바이트 동일(stripper md5 `11ac8ad5`), `npm run build` rc=0. 새
 파일 쪽 판정은 [2026-09-21-feature-add-axis.md](2026-09-21-feature-add-axis.md).
+
+## 증분 재판정 ④ — `#112` 가 `FeatureCandidates.tsx` 에 더한 1행 (2026-09-21 · `rct_20260921-0012`)
+
+`#112`(`fc6d191`, 슬라이스 6c)가 삭제의 이월 카드를 그리며 내부 fn `quotedDeletion` 에 쓴 JSDoc 1행 「삭제
+사유는 선택이라 비어 있을 수 있다 — 그때는 날짜만 남긴다」를 판정해 **제거**했다. ① 본문
+`prev.reason === null ? '(' + when + ')' : '“' + prev.reason + '” (' + when + ')'` 과 타입 `reason: string | null`
+이 그 문장 자체 · ① 0011 `reason` 문단(「사유는 선택이다 — 있으면 재발견 표시에 함께 실린다」) · ② doc-tracker
+편차 행 「사유(없으면 날짜만)를 달고」 · ③ PR #112. 바로 위 `quotedRejection` 의 JSDoc(M3B 추출기 함정)은 8차
+패스가 유지한 그대로이고, `quotedDeletion` 이 같은 이어 붙이기 모양을 쓰는 이유는 그 이웃이 말한다.
+
+결과: 8행의 줄 수·지문이 #112 이전 값 **141 / `a431e905…`** 으로 되돌아왔다(부모 `bf48b45` 재계산과
+바이트 동일). 파일은 주석 제거 후 부모와 바이트 동일(stripper md5 `f1779027`), `npm run build` rc=0. 새
+파일 쪽 판정은 [2026-09-21-feature-delete-axis.md](2026-09-21-feature-delete-axis.md).

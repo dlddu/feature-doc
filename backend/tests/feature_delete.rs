@@ -1,10 +1,4 @@
 //! feature 문서의 삭제와 보존(AC3.3) — 라우터를 그대로 돌려 본다.
-//!
-//! 인수 문서는 워커의 `/internal` 경로로 넣는다(형제 테스트와 같은 방침). 브라우저에서
-//! 관측되는 흐름은 `e2e/tests/sc03-05`·`sc03-06` 이 지킨다. 이 파일이 지키는 것은 그
-//! 아래의 규칙이다 — 지우면 문서에서 가려질 뿐 행은 남는다 · 기한이 행에 적힌다 · 되돌리면
-//! 다시 보인다 · 같은 대상의 다음 분석이 같은 자리를 잡으면 「이전에 삭제」가 실리되 결정은
-//! 그대로 `undecided` · 두 번 지우기·두 번 되돌리기는 거부 · 남의 분석에는 닿지 않음.
 mod common;
 
 use axum::body::Body;
@@ -78,7 +72,6 @@ async fn json_body(resp: axum::response::Response) -> serde_json::Value {
     serde_json::from_slice(&bytes).unwrap()
 }
 
-/// 큐에 든 분석 하나 — 5단계가 아직 아무것도 쓰지 않은 상태.
 async fn analysis(state: &AppState, session: &str) -> String {
     let resp = build_router(state.clone())
         .oneshot(user_post(
@@ -92,7 +85,6 @@ async fn analysis(state: &AppState, session: &str) -> String {
     json_body(resp).await["id"].as_str().unwrap().to_string()
 }
 
-/// 인수 문서가 서 있는 분석 하나.
 async fn analysis_with_document(state: &AppState, session: &str) -> String {
     let id = analysis(state, session).await;
 
@@ -229,7 +221,6 @@ async fn deleting_moves_the_feature_to_the_archive_and_restoring_brings_it_back(
         "되돌릴 수 있는 기한은 지운 시점의 사실이다"
     );
 
-    // 문서에서는 가려지지만 자동 문서 자체는 그대로다 — 문서는 여전히 있다(404 가 아니다).
     let after = features(&state, &s, &id).await;
     assert_eq!(after, Some(vec![]), "지운 feature 가 문서에서 가려지지 않았다");
     let doc: (String,) = sqlx::query_as(
@@ -246,7 +237,6 @@ async fn deleting_moves_the_feature_to_the_archive_and_restoring_brings_it_back(
     assert_eq!(listed["deletions"].as_array().unwrap().len(), 1);
     assert_eq!(listed["deletions"][0]["id"], deleted["id"]);
 
-    // 이미 지운 것은 지금 보는 문서에 없으므로 다시 지울 수 없다.
     let (status, _) = delete(&state, &s, &id, json!({ "key": FEATURE })).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 
@@ -260,7 +250,6 @@ async fn deleting_moves_the_feature_to_the_archive_and_restoring_brings_it_back(
     let (status, _) = restore(&state, &s, &id, deleted["id"].as_str().unwrap()).await;
     assert_eq!(status, StatusCode::CONFLICT, "두 번 복구");
 
-    // 되돌린 뒤 다시 지우면 새 행이 선다 — 이력은 쌓인다.
     let (status, again) = delete(&state, &s, &id, json!({ "key": FEATURE })).await;
     assert_eq!(status, StatusCode::OK);
     assert_ne!(again["id"], deleted["id"]);
@@ -281,7 +270,6 @@ async fn a_deleted_feature_rediscovered_by_the_next_analysis_is_marked_not_react
     let (status, deleted) = delete(&state, &s, &first, json!({ "key": FEATURE, "reason": WHY })).await;
     assert_eq!(status, StatusCode::OK);
 
-    // 같은 저장소의 다음 자동 분석이 같은 자리를 후보로 잡는다.
     let second = analysis(&state, &s).await;
     let claimed = build_router(state.clone())
         .oneshot(worker_post("/internal/analyses/claim", json!({ "workerId": WORKER })))
@@ -318,7 +306,6 @@ async fn a_deleted_feature_rediscovered_by_the_next_analysis_is_marked_not_react
     assert!(other["previouslyDeleted"].is_null(), "지운 적 없는 자리에 표시가 붙었다");
     assert_eq!(listed["undecided"], 2);
 
-    // 되돌리면 표시도 사라진다 — 지금 지워져 있는 것만 「이전에 삭제」다.
     let (status, _) = restore(&state, &s, &first, deleted["id"].as_str().unwrap()).await;
     assert_eq!(status, StatusCode::OK);
     let listed = candidates(&state, &s, &second).await;
