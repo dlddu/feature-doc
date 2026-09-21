@@ -344,3 +344,19 @@ doc(`:666-667`) · `cross_cutting.rs::the_schema_is_only_a_schema` 의 doc(`:265
 결과: 1행의 줄 수·지문이 #92 이전 값 **590 / `9757b6b5…`** 으로 되돌아왔다 — 부모 `19d58fa`
 에서 같은 4파일을 재계산한 값과 바이트 동일(#92 가 이 4파일에 더한 것이 이 4행뿐이고 전건
 제거라 재작성이 없다). `analysis.rs` 는 주석 제거 후 부모와 바이트 동일(stripper md5 `10548c24`).
+
+## 증분 재판정 ⑦ — `#107` 이 `analysis.rs` 에 더한 2행 (2026-09-21 · `rct_20260921-0010`)
+
+`#107`(`89a1625`, 자매 모델 `tbm_feature-doc-docs-impl` 의 슬라이스 6b)이 `document()` 핸들러에
+`crate::feature_add::overlay(&state, &id, &mut content).await?;` 한 줄을 끼우며 그 위에 쓴 1행과,
+`approved_candidate_name` 의 doc 1행에 덧붙인 절을 판정해 **전건 제거**했다. 판정 절차는 ⑥ 과 같고, 새 파일
+쪽 판정은 [2026-09-21-feature-add-axis.md](2026-09-21-feature-add-axis.md) 에 있다.
+
+| 줄 | 복원 경로 |
+|---|---|
+| 「사람이 확정한 추가(AC3.2)는 편집 겹침보다 먼저 얹는다 — 더해진 feature 도 편집의 대상이다」 | ① `feature_add::overlay` 의 doc 「편집 겹치기(`doc_edit::overlay`)보다 **먼저** 실행해야 한다: 그래야 더해진 feature 의 시나리오도 그 뒤의 편집 대상이 된다」(같은 패스가 순서 계약의 정본으로 유지) · ② doc-tracker 6b 행 「편집 겹치기보다 먼저 — 더해진 feature 도 AC3.1 편집의 대상이다」 · ③ PR #107 「추가 겹침을 편집 겹침 **앞에** 실행」 — AC 꼬리표 |
+| `/// Dependencies are traced for **confirmed** features only` 에 덧붙인 「— an approved candidate, or a feature the person added themselves and confirmed (AC3.2)」 | ① 함수 본문 — 첫 질의(`decision = approved`)가 비면 `feature_add::confirmed_name` 을 부른다 · `confirmed_name` 의 pub 요약 「의존성 화면이 feature 를 인정하는 두 번째 경로」 · ③ PR #107 「`approved_candidate_name` 이 확정된 추가도 feature 로 인정」. doc 를 #107 이전 한 줄로 되돌렸다 |
+
+결과: 1행의 줄 수·지문이 #107 이전 값 **590 / `9757b6b5…`** 으로 되돌아왔다 — 부모 `24f488d` 에서 같은
+4파일을 재계산한 값과 바이트 동일(#107 이 이 4파일에 더한 것이 이 2행뿐이고 전건 제거했으므로).
+`analysis.rs` 는 주석 제거 후 부모와 바이트 동일(stripper md5 `ea2b0ec7`).

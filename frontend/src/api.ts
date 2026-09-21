@@ -386,7 +386,6 @@ export type AcceptanceScenario = {
   then: string;
   evidence: string;
   symbol: string | null;
-  /** 두 자동 패스, 또는 사람이 직접 더한 feature 의 출처(AC3.2·AC3.4). */
   source: 'logic' | 'test' | 'user_llm' | 'user_direct';
 };
 
@@ -402,7 +401,6 @@ export type AcceptanceContradiction = {
 export type FeatureAcceptance = {
   key: string;
   name: string;
-  /** `null` 은 사람이 근거 없이 직접 더한 feature 다 — 위치가 없는 것이 기록된 사실이다. */
   location: string | null;
   symbol: string | null;
   scenarios: AcceptanceScenario[];
@@ -636,9 +634,7 @@ export type FeatureAddition = {
   name: string;
   request: string;
   status: string;
-  /** 근거를 찾았는가. 「근거 있음」 배지와 「근거 없음」 안내가 이 값으로 갈린다. */
   evidenceFound: boolean;
-  /** AC3.4 의 출처. 확정 전에는 아직 어느 쪽도 아니다. */
   source: string | null;
   scenarios: DraftScenario[];
   dependencies: DraftDependency[];
@@ -647,7 +643,6 @@ export type FeatureAddition = {
 export type FeatureAdditions = {
   approvedCandidates: number;
   confirmedAdditions: number;
-  /** 확정될 목록의 수 — 승인된 후보 + 직접 추가. */
   finalCount: number;
   additions: FeatureAddition[];
 };
