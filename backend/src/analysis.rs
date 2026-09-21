@@ -343,10 +343,12 @@ async fn document(
     let mut content: serde_json::Value = serde_json::from_str(&row.content)
         .map_err(|_| AppError::BadRequest("stored document is unreadable".into()))?;
 
-    // 사람이 승인한 편집은 저장을 고치지 않고 읽는 자리에서 겹쳐진다 (AC3.1·AC3.4).
+    // 사람이 확정한 추가와 승인한 편집은 저장을 고치지 않고 읽는 자리에서 겹쳐진다
+    // (AC3.2·AC3.1·AC3.4). 추가가 먼저다 — 더해진 feature 도 편집의 대상이라야 한다.
     // 아래 재현성 판정이 `row.content_hash` 를 쓰는 것은 그래서 그대로다 — AC1.2 가
     // 묻는 것은 「재분석이 같은 결과를 냈는가」이지 「사람이 그 뒤에 문장을
-    // 다듬었는가」가 아니다.
+    // 다듬었거나 feature 를 더했는가」가 아니다.
+    crate::feature_add::overlay(&state, &id, &mut content).await?;
     doc_edit::overlay(&state, &id, &mut content).await?;
 
     // The most recent *earlier* analysis of the same repository and branch that
@@ -1479,7 +1481,8 @@ struct DependentRow {
     evidence: Option<String>,
 }
 
-/// Dependencies are traced for **confirmed** features only.
+/// Dependencies are traced for **confirmed** features only — an approved
+/// candidate, or a feature the person added themselves and confirmed (AC3.2).
 async fn approved_candidate_name(
     state: &AppState,
     analysis_id: &str,
@@ -1494,7 +1497,12 @@ async fn approved_candidate_name(
     .bind(DECISION_APPROVED)
     .fetch_optional(&state.db)
     .await?;
-    row.map(|(name,)| name).ok_or(AppError::NotFound)
+    if let Some((name,)) = row {
+        return Ok(name);
+    }
+    crate::feature_add::confirmed_name(state, analysis_id, key)
+        .await?
+        .ok_or(AppError::NotFound)
 }
 
 async fn load_feature_dependencies(

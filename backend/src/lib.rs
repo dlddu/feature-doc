@@ -14,6 +14,7 @@ pub mod diff;
 pub mod discovery_strategy;
 pub mod doc_edit;
 pub mod error;
+pub mod feature_add;
 pub mod feature_candidates;
 pub mod github;
 pub mod github_api;
@@ -57,6 +58,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(audit::routes())
         .merge(analysis::routes())
         .merge(doc_edit::routes())
+        .merge(feature_add::routes())
         .merge(worker_api::routes())
         .fallback_service(static_service)
         .layer(TraceLayer::new_for_http())

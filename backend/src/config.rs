@@ -30,6 +30,10 @@ pub struct Doubles {
     /// 모델 호출 자체. 워커도 같은 이름의 변수를 자기 프로세스에서 읽는다 — 값이
     /// 아니라 **이름**을 공유하는 것이고, 한쪽만 스텁인 배포가 가능하다.
     pub llm: Mode,
+    /// 저장소 트리 스캔. 1단계는 워커의 것이지만, 사람이 feature 를 직접 더할 때의
+    /// 근거 찾기는 이 프로세스가 같은 스캔을 한 번 더 한다 — `llm` 과 같은 방식으로
+    /// 워커와 이름만 공유한다.
+    pub repo_scan: Mode,
 }
 
 impl Mode {
@@ -56,6 +60,7 @@ impl Doubles {
             github_app: mode,
             llm_key: mode,
             llm: mode,
+            repo_scan: mode,
         }
     }
 
@@ -65,6 +70,7 @@ impl Doubles {
             github_app: Mode::from_env("FEATUREDOC_DOUBLE_GITHUB_APP"),
             llm_key: Mode::from_env("FEATUREDOC_DOUBLE_LLM_KEY"),
             llm: Mode::from_env("FEATUREDOC_DOUBLE_LLM"),
+            repo_scan: Mode::from_env("FEATUREDOC_DOUBLE_REPO_SCAN"),
         }
     }
 }

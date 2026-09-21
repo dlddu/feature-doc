@@ -4,6 +4,7 @@
 // is enough — no history API, no server-side route table, no dependency.
 
 import { useEffect, useState } from 'react';
+import { AddFeature } from './AddFeature';
 import { AnalysisDiff } from './AnalysisDiff';
 import { AnalysisProgress } from './AnalysisProgress';
 import { CrossCuttingConcerns } from './CrossCuttingConcerns';
@@ -30,7 +31,8 @@ export type AnalysisRoute = {
     | 'dependencies'
     | 'diff'
     | 'edit'
-    | 'proposal';
+    | 'proposal'
+    | 'add';
   featureKey?: string;
   /** `edit` 이 고칠 시나리오의 자리(0-based). */
   scenarioIndex?: number;
@@ -56,6 +58,10 @@ export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
       view: 'proposal',
       proposalId: decodeURIComponent(deciding[2]),
     };
+  }
+  const adding = /^#\/analyses\/([^/?#]+)\/features\/add$/.exec(hash);
+  if (adding) {
+    return { id: decodeURIComponent(adding[1]), view: 'add' };
   }
   const traced = /^#\/analyses\/([^/?#]+)\/features\/([^/?#]+)\/dependencies$/.exec(hash);
   if (traced) {
@@ -169,6 +175,11 @@ export function App() {
     setRoute({ id, view: 'edit', featureKey, scenarioIndex });
   }
 
+  function openAddFeature(id: string) {
+    window.location.hash = `#/analyses/${encodeURIComponent(id)}/features/add`;
+    setRoute({ id, view: 'add' });
+  }
+
   function openProposal(id: string, proposalId: string) {
     window.location.hash = `#/analyses/${encodeURIComponent(id)}/proposals/${encodeURIComponent(proposalId)}`;
     setRoute({ id, view: 'proposal', proposalId });
@@ -236,12 +247,23 @@ export function App() {
         />
       );
     }
+    if (route.view === 'add') {
+      return (
+        <AddFeature
+          key={`${route.id}-af`}
+          id={route.id}
+          onBack={() => openCandidates(route.id)}
+          onConfirmed={() => openAcceptance(route.id)}
+        />
+      );
+    }
     if (route.view === 'candidates') {
       return (
         <FeatureCandidates
           key={`${route.id}-fc`}
           id={route.id}
           onBack={() => openAnalysis(route.id)}
+          onFinish={() => openAddFeature(route.id)}
         />
       );
     }
