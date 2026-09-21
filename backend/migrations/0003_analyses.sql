@@ -1,7 +1,6 @@
 -- Analysis jobs: an explicit, user-triggered request to analyze one repository
 -- at one branch. A row lands in status 'queued' after the target is confirmed
--- within the App's granted access. Owned by a user and always queried under that
--- scope.
+-- within the App's granted access.
 CREATE TABLE analyses (
     id              TEXT    PRIMARY KEY,
     user_id         TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,

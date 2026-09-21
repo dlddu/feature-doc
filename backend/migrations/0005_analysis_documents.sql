@@ -1,5 +1,3 @@
--- Pipeline stage outputs: the documents the analysis produces.
---
 -- One row per (analysis, kind) — the latest content for that document on that
 -- analysis. A partial re-run of one stage overwrites its own row rather than
 -- accumulating history: the analysis *is* the unit of history, and keeping a

@@ -1,5 +1,3 @@
--- Feature candidate extraction and review.
---
 -- Stage 4 writes its *generated* candidate list to `analysis_documents` like every
 -- other stage output, so reproducibility (content_hash) keeps working the same way.
 -- This table is the other half: the copy the **user** decides on —
@@ -15,14 +13,13 @@
 --
 -- `key` is the candidate's identity **across analyses**: derived from where it was
 -- found (path + symbol), not from a row id, because the next analysis of the same
--- repository produces new rows for the same places. That derivation is
--- `feature_candidates::candidate_key` — one place, so the extractor and the
--- carry-over query cannot disagree about what "the same candidate" means.
+-- repository produces new rows for the same places. The derivation lives in one
+-- place in code, so the extractor and the carry-over query cannot disagree about
+-- what "the same candidate" means.
 --
--- `decision` is `undecided` | `approved` | `rejected`. `reject_reason` is NOT NULL
--- whenever `decision = 'rejected'` — a rejection must record its reason, and
--- the CHECK is what keeps a reason-less rejection from ever reaching the table
--- (the route rejects it first; this is the second line).
+-- A rejection must record its reason — the CHECK below is what keeps a
+-- reason-less rejection from ever reaching the table (the route rejects it
+-- first; this is the second line).
 --
 -- `merged_into` points at the surviving candidate's `key` when the reviewer merged
 -- this one into another. The row is kept rather than deleted so the merge is
