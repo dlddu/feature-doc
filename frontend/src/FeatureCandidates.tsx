@@ -12,7 +12,7 @@ import {
   rejectCandidate,
   renameCandidate,
 } from './api';
-import type { CandidateList, FeatureCandidate, PreviousRejection } from './api';
+import type { CandidateList, FeatureCandidate, PreviousDeletion, PreviousRejection } from './api';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -24,6 +24,12 @@ function messageOf(e: unknown): string {
 function quotedRejection(prev: PreviousRejection): string {
   const when = new Date(prev.rejectedAt * 1000).toISOString().slice(0, 10);
   return '“' + prev.reason + '” (' + when + ')';
+}
+
+/** 삭제 사유는 선택이라 비어 있을 수 있다 — 그때는 날짜만 남긴다. */
+function quotedDeletion(prev: PreviousDeletion): string {
+  const when = new Date(prev.deletedAt * 1000).toISOString().slice(0, 10);
+  return prev.reason === null ? '(' + when + ')' : '“' + prev.reason + '” (' + when + ')';
 }
 
 type Filter = 'all' | 'undecided' | 'approved' | 'rejected';
@@ -293,6 +299,12 @@ function Card(p: CardProps) {
       {candidate.previouslyRejected !== null && (
         <div className="prev" data-testid="previously-rejected">
           이전 분석에서 <strong>거부</strong>한 항목이에요. 자동으로 다시 채택하지 않았으니 이번에도 직접 결정해 주세요.<span className="prev-quote">{quotedRejection(candidate.previouslyRejected)}</span>
+        </div>
+      )}
+
+      {candidate.previouslyDeleted !== null && (
+        <div className="prev" data-testid="previously-deleted">
+          이전 분석에서 <strong>삭제</strong>한 항목이에요. 자동으로 다시 채택하지 않았으니 이번에도 직접 결정해 주세요.<span className="prev-quote">{quotedDeletion(candidate.previouslyDeleted)}</span>
         </div>
       )}
 

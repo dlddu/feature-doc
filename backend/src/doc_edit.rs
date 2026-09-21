@@ -441,6 +441,7 @@ async fn document_of(state: &AppState, analysis_id: &str) -> Result<Value, AppEr
         .map_err(|_| AppError::BadRequest("stored document is unreadable".into()))?;
     // 고칠 대상도, 그 위에 얹을 제안도 **사람이 지금 보는 문장** 기준이어야 한다.
     crate::feature_add::overlay(state, analysis_id, &mut doc).await?;
+    crate::feature_delete::overlay(state, analysis_id, &mut doc).await?;
     overlay(state, analysis_id, &mut doc).await?;
     Ok(doc)
 }

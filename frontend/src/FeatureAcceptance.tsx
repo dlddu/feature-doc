@@ -4,8 +4,13 @@
 // the same document, and why there is no local draft to lose.
 
 import { useEffect, useState } from 'react';
-import { getAcceptance } from './api';
-import type { AcceptanceContradiction, AcceptanceScenario, FeatureAcceptance as Doc } from './api';
+import { deleteFeature, getAcceptance, listDeletions, restoreFeature } from './api';
+import type {
+  AcceptanceContradiction,
+  AcceptanceScenario,
+  FeatureAcceptance as Doc,
+  FeatureDeletion,
+} from './api';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -30,22 +35,57 @@ type Props = {
 
 export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
   const [features, setFeatures] = useState<Doc[] | null>(null);
+  // AC3.3 — 지운 feature 는 문서에서 가려질 뿐 보관소에 남는다. 문서와 함께 읽어
+  // 두 목록이 같은 시점의 서버 상태를 그린다.
+  const [archive, setArchive] = useState<FeatureDeletion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [notAFeature, setNotAFeature] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [generation, setGeneration] = useState(0);
 
   useEffect(() => {
     let active = true;
-    getAcceptance(id)
-      .then((doc) => {
+    Promise.all([getAcceptance(id), listDeletions(id)])
+      .then(([doc, deletions]) => {
         if (!active) return;
         setFeatures(doc === null ? [] : doc.content.features);
+        setArchive(deletions.deletions);
       })
       .catch((e: unknown) => active && setError(messageOf(e)));
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, generation]);
+
+  /** 삭제·복구 뒤에는 서버를 다시 읽는다 — 화면이 들고 있는 값이 아니라 서버가 들고 있는 값이다. */
+  const reload = () => {
+    setDeleting(false);
+    setReason('');
+    setSelected(null);
+    setGeneration((g) => g + 1);
+  };
+
+  const onConfirmDelete = (key: string) => {
+    setBusy(true);
+    setActionError(null);
+    deleteFeature(id, key, reason)
+      .then(reload)
+      .catch((e: unknown) => setActionError(messageOf(e)))
+      .finally(() => setBusy(false));
+  };
+
+  const onRestore = (deletion: string) => {
+    setBusy(true);
+    setActionError(null);
+    restoreFeature(id, deletion)
+      .then(reload)
+      .catch((e: unknown) => setActionError(messageOf(e)))
+      .finally(() => setBusy(false));
+  };
 
   if (features === null) {
     return (
@@ -64,13 +104,23 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
     );
   }
 
-  if (features.length === 0) {
+  if (features.length === 0 && archive.length === 0) {
     return (
       <main className="screen">
         <Appbar onLeave={onBack} />
         <p className="body sm" style={{ marginTop: 22 }} data-testid="acceptance-empty">
           {NOT_GENERATED}
         </p>
+      </main>
+    );
+  }
+
+  // 남은 기능이 없고 보관소만 있는 상태 — 되돌릴 자리는 있어야 한다.
+  if (features.length === 0) {
+    return (
+      <main className="screen">
+        <Appbar onLeave={onBack} />
+        <Archive archive={archive} busy={busy} error={actionError} onRestore={onRestore} />
       </main>
     );
   }
@@ -150,7 +200,59 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
         >
           나중에 이어서 볼게요
         </button>
+        <button
+          className="btn btn-ghost block"
+          type="button"
+          onClick={() => setDeleting(true)}
+          data-testid="delete-feature"
+        >
+          이 기능 삭제하기
+        </button>
       </div>
+
+      {deleting && (
+        <div className="notice warn on" style={{ marginTop: 16 }} data-testid="delete-confirm">
+          <span>삭제하면 보관소로 옮겨져요. 보관 기간 안에는 되돌릴 수 있습니다.</span>
+          <div className="field" style={{ marginTop: 10 }}>
+            <label htmlFor="in-delete-reason">삭제 사유</label>
+            <input
+              type="text"
+              id="in-delete-reason"
+              value={reason}
+              autoComplete="off"
+              placeholder="선택 — 다음 분석에서 같은 자리가 다시 잡히면 함께 보여 드려요"
+              onChange={(e) => setReason(e.target.value)}
+              data-testid="delete-reason"
+            />
+          </div>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            disabled={busy}
+            onClick={() => onConfirmDelete(current.key)}
+            data-testid="confirm-delete"
+          >
+            보관소로 옮기기
+          </button>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setDeleting(false);
+              setReason('');
+            }}
+            data-testid="cancel-delete"
+          >
+            그만두기
+          </button>
+          {actionError !== null && (
+            <p className="body sm" data-testid="delete-error">
+              {actionError}
+            </p>
+          )}
+        </div>
+      )}
 
       {notAFeature && (
         <div className="notice warn on" style={{ marginTop: 16 }} data-testid="not-a-feature-confirm">
@@ -166,8 +268,79 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
           </button>
         </div>
       )}
+
+      {archive.length !== 0 && (
+        <Archive archive={archive} busy={busy} error={actionError} onRestore={onRestore} />
+      )}
     </main>
   );
+}
+
+/** 보관소 — 지운 feature 와 되돌릴 수 있는 기한. 기한이 지난 것은 남되 버튼이 닫힌다. */
+function Archive({
+  archive,
+  busy,
+  error,
+  onRestore,
+}: {
+  archive: FeatureDeletion[];
+  busy: boolean;
+  error: string | null;
+  onRestore: (deletion: string) => void;
+}) {
+  return (
+    <>
+      <div className="section-title" style={{ marginTop: 22 }}>
+        <span className="caps">보관소</span>
+        <span className="section-action" data-testid="archive-count">
+          {archive.length}
+        </span>
+      </div>
+      <div className="collection" style={{ marginTop: 12 }} data-testid="archive-list">
+        {archive.map((deletion) => (
+          <div
+            className="scn"
+            key={deletion.id}
+            data-testid="archived-feature"
+            data-key={deletion.key}
+            data-restorable={deletion.restorable}
+          >
+            <span className="sn" data-testid="archived-name">
+              {deletion.name}
+            </span>
+            {deletion.reason !== null && (
+              <span className="gwt" data-testid="archived-reason">
+                {deletion.reason}
+              </span>
+            )}
+            <div className="src">
+              <span className="esrc" data-testid="restore-until">
+                {dateOf(deletion.restoreUntil)}까지 되돌릴 수 있어요
+              </span>
+            </div>
+            <button
+              className="btn btn-ghost"
+              type="button"
+              disabled={busy || !deletion.restorable}
+              onClick={() => onRestore(deletion.id)}
+              data-testid="restore-feature"
+            >
+              되돌리기
+            </button>
+          </div>
+        ))}
+      </div>
+      {error !== null && (
+        <p className="body sm" data-testid="archive-error">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
+
+function dateOf(unix: number): string {
+  return new Date(unix * 1000).toISOString().slice(0, 10);
 }
 
 function Scenario({ scenario, index }: { scenario: AcceptanceScenario; index: number }) {

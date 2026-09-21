@@ -343,6 +343,8 @@ async fn document(
     let mut content: serde_json::Value = serde_json::from_str(&row.content)
         .map_err(|_| AppError::BadRequest("stored document is unreadable".into()))?;
     crate::feature_add::overlay(&state, &id, &mut content).await?;
+    // 지운 feature(AC3.3)는 편집 겹침 앞에서 가린다 — 가려진 feature 의 편집은 얹을 자리가 없다.
+    crate::feature_delete::overlay(&state, &id, &mut content).await?;
 
     doc_edit::overlay(&state, &id, &mut content).await?;
 
@@ -1020,6 +1022,11 @@ struct CandidateView {
     /// Present as information, never as an automatic decision — the mockup is
     /// explicit that the reviewer decides again ("자동으로 다시 채택하지 않았으니").
     previously_rejected: Option<PreviousRejection>,
+    /// AC3.3's "같은 feature가 다음 자동 분석에서 다시 발견되면 '이전에 거부된
+    /// 항목입니다'로 표시된다", read back the same way: an earlier analysis of the
+    /// same target deleted this same place and has not restored it. Information,
+    /// never a decision — the candidate stays `undecided` until the reviewer acts.
+    previously_deleted: Option<crate::feature_delete::PreviousDeletion>,
 }
 
 #[derive(Serialize, Clone)]
@@ -1159,6 +1166,10 @@ async fn load_candidates(
         let previously_rejected =
             previous_rejection(state, user_id, id, owner, name, branch, created_at, &row.key)
                 .await?;
+        let previously_deleted = crate::feature_delete::previous_deletion(
+            state, user_id, id, owner, name, branch, created_at, &row.key,
+        )
+        .await?;
         candidates.push(CandidateView {
             key: row.key,
             name: row.name,
@@ -1169,6 +1180,7 @@ async fn load_candidates(
             reject_reason: row.reject_reason,
             merged_into: row.merged_into,
             previously_rejected,
+            previously_deleted,
         });
     }
     let undecided = candidates
