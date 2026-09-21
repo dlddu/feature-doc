@@ -7,11 +7,13 @@ import { useEffect, useState } from 'react';
 import { AnalysisDiff } from './AnalysisDiff';
 import { AnalysisProgress } from './AnalysisProgress';
 import { CrossCuttingConcerns } from './CrossCuttingConcerns';
+import { DecideDiff } from './DecideDiff';
 import { DiscoveryStrategy } from './DiscoveryStrategy';
 import { FeatureAcceptance } from './FeatureAcceptance';
 import { FeatureCandidates } from './FeatureCandidates';
 import { FeatureDependencies } from './FeatureDependencies';
 import { GrantRepoAccess } from './GrantRepoAccess';
+import { RequestEdit } from './RequestEdit';
 import { HomeRepositories } from './HomeRepositories';
 import { RegisterLlmKey } from './RegisterLlmKey';
 
@@ -26,11 +28,35 @@ export type AnalysisRoute = {
     | 'candidates'
     | 'acceptance'
     | 'dependencies'
-    | 'diff';
+    | 'diff'
+    | 'edit'
+    | 'proposal';
   featureKey?: string;
+  /** `edit` 이 고칠 시나리오의 자리(0-based). */
+  scenarioIndex?: number;
+  /** `proposal` 이 그리는 제안. 화면이 아니라 서버가 들고 있는 값이다. */
+  proposalId?: string;
 };
 
 export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
+  const editing =
+    /^#\/analyses\/([^/?#]+)\/features\/([^/?#]+)\/scenarios\/(\d+)\/edit$/.exec(hash);
+  if (editing) {
+    return {
+      id: decodeURIComponent(editing[1]),
+      view: 'edit',
+      featureKey: decodeURIComponent(editing[2]),
+      scenarioIndex: Number(editing[3]),
+    };
+  }
+  const deciding = /^#\/analyses\/([^/?#]+)\/proposals\/([^/?#]+)$/.exec(hash);
+  if (deciding) {
+    return {
+      id: decodeURIComponent(deciding[1]),
+      view: 'proposal',
+      proposalId: decodeURIComponent(deciding[2]),
+    };
+  }
   const traced = /^#\/analyses\/([^/?#]+)\/features\/([^/?#]+)\/dependencies$/.exec(hash);
   if (traced) {
     return {
@@ -130,9 +156,55 @@ export function App() {
     setRoute({ id, view: 'acceptance' });
   }
 
+  function openDependencies(id: string, featureKey: string) {
+    window.location.hash =
+      `#/analyses/${encodeURIComponent(id)}/features/${encodeURIComponent(featureKey)}/dependencies`;
+    setRoute({ id, view: 'dependencies', featureKey });
+  }
+
+  function openEdit(id: string, featureKey: string, scenarioIndex: number) {
+    window.location.hash =
+      `#/analyses/${encodeURIComponent(id)}/features/${encodeURIComponent(featureKey)}` +
+      `/scenarios/${scenarioIndex}/edit`;
+    setRoute({ id, view: 'edit', featureKey, scenarioIndex });
+  }
+
+  function openProposal(id: string, proposalId: string) {
+    window.location.hash = `#/analyses/${encodeURIComponent(id)}/proposals/${encodeURIComponent(proposalId)}`;
+    setRoute({ id, view: 'proposal', proposalId });
+  }
+
   // The hash is read before the state machine: a deep link must land on its screen
   // even on a cold load, before the user has walked the journey in this session.
   if (route !== null) {
+    if (route.view === 'edit' && route.featureKey !== undefined) {
+      const featureKey = route.featureKey;
+      const scenarioIndex = route.scenarioIndex ?? 0;
+      return (
+        <RequestEdit
+          key={`${route.id}-re`}
+          id={route.id}
+          featureKey={featureKey}
+          scenarioIndex={scenarioIndex}
+          onBack={() => openDependencies(route.id, featureKey)}
+          onLeave={() => openAcceptance(route.id)}
+          onProposed={(proposalId) => openProposal(route.id, proposalId)}
+        />
+      );
+    }
+    if (route.view === 'proposal' && route.proposalId !== undefined) {
+      return (
+        <DecideDiff
+          key={`${route.id}-dd`}
+          id={route.id}
+          proposalId={route.proposalId}
+          onBack={() => openAcceptance(route.id)}
+          onLeave={() => openAcceptance(route.id)}
+          onApproved={() => openAcceptance(route.id)}
+          onRejected={() => openAcceptance(route.id)}
+        />
+      );
+    }
     if (route.view === 'dependencies' && route.featureKey !== undefined) {
       return (
         <FeatureDependencies
@@ -140,6 +212,7 @@ export function App() {
           id={route.id}
           featureKey={route.featureKey}
           onBack={() => openAcceptance(route.id)}
+          onRequestEdit={() => openEdit(route.id, route.featureKey as string, 0)}
         />
       );
     }

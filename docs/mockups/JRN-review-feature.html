@@ -1279,7 +1279,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
 
       <div class="card" style="margin-top:16px">
         <span class="caps">고칠 대상</span>
-        <p class="body sm" style="margin-top:8px" id="edit-target">시나리오 3 · 만료된 카드를 넣었을 때</p>
+        <p class="body sm" style="margin-top:8px" id="edit-target"><span>시나리오 </span><span data-sample>3</span><span> · </span><span data-sample>만료된 카드를 넣었을 때</span></p>
       </div>
 
       <div class="card" style="margin-top:12px">
@@ -1293,7 +1293,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
       </div>
 
       <div id="rejected-note" class="notice info" style="margin-top:12px">
-        지난번에 거부하신 제안이 <strong id="rejected-count">1</strong>건 있어요. 같은 방향은 다시 제안하지 않습니다 — <span id="rejected-pattern">만료 안내에 오류 코드를 덧붙이는 표현</span>
+        지난번에 거부하신 제안이 <strong id="rejected-count"><span data-sample>1</span></strong>건 있어요. 같은 방향은 다시 제안하지 않습니다 — <span id="rejected-pattern"><span data-sample>만료 안내에 오류 코드를 덧붙이는 표현</span></span>
       </div>
 
       <div class="stack" style="margin-top:20px">
@@ -1324,16 +1324,16 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
       </div>
 
       <div class="code-header" style="margin-top:16px">
-        <span id="diff-target">시나리오 3</span>
-        <span class="badge success"><span class="dot"></span>2줄 바뀜</span>
+        <span id="diff-target">시나리오 <span data-sample>3</span></span>
+        <span class="badge success"><span class="dot"></span><span data-sample>2</span>줄 바뀜</span>
       </div>
       <div class="code">
-        <div class="ln"><span class="del">- 저장되지 않고, 만료일을 다시 확인해 달라는</span></div>
-        <div class="ln"><span class="del">- 안내가 그 자리에 나타납니다</span></div>
-        <div class="ln"><span class="add">+ 저장되지 않습니다. 카드가 이미 만료되어</span></div>
-        <div class="ln"><span class="add">+ 결제에 쓸 수 없다는 안내가 입력칸 바로</span></div>
-        <div class="ln"><span class="add">+ 아래에 나타나고, 만료일만 고치면 바로</span></div>
-        <div class="ln"><span class="add">+ 다시 저장할 수 있어요</span></div>
+        <div class="ln"><span class="del" data-sample>- 저장되지 않고, 만료일을 다시 확인해 달라는</span></div>
+        <div class="ln"><span class="del" data-sample>- 안내가 그 자리에 나타납니다</span></div>
+        <div class="ln"><span class="add" data-sample>+ 저장되지 않습니다. 카드가 이미 만료되어</span></div>
+        <div class="ln"><span class="add" data-sample>+ 결제에 쓸 수 없다는 안내가 입력칸 바로</span></div>
+        <div class="ln"><span class="add" data-sample>+ 아래에 나타나고, 만료일만 고치면 바로</span></div>
+        <div class="ln"><span class="add" data-sample>+ 다시 저장할 수 있어요</span></div>
       </div>
 
       <div class="card" style="margin-top:12px">

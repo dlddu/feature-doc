@@ -34,9 +34,10 @@ type Props = {
   id: string;
   featureKey: string;
   onBack: () => void;
+  onRequestEdit: () => void;
 };
 
-export function FeatureDependencies({ id, featureKey, onBack }: Props) {
+export function FeatureDependencies({ id, featureKey, onBack, onRequestEdit }: Props) {
   const [deps, setDeps] = useState<Deps | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>(ALL);
@@ -166,6 +167,17 @@ export function FeatureDependencies({ id, featureKey, onBack }: Props) {
       <p className="meta" style={{ marginTop: 12 }}>
         보이는 항목 <strong data-testid="dependency-count">{shown.length}</strong>개
       </p>
+
+      <div className="stack" style={{ marginTop: 20 }}>
+        <button
+          className="btn btn-primary block"
+          type="button"
+          onClick={onRequestEdit}
+          data-testid="request-edit"
+        >
+          어색한 표현 고쳐 달라 하기
+        </button>
+      </div>
     </main>
   );
 }

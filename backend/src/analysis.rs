@@ -44,6 +44,7 @@ use serde::{Deserialize, Serialize};
 use crate::auth::CurrentUser;
 use crate::dependencies;
 use crate::diff;
+use crate::doc_edit;
 use crate::error::AppError;
 use crate::github_app::{self, RepoRef};
 use crate::installations;
@@ -339,8 +340,14 @@ async fn document(
     .await?
     .ok_or(AppError::NotFound)?;
 
-    let content: serde_json::Value = serde_json::from_str(&row.content)
+    let mut content: serde_json::Value = serde_json::from_str(&row.content)
         .map_err(|_| AppError::BadRequest("stored document is unreadable".into()))?;
+
+    // 사람이 승인한 편집은 저장을 고치지 않고 읽는 자리에서 겹쳐진다 (AC3.1·AC3.4).
+    // 아래 재현성 판정이 `row.content_hash` 를 쓰는 것은 그래서 그대로다 — AC1.2 가
+    // 묻는 것은 「재분석이 같은 결과를 냈는가」이지 「사람이 그 뒤에 문장을
+    // 다듬었는가」가 아니다.
+    doc_edit::overlay(&state, &id, &mut content).await?;
 
     // The most recent *earlier* analysis of the same repository and branch that
     // produced this document. Same target, so a differing hash is a real difference
@@ -711,7 +718,7 @@ struct EntriesReq {
 
 /// The analysis, if it belongs to this user. `404` (not `403`) for someone else's
 /// id, so the API never confirms that an id exists (AC4.7).
-async fn owned_analysis(
+pub(crate) async fn owned_analysis(
     state: &AppState,
     user_id: &str,
     id: &str,
