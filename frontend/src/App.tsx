@@ -32,9 +32,7 @@ export type AnalysisRoute = {
     | 'edit'
     | 'proposal';
   featureKey?: string;
-  /** `edit` 이 고칠 시나리오의 자리(0-based). */
   scenarioIndex?: number;
-  /** `proposal` 이 그리는 제안. 화면이 아니라 서버가 들고 있는 값이다. */
   proposalId?: string;
 };
 

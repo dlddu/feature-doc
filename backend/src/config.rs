@@ -27,8 +27,6 @@ pub struct Doubles {
     pub github_auth: Mode,
     pub github_app: Mode,
     pub llm_key: Mode,
-    /// 모델 호출 자체. 워커도 같은 이름의 변수를 자기 프로세스에서 읽는다 — 값이
-    /// 아니라 **이름**을 공유하는 것이고, 한쪽만 스텁인 배포가 가능하다.
     pub llm: Mode,
 }
 

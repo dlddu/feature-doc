@@ -5,10 +5,7 @@
 // 따른다 — `backend/src/doc_edit.rs` 의 `stub_edit`). 사람에게 알리는 쪽도 같이 본다:
 // 요청 화면이 거부 건수와 사유를 먼저 보여 준다.
 //
-// Isolation: this spec *leases* the analysis worker (see `e2e/support/cluster.ts`).
-// It scales the Deployment to 1 inside its own block and returns it to 0 in
-// `finally`; `playwright.config.ts` pins `workers: 1`, so no sibling spec file is in
-// flight while it runs. Like every spec it signs in as its own stub user (`?as=…`).
+// Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 import { expect, test } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
 import { acceptanceOf, runToAcceptance, signInWithCredentials } from '../support/acceptance';
@@ -33,32 +30,27 @@ test.describe('AC3.1: 거부한 제안은 기록되고 다음 제안이 그 방�
 
       await page.goto(`/#/analyses/${run.id}/features/${encodeURIComponent(key)}/dependencies`);
       await page.getByTestId('request-edit').click();
-      // 첫 진입에는 거부 이력이 없다 — 안내가 서면 그것이 거짓이다.
       await expect(page.getByTestId('rejected-note')).toHaveCount(0);
 
       await page.getByTestId('edit-request').fill(REQUEST);
       await page.getByTestId('send-request').click();
       const first = await page.getByTestId('diff-added').innerText();
 
-      // 사유 없는 거부는 받지 않는다 — 첫 탭은 사유 칸을 연다.
       await page.getByTestId('reject-diff').click();
       await expect(page.getByTestId('reject-reason')).toBeVisible();
       await page.getByTestId('reject-reason').fill(REASON);
       await page.getByTestId('reject-diff').click();
       await expect(page.getByTestId('scenario-list')).toBeVisible();
 
-      // 거부는 문서를 바꾸지 않는다.
       const afterReject = (await acceptanceOf(page, run.id)) ?? [];
       expect(
         afterReject.find((f) => f.key === key)?.scenarios.length,
         '거부했는데 문서가 바뀌었다',
       ).toBe(scenariosBefore);
 
-      // 다시 같은 자리에서 같은 부탁을 한다.
       await page.goto(`/#/analyses/${run.id}/features/${encodeURIComponent(key)}/dependencies`);
       await page.getByTestId('request-edit').click();
 
-      // 사람에게 먼저 알린다 — 몇 건을 거부했고 그 사유가 무엇이었는지.
       await expect(page.getByTestId('rejected-count')).toHaveText('1');
       await expect(page.getByTestId('rejected-reason')).toHaveText(REASON);
 

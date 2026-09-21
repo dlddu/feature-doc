@@ -1,9 +1,7 @@
 // docs/mockups/JRN-review-feature.html#STP-decide-diff 의 구현.
 //
 // 승인하기 전에는 문서가 바뀌지 않는다 — 이 화면이 그리는 것은 제안이고, 적용은
-// 서버가 승인을 받은 뒤에 한다. 거부에 사유를 받는 칸은 목업에 없다: 테스트 문서가
-// 「사유와 함께 거부」를 요구해(권위 순서상 목업보다 위) 한 칸을 더 그렸고, 그 차이는
-// 원장에 등재돼 있다.
+// 서버가 승인을 받은 뒤에 한다.
 
 import { useEffect, useState } from 'react';
 import { decideEdit, getEditProposal } from './api';
@@ -58,8 +56,6 @@ export function DecideDiff({
       });
   };
 
-  // 첫 탭은 사유 칸을 연다 — 사유 없는 거부는 다음 제안이 무엇을 피할지 말해 주지
-  // 못하므로 서버도 받지 않는다.
   const reject = () => {
     if (deciding) return;
     if (!rejecting || reason.trim().length === 0) {

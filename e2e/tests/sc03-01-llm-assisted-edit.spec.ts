@@ -4,15 +4,11 @@
 // 있으므로, 흐름을 API 로 질러가면 그 단정이 사라진다. 그래서 진입부터 승인까지는
 // 화면의 버튼만 누르고(타이핑은 탭이 아니다), 결과 확인만 저장된 문서를 읽는다.
 //
-// Isolation: this spec *leases* the analysis worker (see `e2e/support/cluster.ts`).
-// It scales the Deployment to 1 inside its own block and returns it to 0 in
-// `finally`; `playwright.config.ts` pins `workers: 1`, so no sibling spec file is in
-// flight while it runs. Like every spec it signs in as its own stub user (`?as=…`).
+// Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 import { expect, test } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
 import { acceptanceOf, runToAcceptance, signInWithCredentials } from '../support/acceptance';
 
-/** 목업이 「모바일 우선」으로 그리는 폭. AC4.4 의 검증은 아직 이 spec 의 일이 아니다. */
 const PHONE = { width: 390, height: 844 };
 
 test.describe('AC3.1·AC3.4: 한 줄로 부탁한 수정이 3탭 안에 문서와 이력에 남는다', () => {
@@ -34,7 +30,6 @@ test.describe('AC3.1·AC3.4: 한 줄로 부탁한 수정이 3탭 안에 문서�
       const scenariosBefore = target?.scenarios.length ?? 0;
       expect(scenariosBefore, '고칠 시나리오가 하나는 있어야 한다').toBeGreaterThan(0);
 
-      // 읽던 자리(의존성)에서 진입한다 — 목업이 그 화면에 요청 CTA 를 그린다.
       await page.goto(`/#/analyses/${run.id}/features/${encodeURIComponent(key)}/dependencies`);
 
       // ── 탭 1 ─────────────────────────────────────────────────────────
@@ -42,7 +37,6 @@ test.describe('AC3.1·AC3.4: 한 줄로 부탁한 수정이 3탭 안에 문서�
       await expect(page.getByTestId('edit-target')).toContainText(
         target?.scenarios[0].when ?? '',
       );
-      // 요청이 비어 있는 동안에는 보낼 수 없다 — 목업이 그 안내를 그린다.
       await expect(page.getByTestId('request-empty')).toBeVisible();
       await expect(page.getByTestId('send-request')).toBeDisabled();
 
@@ -51,7 +45,6 @@ test.describe('AC3.1·AC3.4: 한 줄로 부탁한 수정이 3탭 안에 문서�
       // ── 탭 2 ─────────────────────────────────────────────────────────
       await page.getByTestId('send-request').click();
 
-      // 승인 전에는 아무것도 바뀌지 않는다.
       await expect(page.getByTestId('diff-added')).toHaveCount(1);
       await expect(page.getByTestId('edit-source')).toHaveText('사용자 · 도움받아 작성');
       await expect(page.getByTestId('edit-request-text')).toHaveText(
@@ -64,7 +57,6 @@ test.describe('AC3.1·AC3.4: 한 줄로 부탁한 수정이 3탭 안에 문서�
       ).toBe(scenariosBefore);
 
       const proposed = await page.getByTestId('diff-added').innerText();
-      // 제안은 서버가 들고 있는 값이라 주소를 가진다 — 승인 뒤 그 주소로 이력을 다시 읽는다.
       const proposalUrl = page.url();
       const proposalId = /\/proposals\/([^/?#]+)/.exec(proposalUrl)?.[1];
       expect(proposalId, `제안 주소를 지나지 않았다: ${proposalUrl}`).toBeTruthy();
@@ -78,19 +70,16 @@ test.describe('AC3.1·AC3.4: 한 줄로 부탁한 수정이 3탭 안에 문서�
       expect(edited?.scenarios.length, '승인했는데 시나리오가 늘지 않았다').toBe(
         scenariosBefore + 1,
       );
-      // 제안된 문장이 그대로 문서에 섰다 — 화면이 아니라 저장이 기준이다.
       const added = proposed.replace(/^\+\s*/, '');
       expect(
         edited?.scenarios.some((s) => s.then === added),
         '제안한 문장이 문서에 없다',
       ).toBeTruthy();
-      // 원래 시나리오는 지워지지 않는다(「추가」는 대체가 아니다).
       expect(
         edited?.scenarios.some((s) => s.then === target?.scenarios[0].then),
         '원래 시나리오가 사라졌다',
       ).toBeTruthy();
 
-      // AC3.4 — 변경의 출처가 「사용자 by LLM」으로 남는다.
       const proposals = await page.request.get(
         `/api/analyses/${run.id}/features/edit-proposals/${proposalId}`,
       );

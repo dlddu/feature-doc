@@ -1,11 +1,4 @@
 //! LLM 보조 수정(AC3.1)과 그 변경의 출처 보존(AC3.4) — 라우터를 그대로 돌려 본다.
-//!
-//! 인수 문서는 워커의 `/internal` 경로로 넣는다(형제 테스트와 같은 방침) — 손으로 행을
-//! 꽂으면 픽스처가 실제 워커 산출물과 어긋날 수 있고, 그 계약이 바로 여기서 지켜야 할 것이다.
-//!
-//! 브라우저에서 관측되는 3탭 흐름은 `e2e/tests/sc03-01`·`sc03-02` 가 지킨다. 이 파일이
-//! 지키는 것은 그 아래의 규칙이다 — 승인 전 문서 불변 · 승인 후 겹쳐 읽기 · 거부의 기록과
-//! 회피 · 남의 분석에는 닿지 않음.
 mod common;
 
 use axum::body::Body;
@@ -78,7 +71,6 @@ async fn json_body(resp: axum::response::Response) -> serde_json::Value {
     serde_json::from_slice(&bytes).unwrap()
 }
 
-/// 인수 문서가 서 있는 분석 하나. 편집은 그 문서 위에서만 일어난다.
 async fn analysis_with_document(state: &AppState, session: &str) -> String {
     let resp = build_router(state.clone())
         .oneshot(user_post(
@@ -198,7 +190,6 @@ async fn context(state: &AppState, session: &str, id: &str) -> serde_json::Value
     json_body(resp).await
 }
 
-/// feature key 는 경로 구분자를 품는다 — 쿼리로 실어 보내므로 그만큼은 감싸 준다.
 fn urlencoding(value: &str) -> String {
     value.replace('/', "%2F")
 }
@@ -239,7 +230,6 @@ async fn approving_a_proposal_is_what_changes_the_document() {
         after[0]["then"], before[0]["then"],
         "「추가」인데 원래 시나리오가 밀려났다"
     );
-    // 근거는 물려받는다 — 사람이 고친 것은 문장이지 그 문장이 어디서 왔는지가 아니다.
     assert_eq!(after[1]["evidence"], before[0]["evidence"]);
 }
 
@@ -252,7 +242,6 @@ async fn a_rejected_proposal_is_recorded_and_the_next_one_avoids_it() {
     let (_, first) = propose(&state, &s, &id, "더 분명하게").await;
     let rejected_text = first["after"][0]["then"].as_str().unwrap().to_string();
 
-    // 사유 없는 거부는 받지 않는다 — 그러면 다음 제안이 무엇을 피할지 알 수 없다.
     let (status, _) = decide(
         &state,
         &s,
@@ -278,7 +267,6 @@ async fn a_rejected_proposal_is_recorded_and_the_next_one_avoids_it() {
         "거부했는데 문서가 바뀌었다"
     );
 
-    // 사람에게 먼저 알린다.
     let ctx = context(&state, &s, &id).await;
     assert_eq!(ctx["rejectedCount"], 1);
     assert_eq!(ctx["rejectedReason"], "오류 코드를 덧붙인 표현은 필요 없어요");
@@ -315,7 +303,6 @@ async fn an_empty_request_never_reaches_the_model() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
-/// AC4.7 — 남의 분석은 없는 것과 같다. 제안도 그 분석에 매인다.
 #[tokio::test]
 async fn another_users_analysis_is_not_editable() {
     let (state, _path) = stub_state().await;
