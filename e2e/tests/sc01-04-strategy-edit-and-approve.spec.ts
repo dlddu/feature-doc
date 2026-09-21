@@ -125,7 +125,7 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       expect(edited.approved).toBe(false);
 
       await page.getByTestId('strategy-approve').click();
-      await expect(page.getByTestId('strategy-approved')).toBeVisible();
+      await expect(page.getByTestId('strategy-open-candidates')).toBeVisible();
       await expect(page.getByTestId('strategy-drop')).toHaveCount(0);
       await expect(page.getByTestId('strategy-add')).toHaveCount(0);
       expect((await strategyOf(page, first)).approved).toBe(true);
@@ -137,8 +137,10 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
 
       await page.goto(`/#/analyses/${first}`);
       await expect(page.locator('[data-stage="discovery_strategy"]')).toContainText('entry points');
-      await page.getByTestId('open-discovery-strategy').click();
-      await expect(page.getByTestId('strategy-approved')).toBeVisible();
+      await page.getByTestId('open-cross-cutting').click();
+      await page.getByTestId('to-discovery-strategy').click();
+      await expect(page.getByTestId('strategy-open-candidates')).toBeVisible();
+      await expect(page.getByTestId('strategy-drop')).toHaveCount(0);
 
       const second = await enqueue(page, 'payments-api');
       await expect

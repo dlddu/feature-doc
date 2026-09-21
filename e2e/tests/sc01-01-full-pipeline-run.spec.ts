@@ -135,7 +135,8 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
 
       // 화면 진입 자체가 reviewable 전략을 materialise한다(AC1.3의 lazy seed).
       await page.goto(`/#/analyses/${id}`);
-      await page.getByTestId('open-discovery-strategy').click();
+      await page.getByTestId('open-cross-cutting').click();
+      await page.getByTestId('to-discovery-strategy').click();
       const strategyRes = await page.request.get(`/api/analyses/${id}/discovery-strategy`);
       expect(strategyRes.ok(), '탐색 전략이 생겼다').toBeTruthy();
       const strategy = (await strategyRes.json()) as {
@@ -152,7 +153,8 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
         strategy.entries[0].pattern,
       );
       await page.getByTestId('strategy-approve').click();
-      await expect(page.getByTestId('strategy-approved')).toBeVisible();
+      await expect(page.getByTestId('strategy-open-candidates')).toBeVisible();
+      await expect(page.getByTestId('strategy-open-candidates')).toBeDisabled();
 
       // 승인이 분석을 재큐잉해 4단계(feature_candidates)를 실행한다 — 워커는
       // 임대 중이라 재청구한다.
@@ -164,6 +166,7 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
         .toBe(true);
 
       // 화면에서 자연스러운 다음 CTA로 간다 — 「순서대로 제시」는 이 경로로 관측한다.
+      await expect(page.getByTestId('strategy-open-candidates')).toBeEnabled();
       await page.getByTestId('strategy-open-candidates').click();
       const list = await candidatesOf(page, id!);
       expect(list.candidates.length, '후보가 추출됐다').toBeGreaterThan(0);

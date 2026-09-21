@@ -162,6 +162,11 @@ pub fn detail(doc: &Value) -> String {
 // mock-exception: LLM-01 — 단위 테스트 모듈: 결정적 더블로 검증(E2E 예외가 아닌 지문 등재 — 정책: docs/e2e-mocking-policy.md)
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn schema_is_accepted_by_openai_strict_mode() {
+        crate::llm::assert_strict_schema(&schema());
+    }
+
     use super::*;
 
     fn tree() -> Vec<String> {

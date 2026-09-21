@@ -934,6 +934,105 @@ body {
 .doc-body .branches button:hover { border-color: var(--border-strong); color: var(--text-primary); }
 .doc-body a { color: var(--text-secondary); font-size: 11.5px; }
 .doc-note { margin: 14px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-quaternary); }
+
+/* ── 반응형 레이아웃 — design-system §3.4 ─────────────────────────────
+   폭 판정은 기기(viewport)가 아니라 **앱 창 폭**이다. 목업에서는 .frame 이
+   곧 앱 창이므로 .frame 을 컨테이너로 두고, 안쪽 레이아웃은 전부
+   @container 로만 분기한다. 그래서 보조 레이어의 「미리보기 폭」 스위치가
+   .frame 폭만 바꿔도 안쪽이 그 폭의 레이아웃으로 다시 흐른다.
+     Compact  < 600   — 기본 설계. 폰 프레임·상태바·하단 탭바.
+     Medium   600–1023 — 좌측 rail, 가운데 560 컬럼.
+     Expanded ≥ 1024  — 좌측 rail, 가운데 640 컬럼, 카드 목록만 960 2열.
+   토큰·타이포 스케일·컴포넌트 내부는 폭에 따라 바뀌지 않는다(원칙 5·8). */
+.frame { container: app / inline-size; }
+
+/* 뷰포트가 넓으면 프레임을 폰이 아니라 앱 창으로 보여 준다. */
+@media (min-width: 600px) {
+  body { padding: 24px 16px; }
+  .stage { padding: 0 0 40px; width: 100%; }
+  .frame {
+    width: min(1280px, 100vw - 32px);
+    height: min(860px, 100dvh - 64px);
+    border-radius: 14px;
+  }
+  .doc-layer { max-width: 640px; }
+}
+
+/* 미리보기 폭 스위치(보조 레이어 안) — 뷰포트와 무관하게 앱 창 폭을 고정. */
+body:has(#pv-compact:checked) .frame  { width: min(393px, 100vw - 12px); height: min(844px, 100dvh - 64px); border-radius: 38px; }
+body:has(#pv-medium:checked) .frame   { width: min(834px, 100vw - 12px); height: min(860px, 100dvh - 64px); border-radius: 14px; }
+body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height: min(860px, 100dvh - 64px); border-radius: 14px; }
+
+.pv { display: flex; gap: 6px; margin-top: 8px; }
+.pv label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 9px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.pv input { position: absolute; opacity: 0; pointer-events: none; }
+.pv label:has(input:checked) { background: var(--bg-input); border-color: var(--border-strong); color: var(--text-primary); }
+.pv label:has(input:focus-visible) { border-color: var(--text-secondary); }
+
+@container app (min-width: 600px) {
+  /* 기기 크롬은 폰에만 있다 */
+  .statusbar, .home-indicator { display: none; }
+
+  /* 가운데 컬럼 — 좌우 패딩이 (창 − 컬럼)/2 를 넘지 않으면 32px 로 고정 */
+  .screen {
+    top: 0;
+    padding: 28px max(32px, (100cqi - 560px) / 2) 56px;
+  }
+
+  /* 하단 탭바 → 좌측 rail. 같은 4 슬롯, 같은 활성 표현(색만 흰색). */
+  .tabbar {
+    top: 0; right: auto; bottom: 0;
+    width: 72px; height: auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 20px 0 0;
+    border-top: 0;
+    border-right: 1px solid var(--border-subtle);
+  }
+  .tabbar .tab { flex: none; height: 64px; }
+  .screen.has-tabbar {
+    left: 72px; bottom: 0;
+    padding-left: max(32px, (100cqi - 72px - 560px) / 2);
+    padding-right: max(32px, (100cqi - 72px - 560px) / 2);
+  }
+}
+
+@container app (min-width: 1024px) {
+  .screen {
+    padding: 36px max(40px, (100cqi - 640px) / 2) 64px;
+  }
+  .screen.has-tabbar {
+    padding-left: max(40px, (100cqi - 72px - 640px) / 2);
+    padding-right: max(40px, (100cqi - 72px - 640px) / 2);
+  }
+
+  /* 반복 카드 목록(.collection)만 컬럼 밖으로 넓혀 2열. 폼·본문·버튼은 640 에 남는다. */
+  .collection {
+    --wide: min(960px, 100cqi - 80px);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
+    margin-left: calc((640px - var(--wide)) / 2);
+    margin-right: calc((640px - var(--wide)) / 2);
+  }
+  .has-tabbar .collection { --wide: min(960px, 100cqi - 72px - 80px); }
+  .collection > * + *,
+  .collection > .scn + .scn,
+  .collection > .cand + .cand { margin-top: 0; }
+}
 </style>
 </head>
 <body data-journey="JRN-connect-repo">
@@ -1391,6 +1490,13 @@ body {
 <details class="doc-layer" data-meta="doc">
   <summary>여정 정보 · 시나리오</summary>
   <div class="doc-body">
+    <h3>미리보기 폭</h3>
+    <div class="pv" role="radiogroup" aria-label="미리보기 폭">
+      <label><input type="radio" name="pv" id="pv-auto" checked>자동</label>
+      <label><input type="radio" name="pv" id="pv-compact">폰 393</label>
+      <label><input type="radio" name="pv" id="pv-medium">태블릿 834</label>
+      <label><input type="radio" name="pv" id="pv-expanded">데스크톱 1280</label>
+    </div>
     <h3>단계 (SSOT: 여정 문서)</h3>
     <ol class="steps">
       <li>

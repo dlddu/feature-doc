@@ -25,8 +25,20 @@ function toneOf(status: Stage['status']): string {
   return 'todo';
 }
 
+const STAGE_TITLES: Record<string, string> = {
+  fetch: '저장소 내려받기',
+  cross_cutting: '횡단 관심사 추출',
+  discovery_strategy: '탐색 전략 생성',
+  feature_candidates: 'feature 후보 추출',
+  acceptance_dependencies: '인수 시나리오 생성',
+};
+
+function titleOf(stage: Stage): string {
+  return STAGE_TITLES[stage.key] ?? stage.title;
+}
+
 function subOf(stage: Stage): string {
-  if (stage.status === 'failed') return stage.error ?? '실패했어요';
+  if (stage.status === 'failed') return '실패했어요';
   if (stage.detail) return stage.detail;
   if (stage.status === 'running') return '진행 중';
   if (stage.status === 'succeeded') return '완료';
@@ -44,7 +56,6 @@ type Props = {
   /** Analysis Progress → Home (back, close, or "Run in background" — the job keeps running). */
   onBack: () => void;
   onOpenCrossCutting: () => void;
-  onOpenDiscoveryStrategy: () => void;
   onOpenDiff: () => void;
 };
 
@@ -52,7 +63,6 @@ export function AnalysisProgress({
   id,
   onBack,
   onOpenCrossCutting,
-  onOpenDiscoveryStrategy,
   onOpenDiff,
 }: Props) {
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
@@ -123,6 +133,8 @@ export function AnalysisProgress({
 
   const { stages, stagesDone, stagesTotal } = analysis;
   const percent = stagesTotal === 0 ? 0 : Math.round((stagesDone / stagesTotal) * 100);
+  // At most one stage is failed at a time — the pipeline stops there.
+  const failed = stages.find((stage) => stage.status === 'failed');
 
   return (
     <main className="screen">
@@ -151,7 +163,7 @@ export function AnalysisProgress({
             <div className={`step ${toneOf(stage.status)}`}>
               <span className="ic">{stage.status === 'succeeded' && <CheckIcon />}</span>
               <div className="body-col">
-                <div className="label">{stage.title}</div>
+                <div className="label">{titleOf(stage)}</div>
                 <div className="sub" data-testid="stage-sub">
                   {subOf(stage)}
                 </div>
@@ -160,17 +172,6 @@ export function AnalysisProgress({
             </div>
             {/* A stage that produced a document gets a way into it. Gated on the
                 stage having succeeded, so the link never leads to a 404. */}
-            {stage.key === 'discovery_strategy' && stage.status === 'succeeded' && (
-              <button
-                className="btn btn-secondary block"
-                type="button"
-                style={{ marginTop: 12 }}
-                onClick={onOpenDiscoveryStrategy}
-                data-testid="open-discovery-strategy"
-              >
-                탐색 전략 검토하기
-              </button>
-            )}
             {stage.key === 'cross_cutting' && stage.status === 'succeeded' && (
               <button
                 className="btn btn-secondary block"
@@ -209,6 +210,13 @@ export function AnalysisProgress({
           </div>
         ))}
       </div>
+
+      {failed !== undefined && (
+        <div className="notice err" style={{ marginTop: 16 }} data-testid="stage-failed">
+          <strong>{titleOf(failed)}</strong>
+          {' 단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.'}
+        </div>
+      )}
 
       {analysis.status === 'awaiting_pipeline' && (
         <p className="body sm" style={{ marginTop: 14 }} data-testid="awaiting-pipeline">

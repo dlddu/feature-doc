@@ -61,13 +61,13 @@ fn schema() -> Value {
                             "items": {
                                 "type": "object",
                                 "additionalProperties": false,
-                                "required": ["given", "when", "then", "evidence"],
+                                "required": ["given", "when", "then", "evidence", "symbol"],
                                 "properties": {
                                     "given": { "type": "string" },
                                     "when": { "type": "string" },
                                     "then": { "type": "string" },
                                     "evidence": { "type": "string" },
-                                    "symbol": { "type": "string" },
+                                    "symbol": { "type": ["string", "null"] },
                                 },
                             },
                         },
@@ -471,6 +471,11 @@ pub fn detail(doc: &Value) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn schema_is_accepted_by_openai_strict_mode() {
+        crate::llm::assert_strict_schema(&schema());
+    }
+
     use super::*;
 
     fn tree() -> Vec<String> {

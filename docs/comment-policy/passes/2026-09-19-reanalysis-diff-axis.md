@@ -176,3 +176,81 @@ data plane 패스가 단독으로 할 수 없다. 그때까지는 **화면 머�
   (2026-09-19T02:5xZ).
 - **자유 풀 나머지 56파일 / 1,315행**.
 - 위 「발견」의 제외 패턴 확장 판단(control plane).
+
+## 증분 재판정 ① — `frontend/src/AnalysisProgress.tsx` +4행 (2026-09-21 · `rct_20260921-0003`)
+
+`#99`(`899800e`, 자매 모델의 수렴 슬라이스 ⑩)가 실패 안내를 정적 문장으로 바꾸고 3단계 카드의
+진입 버튼을 걷으면서 쓴 주석을 판정했다. 지문에 잡힌 4행 중 **제거 3 · 유지 1**, 지문 밖 JSX 블록
+연속행 3행은 함께 제거.
+
+- **제거 — `subOf` 머리 3행** 「The server's reason is not drawn here: the mockup answers a failed
+  stage with one standing sentence (below the list), and 시나리오 6 only asks that the stage can be
+  re-run」. ② doc-tracker 변경 이력 ⑿ 「실패 단계의 서버 사유 대신 목업의 정적 안내 문장을 그린다」
+  · ② `docs/test/01-analysis-pipeline.md` 시나리오 6 기대 결과 · ③ PR #99 계획 3 · ① 바로 아래
+  `return '실패했어요'` 와 아래쪽 `data-testid="stage-failed"` 의 한 문장 — 삼중 복원.
+- **제거 — JSX 블록 연속행 3행** 「Stage 3 is deliberately not one of them: the mockup walks this
+  journey 진행 → 횡단 관심사 → 탐색 전략, so the way in is the cross-cutting screen's own CTA」.
+  ② doc-tracker ⒃ · ③ PR 계획 2 「대체 경로는 이미 구현돼 있다(`open-cross-cutting` →
+  `to-discovery-strategy`)」 축자. 줄머리가 기호가 아니라 지문에 없던 줄이라 **행 수에는 세지
+  않는다**(원장 「지문과 사각지대」). 블록의 원래 2행(「A stage that produced a document gets a way
+  into it …」)은 1차 판정이 유지한 것이라 그대로다.
+- **유지 — 「At most one stage is failed at a time — the pipeline stops there」 1행.** 바로 아래
+  `stages.find(…failed)` 가 첫 실패만 집는 것의 **전제**인 백엔드 불변식이다. `docs/prd` ·
+  `docs/test` · `backend/src/pipeline.rs` 에 「한 번에 하나만 실패한다」를 문장으로 적은 곳이
+  **0히트**(시나리오 6 사전 조건과 `FAILED` 상태 모델에서 유추는 가능하나 명시는 없다). 복원 경로가
+  추론뿐이면 **애매하면 남긴다**(본문 「충돌 시 기본 방향」) — 판단이 갈려 남긴 것 1건으로 등재.
+  지우려면 먼저 `pipeline.rs` 의 상태 모델 doc 이나 PRD 에 그 불변식을 적어야 한다(「원본을
+  고친다」).
+
+**건드리지 않은 것**: 화면 머리의 목업 매핑(M1 이 읽는다) · 1차 판정 유지분 · 동작 코드. stripper
+잔여가 부모와 **바이트 동일**(9,908 == 9,908). `tsc -b && vite build` 통과.
+
+결과: 범위 지문 `bbca5248…`(136, #99 직후) → **`4aa7a8eb…`(133)**. 1차 판정 시점 값
+`a0354a08…`(132) 로 돌아가지 않는 1행이 위 유지분이다.
+
+⚠️ PR #101(슬라이스 ⑪, `3d147d6`)이 이 패스의 머지 직전에 먼저 머지돼 같은 파일에 `STAGE_TITLES` 머리 주석
+**2행**이 들어왔다 — 병합 트리의 범위 지문은 **`47fdf929…`(135)** 이고 그 2행은 미판정으로 남아
+이 행에 다시 증분이 열렸다(다음 판정 대상: 「서버 `title` 은 enqueue 시점에 고정돼 화면이 문안을
+소유한다」 — 그 근거가 doc-tracker 「문자열 소유자가 범위 밖」 행에 이미 있는지 볼 것).
+
+## 증분 재판정 ② — `frontend/src/AnalysisProgress.tsx` +2행 (2026-09-21 · `rct_20260921-0005`)
+
+**창.** `#101`(`3d147d6`, 자매 모델의 수렴 슬라이스 ⑪ — 파이프라인 5단계 제목의 표시 소유자를 화면으로)이
+증분 재판정 ①의 머지 직전에 먼저 착지해 같은 파일의 `STAGE_TITLES` 머리에 지문 기준 **순증 2행**을 얹었다
+(7행 133 → 135, 지문 원본 diff 는 `>` 2줄뿐 · 파일 집합 불변). 위 ①의 꼬리가 예고한 대로 이 절이 그 2행을
+판정한다 — 원장 규약대로 새 행·새 파일 없이 7행의 결과 칸을 갱신한다.
+
+| 위치 (`3d147d6` 트리) | 명제 | 판정 | 근거 |
+|---|---|---|---|
+| `AnalysisProgress.tsx:28` | 「Display titles keyed by the wire `key`」 | **제거** | ① 바로 아래 `STAGE_TITLES: Record<string, string>` 과 `titleOf()` 의 `STAGE_TITLES[stage.key]` 가 그 문장 자체. ② doc-tracker 슬라이스 ⑪ 「`AnalysisProgress.tsx` 가 stage `key` 로 목업의 한국어 제목을 고르고」. |
+| `AnalysisProgress.tsx:28-29` | 「The server's `title` is persisted per analysis at enqueue, so rows seeded before a copy change would keep the old text」 | **제거** | ② `docs/doc-tracker/2026-09.md` 슬라이스 ⑪ 문단이 **두 벌**로 문장째 담는다 — 「구현 수렴 대기」 절(「시드 `title` 은 분석마다 DB 에 영속되므로 시드만 바꾸면 이미 시드된 과거 분석은 영문으로 남는데, 화면이 고르면 과거·미래 행이 함께 수렴한다」)과 변경 이력 표 행(「시드 `title` 은 enqueue 때 분석마다 `analysis_stages.title` 에 영속되므로 …」). ③ PR #101 본문 「왜 시드가 아니라 화면인가」 절이 같은 문장. 유일하게 「저장소 제약의 함정」(유지 목록)에 닿는 명제인데, 복원이 추론이 아니라 **명시 문장 두 벌**이라 「애매하면 남긴다」의 조건(복원 경로가 추론뿐)에 들지 않는다 — 같은 파일에서 ①이 「한 번에 실패하는 단계는 하나」를 `docs/` **0히트**로 남긴 것과 기준은 같고 사실이 반대다. doc-tracker 는 나아가 「다음 감지가 「백엔드 시드를 한국어로」를 다시 후보로 올리지 말 것」까지 적어 두어, 이 함정을 다음 편집자에게 전하는 자리가 이미 정해져 있다. |
+| `AnalysisProgress.tsx:29` | 「the screen owns the copy」 | **제거** | ② 같은 문단 「표시 제목의 소유자를 화면으로 옮겼다」 · ③ PR #101 제목 「표시 소유자를 화면으로」 · ④ 커밋 메시지 제목이 같은 문장. ① `?? stage.title` 이 「서버 title 은 fallback」을 말한다. |
+
+**증분 2행 중 제거 2 · 유지 0.** 물리 diff 는 `−2 / +0`, 비주석 코드 무접촉 — `//` 행과 공백을 걷어 낸
+스트립 잔여의 md5 가 부모와 **동일**(`ce76e50e…`). 한국어 제목 5개·`titleOf()`·단계 카드 라벨·실패 안내
+렌더 자리는 그대로이므로 자매 게이트 `check-mockup-render.py`(M3A·M3B·M5)의 입력도 변하지 않는다.
+
+### 7행은 증분 재판정 ① 시점 값으로 돌아간다
+
+| 원장 행 | ① 판정 시점 (#101 이전) | #101 이후 (`3d147d6` = ① 병합 트리 `f62dcf2`) | 이 재판정 뒤 |
+|---|---|---|---|
+| 7행 | 133 / `4aa7a8eb…` | 135 / `47fdf929…` | **133 / `4aa7a8eb…`** |
+
+유지 0행이라 줄 수·지문 둘 다 ① 시점 값으로 **바이트 복귀**했다(지문 규약: 범위 파일 경로 접두사 포함 ·
+정규화·정렬 · 후행 개행 포함 sha256 — `47fdf929…`(135) 가 이 규약으로 `f62dcf2` 에서 재현됨을 먼저 확인했다).
+전역 as-is 는 부모 대비 **차분 −2**(`files` 불변)다 — `f62dcf2` 기준 `lines=2322`/`014b9fc4…` →
+`lines=2320`/`22b4013b…`, 자매 #102(`rct_20260921-0002`, 10행 −4)가 먼저 착지한 트리에서는 2318 → **2316**.
+원장 합계 문단은 머지 시점 main 이 적은 값에 이 차분을 더한다(절대값을 완료 기준으로 쓰지 않는다).
+
+### 검증
+
+1. 스트립 잔여 md5 부모 == head(위) · `git diff --stat` 코드 1파일 `−2`.
+2. `frontend`: `npm ci && tsc -b && vite build` 통과(node 22). `python3 tools/check-scenario-e2e.py` ·
+   `check-mockup-render.py` rc=0 — `// 검증 시나리오:` 선언 무접촉.
+3. `python3 tools/check-data-format-change.py --base <main tip> --head <branch> --verbose` →
+   `✅ 변경 없음 (review/data-format = success)` · 검사 파일 1(`AnalysisProgress.tsx`) — 원장 「슬라이스 전
+   필수 절차」를 집기 전(`f62dcf2` 프로브 `edf0970`)과 준비 브랜치에서 각각 돌렸다.
+
+이 절로 **판정 완료 범위 안의 미판정 증분은 0** 이 된다(#93 9행 → `rct_20260921-0001` · #91 5행 → `-0002` ·
+#99 25행 → `-0003` · #101 2행 → 이 절). 다음 증분은 자매 모델의 수렴 슬라이스가 e2e·프런트를 다시 쓸 때
+같은 형태로 열린다. 증분 밖 잔여(14파일/242행)는 원장이 적은 사람 게이트 셋 그대로다.

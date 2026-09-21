@@ -69,7 +69,7 @@ $ python3 tools/check-data-format-change.py --base 7724b46 --head <이 PR head> 
 
 - 범위 지문: `b11c4d16de9686c65f99a206a14db13970dec55beee11a33f2a90054321cef7a`(부모) →
   **`1b35c33a821701c748cc127e43169b26f3b1b7f586c29f75e2fa7b1f0d3fe878`** (`lines=123 files=8`).
-- 전역 지문: `lines=2310 files=108` → **`lines=2294 files=108`** /
+- 전역 지문: `lines=2310 files=108` → **`lines=2295 files=108`**(`.sql` −16 · `backend/tests/migrations.rs` 출처 주석 +1) /
   `7d885d272ff61b93038071007bcfe93a39eca0b8df7d1d30156fc13f04654c12`.
   **파일 수가 안 줄었다** — 이 축은 전건 제거된 파일이 없다.
 - **SQL문 변경 0.** 여덟 파일 전부, 주석·빈 줄을 걷어낸 나머지가 부모와 **바이트 동일**하다.
@@ -235,7 +235,7 @@ done
 | 검사 | 결과 |
 | --- | --- |
 | **SQL문 무변경** | 8파일 전건 **SAME** — 주석(`--`)과 빈 줄을 걷어낸 나머지가 부모와 바이트 동일. `.sql`에 블록 주석이 0건이라 줄 단위 stripper로 충분하다 |
-| 전역 주석 지문 | `lines=2310 files=108` → `lines=2294 files=108` (−16, 파일 수 불변) |
+| 전역 주석 지문 | `lines=2310 files=108` → `lines=2295 files=108` (−15 = `.sql` −16 · `tests/migrations.rs` +1, 파일 수 불변) |
 | 범위 지문 | `b11c4d16…`(139행) → `1b35c33a8217…`(123행) |
 | `python3 tools/check-data-format-change.py --base 7724b46 --head <head> --verbose` | **`⚠️ 사람 리뷰 필요`** — D1 7건 · D2 1건. **기대값**(이 축은 무인 경로가 없다) |
 | `APPLIED` 고정값 | 7개 갱신 · `0002`는 그대로. `every_migration_file_is_pinned`의 목록 8개는 불변 |
@@ -245,11 +245,11 @@ done
 
 ## 범위 밖 (후속)
 
-- **D2 「저장 계층 핵심」 4파일 / 44행** — `backend/src/db.rs` 17 · `backend/src/crypto.rs` 13
-  (13차 패스가 판정까지 마쳐 둠) · `backend/tests/migrations.rs` 13 · `backend/src/models.rs` 1.
+- **D2 「저장 계층 핵심」 4파일 / 45행** — `backend/src/db.rs` 17 · `backend/src/crypto.rs` 13
+  (13차 패스가 판정까지 마쳐 둠) · `backend/tests/migrations.rs` 14(이 패스의 `APPLIED` 출처 주석 +1) · `backend/src/models.rs` 1.
 - **D6 · D5 경로 규칙 2파일 / 59행** — `tools/check-data-format-change.py` 58 ·
   `deploy/k8s/pvc.yaml` 1.
-- 이 패스가 머지되면 잔여는 **6파일 / 103행**이 되고, **전부 D2·D6·D5 경로 벽**이다. 무인
+- 이 패스가 머지되면 잔여는 **6파일 / 104행**이 되고, **전부 D2·D6·D5 경로 벽**이다. 무인
   자유 풀은 여전히 0이며, 열린 PR이 in-scope 파일에 주석을 더하면 그때 다시 열린다.
 - **`0006`·`0007`의 단계 번호**(위 「판단이 갈려 남긴 것」 2번)는 뒤집으려면 증분 재판정이
   필요하고, 그때도 이 축의 repair 게이트를 다시 통과해야 한다.

@@ -5,8 +5,15 @@
 // with the new list, which is why a reload shows the same edits.
 
 import { useEffect, useState } from 'react';
-import { approveDiscoveryStrategy, getDiscoveryStrategy, putDiscoveryStrategy } from './api';
+import {
+  approveDiscoveryStrategy,
+  getCandidates,
+  getDiscoveryStrategy,
+  putDiscoveryStrategy,
+} from './api';
 import type { DiscoveryStrategy as Strategy } from './api';
+
+const POLL_MS = 2_000;
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -23,6 +30,7 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [extracted, setExtracted] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -33,6 +41,26 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
       active = false;
     };
   }, [id]);
+
+  // Polled rather than read once because the wait spans this screen.
+  const approved = strategy?.approved ?? false;
+  useEffect(() => {
+    if (!approved || extracted) return;
+    let active = true;
+    async function check() {
+      try {
+        const list = await getCandidates(id);
+        if (active && list.extracted) setExtracted(true);
+      } catch {
+      }
+    }
+    void check();
+    const timer = setInterval(() => void check(), POLL_MS);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [id, approved, extracted]);
 
   // Takes the started request rather than a thunk: `() => Promise<Strategy>` would
   // read as product copy to the M3B copy extractor (it scans the text between `>`
@@ -76,11 +104,7 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
             </span>
             <span className="body sm">{error}</span>
           </div>
-        ) : (
-          <p className="body sm" style={{ marginTop: 22 }} data-testid="strategy-loading">
-            {LOADING}
-          </p>
-        )}
+        ) : null}
       </main>
     );
   }
@@ -176,15 +200,12 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
       )}
 
       <div className="stack" style={{ marginTop: 24 }}>
-        {strategy.approved && (
-          <span className="tag" data-testid="strategy-approved">
-            {APPROVED}
-          </span>
-        )}
         <button
           className="btn btn-primary block"
           type="button"
-          disabled={busy || strategy.entries.length === 0}
+          disabled={
+            busy || strategy.entries.length === 0 || (strategy.approved && !extracted)
+          }
           onClick={() =>
             strategy.approved
               ? onOpenCandidates()
@@ -198,9 +219,6 @@ export function DiscoveryStrategy({ id, onBack, onOpenCandidates }: Props) {
     </main>
   );
 }
-
-const LOADING = '불러오는 중…';
-const APPROVED = '승인된 전략이에요';
 
 /**
  * The right-hand `icon-btn ghost` is a spacer, not a control — without it
