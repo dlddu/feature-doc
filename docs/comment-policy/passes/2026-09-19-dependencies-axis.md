@@ -254,3 +254,15 @@ sc02-05의 `// ── 누르기 전 ───…` · `// ── 누른 뒤 ─�
 5. **문서 게이트 3종**: `tools/check-scenario-e2e.py` · `check-mockup-render.py` ·
    `check-journey-mockup.py` 모두 `rc=0`(호스트에 node 가 없어 `check-journey-prototype.js` 는
    CI 잡에서 확인한다).
+
+## 증분 재판정 ① — `backend/src/dependencies.rs` +1행 (2026-09-21 · `rct_20260921-0001`)
+
+`#93`(`8205b7a`)이 `schema()` 의 `"evidence"` 위에 더한
+`// Required-but-nullable; see feature_candidates::schema.` 1행을 **제거**했다 — 원장 4행
+`acceptance.rs` 의 것과 **같은 문장의 두 번째 벌**이고 근거도 같다(인접 선언의 축자 재진술 + 교차
+참조뿐). 정본은 `llm.rs::assert_strict_schema` 옆, 이 파일의 테스트
+`schema_is_accepted_by_openai_strict_mode` 가 그 자리를 이름으로 가리킨다. 근거 전체는
+[2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑤」.
+결과: 이 범위의 줄 수·지문이 #93 이전 값 **112 / `e2ff313a…`** 으로 되돌아왔다. 비주석 코드 무접촉
+(스트립 잔여 450 == 450). 같은 커밋이 이 파일의 프롬프트 문자열(`set evidence to null`)을 바꿨지만
+그것은 주석이 아니라 코드다 — 판정 표면 밖.

@@ -306,3 +306,15 @@ lazy seed, 확정이 5단계를 연다 — 는 유지).
   `backend/src/discovery_strategy.rs` 46 · `tools/check-scenario-e2e.py` 44.
 - **`backend/migrations/*.sql` 7파일 / 104행** — 본문 「적용된 마이그레이션」 절의 전용 PR ·
   수동 repair · 사람 승인 게이트를 거치는 **별도 패스**다. 이번 PR과 섞지 않았다.
+
+## 증분 재판정 ① — `backend/src/acceptance.rs` +1행 (2026-09-21 · `rct_20260921-0001`)
+
+`#93`(`8205b7a`)이 `schema()` 의 `"symbol"` 위에 더한
+`// Required-but-nullable; see feature_candidates::schema.` 1행을 **제거**했다. 앞 절반은 두 줄 위
+`required` 배열과 바로 아래 `"type": ["string", "null"]` 의 축자 재진술(①), 뒤 절반은 다른 파일
+주석으로의 교차 참조뿐이며, 같은 문장이 `dependencies.rs` 에도 있어 두 벌이었다. 명제의 정본은
+`llm.rs::assert_strict_schema` 옆이고 같은 파일의 테스트 `schema_is_accepted_by_openai_strict_mode` 가
+그 자리를 이름으로 가리킨다. 근거 전체는
+[2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑤」.
+결과: 이 범위의 줄 수·지문이 #93 이전 값 **141 / `e38dcf20…`** 으로 되돌아왔다. 비주석 코드 무접촉
+(스트립 잔여 526 == 526).

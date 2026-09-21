@@ -67,7 +67,6 @@ fn schema() -> Value {
                                     "when": { "type": "string" },
                                     "then": { "type": "string" },
                                     "evidence": { "type": "string" },
-                                    // Required-but-nullable; see `feature_candidates::schema`.
                                     "symbol": { "type": ["string", "null"] },
                                 },
                             },

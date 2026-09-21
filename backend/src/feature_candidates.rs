@@ -35,8 +35,6 @@ fn schema() -> Value {
                     "properties": {
                         "name": { "type": "string" },
                         "location": { "type": "string" },
-                        // Required-but-nullable rather than optional: OpenAI's `strict`
-                        // mode rejects any property missing from `required` (400).
                         "symbol": { "type": ["string", "null"] },
                         "rationale": { "type": "string" },
                     },
