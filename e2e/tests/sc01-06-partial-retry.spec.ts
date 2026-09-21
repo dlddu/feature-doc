@@ -101,9 +101,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
 
       await page.goto(`/#/analyses/${failing}`);
       const failedStage = page.locator('[data-stage="fetch"]');
-      // 화면은 목업의 정적 안내로 수렴했다(원장 ⑿) — 서버 사유는 이제 화면이 아니라
-      // API 가 들고 있고, 아래 `afterRetry.error` 단정이 그것을 계속 관측한다.
-      // 시나리오 6 원문이 요구하는 것은 「그 단계만 재시도」뿐이다.
       await expect(failedStage.getByTestId('retry')).toBeVisible();
       await expect(page.getByTestId('stage-failed')).toContainText(
         '단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.',
@@ -224,8 +221,6 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
 
       await page.goto(`/#/analyses/${llmFailing}`);
       const failedStage = page.locator('[data-stage="feature_candidates"]');
-      // 사유의 관측은 위 폴링(`failed: LLM rejected the request (429)`)과 아래
-      // `afterRetry.error` 가 API 에서 계속 진다 — 화면 쪽은 원장 ⑿ 로 수렴했다.
       await expect(failedStage.getByTestId('retry')).toBeVisible();
       await expect(page.getByTestId('stage-failed')).toContainText(
         '단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.',

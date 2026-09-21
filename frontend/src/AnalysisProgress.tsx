@@ -40,9 +40,6 @@ function titleOf(stage: Stage): string {
 }
 
 function subOf(stage: Stage): string {
-  // The server's reason is not drawn here: the mockup answers a failed stage with
-  // one standing sentence (below the list), and 시나리오 6 only asks that the stage
-  // can be re-run.
   if (stage.status === 'failed') return '실패했어요';
   if (stage.detail) return stage.detail;
   if (stage.status === 'running') return '진행 중';
@@ -176,10 +173,7 @@ export function AnalysisProgress({
               <span className="time">{elapsedOf(stage, now)}</span>
             </div>
             {/* A stage that produced a document gets a way into it. Gated on the
-                stage having succeeded, so the link never leads to a 404.
-                Stage 3 is deliberately not one of them: the mockup walks this
-                journey 진행 → 횡단 관심사 → 탐색 전략, so the way in is the
-                cross-cutting screen's own CTA. */}
+                stage having succeeded, so the link never leads to a 404. */}
             {stage.key === 'cross_cutting' && stage.status === 'succeeded' && (
               <button
                 className="btn btn-secondary block"

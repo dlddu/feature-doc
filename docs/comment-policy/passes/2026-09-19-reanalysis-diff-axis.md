@@ -176,3 +176,39 @@ data plane 패스가 단독으로 할 수 없다. 그때까지는 **화면 머�
   (2026-09-19T02:5xZ).
 - **자유 풀 나머지 56파일 / 1,315행**.
 - 위 「발견」의 제외 패턴 확장 판단(control plane).
+
+## 증분 재판정 ① — `frontend/src/AnalysisProgress.tsx` +4행 (2026-09-21 · `rct_20260921-0003`)
+
+`#99`(`899800e`, 자매 모델의 수렴 슬라이스 ⑩)가 실패 안내를 정적 문장으로 바꾸고 3단계 카드의
+진입 버튼을 걷으면서 쓴 주석을 판정했다. 지문에 잡힌 4행 중 **제거 3 · 유지 1**, 지문 밖 JSX 블록
+연속행 3행은 함께 제거.
+
+- **제거 — `subOf` 머리 3행** 「The server's reason is not drawn here: the mockup answers a failed
+  stage with one standing sentence (below the list), and 시나리오 6 only asks that the stage can be
+  re-run」. ② doc-tracker 변경 이력 ⑿ 「실패 단계의 서버 사유 대신 목업의 정적 안내 문장을 그린다」
+  · ② `docs/test/01-analysis-pipeline.md` 시나리오 6 기대 결과 · ③ PR #99 계획 3 · ① 바로 아래
+  `return '실패했어요'` 와 아래쪽 `data-testid="stage-failed"` 의 한 문장 — 삼중 복원.
+- **제거 — JSX 블록 연속행 3행** 「Stage 3 is deliberately not one of them: the mockup walks this
+  journey 진행 → 횡단 관심사 → 탐색 전략, so the way in is the cross-cutting screen's own CTA」.
+  ② doc-tracker ⒃ · ③ PR 계획 2 「대체 경로는 이미 구현돼 있다(`open-cross-cutting` →
+  `to-discovery-strategy`)」 축자. 줄머리가 기호가 아니라 지문에 없던 줄이라 **행 수에는 세지
+  않는다**(원장 「지문과 사각지대」). 블록의 원래 2행(「A stage that produced a document gets a way
+  into it …」)은 1차 판정이 유지한 것이라 그대로다.
+- **유지 — 「At most one stage is failed at a time — the pipeline stops there」 1행.** 바로 아래
+  `stages.find(…failed)` 가 첫 실패만 집는 것의 **전제**인 백엔드 불변식이다. `docs/prd` ·
+  `docs/test` · `backend/src/pipeline.rs` 에 「한 번에 하나만 실패한다」를 문장으로 적은 곳이
+  **0히트**(시나리오 6 사전 조건과 `FAILED` 상태 모델에서 유추는 가능하나 명시는 없다). 복원 경로가
+  추론뿐이면 **애매하면 남긴다**(본문 「충돌 시 기본 방향」) — 판단이 갈려 남긴 것 1건으로 등재.
+  지우려면 먼저 `pipeline.rs` 의 상태 모델 doc 이나 PRD 에 그 불변식을 적어야 한다(「원본을
+  고친다」).
+
+**건드리지 않은 것**: 화면 머리의 목업 매핑(M1 이 읽는다) · 1차 판정 유지분 · 동작 코드. stripper
+잔여가 부모와 **바이트 동일**(9,908 == 9,908). `tsc -b && vite build` 통과.
+
+결과: 범위 지문 `bbca5248…`(136, #99 직후) → **`4aa7a8eb…`(133)**. 1차 판정 시점 값
+`a0354a08…`(132) 로 돌아가지 않는 1행이 위 유지분이다.
+
+⚠️ PR #101(슬라이스 ⑪, `3d147d6`)이 이 패스의 머지 직전에 먼저 머지돼 같은 파일에 `STAGE_TITLES` 머리 주석
+**2행**이 들어왔다 — 병합 트리의 범위 지문은 **`47fdf929…`(135)** 이고 그 2행은 미판정으로 남아
+이 행에 다시 증분이 열렸다(다음 판정 대상: 「서버 `title` 은 enqueue 시점에 고정돼 화면이 문안을
+소유한다」 — 그 근거가 doc-tracker 「문자열 소유자가 범위 밖」 행에 이미 있는지 볼 것).

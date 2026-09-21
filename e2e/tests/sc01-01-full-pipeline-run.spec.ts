@@ -134,8 +134,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       await expect(axisCard).toContainText(shown.items[0].evidence[0]);
 
       // 화면 진입 자체가 reviewable 전략을 materialise한다(AC1.3의 lazy seed).
-      // 진입 경로는 목업의 선형 동선을 따른다 — 진행 화면의 3단계 카드에는 더 이상
-      // 전략 진입 버튼이 없고(원장 ⒃), 문은 횡단 관심사 화면이 쥐고 있다.
       await page.goto(`/#/analyses/${id}`);
       await page.getByTestId('open-cross-cutting').click();
       await page.getByTestId('to-discovery-strategy').click();
@@ -155,8 +153,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
         strategy.entries[0].pattern,
       );
       await page.getByTestId('strategy-approve').click();
-      // 승인의 관측은 「완료 문구」가 아니라 버튼이 다음 동선으로 바뀌는 것이다(원장 ⑼).
-      // 추출이 끝나기 전에는 갈 곳이 없으므로 그 버튼은 아직 눌리지 않는다.
       await expect(page.getByTestId('strategy-open-candidates')).toBeVisible();
       await expect(page.getByTestId('strategy-open-candidates')).toBeDisabled();
 
@@ -170,7 +166,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
         .toBe(true);
 
       // 화면에서 자연스러운 다음 CTA로 간다 — 「순서대로 제시」는 이 경로로 관측한다.
-      // 추출이 끝났으므로 이제 눌린다(원장 ㉑ — 미추출 상태로는 진입 자체가 막힌다).
       await expect(page.getByTestId('strategy-open-candidates')).toBeEnabled();
       await page.getByTestId('strategy-open-candidates').click();
       const list = await candidatesOf(page, id!);
