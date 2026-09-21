@@ -57,7 +57,7 @@ test.describe('AC1.5: 비동기 진행 가시성과 복귀', () => {
       await expect(page.getByTestId('pipeline-count')).toHaveText('0 of 5');
       await expect(page.getByTestId('progress-percent')).toHaveText('0');
       await expect(page.getByTestId('stage')).toHaveCount(5);
-      await expect(page.locator('[data-stage="fetch"]')).toContainText('Fetch repository');
+      await expect(page.locator('[data-stage="fetch"]')).toContainText('저장소 내려받기');
       await expect(page.locator('[data-stage="fetch"]')).toContainText('대기 중');
 
       await scaleWorkers(1);
