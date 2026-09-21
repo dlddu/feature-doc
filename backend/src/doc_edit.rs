@@ -665,6 +665,11 @@ fn stub_edit(before: &Sentences, request: &str, avoid: &[String]) -> Value {
 mod tests {
     use super::*;
 
+    #[test]
+    fn schema_is_accepted_by_openai_strict_mode() {
+        crate::llm::assert_strict_schema(&schema());
+    }
+
     fn sentences() -> Sentences {
         Sentences {
             given: "카드가 없는 사용자가".to_string(),
