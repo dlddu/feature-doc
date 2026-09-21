@@ -318,3 +318,19 @@ lazy seed, 확정이 5단계를 연다 — 는 유지).
 [2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑤」.
 결과: 이 범위의 줄 수·지문이 #93 이전 값 **141 / `e38dcf20…`** 으로 되돌아왔다. 비주석 코드 무접촉
 (스트립 잔여 526 == 526).
+
+## 증분 재판정 ② — `frontend/src/FeatureAcceptance.tsx` +5행 (2026-09-21 · `rct_20260921-0012`)
+
+`#112`(`fc6d191`, 슬라이스 6c)가 이 화면에 삭제 탭·사유·보관소·되돌리기를 그리며 쓴 주석 5행을 판정해
+**제거 4 · 유지 1**. 새 파일 쪽 판정은 [2026-09-21-feature-delete-axis.md](2026-09-21-feature-delete-axis.md).
+
+| 줄 | 판정 · 복원 경로 |
+|---|---|
+| `// AC3.3 — 지운 feature 는 문서에서 가려질 뿐 보관소에 남는다. 문서와 함께 읽어` (머리 2행의 앞줄) | 제거 — ② doc-tracker 6c 행 · ① 0011 머리 「문서에는 여전히 있고, 읽는 자리가 가릴 뿐이다」 · ③ PR #112 — AC 꼬리표. 뒷줄 「두 목록이 같은 시점의 서버 상태를 그린다」는 앞줄 끝의 「문서와 함께 읽어」를 붙여 1행으로 재작성해 **유지** — `Promise.all([getAcceptance, listDeletions])` 을 두 effect 가 아니라 한 번의 동시 읽기로 고른 *이유*는 코드·문서·PR 어디에도 없다(**판단이 갈려 남긴 것 5건째**) |
+| `/** 삭제·복구 뒤에는 서버를 다시 읽는다 — 화면이 들고 있는 값이 아니라 서버가 들고 있는 값이다. */` (`reload`) | 제거 — ① `setGeneration((g) => g + 1)` 과 effect 의존성 `[id, generation]` 이 그 자체 · 파일 머리의 화면 불변식 「Every sentence on this screen came from the server — which is why a reload shows the same document」(1차 판정이 유지한 정본) |
+| `// 남은 기능이 없고 보관소만 있는 상태 — 되돌릴 자리는 있어야 한다.` | 제거 — ① 바로 위 `features.length === 0 && archive.length === 0` 분기와 이 분기의 `<Archive … onRestore>` 렌더 · ③ PR #112 「남은 기능이 0 이고 보관소만 있는 상태도 그린다」 |
+| `/** 보관소 — 지운 feature 와 되돌릴 수 있는 기한. 기한이 지난 것은 남되 버튼이 닫힌다. */` (내부 fn `Archive`) | 제거 — ① JSX 카피 `보관소` · `…까지 되돌릴 수 있어요` · `disabled={busy \|\| !deletion.restorable}` · ② doc-tracker 6c 행 「기간이 지나면 되돌리기만 거부된다 — 행은 남는다」 — 내부 fn JSDoc(6b 가 `AddFeature.tsx` 의 `decide` 를 걷은 판정) |
+
+결과: 이 범위의 줄 수·지문은 #112 이전 값(141 / `e38dcf20…`)으로 **돌아가지 않는다** — 유지 1행만큼
+**142 / `2ff8f6ff…`** 이다(트리거 `fc6d191` 의 146 / `655305bc…` 에서 −4). 파일은 주석 제거 후 부모와 바이트
+동일(stripper md5 `d7dcce35`), `npm run build` rc=0.

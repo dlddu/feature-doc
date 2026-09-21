@@ -294,3 +294,18 @@ for」 — `CredentialsSetup.tsx` 는 `#83` 이 `GrantRepoAccess.tsx` + `Registe
 결과: 10행의 줄 수·지문은 #107 이전 값(83 / `ec54e678…`)으로 **돌아가지 않는다** — 유지 2행만큼
 **85 / `89959a07…`** 이다(트리거 `89a1625`~`269a5f2` 의 90 / `d88323c6…` 에서 −5). `api.ts` 는 주석 제거 후
 부모와 바이트 동일(stripper md5 `2cceebc5`), `npm run build` rc=0.
+
+## 증분 재판정 ⑤ — 원장 10행에 #112 가 연 +2행 (2026-09-21 · `rct_20260921-0012`)
+
+`#112`(`fc6d191`, 슬라이스 6c)가 `api.ts` 에 삭제 API 세 함수·타입 셋을 더하며 쓴 주석 2행을 판정해 **전건
+제거** — ③·④ 와 같은 모양이나, 이번엔 export 함수의 JSDoc 요약을 #112 가 더하지 않아 유지분이 없다. 새 화면은
+없고(기존 두 화면에 얹혔다) 새 파일 쪽 판정은 [2026-09-21-feature-delete-axis.md](2026-09-21-feature-delete-axis.md).
+
+| 줄 | 판정 · 복원 경로 |
+|---|---|
+| `/** AC3.3 — 같은 대상의 앞선 분석에서 지웠고 아직 되돌리지 않은 자리. 표시일 뿐 결정이 아니다. */` (`Candidate.previouslyDeleted`) | 제거 — ① 이 값을 채우는 `feature_delete::previous_deletion` 의 pub doc(정본) · ② doc-tracker 6c 행 「표시일 뿐 결정이 아니다」 · 이웃 필드 `previouslyRejected` 에는 doc 이 없다 — AC 꼬리표 |
+| `/** 보관소의 한 건(AC3.3) — 지운 feature 는 곧바로 없어지지 않고 \`restoreUntil\` 까지 되돌릴 수 있다. */` (`FeatureDeletion` 타입) | 제거 — ① 필드 `restoreUntil` · `restorable` · ① 0011 머리 「보관 기간 안에는 되돌릴 수 있으며」 · ② doc-tracker · 이웃 타입 `FeatureAddition`·`PreviousRejection` 에는 doc 이 없다 — AC 꼬리표 |
+
+결과: 10행의 줄 수·지문이 #112 이전 값 **85 / `89959a07…`** 으로 되돌아왔다(트리거 `fc6d191` 의 87 /
+`673c2f59…` 에서 −2 — 부모 `bf48b45` 재계산과 바이트 동일). `api.ts` 는 주석 제거 후 부모와 바이트
+동일(stripper md5 `9f2f4f0f`), `npm run build` rc=0.

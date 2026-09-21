@@ -318,7 +318,6 @@ export type FeatureCandidate = {
   rejectReason: string | null;
   mergedInto: string | null;
   previouslyRejected: PreviousRejection | null;
-  /** AC3.3 — 같은 대상의 앞선 분석에서 지웠고 아직 되돌리지 않은 자리. 표시일 뿐 결정이 아니다. */
   previouslyDeleted: PreviousDeletion | null;
 };
 
@@ -703,7 +702,6 @@ export async function decideAddition(
   return (await res.json()) as FeatureAddition;
 }
 
-/** 보관소의 한 건(AC3.3) — 지운 feature 는 곧바로 없어지지 않고 `restoreUntil` 까지 되돌릴 수 있다. */
 export type FeatureDeletion = {
   id: string;
   key: string;

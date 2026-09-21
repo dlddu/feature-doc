@@ -35,8 +35,7 @@ type Props = {
 
 export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
   const [features, setFeatures] = useState<Doc[] | null>(null);
-  // AC3.3 — 지운 feature 는 문서에서 가려질 뿐 보관소에 남는다. 문서와 함께 읽어
-  // 두 목록이 같은 시점의 서버 상태를 그린다.
+  // 문서와 함께 읽어 두 목록이 같은 시점의 서버 상태를 그린다.
   const [archive, setArchive] = useState<FeatureDeletion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -61,7 +60,6 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
     };
   }, [id, generation]);
 
-  /** 삭제·복구 뒤에는 서버를 다시 읽는다 — 화면이 들고 있는 값이 아니라 서버가 들고 있는 값이다. */
   const reload = () => {
     setDeleting(false);
     setReason('');
@@ -115,7 +113,6 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
     );
   }
 
-  // 남은 기능이 없고 보관소만 있는 상태 — 되돌릴 자리는 있어야 한다.
   if (features.length === 0) {
     return (
       <main className="screen">
@@ -276,7 +273,6 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
   );
 }
 
-/** 보관소 — 지운 feature 와 되돌릴 수 있는 기한. 기한이 지난 것은 남되 버튼이 닫힌다. */
 function Archive({
   archive,
   busy,
