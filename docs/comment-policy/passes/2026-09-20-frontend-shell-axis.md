@@ -253,3 +253,23 @@ for」 — `CredentialsSetup.tsx` 는 `#83` 이 `GrantRepoAccess.tsx` + `Registe
 **경합은 0이지만 잔여는 곧 늘어난다.** 열린 PR #64 는 in-scope 주석 파일에 신규 추가만 하므로
 지금은 경합이 아니지만, 머지되면 `tools/check-data-format-change.py`(298행 신규)가 **새 미판정
 파일로 잔여에 들어온다**. `tools/` 축을 다음에 집는다면 그 파일이 이미 들어와 있는지부터 잴 것.
+
+## 증분 재판정 ③ — 원장 10행에 #92 가 연 +7행 (2026-09-21 · `rct_20260921-0007`)
+
+`#92`(`51daa9c`, 슬라이스 6a)가 `api.ts` 에 편집 API 네 함수·타입 셋을(+5행), `App.tsx` 에 두 라우트를
+(+2행) 더하며 쓴 주석 7행을 판정해 **제거 5 · 유지 2**. 새 화면 둘(`RequestEdit.tsx`·`DecideDiff.tsx`)은
+새 파일이라 이 행이 아니라 [2026-09-21-doc-edit-axis.md](2026-09-21-doc-edit-axis.md) 의 새 행이다.
+
+| 파일 | 줄 | 판정 · 복원 경로 |
+|---|---|---|
+| `api.ts` | `/** 한 시나리오의 세 문장. 서버가 저장·제안·이력에서 모두 이 모양을 쓴다. */` (`type Sentences`) | 제거 — ① 필드 `given`·`when`·`then` · `backend/src/doc_edit.rs` `pub struct Sentences` 의 요약 1줄(정본, pub 요약) |
+| `api.ts` | `/** AC3.4 의 출처. 「바꾼 주체」가 읽는 값이다. */` (`EditProposal.source`) | 제거 — ① 이름 · 0009 `source` 문단 · `doc_edit.rs` 의 같은 문장도 함께 걷었다 — AC 꼬리표 |
+| `api.ts` | `/** 그 자리에 설 시나리오들. 한 건이면 고쳐 쓴 것이고, 여럿이면 사례가 늘어난 것이다. */` (`EditProposal.after`) | 제거 — ① `doc_edit.rs` `lines()` doc 이 이 구분의 정본(칸 단위 vs 시나리오 단위) |
+| `api.ts` | `/** 제안을 만든다. 문서는 승인 전까지 그대로다. */` (`proposeEdit`) | **유지** — export 함수의 JSDoc 요약 1줄(정책 유지 대상; 이 패스가 `requestDependencies` 의 「Records the request and re-queues the analysis.」를 남긴 것과 같은 모양). `doc_edit.rs` `propose()` 의 같은 문장은 private fn 이라 이쪽을 정본으로 걷었다 |
+| `api.ts` | `/** 승인이면 그 자리에 얹히고, 거부면 다음 제안이 피해야 할 것이 된다. */` (`decideEdit`) | **유지** — 같은 이유 |
+| `App.tsx` | 「`edit` 이 고칠 시나리오의 자리(0-based).」 (`AnalysisRoute.scenarioIndex` 의 JSDoc) | 제거 — ① 0009 「`scenario_index` 는 … 자리(0-based)」 정본 · 해시 정규식 `scenarios/(\d+)/edit` |
+| `App.tsx` | 「`proposal` 이 그리는 제안. 화면이 아니라 서버가 들고 있는 값이다.」 (`AnalysisRoute.proposalId` 의 JSDoc) | 제거 — ① `doc_edit.rs` `routes()` 의 「제안도 주소를 가진다 — 화면이 들고 있는 값이 아니라 서버가 들고 있는 값이라야 새로고침이 같은 제안을 다시 그린다」(정본) — 4벌 중 하나 |
+
+결과: 10행의 줄 수·지문은 #92 이전 값(81 / `af9fbb9d…`)으로 **돌아가지 않는다** — 유지 2행만큼
+**83 / `ec54e678…`** 이다(트리거 `51daa9c` 의 88 / `4346a888…` 에서 −5). `api.ts`·`App.tsx` 는 주석
+제거 후 부모와 바이트 동일(stripper md5 `2995df01` · `2fa2b7b0`), `npm run build` rc=0.

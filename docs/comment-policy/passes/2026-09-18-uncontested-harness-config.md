@@ -214,3 +214,22 @@ P1~P7 각각을 이미 한 줄씩 정의하고, 각 블록의 `ok(cond, 'P6', �
 본문 「판단이 갈려 남긴 것」의 **`Mode`의 stub/real 설명 2행**은 이 재판정으로 **정리됐다** —
 #60이 그 doc을 다시 쓰면서 충실도 경계(stub이 real과 갈리는 지점)는 `worker.rs`의 `provider_for`로
 옮겨 갔고, 여기 남은 것은 variant 이름의 재진술뿐이었다.
+
+## 증분 재판정 ② — `#92` 가 `config.rs` 에 더한 2행 (2026-09-21 · `rct_20260921-0007`)
+
+`#92`(`51daa9c`, 슬라이스 6a)가 `Doubles` 에 네 번째 경계 `pub llm: Mode` 를 더하며 그 필드에만
+쓴 doc 2행 「모델 호출 자체. 워커도 같은 이름의 변수를 자기 프로세스에서 읽는다 — 값이 아니라
+**이름**을 공유하는 것이고, 한쪽만 스텁인 배포가 가능하다」를 판정해 **전건 제거**했다.
+
+- 「모델 호출 자체」 — ① 필드 이름 `llm` · `from_env("FEATUREDOC_DOUBLE_LLM")`.
+- 「워커도 같은 이름의 변수를 자기 프로세스에서 읽는다 … 한쪽만 스텁인 배포가 가능하다」 — ①
+  바로 위 `Doubles` 의 doc(증분 재판정 ① 이 「경계별 선택 불변식」으로 **유지**한 그 문장): 「Selected
+  *per boundary* rather than by one process-wide switch, so nothing can turn on a double the
+  running process does not itself own — **the analysis worker holds its own set**」. 「값이 아니라
+  이름을 공유」는 `Mode::from_env` 의 doc 「a value read here can only ever reach the single
+  boundary its caller names」와 `bin/worker.rs` 가 같은 이름을 읽는 코드(①)가 말한다. 다른 세 필드
+  (`github_auth`·`github_app`·`llm_key`)에 필드 doc 이 없는 것도 같은 이유다.
+
+결과: 2행의 줄 수·지문이 #92 이전 값 **140 / `ddacce0b…`** 으로 되돌아왔다(부모 `19d58fa`
+재계산과 바이트 동일). `config.rs` 주석 제거 후 부모와 바이트 동일(stripper md5 `057df9b5`).
+새 파일 쪽 판정은 [2026-09-21-doc-edit-axis.md](2026-09-21-doc-edit-axis.md).

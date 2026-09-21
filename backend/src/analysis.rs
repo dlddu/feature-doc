@@ -343,10 +343,6 @@ async fn document(
     let mut content: serde_json::Value = serde_json::from_str(&row.content)
         .map_err(|_| AppError::BadRequest("stored document is unreadable".into()))?;
 
-    // 사람이 승인한 편집은 저장을 고치지 않고 읽는 자리에서 겹쳐진다 (AC3.1·AC3.4).
-    // 아래 재현성 판정이 `row.content_hash` 를 쓰는 것은 그래서 그대로다 — AC1.2 가
-    // 묻는 것은 「재분석이 같은 결과를 냈는가」이지 「사람이 그 뒤에 문장을
-    // 다듬었는가」가 아니다.
     doc_edit::overlay(&state, &id, &mut content).await?;
 
     // The most recent *earlier* analysis of the same repository and branch that
