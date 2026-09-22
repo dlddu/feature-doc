@@ -255,3 +255,27 @@ env 항목 자체는 그대로다. 새 파일 쪽 판정은 [2026-09-21-doc-edit
 결과: 5행의 줄 수·지문이 #107 이전 값 **190 / `632b0475…`** 으로 되돌아왔다(부모 `24f488d` 재계산과
 바이트 동일). 파일은 주석 제거 후 부모와 바이트 동일(stripper md5 `e39333f3`). 새 파일 쪽 판정은
 [2026-09-21-feature-add-axis.md](2026-09-21-feature-add-axis.md).
+
+## 증분 재판정 ④ — `#108` 이 `bin/worker.rs` 에 더한 7행 (2026-09-22 · `rct_20260922-0001`)
+
+사람 PR **#108**(AC4.9 출력 언어 설정)이 `backend/src/bin/worker.rs` 에 **7행**을 들여왔다. 판정 맥락은
+[2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md). **전건 제거 7 · 유지 0.**
+
+- **`Claim.llm_language` 필드 doc 2행** (「The output language snapshotted onto this analysis when it was
+  triggered. / Absent for an analysis triggered before the setting existed.」) — 앞 문장은 스냅숏 명제의 사본
+  (정본은 `analysis.rs::create` 의 복사 지점), 뒤 문장은 이 PR 이 일곱 자리에 적은 명제의 사본(정본은
+  `settings.rs::analysis_language`). 필드 이름 `llm_language` 와 `Option` 이 나머지를 복원한다(①).
+- **`language_for` doc 5행** (「Which language this job's prose is written in. Read from the job, not the user,
+  for the same reason as [`Self::provider_for`]: the stages of one analysis are claimed separately, across
+  approval gates, and must not end up half in one language and half in another because the setting moved
+  between them.」) —
+  - 첫 문장은 fn 이름·시그니처의 재진술(①).
+  - 「Read from the job, not the user」는 본문이 문자 그대로 `job.llm_language` 를 읽는다(①).
+  - 이어지는 이유절은 **바로 위 `provider_for` 의 doc**(「Shared by every LLM-backed stage so they cannot
+    disagree about it mid-job」)이 같은 패턴에 대해 이미 말하는 것을 다시 편 것이고, 불변식을 만드는 쪽의
+    정본은 `analysis.rs::create` 다. 「for the same reason as [`Self::provider_for`]」만 남기는 선택지는 정책이
+    막는다 — 링크를 위해서만 문장을 남기지 않는다.
+
+지문: **197행 `e3005ab0…` → 190행 `632b0475182bf04b9ec8c21f3b69c5b91172ecee41e417f7a58b98cdb15ba66d`** —
+**이 패스 직전 원장 값으로 바이트 그대로 복귀**했다(#108 이 이 행에 들여온 주석이 전건 제거로 판정됐고, 편집이
+다른 줄을 건드리지 않았다는 독립 증거).

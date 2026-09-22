@@ -1,9 +1,5 @@
 //! Per-user preferences that shape what the pipeline produces rather than who may
 //! run it. Today that is one value: the language LLM-written prose comes back in.
-//!
-//! The setting is read once, when an analysis is triggered, and copied onto that
-//! analysis (`analysis::create`). Changing it therefore steers the *next* analysis
-//! and never rewrites one already under way — see the worker's `language_for`.
 
 use axum::extract::State;
 use axum::routing::get;
@@ -23,7 +19,6 @@ pub fn routes() -> Router<AppState> {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsView {
-    /// `"ko"` or `"en"` — the codes [`Language::parse`] accepts.
     pub llm_language: String,
 }
 
@@ -44,7 +39,7 @@ pub async fn llm_language(db: &SqlitePool, user_id: &str) -> Result<Language, Ap
 /// call made *for* that analysis writes in, including the ones the API makes
 /// directly (edit proposals, manual feature drafts), so their prose matches the
 /// document it lands in. `None` for an analysis triggered before the setting
-/// existed: the caller then adds no instruction.
+/// existed.
 pub async fn analysis_language(
     db: &SqlitePool,
     analysis_id: &str,

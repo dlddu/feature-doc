@@ -118,8 +118,6 @@ struct AnalysisView {
     est_llm_calls: i64,
     est_cost_cents: i64,
     created_at: i64,
-    /// The language this run's LLM prose is written in, fixed when it was
-    /// triggered. `None` for a run triggered before the setting existed.
     llm_language: Option<String>,
     /// Pipeline progress as a fraction, so the Home card can read "step 2 of 5"
     /// without one request per row (AC1.5). The stages themselves belong to Analysis Progress —

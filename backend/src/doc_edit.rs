@@ -188,7 +188,6 @@ async fn propose(
         None => (llm::DEFAULT_PROVIDER, None),
     };
 
-    // 고친 문장은 문서의 나머지와 같은 언어여야 한다 — 사용자의 지금 설정이 아니라 분석의 언어.
     let language = crate::settings::analysis_language(&state.db, &id).await?;
 
     let answer = llm::ask(

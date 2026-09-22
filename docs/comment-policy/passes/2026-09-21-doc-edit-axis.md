@@ -267,3 +267,19 @@ reconciler task `rct_20260921-0007`(모델 `tbm_feature-doc-comment-redundancy`)
 결과: 17행의 줄 수·지문이 #107 이전 값 **56 / `b9e6778d…`** 으로 되돌아왔다(부모 `24f488d` 재계산과
 바이트 동일). `doc_edit.rs` 는 주석 제거 후 부모와 바이트 동일(stripper md5 `c9a1e102`). 새 파일 쪽 판정은
 [2026-09-21-feature-add-axis.md](2026-09-21-feature-add-axis.md).
+
+## 증분 재판정 ② — `#108` 이 `doc_edit.rs` 에 더한 1행 (2026-09-22 · `rct_20260922-0001`)
+
+사람 PR **#108**(AC4.9 출력 언어 설정)이 `backend/src/doc_edit.rs::propose` 에 1행을 들여왔다:
+`// 고친 문장은 문서의 나머지와 같은 언어여야 한다 — 사용자의 지금 설정이 아니라 분석의 언어.`
+(바로 아래 `let language = crate::settings::analysis_language(&state.db, &id).await?;`)
+
+**제거 1.** 「사용자의 지금 설정이 아니라 분석의 언어」는 호출하는 함수 이름 `analysis_language` 가 그대로
+말하고(①), 「문서의 나머지와 같은 언어여야 한다」는 그 함수의 doc 이 **이 축의 정본**으로 적는다 — 「what every
+LLM call made *for* that analysis writes in, including the ones the API makes directly (edit proposals, manual
+feature drafts), so their prose matches the document it lands in」. 같은 자리가 `feature_add::draft` 에도 한 벌
+있었고 같은 판정으로 걷었다(원장 18행). 판정 맥락은
+[2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md).
+
+지문: **57행 `8f9cc1d6…` → 56행 `b9e6778dd2e3db73903e12298c68916799605427c5d530a8ffca4ee471425054`** —
+**이 패스 직전 원장 값으로 바이트 그대로 복귀**했다.

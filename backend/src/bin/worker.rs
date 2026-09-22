@@ -49,8 +49,6 @@ struct Claim {
     installation_token: Option<String>,
     llm_provider: Option<String>,
     llm_api_key: Option<String>,
-    /// The output language snapshotted onto this analysis when it was triggered.
-    /// Absent for an analysis triggered before the setting existed.
     #[serde(default)]
     llm_language: Option<String>,
 }
@@ -601,11 +599,6 @@ impl Worker {
         }
     }
 
-    /// Which language this job's prose is written in. Read from the job, not the
-    /// user, for the same reason as [`Self::provider_for`]: the stages of one
-    /// analysis are claimed separately, across approval gates, and must not end up
-    /// half in one language and half in another because the setting moved between
-    /// them.
     fn language_for(&self, job: &Claim) -> Result<Option<llm::Language>, String> {
         match job.llm_language.as_deref() {
             None => Ok(None),

@@ -51,8 +51,7 @@ const EFFORT: &str = "medium";
 /// it is an identifier, not part of the prompt.
 const SCHEMA_NAME: &str = "analysis_document";
 
-/// The language the human-readable text of an answer is written in — the user's
-/// own setting, snapshotted onto each analysis when it is triggered.
+/// The language the human-readable text of an answer is written in.
 ///
 /// Only prose moves with it. Paths, symbols, glob patterns, enum values and JSON
 /// keys are what later stages and the screens match on, so the instruction pins
@@ -79,8 +78,7 @@ impl Language {
         }
     }
 
-    /// Appended to every stage's system turn. One sentence per concern so a test can
-    /// assert each without pinning the whole wording.
+    /// One sentence per concern so a test can assert each without pinning the wording.
     fn instruction(self) -> &'static str {
         match self {
             Language::Ko => "\
@@ -97,16 +95,13 @@ they appear in the input or the schema; never translate them.",
     }
 }
 
-/// What a user who never chose gets. Matches the column default in the schema,
-/// which is the value an existing user row reads as.
+/// What a user who never chose gets.
 pub const DEFAULT_LANGUAGE: Language = Language::Ko;
 
 /// One model call: what to ask, the JSON shape the answer must take, and the
 /// answer stub mode hands back instead of calling anyone.
 pub struct Ask<'a> {
     pub system: &'a str,
-    /// `None` adds no instruction — an analysis triggered before the setting
-    /// existed keeps the prompt it was started with.
     pub language: Option<Language>,
     pub user: String,
     /// JSON Schema the response is constrained to. Sent to the provider verbatim,
@@ -119,7 +114,6 @@ pub struct Ask<'a> {
 }
 
 impl Ask<'_> {
-    /// The system turn as sent: the stage's own instruction, then the language line.
     fn system_turn(&self) -> std::borrow::Cow<'_, str> {
         match self.language {
             None => std::borrow::Cow::Borrowed(self.system),
@@ -270,8 +264,6 @@ struct AnthropicRequest<'a> {
     output_config: Value,
 }
 
-/// The request body, built apart from the call for the same reason as
-/// [`openai_body`].
 fn anthropic_body<'a>(ask: &'a Ask<'_>) -> AnthropicRequest<'a> {
     AnthropicRequest {
         model: ANTHROPIC_MODEL,
@@ -753,8 +745,6 @@ mod tests {
         }
     }
 
-    /// Both providers carry the language in the system turn, after the stage's own
-    /// instruction — and an analysis with no language gets the stage prompt untouched.
     #[test]
     fn the_language_line_rides_the_system_turn_on_both_providers() {
         let plain = an_ask();

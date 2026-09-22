@@ -37,7 +37,6 @@ function activeProviderOf(keys: LlmKey[]): ProviderId | null {
   return known ? known.id : null;
 }
 
-// Order is display order; labels are each language's own name for itself.
 const LANGUAGES: { id: LlmLanguage; label: string }[] = [
   { id: 'ko', label: '한국어' },
   { id: 'en', label: 'English' },
