@@ -275,6 +275,9 @@ async fn inherited_from(state: &AppState, previous: &str) -> Result<Vec<Inherite
         });
     }
 
+    // 앞선 분석에서 **지금 서 있는** 편집만 이어받는다 — 거기서 복원으로 잘려 나간
+    // 편집이 다음 재분석에서 되살아나면 복원이 한 분석짜리 거짓말이 된다(0014).
+    let standing = crate::doc_history::standing_edits(state, previous).await?;
     let edits: Vec<(String, String, i64, String, String, String, String, Option<i64>)> = sqlx::query_as(
         "SELECT id, feature_key, scenario_index, request, source, before_json, after_json, \
                 decided_at \
@@ -286,6 +289,9 @@ async fn inherited_from(state: &AppState, previous: &str) -> Result<Vec<Inherite
     .fetch_all(&state.db)
     .await?;
     for (id, key, index, request, source, before, after, decided_at) in edits {
+        if !standing.contains(&id) {
+            continue;
+        }
         items.push(Inherited {
             edit_id: id,
             feature_key: key,
@@ -316,11 +322,14 @@ async fn insert_edit(
     decided_at: Option<i64>,
 ) -> Result<String, AppError> {
     let row_id = uuid::Uuid::new_v4().to_string();
+    // 이 행이 **어느 복원 뒤에** 서는지(0014). 이월로 새 분석에 심는 경우 그 분석에는
+    // 아직 복원이 없으므로 NULL 이다.
+    let after_restore = crate::doc_history::current_restore(state, analysis_id, feature_key).await?;
     sqlx::query(
         "INSERT INTO feature_doc_edits \
            (id, analysis_id, feature_key, scenario_index, request, before_json, after_json, \
-            status, source, carried_from, created_at, decided_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            status, source, carried_from, created_at, decided_at, after_restore) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&row_id)
     .bind(analysis_id)
@@ -334,6 +343,7 @@ async fn insert_edit(
     .bind(carried_from)
     .bind(created_at)
     .bind(decided_at)
+    .bind(after_restore.as_deref())
     .execute(&state.db)
     .await?;
     Ok(row_id)

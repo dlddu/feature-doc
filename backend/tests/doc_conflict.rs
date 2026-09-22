@@ -223,6 +223,37 @@ async fn an_edit_whose_sentence_survived_the_reanalysis_is_carried_over() {
 }
 
 #[tokio::test]
+async fn an_edit_the_reader_restored_away_is_not_carried_into_the_next_analysis() {
+    let (state, _path) = stub_state().await;
+    let s = login_installed(&state, 9608, "restorer").await;
+    let first = analysis_with_document(&state, &s, FIRST_THEN).await;
+    let mine = edit_first_scenario(&state, &s, &first).await;
+    assert_eq!(thens(&state, &s, &first).await[0], mine);
+
+    // 읽던 사람이 그 편집 이전으로 되돌린다 — 편집 행은 이력에 남지만 문서에는 서지 않는다.
+    let (status, _) = post(
+        &state,
+        &s,
+        &format!(
+            "/api/analyses/{first}/features/{}/history/auto/restore",
+            FEATURE.replace('/', "%2F")
+        ),
+        json!({}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(thens(&state, &s, &first).await[0], FIRST_THEN);
+
+    let second = analysis_with_document(&state, &s, FIRST_THEN).await;
+    assert_eq!(
+        thens(&state, &s, &second).await[0],
+        FIRST_THEN,
+        "되돌린 편집이 다음 재분석에서 되살아났다 — 복원이 한 분석짜리 거짓말이 된다"
+    );
+    assert_eq!(conflicts(&state, &s, &second).await["open"], 0);
+}
+
+#[tokio::test]
 async fn a_rewritten_sentence_opens_a_conflict_and_overwrites_nothing() {
     let (state, _path) = stub_state().await;
     let s = login_installed(&state, 9602, "collider").await;

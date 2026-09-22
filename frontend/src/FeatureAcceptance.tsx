@@ -31,9 +31,10 @@ type Props = {
   id: string;
   onBack: () => void;
   onOpenCandidates: () => void;
+  onOpenHistory: (featureKey: string) => void;
 };
 
-export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
+export function FeatureAcceptance({ id, onBack, onOpenCandidates, onOpenHistory }: Props) {
   const [features, setFeatures] = useState<Doc[] | null>(null);
   // 문서와 함께 읽어 두 목록이 같은 시점의 서버 상태를 그린다.
   const [archive, setArchive] = useState<FeatureDeletion[]>([]);
@@ -204,6 +205,16 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates }: Props) {
           data-testid="delete-feature"
         >
           이 기능 삭제하기
+        </button>
+        {/* 여정 `JRN-restore-history` 의 `STP-open-history` 가 요구하는 진입점 — 이력이
+            검수 화면 깊숙이 있으면 그 여정 자체가 시작되지 않는다. */}
+        <button
+          className="btn btn-ghost block"
+          type="button"
+          onClick={() => onOpenHistory(current.key)}
+          data-testid="open-history"
+        >
+          이 기능이 어떻게 변해왔는지
         </button>
       </div>
 

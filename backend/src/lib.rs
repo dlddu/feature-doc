@@ -14,6 +14,7 @@ pub mod diff;
 pub mod discovery_strategy;
 pub mod doc_conflict;
 pub mod doc_edit;
+pub mod doc_history;
 pub mod error;
 pub mod feature_add;
 pub mod feature_delete;
@@ -63,6 +64,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(analysis::routes())
         .merge(doc_edit::routes())
         .merge(doc_conflict::routes())
+        .merge(doc_history::routes())
         .merge(feature_add::routes())
         .merge(feature_delete::routes())
         .merge(worker_api::routes())
