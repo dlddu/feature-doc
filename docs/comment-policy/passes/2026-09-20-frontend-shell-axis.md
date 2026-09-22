@@ -322,6 +322,26 @@ for」 — `CredentialsSetup.tsx` 는 `#83` 이 `GrantRepoAccess.tsx` + `Registe
 | `api.ts` `Analysis.llmLanguage` 의 `/** Fixed when the run was triggered; `null` for a run that predates the setting. */` | **제거 1** | 두 문장 모두 사본 — 스냅숏 명제(정본 `analysis.rs::create`)와 일곱 벌 명제(정본 `settings.rs::analysis_language`) |
 | `RegisterLlmKey.tsx` `// Order is display order; labels are each language's own name for itself.` | **제거 1** | 선언 재진술(①). 배열의 순서가 곧 표시 순서이고(바로 아래 `.map`), 라벨이 각 언어의 자기 이름이라는 것은 리터럴 `'한국어'` · `'English'` 가 말한다. 바로 위에 남아 있는 provider 쪽 주석(「Screen-only: this order and its first entry decide what a user who has never chosen starts on …」)은 *기본값을 정한다*는 다른 명제라 영향 없다 |
 | `RegisterLlmKey.tsx` `// Saved on tap: the choice is independent of the key form, so it must not wait for — or be lost with — "저장하고 계속".` 2행 | **유지 2** | 선택이 키 등록 폼과 **독립**이라는 것은 `selectLanguage` 본문에서 복원되지 않는다(폼 제출 경로가 다른 함수다). 「저장하고 계속」과 함께 잃으면 안 된다는 금지도 코드가 말하지 않는다 |
-| `RegisterLlmKey.tsx` `// `null` until the stored value arrives, so no button reads as chosen before then.` 1행 | **유지 1** | `useState<LlmLanguage \| null>(null)` 은 초기값만 말하고, *왜* `null` 인지(도착 전에 어느 버튼도 선택으로 읽히면 안 된다)는 240행 아래의 `disabled` · `aria-pressed` 와 묶어야 보인다. 정책의 「애매하면 남긴다」 |
+| `RegisterLlmKey.tsx` `// `null` until the stored value arrives, so no option reads as chosen before then.` 1행 | **유지 1** | `useState<LlmLanguage \| null>(null)` 은 초기값만 말하고, *왜* `null` 인지(도착 전에 어느 선택지도 선택으로 읽히면 안 된다)는 `disabled={language === null}` 과 `checked={l.id === language}`(`:289-294` 의 native radio) 를 묶어야 보인다. 정책의 「애매하면 남긴다」 |
 
 지문: **91행 `e4a3bdeb…` → 88행 `fd84aea84c1e740650d84f0eb07f00721c5b61153c59a7747d88bf607585b2e9`**.
+
+## 증분 재판정 ⑦ — 원장 10행에 #119 가 고쳐 쓴 1행 (2026-09-22 · `rct_20260922-0004`)
+
+자매 슬라이스 **#119**(목업↔구현 수렴 — 출력 언어 선택을 실제 폼 요소로, `rct_20260922-0003` /
+`tbm_feature-doc-mockup-render`)가 `<button aria-pressed>` 2개를 `<label><input type="radio" name="out-lang">`
+2개로 바꾸면서, 바로 위 **유지 1행**의 낱말 하나를 따라 고쳤다.
+
+> `// `null` until the stored value arrives, so no ~~button~~ **option** reads as chosen before then.`
+
+**전건 유지 · 순 제거 0 · 주석 줄 수 88행 불변.** 주석의 **추가·삭제는 0행**이고 제자리 수정 1행뿐이라
+행 열의 합(2,350)과 「전역 − 잔여」 산술은 움직이지 않는다 — 이 절이 존재하는 이유가 그것이다.
+판정은 ⑥ 의 결론을 그대로 유지한다: 초기값이 `null` 이라는 사실은 `useState<LlmLanguage | null>(null)`
+이 말하지만 *왜* `null` 인지는 말하지 않고, 그 이유는 `disabled={language === null}` 과
+`checked={l.id === language}` 를 묶어야 보인다(복원 경로 ①이 닿지 않는다). 정책의 「애매하면 남긴다」.
+
+`aria-pressed` 는 이 레포의 판정 대상 주석에서 사라졌고 `tools/check-journey-prototype.js:222` 의
+블록 주석에만 **현존**한다(그 인용은 낡지 않았다 — [2026-09-18-uncontested-harness-config.md](2026-09-18-uncontested-harness-config.md)).
+
+지문: **88행 `fd84aea84c1e740650d84f0eb07f00721c5b61153c59a7747d88bf607585b2e9` → 88행
+`7e6915aac99e80dc5c903a0a962066d446091e80602ff26ee65d21f84cd6bd60`**.
