@@ -343,13 +343,13 @@ async fn read_diff(state: &AppState, session: &str, id: &str) -> Value {
 }
 
 fn first_revision() -> Vec<String> {
-    featuredoc::repo_scan::stub_scan_at("payments-api", "main", false)
+    featuredoc::repo_scan::stub_scan_at("payments-api", "main", featuredoc::repo_scan::Revision::First)
         .unwrap()
         .paths
 }
 
 fn second_revision() -> Vec<String> {
-    featuredoc::repo_scan::stub_scan_at("payments-api", "main", true)
+    featuredoc::repo_scan::stub_scan_at("payments-api", "main", featuredoc::repo_scan::Revision::Second)
         .unwrap()
         .paths
 }

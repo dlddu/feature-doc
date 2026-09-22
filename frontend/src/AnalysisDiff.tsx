@@ -5,8 +5,14 @@
 // sent.
 
 import { useEffect, useState } from 'react';
-import { getAnalysisDiff } from './api';
-import type { AnalysisDiff as Diff, DependencyLine, FeatureDiff, ScenarioLine } from './api';
+import { getAnalysisDiff, listConflicts } from './api';
+import type {
+  AnalysisDiff as Diff,
+  DependencyLine,
+  DocConflict,
+  FeatureDiff,
+  ScenarioLine,
+} from './api';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -27,17 +33,51 @@ type Props = {
   onBack: () => void;
   /** 「달라진 곳 보기」 → that feature's acceptance document. */
   onOpenFeature: (featureKey: string) => void;
+  /** 「부딪힌 곳 정리하기」 → the first conflict still open. */
+  onOpenConflict: (conflictId: string) => void;
 };
 
-export function AnalysisDiff({ id, onBack, onOpenFeature }: Props) {
+/**
+ * Whether the reader has opened at least one changed feature of this run — the
+ * mockup lets nobody past this screen before reading one place. Opening navigates
+ * away, so the mark outlives the screen but not the tab.
+ */
+function openedKey(id: string): string {
+  return OPENED_PREFIX + id;
+}
+
+const OPENED_PREFIX = 'diff-opened-';
+
+function hasOpened(id: string): boolean {
+  try {
+    return window.sessionStorage.getItem(openedKey(id)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markOpened(id: string): void {
+  try {
+    window.sessionStorage.setItem(openedKey(id), '1');
+  } catch {
+  }
+}
+
+export function AnalysisDiff({ id, onBack, onOpenFeature, onOpenConflict }: Props) {
   const [diff, setDiff] = useState<Diff | null>(null);
+  const [conflicts, setConflicts] = useState<DocConflict[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>(ALL);
+  const [opened, setOpened] = useState<boolean>(() => hasOpened(id));
 
   useEffect(() => {
     let active = true;
-    getAnalysisDiff(id)
-      .then((next) => active && setDiff(next))
+    Promise.all([getAnalysisDiff(id), listConflicts(id)])
+      .then(([nextDiff, nextConflicts]) => {
+        if (!active) return;
+        setDiff(nextDiff);
+        setConflicts(nextConflicts.conflicts.filter((c) => c.status === 'open'));
+      })
       .catch((e: unknown) => active && setError(messageOf(e)));
     return () => {
       active = false;
@@ -101,6 +141,12 @@ export function AnalysisDiff({ id, onBack, onOpenFeature }: Props) {
         <div className="notice info on" style={{ marginTop: 14 }} data-testid="diff-first-run">
           {FIRST_RUN}
         </div>
+      ) : conflicts.length > 0 ? (
+        <div className="notice warn on" style={{ marginTop: 14 }} data-testid="diff-conflict-banner">
+          <span>내가 손봤던 문장과 자동 결과가 부딪히는 기능이 </span>
+          <strong data-testid="diff-conflict-count">{conflictFeatures(conflicts).length}</strong>
+          <span>건 있어요. 덮어쓰지 않고 그대로 두었습니다.</span>
+        </div>
       ) : (
         <div className="notice ok on" style={{ marginTop: 14 }} data-testid="diff-no-conflict">
           이번에는 부딪히는 편집이 없었어요. 달라진 곳만 확인하면 여기서 마쳐도 됩니다.
@@ -118,14 +164,28 @@ export function AnalysisDiff({ id, onBack, onOpenFeature }: Props) {
           <Card
             key={row.feature.key}
             feature={row.feature}
+            conflicted={conflicts.some((c) => c.featureKey === row.feature.key)}
             scenarioLines={row.scenarioLines}
             dependencyLines={row.dependencyLines}
-            onOpen={() => onOpenFeature(row.feature.key)}
+            onOpen={() => {
+              markOpened(id);
+              setOpened(true);
+              onOpenFeature(row.feature.key);
+            }}
           />
         ))}
       </div>
 
       <div className="stack" style={{ marginTop: 22 }}>
+        <button
+          className="btn btn-primary block"
+          type="button"
+          onClick={() => onOpenConflict(conflicts[0].id)}
+          disabled={conflicts.length === 0 || !opened}
+          data-testid="diff-to-conflict"
+        >
+          부딪힌 곳 정리하기
+        </button>
         <button
           className="btn btn-ghost block"
           type="button"
@@ -136,31 +196,53 @@ export function AnalysisDiff({ id, onBack, onOpenFeature }: Props) {
         </button>
       </div>
 
+      <p className="legend" style={{ marginTop: 20 }}>
+        <span className="mk">↳</span> 한 곳이라도 열어 봐야 다음으로 넘어갈 수 있어요
+      </p>
     </main>
   );
 }
 
+/** 배너가 세는 것은 충돌 행이 아니라 **기능**이다 — 한 기능에 두 자리가 부딪혀도 한 건. */
+function conflictFeatures(conflicts: DocConflict[]): string[] {
+  return Array.from(new Set(conflicts.map((c) => c.featureKey)));
+}
+
 function Card({
   feature,
+  conflicted,
   scenarioLines,
   dependencyLines,
   onOpen,
 }: {
   feature: FeatureDiff;
+  conflicted: boolean;
   scenarioLines: ScenarioLine[];
   dependencyLines: DependencyLine[];
   onOpen: () => void;
 }) {
   return (
-    <div className="dfeat" data-testid="diff-feature" data-feat={feature.key}>
+    <div
+      className={conflicted ? 'dfeat conflict' : 'dfeat'}
+      data-testid="diff-feature"
+      data-feat={feature.key}
+      data-conflict={conflicted ? '1' : '0'}
+    >
       <div className="dhead">
         <span className="dname" data-testid="diff-feature-name">
           {feature.name}
         </span>
-        <span className="tag info">
-          <span className="dot" />
-          갱신됨
-        </span>
+        {conflicted ? (
+          <span className="tag warn" data-testid="diff-feature-tag">
+            <span className="dot" />
+            확인 필요
+          </span>
+        ) : (
+          <span className="tag info" data-testid="diff-feature-tag">
+            <span className="dot" />
+            갱신됨
+          </span>
+        )}
       </div>
       <span className="dwhere">
         <span data-testid="diff-feature-where">{feature.location}</span>

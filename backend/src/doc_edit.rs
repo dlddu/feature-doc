@@ -25,7 +25,7 @@ pub const SOURCE_USER_LLM: &str = "user_llm";
 
 /// 프롬프트가 무한히 길어지지 않게 하는 것이 목적이고, 최근 것부터 담는다 — 사람이
 /// 방금 거부한 방향이 다음 제안에서 가장 먼저 피해야 할 방향이다.
-const MAX_AVOIDED: usize = 5;
+pub(crate) const MAX_AVOIDED: usize = 5;
 
 const SYSTEM: &str = "\
 You revise one acceptance scenario of an end-user feature, following a single
@@ -68,7 +68,7 @@ pub struct Sentences {
 }
 
 impl Sentences {
-    fn from_value(value: &Value) -> Option<Self> {
+    pub(crate) fn from_value(value: &Value) -> Option<Self> {
         Some(Self {
             given: value.get("given")?.as_str()?.to_string(),
             when: value.get("when")?.as_str()?.to_string(),
@@ -395,7 +395,7 @@ pub async fn overlay(
     Ok(())
 }
 
-async fn rejections(
+pub(crate) async fn rejections(
     state: &AppState,
     analysis_id: &str,
     feature_key: &str,
@@ -422,7 +422,7 @@ async fn rejections(
         .collect())
 }
 
-fn avoid_list(rejected: &[(String, String)]) -> Vec<String> {
+pub(crate) fn avoid_list(rejected: &[(String, String)]) -> Vec<String> {
     rejected
         .iter()
         .take(MAX_AVOIDED)
@@ -430,7 +430,7 @@ fn avoid_list(rejected: &[(String, String)]) -> Vec<String> {
         .collect()
 }
 
-async fn document_of(state: &AppState, analysis_id: &str) -> Result<Value, AppError> {
+pub(crate) async fn document_of(state: &AppState, analysis_id: &str) -> Result<Value, AppError> {
     let row: Option<(String,)> = sqlx::query_as(
         "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",
     )
@@ -449,7 +449,7 @@ async fn document_of(state: &AppState, analysis_id: &str) -> Result<Value, AppEr
     Ok(doc)
 }
 
-fn scenarios_of(doc: &Value, key: &str) -> Result<Vec<Sentences>, AppError> {
+pub(crate) fn scenarios_of(doc: &Value, key: &str) -> Result<Vec<Sentences>, AppError> {
     let feature = doc
         .get("features")
         .and_then(Value::as_array)
@@ -469,11 +469,11 @@ fn scenarios_of(doc: &Value, key: &str) -> Result<Vec<Sentences>, AppError> {
         .collect())
 }
 
-fn sentences_from_json(raw: &str) -> Result<Sentences, AppError> {
+pub(crate) fn sentences_from_json(raw: &str) -> Result<Sentences, AppError> {
     serde_json::from_str(raw).map_err(|_| AppError::internal("stored edit is unreadable"))
 }
 
-fn scenarios_from_json(raw: &str) -> Result<Vec<Sentences>, AppError> {
+pub(crate) fn scenarios_from_json(raw: &str) -> Result<Vec<Sentences>, AppError> {
     serde_json::from_str(raw).map_err(|_| AppError::internal("stored edit is unreadable"))
 }
 
@@ -508,7 +508,7 @@ fn view(
 /// 어떻게 바뀌었는지가 사람이 보고 싶은 것이다. 두 건 이상이면 **시나리오 단위**로
 /// 견준다 — 자리 하나가 여럿이 된 것이라 칸을 짝지을 상대가 없고, 그때 사람이 보는
 /// 것은 「무엇이 늘었는가」다(`diff.rs` 가 재분석 diff 에서 고른 축과 같다).
-fn lines(before: &Sentences, after: &[Sentences]) -> (Vec<String>, Vec<String>) {
+pub(crate) fn lines(before: &Sentences, after: &[Sentences]) -> (Vec<String>, Vec<String>) {
     let mut removed = Vec::new();
     let mut added = Vec::new();
     if let [only] = after {
@@ -536,7 +536,7 @@ fn lines(before: &Sentences, after: &[Sentences]) -> (Vec<String>, Vec<String>) 
     (removed, added)
 }
 
-fn schema() -> Value {
+pub(crate) fn schema() -> Value {
     json!({
         "type": "object",
         "additionalProperties": false,
@@ -559,7 +559,7 @@ fn schema() -> Value {
     })
 }
 
-fn proposed(answer: &Value) -> Option<Vec<Sentences>> {
+pub(crate) fn proposed(answer: &Value) -> Option<Vec<Sentences>> {
     let list: Vec<Sentences> = answer
         .get("scenarios")?
         .as_array()?

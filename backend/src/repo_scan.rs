@@ -71,12 +71,43 @@ pub fn stub_scan(name: &str, branch: &str) -> Result<ScanResult, String> {
     stub_scan_at(name, branch, revision_from_env())
 }
 
+/// Which step of the stub tree's history a scan sees.
+///
+/// Each revision only **adds** paths on top of the one before it — removing or
+/// renaming a path would move the feature keys built on it, and «the same feature's
+/// representation was updated» could no longer be observed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Revision {
+    /// The tree every first analysis sees.
+    First,
+    /// One more source file; the acceptance sentences stay as they were.
+    Second,
+    /// One more file again, and the logic pass reads its first scenario differently
+    /// (`acceptance::stub_logic`) — a code change that rewrites a sentence a person
+    /// may already have edited.
+    Third,
+}
+
+impl Revision {
+    /// Paths this revision adds on top of the previous one.
+    fn added(self) -> &'static [&'static str] {
+        match self {
+            Revision::First => &[],
+            Revision::Second => &["src/billing/refund.rs"],
+            Revision::Third => &["src/billing/refund.rs", REWRITE_MARKER],
+        }
+    }
+}
+
+/// The path whose presence makes the acceptance logic pass rewrite a sentence.
+pub const REWRITE_MARKER: &str = "src/billing/refund_policy.rs";
+
 /// [`stub_scan`] with the revision decided by the caller.
 ///
-/// The split exists so the property that matters — *the second revision only adds*
+/// The split exists so the property that matters — *a later revision only adds*
 /// — is testable without mutating process-wide environment state, which other
 /// tests in the same binary would race against.
-pub fn stub_scan_at(name: &str, branch: &str, revised: bool) -> Result<ScanResult, String> {
+pub fn stub_scan_at(name: &str, branch: &str, revision: Revision) -> Result<ScanResult, String> {
     if branch != STUB_BRANCH {
         return Err("github tree rejected (404)".to_string());
     }
@@ -88,14 +119,15 @@ pub fn stub_scan_at(name: &str, branch: &str, revised: bool) -> Result<ScanResul
     };
     let files = (size_kb / 3).max(1);
     let mut paths = stub_paths(name, files);
-    if !revised {
+    if revision == Revision::First {
         return Ok(ScanResult {
             files,
             bytes: size_kb * 1024,
             paths,
         });
     }
-    let added: Vec<String> = REVISION
+    let added: Vec<String> = revision
+        .added()
         .iter()
         .map(|p| format!("{name}/{p}"))
         .filter(|p| !paths.contains(p))
@@ -110,21 +142,18 @@ pub fn stub_scan_at(name: &str, branch: &str, revised: bool) -> Result<ScanResul
     })
 }
 
-/// 두 번째 리비전이 들여오는 경로.
-///
-/// **더하기만** 한다 — 기존 경로를 지우거나 이름을 바꾸면 그 위에 세워진 feature 키가
-/// 함께 움직여, 「같은 feature 의 표현이 갱신됐다」를 관측할 수 없게 된다.
-const REVISION: [&str; 1] = ["src/billing/refund.rs"];
-
 /// 재분석이 한 걸음 나아간 트리를 보게 하는 결정적 트리거.
 ///
 /// 실 모드에서는 시간이 지나면 같은 브랜치의 트리가 달라지지만, 이름에서만 파생되는
 /// stub 트리는 시간을 모른다 — `FEATUREDOC_STUB_LLM_FAIL` 이 LLM 더블 안에서 실패를
-/// 재현하는 것과 같은 충실도 확장이다. 값은 존재 여부만 읽는다.
-fn revision_from_env() -> bool {
-    std::env::var("FEATUREDOC_STUB_REPO_REVISION")
-        .map(|value| !value.trim().is_empty())
-        .unwrap_or(false)
+/// 재현하는 것과 같은 충실도 확장이다. 비어 있지 않은 값은 두 번째 리비전이고, `3` 만
+/// 세 번째다 — 값을 세지 않던 시절의 spec 이 넣던 `2` 가 그대로 두 번째로 읽힌다.
+fn revision_from_env() -> Revision {
+    match std::env::var("FEATUREDOC_STUB_REPO_REVISION") {
+        Ok(value) if value.trim() == "3" => Revision::Third,
+        Ok(value) if !value.trim().is_empty() => Revision::Second,
+        _ => Revision::First,
+    }
 }
 
 /// A deterministic stand-in tree for the stub repositories.
@@ -274,19 +303,32 @@ mod tests {
 
     #[test]
     fn the_second_revision_only_adds_paths() {
-        let first = stub_scan_at("payments-api", "main", false).unwrap();
-        let second = stub_scan_at("payments-api", "main", true).unwrap();
+        let first = stub_scan_at("payments-api", "main", Revision::First).unwrap();
+        let second = stub_scan_at("payments-api", "main", Revision::Second).unwrap();
 
         assert_eq!(
             second.paths[..first.paths.len()],
             first.paths[..],
             "앞선 리비전의 경로가 그 순서 그대로 남아 있어야 한다"
         );
-        assert_eq!(second.paths.len(), first.paths.len() + REVISION.len());
+        assert_eq!(second.paths.len(), first.paths.len() + 1);
         assert!(second
             .paths
             .contains(&"payments-api/src/billing/refund.rs".to_string()));
         assert!(second.files > first.files && second.bytes > first.bytes);
+    }
+
+    #[test]
+    fn the_third_revision_adds_on_top_of_the_second() {
+        let second = stub_scan_at("payments-api", "main", Revision::Second).unwrap();
+        let third = stub_scan_at("payments-api", "main", Revision::Third).unwrap();
+
+        assert_eq!(third.paths[..second.paths.len()], second.paths[..]);
+        assert_eq!(third.paths.len(), second.paths.len() + 1);
+        assert!(third
+            .paths
+            .contains(&format!("payments-api/{REWRITE_MARKER}")));
+        assert!(!second.paths.iter().any(|p| p.ends_with(REWRITE_MARKER)));
     }
 
     /// 리비전을 켜지 않은 호출은 바이트 단위로 예전과 같다 — 다른 spec 들의
@@ -294,7 +336,7 @@ mod tests {
     #[test]
     fn an_unrevised_scan_is_unchanged() {
         assert_eq!(
-            stub_scan_at("payments-api", "main", false).unwrap(),
+            stub_scan_at("payments-api", "main", Revision::First).unwrap(),
             stub_scan("payments-api", "main").unwrap()
         );
     }
@@ -302,7 +344,7 @@ mod tests {
     #[test]
     fn a_revised_scan_still_rejects_an_unknown_branch() {
         assert_eq!(
-            stub_scan_at("payments-api", "no-such-branch", true),
+            stub_scan_at("payments-api", "no-such-branch", Revision::Third),
             Err("github tree rejected (404)".to_string())
         );
     }

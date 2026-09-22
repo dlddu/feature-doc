@@ -1245,19 +1245,19 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
     <div class="screen">
       <header class="appbar">
         <button class="icon-btn" data-goto="STP-scan-diff" aria-label="back">‹</button>
-        <span class="appbar-title" id="conflict-feat">재고 동기화</span>
+        <span class="appbar-title" id="conflict-feat"><span data-sample>재고 동기화</span></span>
         <button class="icon-btn ghost" aria-hidden="true"></button>
       </header>
 
       <div class="card" style="margin-top:16px">
         <span class="caps">부딪힌 문장</span>
         <div class="side mine" style="margin-top:10px">
-          <span class="sname">내가 고친 것 · 2026-08-24</span>
-          <span class="stext">동기화 주기는 10분이며, 품절 임박 상품은 <strong>매장 재고까지 함께</strong> 맞춘다.</span>
+          <span class="sname">내가 고친 것 · <span data-sample>2026-08-24</span></span>
+          <span class="stext"><span data-sample>동기화 주기는 10분이며, 품절 임박 상품은</span> <strong data-sample>매장 재고까지 함께</strong> <span data-sample>맞춘다.</span></span>
         </div>
         <div class="side" style="margin-top:10px">
           <span class="sname">이번 자동 결과</span>
-          <span class="stext">품절 임박 임계값을 넘으면 동기화 주기를 10분에서 <strong>2분</strong>으로 줄인다.</span>
+          <span class="stext"><span data-sample>품절 임박 임계값을 넘으면 동기화 주기를 10분에서</span> <strong data-sample>2분</strong><span data-sample>으로 줄인다.</span></span>
         </div>
       </div>
 
@@ -1283,14 +1283,14 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
       </label>
 
       <div id="keep-preview" class="notice ok" style="margin-top:10px">
-        보존할 문단: <strong>매장 재고까지 함께 맞춘다</strong>
+        보존할 문단: <strong data-sample>매장 재고까지 함께 맞춘다</strong>
       </div>
 
       <div id="merge-panel" class="card" style="display:none;margin-top:14px">
         <span class="caps">합친 문장 제안</span>
         <div class="code" style="margin-top:10px">
-          <div class="ln"><span class="n">1</span><span class="del">− 동기화 주기는 10분이며, 품절 임박 상품은 매장 재고까지 함께 맞춘다.</span></div>
-          <div class="ln"><span class="n">2</span><span class="add">+ 품절 임박 임계값을 넘으면 주기를 2분으로 줄이고, 그때도 매장 재고까지 함께 맞춘다.</span></div>
+          <div class="ln"><span class="n">1</span><span class="del" data-sample>− 동기화 주기는 10분이며, 품절 임박 상품은 매장 재고까지 함께 맞춘다.</span></div>
+          <div class="ln"><span class="n">2</span><span class="add" data-sample>+ 품절 임박 임계값을 넘으면 주기를 2분으로 줄이고, 그때도 매장 재고까지 함께 맞춘다.</span></div>
         </div>
         <div class="btn-row" style="margin-top:12px">
           <button class="btn btn-primary grow" id="btn-approve-merge">이 문장으로 확정</button>
