@@ -217,6 +217,26 @@ const INPUT_PROBE = {
     change(win, prov, 'google');
     ok(doc.getElementById('btn-savekey').disabled === true, 'P3',
        `provider 를 바꿨는데 키 검증이 따라 바뀌지 않는다 (선택이 죽어 있다)`);
+
+    /* 출력 언어(AC4.9) — 「입력처럼 보이는 button」이 한 번 들어왔던 자리다.
+       `<button aria-pressed>` 은 눌린 티만 내는 비대화형 요소라 포커스·선택이 폼 상태로
+       남지 않는다. 그래서 형태(실제 radio)와, 그 폼 상태가 보임새를 지배하는지를 함께 본다 —
+       `.active` 를 클릭한 요소에서 직접 칠하면 radio 를 체크해도 따라오지 않아 여기서 걸린다. */
+    const langs = [...doc.querySelectorAll('#lang-seg input[name="out-lang"]')];
+    ok(langs.length === 2 && langs.every((r) => r.tagName === 'INPUT' && r.type === 'radio'),
+       'P3', `출력 언어 선택이 실제 폼 요소(radio)가 아니다`);
+    if (langs.length !== 2) return;
+    const labelOf = (r) => r.closest('.seg');
+    const [ko, en] = langs;
+    ok(labelOf(ko).classList.contains('active') && !labelOf(en).classList.contains('active'),
+       'P3', `출력 언어의 처음 선택이 화면에 드러나 있지 않다`);
+    check(win, en, true);
+    ok(en.checked && !ko.checked, 'P3', `출력 언어를 골랐는데 폼 상태가 따라오지 않는다`);
+    ok(labelOf(en).classList.contains('active') && !labelOf(ko).classList.contains('active'),
+       'P3', `출력 언어를 골랐는데 화면이 그대로다 (선택이 죽어 있다)`);
+    check(win, ko, true);
+    ok(labelOf(ko).classList.contains('active') && !labelOf(en).classList.contains('active'),
+       'P3', `출력 언어를 되돌렸는데 화면이 따라오지 않는다`);
   },
   'JRN-discover-features': (win, doc, at, ok) => {
     // ① 거부 사유(textarea) — 비어 있으면 거부를 확정할 수 없다(F7 재발 방지).
