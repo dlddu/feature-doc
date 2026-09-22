@@ -21,8 +21,8 @@
 //!    proposed, edit the list, and approve it. Approval is what opens the next
 //!    pipeline stage in the queue, so "승인된 전략만 다음 단계의 입력이 된다" is
 //!    enforced in one place rather than trusted to each caller.
-//!  - `POST /api/analyses/{id}/stages/{key}/retry` — re-run one *failed* stage and
-//!    only that one (시나리오 6).
+//!  - `POST /api/analyses/{id}/stages/{key}/retry` — re-run one *finished* stage and
+//!    only that one (시나리오 6·8).
 //!
 //! And the documents the pipeline produces (AC1.2~AC1.4):
 //!  - `GET /api/analyses/{id}/documents/{kind}` — one stage's output, plus whether
@@ -215,14 +215,19 @@ async fn detail(
     Ok(Json(load_detail(&state, &user.id, &id).await?))
 }
 
-/// Re-runs one failed stage and nothing else (AC1.5: "실패한 단계는 그 단계만
-/// 재시도할 수 있다", test/01 시나리오 6).
+/// Re-runs one finished stage — failed *or* succeeded — and nothing else (AC1.5:
+/// "실패했거나 완료된 단계는 그 단계만 다시 실행할 수 있다", test/01 시나리오 6·8).
 ///
 /// The retry is expressed as a *queue* operation rather than a second worker
-/// protocol: the failed stage row goes back to `pending` and the job goes back to
+/// protocol: the stage row goes back to `pending` and the job goes back to
 /// `queued`, so the existing claim/lease path in [`crate::worker_api`] performs the
 /// re-run. Sibling stage rows are not touched, which is what keeps already-finished
 /// work (and its measured detail) intact.
+///
+/// Later stages are deliberately **not** invalidated when a succeeded stage re-runs:
+/// they keep the output — and the reviewer keeps the decisions — made against the
+/// earlier result. Re-running a stage is a request for a fresh result of *that*
+/// stage, not a restart of the pipeline behind it.
 async fn retry_stage(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -252,17 +257,18 @@ async fn retry_stage(
     let reset = sqlx::query(
         "UPDATE analysis_stages \
             SET status = ?, detail = NULL, error = NULL, started_at = NULL, finished_at = NULL \
-          WHERE analysis_id = ? AND key = ? AND status = ?",
+          WHERE analysis_id = ? AND key = ? AND status IN (?, ?)",
     )
     .bind(pipeline::stage_status::PENDING)
     .bind(&id)
     .bind(&key)
     .bind(pipeline::stage_status::FAILED)
+    .bind(pipeline::stage_status::SUCCEEDED)
     .execute(&mut *tx)
     .await?;
     if reset.rows_affected() == 0 {
         return Err(AppError::Conflict(
-            "실패한 단계만 다시 시도할 수 있습니다.".into(),
+            "실패했거나 완료된 단계만 다시 실행할 수 있습니다.".into(),
         ));
     }
 

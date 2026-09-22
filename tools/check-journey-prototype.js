@@ -541,6 +541,15 @@ const PRODUCT_PATHS = {
                         doc.getElementById('stage-3').classList.contains('active');
         return { landed: active(doc), evidence: failed && onlyThisStage && cleared };
       } },
+    { name: '끝난 단계의 결과가 미덥지 않음', run: (win, doc) => {
+        click(win, doc.querySelector('[data-scenario="rerun"]'));
+        const offered = visible(doc.getElementById('btn-rerun-stage'));
+        click(win, doc.getElementById('btn-rerun-stage'));    // 끝난 그 단계만 다시
+        const onlyThisStage = doc.getElementById('stage-2').classList.contains('active') &&
+                              doc.getElementById('stage-1').classList.contains('done');
+        const closed = !visible(doc.getElementById('btn-rerun-stage'));
+        return { landed: active(doc), evidence: offered && onlyThisStage && closed };
+      } },
     { name: '앱 종료 후 복귀', run: (win, doc) => {
         const pct = doc.getElementById('prog-pct').textContent;
         const cost = doc.getElementById('cost-now').textContent;

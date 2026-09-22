@@ -289,31 +289,60 @@ async fn retry_resets_only_the_failed_stage_and_requeues_the_job() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// "이 단계만 다시 시도" is an offer the failed stage makes; a stage that is pending
-/// or succeeded has nothing to retry, and re-queueing on its behalf would silently
-/// re-run work the user did not ask for.
+/// A stage that has not finished has nothing to re-run: a pending stage will run on
+/// its own turn, and re-queueing on its behalf would silently start work the user
+/// did not ask for.
 #[tokio::test]
-async fn retry_is_refused_for_a_stage_that_did_not_fail() {
+async fn retry_is_refused_for_a_stage_that_has_not_finished() {
     let (state, path) = stub_state().await;
     let token = login_installed(&state, 1, "alice").await;
     let id = enqueue(&state, &token, "payments-api").await;
     run_until_second_stage_fails(&state, &id).await;
 
-    for key in ["fetch", "discovery_strategy"] {
-        let resp = build_router(state.clone())
-            .oneshot(user_post(
-                &format!("/api/analyses/{id}/stages/{key}/retry"),
-                &token,
-                serde_json::json!({}),
-            ))
-            .await
-            .unwrap();
-        assert_eq!(resp.status(), StatusCode::CONFLICT, "{key} did not fail");
-    }
+    let resp = build_router(state.clone())
+        .oneshot(user_post(
+            &format!("/api/analyses/{id}/stages/discovery_strategy/retry"),
+            &token,
+            serde_json::json!({}),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CONFLICT, "discovery_strategy never ran");
 
     let body = detail(&state, &token, &id).await;
     assert_eq!(body["status"], "failed");
-    assert_eq!(stage(&body, "fetch")["status"], "succeeded");
+    assert_eq!(stage(&body, "discovery_strategy")["status"], "pending");
+    let _ = std::fs::remove_file(&path);
+}
+
+/// AC1.5 covers succeeded stages too: "이 단계 다시 실행" resets that one row and
+/// re-queues the job, leaving its siblings — including the failed one — as they are.
+#[tokio::test]
+async fn retry_resets_a_succeeded_stage_and_leaves_its_siblings() {
+    let (state, path) = stub_state().await;
+    let token = login_installed(&state, 1, "alice").await;
+    let id = enqueue(&state, &token, "payments-api").await;
+    run_until_second_stage_fails(&state, &id).await;
+    let before = detail(&state, &token, &id).await;
+    let failed_before = stage(&before, "cross_cutting").clone();
+
+    let resp = build_router(state.clone())
+        .oneshot(user_post(
+            &format!("/api/analyses/{id}/stages/fetch/retry"),
+            &token,
+            serde_json::json!({}),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let after = json_body(resp).await;
+
+    let rerun = stage(&after, "fetch");
+    assert_eq!(rerun["status"], "pending");
+    assert!(rerun["detail"].is_null(), "the old measurement is not the new run's");
+    assert!(rerun["startedAt"].is_null());
+    assert_eq!(stage(&after, "cross_cutting"), &failed_before);
+    assert_eq!(after["status"], "queued");
     let _ = std::fs::remove_file(&path);
 }
 

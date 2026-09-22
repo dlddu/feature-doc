@@ -207,6 +207,21 @@ export function AnalysisProgress({
                 이 단계만 다시 시도
               </button>
             )}
+            {/* AC1.5 covers finished stages too. Only that stage re-runs; the ones
+                behind it keep their result. Hidden while the job is queued or
+                running — the server refuses a reset under a live lease anyway. */}
+            {stage.status === 'succeeded' && !ACTIVE.has(analysis.status) && (
+              <button
+                className="btn btn-ghost block"
+                type="button"
+                style={{ marginTop: 8 }}
+                disabled={retrying !== null}
+                onClick={() => void retry(stage.key)}
+                data-testid="rerun"
+              >
+                이 단계 다시 실행
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -264,7 +279,7 @@ export function AnalysisProgress({
       </div>
 
       <p className="legend" style={{ marginTop: 24 }}>
-        <span className="mk">↳</span> 실패한 단계는 그 단계만 재시도합니다 · 누적 비용은 항상 표시
+        <span className="mk">↳</span> 실패했거나 끝난 단계는 그 단계만 다시 돌립니다 · 누적 비용은 항상 표시
       </p>
     </main>
   );

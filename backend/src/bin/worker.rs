@@ -37,6 +37,9 @@ struct Claim {
     repo_name: String,
     branch: String,
     executable_stages: Vec<String>,
+    /// Stage 2's stored document, present when stage 3 is re-run on its own.
+    #[serde(default)]
+    cross_cutting_document: Option<serde_json::Value>,
     /// Empty until the reviewer approves — which is also when stage 4 is not offered.
     #[serde(default)]
     approved_patterns: Vec<String>,
@@ -243,7 +246,9 @@ impl Worker {
         // Stage 2 runs only if this build knows it *and* the queue offered it, so an
         // older worker against a newer API (or the reverse) degrades to stopping
         // early rather than reporting a stage it cannot run.
-        let mut cross_cutting_doc: Option<serde_json::Value> = None;
+        // Seeded from the claim when stage 3 re-runs without stage 2 (AC1.5): the
+        // landscape it plans over is the one already stored, left untouched.
+        let mut cross_cutting_doc: Option<serde_json::Value> = job.cross_cutting_document.clone();
         if job
             .executable_stages
             .iter()

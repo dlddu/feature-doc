@@ -1070,6 +1070,9 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
           <span class="body-col"><span class="label">횡단 관심사 추출</span><span class="sub" data-sample>12 items</span></span>
           <span class="time" data-sample>3m 51s</span>
         </div>
+        <!-- 끝난 단계도 그 단계만 다시 돌릴 수 있다(AC1.5 · test/01 시나리오 8). 뒤 단계의
+             결과와 사람의 결정은 그대로 둔다 — 분석이 멈춰 있을 때만 보인다. -->
+        <button class="btn btn-ghost block" id="btn-rerun-stage" style="display:none">이 단계 다시 실행</button>
         <div class="step active" id="stage-3">
           <span class="ic"></span>
           <span class="body-col"><span class="label" id="stage-3-label">탐색 전략 생성</span><span class="sub" id="stage-3-sub">진행 중</span></span>
@@ -1104,7 +1107,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
         <button class="btn btn-ghost block" id="btn-leave">앱 닫고 나가기</button>
       </div>
 
-      <p class="legend" style="margin-top:22px"><span class="mk">↳</span> 실패한 단계는 그 단계만 재시도합니다 · 누적 비용은 항상 표시</p>
+      <p class="legend" style="margin-top:22px"><span class="mk">↳</span> 실패했거나 끝난 단계는 그 단계만 다시 돌립니다 · 누적 비용은 항상 표시</p>
     </div>
     <div class="home-indicator"></div>
   </div>
@@ -1535,6 +1538,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
     <h3>분기·예외 흐름</h3>
     <ul class="branches">
       <li><span class="sit">특정 분석 단계 실패</span><button data-goto="STP-leave-and-return" data-scenario="stagefail">STP-leave-and-return</button></li>
+      <li><span class="sit">끝난 단계의 결과가 미덥지 않음</span><button data-goto="STP-leave-and-return" data-scenario="rerun">STP-leave-and-return</button></li>
       <li><span class="sit">앱 종료 후 복귀</span><button data-goto="STP-leave-and-return" data-scenario="returned">STP-leave-and-return</button></li>
       <li><span class="sit">횡단 분석 결과를 사용자가 수정하고 싶을 때</span><button data-goto="STP-tune-strategy" data-scenario="wantedit">STP-tune-strategy</button></li>
       <li><span class="sit">이전에 거부했던 후보가 다시 잡힘</span><button data-goto="STP-sift-candidates" data-scenario="rejectedagain">STP-sift-candidates</button></li>
@@ -1581,6 +1585,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
     pendingReject: null,
     added: 0,
     stageFailed: false,
+    paused: false,        // 분석이 멈춰 있어 끝난 단계를 다시 돌릴 수 있는 상태
     away: false
   };
 
@@ -1621,6 +1626,8 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
     $('stage-3-sub').textContent = state.stageFailed ? '실패 — 재시도 대기' : '진행 중';
     s3.querySelector('.time').textContent = state.stageFailed ? '—' : '2m 12s';
     toggle($('stage-failed'), state.stageFailed);
+    // 끝난 단계의 재실행은 분석이 멈춰 있을 때만 열린다(실행 중에는 서버가 거절한다).
+    toggle($('btn-rerun-stage'), state.paused);
 
     // 떠나 있는 동안에도 진행률·누적 비용은 그대로 보존된다(F3).
     $('leave-card').style.display = state.away ? 'block' : 'none';
@@ -1631,6 +1638,16 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
     // 전체 파이프라인을 죽이지 않고 그 단계만 다시 돌린다.
     state.stageFailed = false;
     syncPipeline();
+  });
+
+  $('btn-rerun-stage').addEventListener('click', function () {
+    // 끝난 단계를 다시 돌려도 뒤 단계는 건드리지 않는다 — 그 단계 하나만 다시 돈다.
+    state.paused = false;
+    syncPipeline();
+    var s2 = $('stage-2');
+    s2.className = 'step active';
+    s2.querySelector('.sub').textContent = '다시 도는 중';
+    s2.querySelector('.time').textContent = '—';
   });
 
   $('btn-leave').addEventListener('click', function () {
@@ -1821,6 +1838,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 12px); height
      단계」다.                                                                  */
   var SCENARIOS = {
     stagefail: function () { state.stageFailed = true; state.away = false; },
+    rerun: function () { state.stageFailed = false; state.away = false; state.paused = true; },
     returned: function () { state.stageFailed = false; state.away = true; },
     wantedit: function () { toggle($('edit-hint'), true); },
     rejectedagain: function () { state.decisions = {}; state.reasons = {}; },
