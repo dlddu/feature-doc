@@ -308,6 +308,7 @@ def main() -> int:
             "예외": counted["예외"],
             "구현 대기": counted["구현 대기"],
             "미매핑": counted["미매핑"],
+            "매칭 단위 파일": len(declared),
         }
         for label, want in expected.items():
             m = re.search(rf"{re.escape(label)}[^0-9\n]*\*\*(\d+)\*\*", body)
