@@ -14,7 +14,7 @@
 | 판정 범위 | 현재 주석 줄 수 | 지문 | 결과 요약 |
 |---|---|---|---|
 | `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일) | 601 | `f9c76bd1802d88aebf6ad5833a32038d3445f4d374941f3e70796cd9f84b7547` | 순 제거 58행(구분선 16 · 빈 주석 행 3 · 문서·선언 재진술·작업 흔적 39 — 총 62행 제거 중 불변식 보존 2행 재작성) · 유지 507행 · 판단 갈림 3건 — [passes/2026-09-17-backend-concentrated.md](passes/2026-09-17-backend-concentrated.md) · **증분 재판정 ①**(2026-09-18): #55가 더한 `llm.rs` 21행은 stub↔real 충실도 경계라 **전건 유지**, 제거 후보 3행(테스트 case 라벨)은 `llm.rs`가 #49와 경합이라 보류 · **증분 재판정 ②**(2026-09-18): #43이 `analysis.rs`·`worker_api.rs`에 더한 40행을 판정해 **순 제거 10행**(AC 조항 재진술 · 호출자·구조체 본문 재진술 · rustdoc 링크만의 교차 참조) · 유지 30행(리스 계약 · 게이트는 큐의 성질 · `acceptance_pending`의 술어 함정 · `work_remains`의 경합) · **증분 재판정 ③**(2026-09-19): #71이 `worker_api.rs`에 더한 37행을 판정해 **순 제거 18행**(라우트 선택 근거의 세 벌째 · AC 꼬리표 · 함수 이름 재진술 · SQL이 이미 말하는 「승인된 후보만」 · rustdoc 링크만의 교차 참조) · 유지 19행(요청 행이 곧 게이트 · 실패는 재시도되지 않음 · 같은 트랜잭션에서 행 교체) — [passes/2026-09-19-dependencies-axis.md](passes/2026-09-19-dependencies-axis.md) · **증분 재판정 ④**(2026-09-19): #71이 `analysis.rs`에 더한 36행과 #75가 더한 24행, 합 **60행**을 판정해 **순 제거 29행**(절 제목 · AC 조항 재진술 6 · 여정·목업 인용 · 선언 재진술 · 라우트 테이블과 핸들러 doc 의 두 벌 중 한 벌) · 유지 31행(`(created_at, rowid)` 정렬 이유 · 「묻지 않은 것 ≠ 없던 것」과 0008 의 두 테이블 분리 · 재큐잉 없는 요청은 아무도 돌리지 않는다는 한 트랜잭션 계약 · 실패 후 재요청이 행을 `queued` 로 되돌린다) — [passes/2026-09-19-reanalysis-diff-axis.md](passes/2026-09-19-reanalysis-diff-axis.md) · **증분 재판정 ⑤**(2026-09-21): #93이 `llm.rs`에 더한 `assert_strict_schema` doc 5행을 **명제 단위로** 판정해 **순 제거 2행**(함수 본문의 두 `assert` 재진술 · 단정 메시지가 이미 말하는 「optional 대신 nullable」과 스키마 리터럴 `["string","null"]` 재진술 — 5행 → 3행 재작성) · 유지 3행(`pub(crate)` 요약 1줄 · 「`required` 누락은 모델 실행 전 400」의 상류 거부 조건 · stub 은 스키마를 어디에도 보내지 않는다는 충실도 경계). **이 자리가 「required-but-nullable」 명제의 정본이다** — 강제하는 코드 `assert_strict_schema` 옆(4·6·8행의 같은 명제 사본 4행은 그래서 걷었다) — [passes/2026-09-17-backend-concentrated.md](passes/2026-09-17-backend-concentrated.md) · **미판정 증분 없음** · **증분 재판정 ⑥**(2026-09-21): #92가 `analysis.rs` `document()` 에 더한 4행(승인 편집의 겹쳐 읽기와 `content_hash` 불변의 이유 — 0009 머리·doc-tracker·PR #92 의 **네 벌째**)을 **전건 제거** · 줄 수·지문은 #92 이전 값으로 바이트 동일 복귀 — [passes/2026-09-17-backend-concentrated.md](passes/2026-09-17-backend-concentrated.md) 「증분 재판정 ⑥」 · **증분 재판정 ⑦**(2026-09-21): #107 이 `analysis.rs` 에 더한 2행(`document()` 의 추가 겹침 호출 위 1행 — `feature_add::overlay` doc 의 순서 계약이 정본 · `approved_candidate_name` doc 에 덧붙인 1행 — 함수 본문의 두 질의와 `confirmed_name` 요약)을 **전건 제거** · 줄 수·지문은 #107 이전 값으로 바이트 동일 복귀 — [passes/2026-09-17-backend-concentrated.md](passes/2026-09-17-backend-concentrated.md) 「증분 재판정 ⑦」 · **증분 재판정 ⑧**(2026-09-21): #112 가 `analysis.rs` 에 더한 5행(`document()` 의 삭제 겹침 호출 위 1행 — 순서 계약을 `feature_delete::overlay` doc 으로 옮겨 정본화 · `CandidateView.previously_deleted` 의 AC3.3 PRD 축자 인용 4행 — `previous_deletion` pub doc·테스트 fn 이름·doc-tracker 6c 행의 사본)을 **전건 제거** · 줄 수·지문은 #112 이전 값 590/`9757b6b5…` 로 바이트 동일 복귀 — [passes/2026-09-17-backend-concentrated.md](passes/2026-09-17-backend-concentrated.md) 「증분 재판정 ⑧」 · **증분 재판정 ⑨**(2026-09-22): 사람 PR #108(AC4.9 출력 언어)이 `analysis.rs` 5 · `llm.rs` 18 · `worker_api.rs` 3 = **26행**을 들여와 **제거 15 · 유지 11** — 한 명제의 일곱 벌 복제를 「정본을 어디에 둘 것인가」로 판정(스냅숏 계약의 정본 = `analysis.rs::create` 의 복사 지점 3행 **유지**, 「`None` = 설정 이전에 시작된 분석」의 정본 = `settings.rs::analysis_language`) · rustdoc 링크 전용 교차 참조 2행(`anthropic_body` → `openai_body`) · 단정·선언 재진술 · 판단 갈림 2건 유지(조인이 깨진다 4행 · 「언어가 user turn 에 새어 들면 안 된다」 1행) — [passes/2026-09-17-backend-concentrated.md](passes/2026-09-17-backend-concentrated.md) 「증분 재판정 ⑨」 · 맥락 [passes/2026-09-22-output-language-axis.md](passes/2026-09-22-output-language-axis.md) |
-| `tools/check-journey-prototype.js` · `backend/src/config.rs` (열린 통합 PR 무접촉 2파일) | 140 | `ddacce0b4fcb83672a018383ad5845e7a63cbce655d520c31e06643debf6329f` | 순 제거 35행(파일 머리 되풀이 인라인 마커 8 · 등록부 존재 이유 되풀이 · 같은 문구 5회 반복 5 · 절 제목 5 · 선언 재진술 — diff 기준 56행 삭제 · 4행 재작성, 차이는 블록 주석 본문이 지문에 안 보이기 때문) · 유지 130행 · 판단 갈려 남긴 것 11건 — [passes/2026-09-18-uncontested-harness-config.md](passes/2026-09-18-uncontested-harness-config.md) · **증분 재판정 ①**(2026-09-18): #60이 `config.rs`에 `Mode`·`Doubles` doc으로 더한 23행을 판정해 **순 제거 13행**(variant·시그니처 재진술 · 경계 식별자 필드 doc 6 · 정책 문서 인용 2) · 유지 10행(경계별 선택 불변식 · 안전 기본값) · **증분 재판정 ②**(2026-09-21): #92가 `Doubles.llm` 필드에 더한 doc 2행을 **전건 제거**(바로 위 `Doubles` doc 의 「the analysis worker holds its own set」 재진술 · 필드 이름) · 줄 수·지문은 #92 이전 값으로 복귀 — [passes/2026-09-18-uncontested-harness-config.md](passes/2026-09-18-uncontested-harness-config.md) 「증분 재판정 ②」 · **증분 재판정 ③**(2026-09-21): #107 이 `Doubles.repo_scan` 필드에 더한 doc 3행을 **전건 제거**(② 와 같은 형 — `Doubles` doc 의 경계별 선택 불변식 · doc-tracker 6b 행 · `docs/e2e-mocking-policy.md` EXT-03 배선 표) · 줄 수·지문은 #107 이전 값으로 복귀 — [passes/2026-09-18-uncontested-harness-config.md](passes/2026-09-18-uncontested-harness-config.md) 「증분 재판정 ③」 |
+| `tools/check-journey-prototype.js` · `backend/src/config.rs` (열린 통합 PR 무접촉 2파일) | 141 | `f9af32efe86eec6fad0875a7f259f36f12386aa7de41d6fb588240cb893c3a05` | 순 제거 35행(파일 머리 되풀이 인라인 마커 8 · 등록부 존재 이유 되풀이 · 같은 문구 5회 반복 5 · 절 제목 5 · 선언 재진술 — diff 기준 56행 삭제 · 4행 재작성, 차이는 블록 주석 본문이 지문에 안 보이기 때문) · 유지 130행 · 판단 갈려 남긴 것 11건 — [passes/2026-09-18-uncontested-harness-config.md](passes/2026-09-18-uncontested-harness-config.md) · **증분 재판정 ①**(2026-09-18): #60이 `config.rs`에 `Mode`·`Doubles` doc으로 더한 23행을 판정해 **순 제거 13행**(variant·시그니처 재진술 · 경계 식별자 필드 doc 6 · 정책 문서 인용 2) · 유지 10행(경계별 선택 불변식 · 안전 기본값) · **증분 재판정 ②**(2026-09-21): #92가 `Doubles.llm` 필드에 더한 doc 2행을 **전건 제거**(바로 위 `Doubles` doc 의 「the analysis worker holds its own set」 재진술 · 필드 이름) · 줄 수·지문은 #92 이전 값으로 복귀 — [passes/2026-09-18-uncontested-harness-config.md](passes/2026-09-18-uncontested-harness-config.md) 「증분 재판정 ②」 · **증분 재판정 ③**(2026-09-21): #107 이 `Doubles.repo_scan` 필드에 더한 doc 3행을 **전건 제거**(② 와 같은 형 — `Doubles` doc 의 경계별 선택 불변식 · doc-tracker 6b 행 · `docs/e2e-mocking-policy.md` EXT-03 배선 표) · 줄 수·지문은 #107 이전 값으로 복귀 — [passes/2026-09-18-uncontested-harness-config.md](passes/2026-09-18-uncontested-harness-config.md) 「증분 재판정 ③」 · **증분 재판정 ④**(2026-09-22): #115 가 `check-journey-prototype.js` 에 더한 4행 블록 주석을 판정해 **전건 유지 · 순 제거 0**(사고 기록 · 검사가 존재하는 이유 · 뮤테이션 내성 근거 — 복원 경로 ③(PR #115 본문)은 **실재하나**, 같은 잣대가 이 파일의 유지 선례 13행을 함께 뒤집으므로 17행 묶음 재판정의 몫이다) · 지문에 들어오는 것은 `/*` 여는 1행뿐이라 140 → **141** — [passes/2026-09-18-uncontested-harness-config.md](passes/2026-09-18-uncontested-harness-config.md) 「증분 재판정 ④」 |
 | `e2e/tests/sc01-01-full-pipeline-run.spec.ts` · `e2e/tests/sc01-06-partial-retry.spec.ts` · `e2e/support/cluster.ts` · `e2e/smoke.sh` · `e2e/playwright.config.ts` (e2e 하네스 비경합 5파일) | 142 | `93be69ea2cff032c6bac2c4d0585d801aa22e392856891e1ce2e42f4d9aa243a` | 순 제거 49행(시나리오 문서 인용 10 · 절 제목 18 · 제목+AC 2 · 작업 흔적 2 · `finally` 재진술 2 · smoke 머리·인라인 6 · 나머지 선언 재진술 — diff 기준 52행 삭제 · 3행 재작성) · 유지 142행(`playwright.config.ts`는 전건 유지) · 기계 판독 `// 검증 시나리오:` 선언 2개 보존 — [passes/2026-09-18-e2e-uncontested.md](passes/2026-09-18-e2e-uncontested.md) · **증분 재판정 ①**(2026-09-20): #79가 `sc01-01`에 더한 순증 3행을 판정해 **순 제거 3행**(슬라이스 번호를 단 작업 흔적 2행 제거 · 목업 인용을 뺀 단정 의미 1행만 유지) · 범위는 145행 → 142행으로 돌아왔으나 **지문은 `fb27e0db…`가 아니라 `0e5c3d31…`**이다(살아남은 줄의 문면이 #79 이전과 다르다) — [passes/2026-09-20-pipeline-cross-cutting-axis.md](passes/2026-09-20-pipeline-cross-cutting-axis.md) · **증분 재판정 ②**(2026-09-20): #83 이 `sc01-01` 에 연 순증 2행을 판정해 **순 제거 2행**(슬라이스 번호를 단 작업 흔적 · 화면 전이 서술 · 교차 참조 `(선례: sc01-05)`) · 유지 2행(「셋업을 API 로 끝내도 로드는 자격증명 화면에서 시작한다」는 상태 머신 함정) · 범위는 144행 → 142행이지만 **지문은 `0e5c3d31…` 가 아니라 `93be69ea…`** 다 — [passes/2026-09-20-frontend-shell-axis.md](passes/2026-09-20-frontend-shell-axis.md) · **증분 재판정 ③**(2026-09-21): #99(`899800e`)가 `sc01-01`(+5) · `sc01-06`(+5) 에 더한 10행을 판정해 **순 제거 10행**(원장 항목 번호 ⑼⒃㉑⑿ 를 현재형으로 인용하는 작업 흔적 5 — 인용 대상 4행은 같은 커밋이 doc-tracker 에서 닫아 지웠다 · PR #99 계획 1·2·3 과 doc-tracker 변경 이력의 축자 · 시나리오 6 기대 결과 재진술 · 바로 아래 단정이 그 문장 자체인 것) · 유지 0행 · 줄 수와 지문이 **둘 다 #99 이전 값으로 되돌아왔다**(142 / `93be69ea…` — 부모 `3567755` 실측과 바이트 동일) — [passes/2026-09-18-e2e-uncontested.md](passes/2026-09-18-e2e-uncontested.md) 「증분 재판정 ③」 · **미판정 증분 없음** |
 | `backend/src/acceptance.rs` · `backend/tests/acceptance.rs` · `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` · `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx` (인수 축 비경합 6파일) | 142 | `2ff8f6ff8251699d1571004d3ebb518ebcc373bed06bf175d5f8a40e17dba5d3` | 순 제거 127행(PRD-2 AC2.1~AC2.3 조항 재진술 · doc-tracker 등재 편차 재진술 10 · 절 제목 9 · 목업 카피·페인포인트 인용 · 단언 재진술 · 이름 재진술 — diff 기준 180행 삭제 · 52행 재작성) · 유지 141행 · 판단이 갈려 남긴 것 4건 · 기계 판독 `// 검증 시나리오:` 2건과 `mock-exception:` 2건 보존 — [passes/2026-09-18-acceptance-axis.md](passes/2026-09-18-acceptance-axis.md) · **증분 재판정 ①**(2026-09-21): #93이 `acceptance.rs`에 더한 1행(`// Required-but-nullable; see feature_candidates::schema.`)은 두 줄 위 `required` 배열과 바로 아래 `["string","null"]` 이 축자로 말하는 것(①) + 교차 참조뿐이라 **제거 1행** — 줄 수·지문이 #93 이전 값(141 / `e38dcf20…`)으로 되돌아왔다 — [passes/2026-09-18-acceptance-axis.md](passes/2026-09-18-acceptance-axis.md) 「증분 재판정 ①」 · **증분 재판정 ②**(2026-09-21): #112 가 `FeatureAcceptance.tsx` 에 더한 5행을 판정해 **순 제거 4행**(AC3.3 꼬리표 「가려질 뿐 보관소에 남는다」 · `reload` JSDoc — 파일 머리의 화면 불변식이 정본 · 「보관소만 있는 상태」 — PR #112 · 내부 fn `Archive` JSDoc — JSX 카피와 `disabled={… !restorable}`) · **유지 1행**(「문서와 함께 읽어 두 목록이 같은 시점의 서버 상태를 그린다」 — `Promise.all` 을 고른 이유, 판단이 갈려 남긴 것 5건째) · 줄 수·지문은 141/`e38dcf20…` → 146/`655305bc…`(트리거) → **142/`2ff8f6ff…`** — [passes/2026-09-18-acceptance-axis.md](passes/2026-09-18-acceptance-axis.md) 「증분 재판정 ②」 · **미판정 증분 없음** |
 | `backend/src/bin/worker.rs` · `deploy/e2e/kustomization.yaml` · `deploy/k8s/deployment.yaml` · `deploy/k8s/secret.yaml.example` · `deploy/k8s/worker-deployment.yaml` · `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (워커 · 더블 배선 축 비경합 7파일) | 190 | `632b0475182bf04b9ec8c21f3b69c5b91172ecee41e417f7a58b98cdb15ba66d` | 순 제거 122행(5단계 열거·선언 재진술 · 시나리오 본문 인용 12 · 더블 배선 설명 14 · AC 조항 인용 9 · 3중 복제된 경위 서술 19 · 작업 흔적 8 · 절 제목 3 · 세 벌 중복 중 두 벌 — diff 기준 185행 삭제 · 63행 재작성) · 유지 185행 · 판단이 갈려 남긴 것 3건 · 기계 판독 `// 검증 시나리오:` 2건 보존 — [passes/2026-09-18-worker-double-axis.md](passes/2026-09-18-worker-double-axis.md) · **증분 재판정 ①**(2026-09-19): #71이 `bin/worker.rs`에 더한 12행을 판정해 **순 제거 7행**(같은 문장의 네 번째 벌 · AC 꼬리표 · 라우트 선택 근거) · 유지 5행(한 feature 의 실패가 잡을 죽이지 않는다는 격리 계약) — [passes/2026-09-19-dependencies-axis.md](passes/2026-09-19-dependencies-axis.md) · **증분 재판정 ②**(2026-09-21): #92가 `deploy/e2e/kustomization.yaml` 의 API env 에 더한 2행(「편집 제안은 워커가 아니라 이 프로세스가 부른다」 — doc-tracker·PR #92 재진술)을 **전건 제거** · 줄 수·지문은 #92 이전 값으로 복귀 — [passes/2026-09-18-worker-double-axis.md](passes/2026-09-18-worker-double-axis.md) 「증분 재판정 ②」 · **증분 재판정 ③**(2026-09-21): #107 이 같은 파일의 API env 에 더한 2행(`FEATUREDOC_DOUBLE_REPO_SCAN` 위 — doc-tracker 6b 행 · PR #107 · e2e-mocking-policy 배선 표 재진술)을 **전건 제거** · 줄 수·지문은 #107 이전 값으로 복귀 — [passes/2026-09-18-worker-double-axis.md](passes/2026-09-18-worker-double-axis.md) 「증분 재판정 ③」 · **증분 재판정 ④**(2026-09-22): #108 이 `bin/worker.rs` 에 더한 7행(`Claim.llm_language` 필드 doc 2 — 스냅숏·일곱 벌 두 명제의 사본 · `language_for` doc 5 — 본문이 `job.llm_language` 를 읽고, 바로 위 `provider_for` doc 이 같은 이유를 이미 말한다)을 **전건 제거** · 줄 수·지문은 #108 이전 값 190/`632b0475…` 로 바이트 동일 복귀 — [passes/2026-09-18-worker-double-axis.md](passes/2026-09-18-worker-double-axis.md) 「증분 재판정 ④」 · 맥락 [passes/2026-09-22-output-language-axis.md](passes/2026-09-22-output-language-axis.md) |
@@ -34,35 +34,34 @@
 | `backend/src/feature_delete.rs` · `backend/tests/feature_delete.rs` · `e2e/tests/sc03-05-feature-delete-and-restore.spec.ts` · `e2e/tests/sc03-06-deleted-feature-rediscovery.spec.ts` (feature 삭제·보존 축 — 슬라이스 6c 새 파일 4개) | 15 | `3dfb50500ad6fc34aa799c7a466cd49461e086f01047888a982dcafd259cc4ad` | 순 제거 65행(유입 80 — `feature_delete.rs` 모듈 머리 17 → 1(보관소·`content_hash`·재발견 세 문단 = 0011 머리·doc-tracker 6c·PR #112 의 네 벌째) · 필드·private fn doc 4 · 테스트 머리 7 → 1 과 픽스처 fn doc·단정 옆 주석 7 · 두 spec 의 머리 문단(doc-tracker 매핑 행 축자) 10 과 단정 옆 주석 12 · Isolation 4 → 1 ×2 · 내부 fn JSDoc 1 — diff 기준 69행 삭제 · 4행 재작성) · 유지 15행(`//!` 요약 · `RETENTION_DAYS`·`PreviousDeletion` pub 요약 · `restore()` 의 409-not-404 이유 · `overlay` 를 순서 계약의 **정본**으로 재작성(±0, 호출부 사본은 1행 증분 ⑧이 걷음) · `previous_deletion` 의 `(unix 초, rowid)` 타이브레이커 · `current_document` 의 「편집 겹침은 얹지 않는다」 · 테스트 요약 1 · 두 spec 의 Isolation 1행씩) · 판단이 갈려 남긴 것 1건(`current_document` 의 세 번째 겹침을 빼는 이유) · **주석 제거 후 부모와 바이트 동일 4/4**(증분 4파일 포함 8/8) · 문서 게이트 4종 rc=0 · `npm run build` rc=0 · `cargo test --release` 200/0 · **판정기 `✅ 변경 없음`**(8/8) · 허브 `Documents` 44 → 45 · `0011_feature_deletions.sql` 25행은 사람 게이트라 **집지 않았다** — [passes/2026-09-21-feature-delete-axis.md](passes/2026-09-21-feature-delete-axis.md) |
 | `backend/src/settings.rs` · `backend/tests/settings.rs` · `e2e/tests/sc04-14-llm-output-language.spec.ts` (출력 언어 설정 축 — AC4.9 #108 이 들여온 새 파일 3개) | 17 | `9458795199cc7a8cc2c0f5ea12240c6657343d398d73fc9b9854d3edc64faba6` | 순 제거 14행 · 유지 17행 — `settings.rs` 5(모듈 머리의 스냅숏 계약 3 + 빈 `//!` 1 = `analysis.rs::create` 의 사본 · `SettingsView.llm_language` 의 rustdoc 링크 전용 1) · `tests/settings.rs` 4(테스트 fn doc 2건 — fn 이름과 바로 아래 단정이 그 문장 자체, 이로써 이 파일의 판정 대상 주석이 0행이 되어 지문 파일 수 130 → 129) · `sc04-14` 5(단정 재진술 한국어 한 줄 주석 — 복원 경로 ①(바로 아래 `toHaveAttribute`)와 ②(`docs/test/04-platform.md#시나리오 14` 기대 결과가 「누르는 즉시 저장」·「다시 열어도 유지」를 **축자**로 적는다) 둘 다) · **유지**: `analysis_language` doc 5행(이 축의 **정본** — API 가 직접 거는 호출까지 분석의 언어로 쓴다) · `llm_language` 의 폴백 사유 3행(모르는 값은 실패가 아니라 기본값 — 움직인 쪽은 코드다) · `sc04-14` 머리 블록 7행(**9차 패스가 `sc01-02` 에서 같은 모양을 유지로 닫은 선례 — 뒤집으려면 `sc01-02` 를 포함한 증분 재판정으로 한 번에**) · 마이그레이션 `0012_llm_language.sql` 14행은 사람 게이트라 **집지 않았다**(잔여 `0009`·`0010`·`0011` 과 합쳐 99행 한 배치) — [passes/2026-09-22-output-language-axis.md](passes/2026-09-22-output-language-axis.md) |
 
-**합계**: 판정 **121파일**(지문의 파일 집합 기준으로는 117 — `format.ts` · `backend/tests/crypto.rs` ·
-`backend/tests/analyses.rs` · `deploy/k8s/kustomization.yaml` 이 전건 제거로 주석 0행이 되어 빠졌다.
-**파일 수는 지문의 `files` 가 아니라 행의 목록 길이로 센다**) · 순 제거 누적 **2,259행**(직전 2,182 + 이 패스
-77 — 새 범위 4파일 65 + 증분 재판정 12) · 판정 범위의 현재 합계 **2,318행**(전역 `lines=2507` − 잔여 189).
-**그중 판정 완료는 2,318행**(직전 2,302 + #112 가 판정 행 안에 더한 13 − 제거 12 + feature 삭제·보존 축 새 행
-15)이고 **미판정 증분은 0행**이다 — **#112(`fc6d191`, 자매 `tbm_feature-doc-docs-impl` 슬라이스 6c)가 판정
-완료 범위 안에 더한 13행**(1행 `analysis.rs` 5 · 4행 `FeatureAcceptance.tsx` 5 · 8행 `FeatureCandidates.tsx` 1 ·
-10행 `api.ts` 2)을 이 패스의 네 증분 재판정(1행 ⑧ · 4행 ② · 8행 ④ · 10행 ⑤, 제거 12 · 유지 1)이 닫았고,
-1·8·10행의 줄 수·지문은 #112 이전 값으로 **바이트 동일하게 되돌아왔다**(590/`9757b6b5…` · 141/`a431e905…` ·
-85/`89959a07…`), 4행은 유지 1행만큼 늘어 141/`e38dcf20…` → 146/`655305bc…`(트리거) → **142/`2ff8f6ff…`** 다.
-같은 커밋이 들여온 **새 파일 5개 / 105행** 중 사람 게이트 없는 4파일 / 80행은 새 행(feature 삭제·보존 축, 제거
-65 · 유지 15)으로 닫았고, `0011_feature_deletions.sql` 25행은 마이그레이션 축의 잔여로 들어갔다. 행 열의 합은
-**2,318 = 판정 완료 2,318** — 판정 완료 범위 안에 미판정 증분이 없다(#93 9행 · #91 5행 · #99 25행 · #101 2행 ·
-#92 15행 · #107 16행 · #112 13행 일곱 증분을 일곱 재판정이 닫았다). 이 증분 13은 원장의 계수 규약(같은 범위의
-증분 재판정은 원래 행의 결과 칸만 갱신)상 행 표에 보이지 않고 「전역 − 잔여」와 행 열 합의 차(2,315 ≠ 2,302)로만
-드러났다 — 감지가 그 절차로 검출한 그대로다.
+**합계**: 판정 **124파일**(지문의 파일 집합 기준으로는 119 — `format.ts` · `backend/tests/crypto.rs` ·
+`backend/tests/analyses.rs` · `deploy/k8s/kustomization.yaml` · `backend/tests/settings.rs` 가 전건 제거로 주석
+0행이 되어 빠졌다. **파일 수는 지문의 `files` 가 아니라 행의 목록 길이로 센다**) · 순 제거 누적 **2,300행**
+(직전 2,259 + 17차 패스 41) · 판정 범위의 현재 합계 **2,350행**(전역 `lines=2553` − 잔여 203).
+**그중 판정 완료는 2,350행**이고 **미판정 증분은 0행**이다 — **#115(`7758e70`)가 판정 완료 범위 안
+`tools/check-journey-prototype.js` 에 더한 4행 블록 주석**을 원장 2행의 **증분 재판정 ④**(전건 유지 ·
+순 제거 0)가 닫았다. 지문에 들어오는 것은 그 블록의 `/*` 여는 **1행**뿐이다 — 이어지는 3행은 `*` 로
+시작하지 않아 패턴에 걸리지 않는다(본문 「지문과 사각지대」) — 그래서 2행은 140 → **141** 로 1만 늘었다.
+행 열의 합은 **2,350 = 판정 완료 2,350**.
+
+**17차 패스(#117, `1289a7f`)가 이 트리를 만들었다.** #108(AC4.9 출력 언어)이 들여온 무인 72행을 판정해
+**순 제거 41행**을 기록했고(새 행 1개 = 출력 언어 설정 축 17행 · 원장 1·5·10·17·18행의 증분 재판정),
+`backend/tests/settings.rs` 가 주석 0행이 되어 전역 지문이 `lines=2594 files=130` → **`lines=2553 files=129`**
+로 움직였다. 그 패스는 행 표만 갱신하고 이 합계 문단들을 직전 트리(`lines=2507 files=126`) 서술 그대로
+두었고, 이 패스가 그 어긋남을 닫는다 — **소스 주석은 한 줄도 건드리지 않으므로 전역 지문은 불변이다.**
 
 **16차 행(#98)의 문면 수치는 그 패스가 #92 위로 리베이스하기 전 계산이다** — 「전역 `lines=2517`」·「`backend/tests/migrations.rs`
 42」·「잔여 13파일/305」는 지금 트리에서 참이 아니다(실측: `migrations.rs` 14 — #92 는 그 파일에 주석을 더하지
 않았다). 16차 행의 **범위 지문 123/`1b35c33a…` 자체는 현재 트리에서 재현된다.** 문서 편집 축(#106)이 #98 과
 같은 창에 착지하며 머지 트리에서 재실측해 적어 둔 정정이고, 이 패스에서도 그대로다.
 
-**미판정 잔여**: **9파일 / 189행**
-(이 패스 트리 기준 — 전역 `lines=2507 files=126`). 전역 지문의 파일 목록에서 판정 121파일을 **집합으로 뺀**
-값이며, 뺄셈과도 일치한다(189 == 2,507 − 2,318). #112 가 들여온 새 파일 5개 중 마이그레이션 `0011` 하나만
-잔여에 남았다 — 문서 편집 축이 「자매 슬라이스가 새 파일을 들여올 때마다 새 잔여가 생긴다」고 적어 둔
-그대로이고(#92 → 0009, #107 → 0010, #112 → 0011), 남은 몫은 전부 사람 게이트다.
+**미판정 잔여**: **10파일 / 203행**
+(이 패스 트리 기준 — 전역 `lines=2553 files=129`). 전역 지문의 파일 목록에서 판정 124파일을 **집합으로 뺀**
+값이며, 뺄셈과도 일치한다(203 == 2,553 − 2,350). #108 이 들여온 마이그레이션 `0012_llm_language.sql` 14행이
+잔여에 새로 들어왔다 — 문서 편집 축이 「자매 슬라이스가 새 파일을 들여올 때마다 새 잔여가 생긴다」고 적어
+둔 그대로이고(#92 → 0009, #107 → 0010, #112 → 0011, **#108 → 0012**), 남은 몫은 전부 사람 게이트다.
 
-**잔여(행 없는 파일)는 다섯 몫뿐이고, 다섯 다 사람 게이트다**(1 + 1 + 1 + 4 + 2 = 9파일 · 30 + 30 + 25 + 45 + 59 = 189행).
+**잔여(행 없는 파일)는 여섯 몫뿐이고, 여섯 다 사람 게이트다**(1 + 1 + 1 + 1 + 4 + 2 = 10파일 · 30 + 30 + 25 + 14 + 45 + 59 = 203행).
 **무인 자유 풀은 비었다 — 판정 완료 범위 안의 미판정 증분 0행**(위 합계). 이 조건은 PR 번호에 묶이지
 않는다 — **자매 모델의 슬라이스가 범위 안 파일을 다시 쓰거나 새 파일을 들여올 때마다** 증분·새 잔여가
 생기고, #91·#99·#92·#107·#112 가 그 형태였다. #92·#107·#112 는 **새 파일**을 들여온 경우라 증분(판정 행 안)과
@@ -86,6 +85,13 @@
   0010 과 함께 **한 번의 repair** 로 모은다. feature 삭제·보존 축이 0011 의 머리 문단(보관소 원리 · 되돌린 행도
   남는다 · `content_hash` 불변 · `restore_until` 이유 · `reason` 선택 · 부분 유일 인덱스)을 코드 쪽 사본들의
   **정본**으로 삼았으므로, 0011 을 판정할 때 그 문단들은 유지 후보다.
+- **`backend/migrations/0012_llm_language.sql` 1파일 / 14행** — 같은 게이트의 네 번째 몫. #108(`b1c4efe`,
+  AC4.9 출력 언어)로 main 에 들어갔고 `deploy` 브랜치(`0a555cb`)가 `1289a7f` 를 고정해 롤아웃됐으므로
+  **적용된 마이그레이션**이다. 0009 · 0010 · 0011 과 함께 **한 번의 repair** 로 모은다. 0012 의 머리 문단
+  (`users.llm_language` 와 `analyses.llm_language` 를 두 자리에 두는 이유 = 「지금 원하는 언어」와 「이 분석이
+  쓰인 언어」는 다른 사실이다 · 사용자 쪽 NOT NULL + 기본값 `'ko'` · 분석 쪽 NULL 의 뜻 · 어휘를 `CHECK` 로
+  박지 않는 이유)은 **어느 패스도 아직 정본으로 지정하지 않았다** — 17차 패스는 `settings.rs` 축만 판정했다.
+  0012 를 판정할 때 정본 지정부터 한다.
 - **D2 「저장 계층 핵심」 4파일 / 45행 — `backend/src/db.rs` 17 · `backend/src/crypto.rs` 13 ·
   `backend/tests/migrations.rs` 14(16차 패스가 `APPLIED` 출처 주석을 +1) · `backend/src/models.rs` 1** (다섯 번째인
   `backend/src/pipeline.rs` 는 범위 안 주석이 0행이라 잔여에 없다). `crypto.rs` 13행은 13차 패스가
@@ -98,19 +104,29 @@
   `needs_review=true` 가 되고 필수 체크 `review/data-format` 이 붙지 않는다 — D2 와 같은 벽이다.
   14차 패스가 음성 대조로 실측했다(둘 다 `⚠️ 사람 리뷰 필요`, 같은 트리의 5파일은 `✅ 변경 없음`).
 
-**다음 무인 패스의 후보 풀은 비어 있다**(#112 의 무인 93행은 이 패스가 닫았다 — 미판정 증분 0 · 새 무인
-파일 0). 다음 후보는 자매 슬라이스가 판정 완료 범위 안에 새 주석을 더하거나 새 파일을 들여올 때 그
-증분으로만 열린다. **「자유 풀」의 수치는 이 트리에서만 참인 조건부 진술이다** — 다음 감지는 절대 수치를
-믿지 말고 **전역 지문의 파일 목록에서 위 121파일을 집합으로 빼서** 잔여를, 행 열의 합과 「전역 − 잔여」의
-차로 미판정 증분을 다시 계산해야 한다. 증분 밖에서 진짜로 남은 일은 **마이그레이션 축의 다음 사람 게이트
-패스**(0009 + 0010 + 0011 85행 — 16차 패스와 똑같은 suspend · scale 0 · `UPDATE` · resume 를 한 번으로 요구한다)와,
-13차 패스가 후속 후보로 적어 둔 **이미 판정된 spec 12개의 Isolation 블록**(원장 3·4·5·6·7·8행에 걸치는 증분
-재판정 — 한 패스로 모아서)이다. 후자는 #92 이전부터 있던 것이라 감지가 열지 않는다 — 사람이 열거나, 그
-행들에 다음 증분이 들어올 때 함께 집는다(6a·6b·이 패스는 새 파일 `sc03-01`~`sc03-06` 에만 최신 규약을 적용했다).
-D2·D6·D5 경로 벽 6파일 104행은 **주석 패스가 스스로 풀 수 없다**(판정기 자신을 고치는 것도 D6 다). 열린 PR
-#108(AC4.9)은 `backend/migrations/0010_llm_language.sql` · `migrations.rs` 만 건드려 이 패스의 8파일과 겹치지
-않으나, main 에 이미 `0010_feature_additions.sql` 이 있어 같은 번호가 충돌한다 — 자매 축의 일이고 여기서는
-관측만 한다.
+**다음 무인 패스의 후보 풀은 비어 있다**(#108 의 무인 72행은 17차 패스(#117)가 닫았고, 그 패스가 남긴
+원장 2행의 증분 4행은 이 패스가 **전건 유지**로 닫았다 — 미판정 증분 0 · 새 무인 파일 0). 다음 후보는 자매
+슬라이스가 판정 완료 범위 안에 새 주석을 더하거나 새 파일을 들여올 때 그 증분으로만 열린다. **「자유 풀」의
+수치는 이 트리에서만 참인 조건부 진술이다** — 다음 감지는 절대 수치를 믿지 말고 **전역 지문의 파일 목록에서
+위 124파일을 집합으로 빼서** 잔여를, 행 열의 합과 「전역 − 잔여」의 차로 미판정 증분을 다시 계산해야 한다.
+증분 밖에서 진짜로 남은 일은 **마이그레이션 축의 다음 사람 게이트 패스**(0009 + 0010 + 0011 + 0012 **99행** —
+16차 패스와 똑같은 suspend · scale 0 · `UPDATE` · resume 를 한 번으로 요구한다)와, 13차 패스가 후속 후보로
+적어 둔 **이미 판정된 spec 12개의 Isolation 블록**(원장 3·4·5·6·7·8행에 걸치는 증분 재판정 — 한 패스로
+모아서)이다. 후자는 #92 이전부터 있던 것이라 감지가 열지 않는다 — 사람이 열거나, 그 행들에 다음 증분이
+들어올 때 함께 집는다. D2·D6·D5 경로 벽 6파일 104행은 **주석 패스가 스스로 풀 수 없다**(판정기 자신을
+고치는 것도 D6 다).
+
+**세 번째 후속 후보 — 원장 2행의 17행 묶음 재판정.** 이 패스의 증분 재판정 ④ 가 **복원 경로 ③ 의 실재를
+기록했다**(PR #115 본문이 그 4행을 거의 축자로 다시 적는다). 그런데 같은 잣대를 적용하면 2026-09-18 패스가
+「판단이 갈려 남긴」으로 고정한 13행(⚠️ 등록부 3행 · P1 해시 블록 3행 · `sk-`/`sk-ant-` 접두사 근거 7행)도
+함께 뒤집힌다 — 그중에는 사고가 `doc-tracker/2026-08.md` 에 남은 채 유지된 것도 있다. 원장 「읽는 법」이
+같은 범위의 재판정을 **원래 행의 묶음 증분 재판정**으로 정해 두었으므로, 뒤집는다면 **13 + 4 = 17행을 한
+번에** 본다. 이번 4행짜리 증분이 단독으로 선례를 뒤집는 자리가 아니다. 좌표 둘은 그때 함께 본다:
+`tools/check-journey-prototype.js:220` 의 `(AC4.9)` 꼬리표와 `:222` 의 「형태와 … 함께 본다」 절(⑤형 재진술).
+
+열린 PR **#114**(슬라이스 6d, `reconcile/rct_20260921-0012-docs-impl`)는 `docs/comment-policy/` 를 건드리지
+않아 이 패스와 겹치지 않는다. 다만 착지하면 `backend/src`·`backend/tests`·`frontend/src`·`e2e` 의 판정 완료
+범위 안에 새 증분을 열고 `0013_feature_doc_conflicts.sql` 이라는 새 잔여를 들여온다 — 다음 감지의 몫이다.
 
 **슬라이스 전 필수 절차 — 판정기를 돌린다.** 원장이 다음 축을 파일·행수까지 지목해도, 집기 전에
 후보 트리에서 `python3 tools/check-data-format-change.py --base <main tip> --head <probe> --verbose`
