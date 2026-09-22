@@ -414,3 +414,51 @@ reconciler task `rct_20260922-0005`. 사람 PR **#114**(`aacd0b4`, AC3.5 충돌 
 
 줄 수·지문: 601 / `f9c76bd1…` → (트리거) 603 → **602 / `87c1c5cd…`**. 유지분이 남아 #114 이전 값으로는
 돌아가지 않는다. 맥락 [2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md).
+
+## 증분 재판정 ⑪ — #123 이 `llm.rs` 트리거 테스트에 연 +4행 · 2026-09-22
+
+reconciler task `rct_20260922-0006`. 자매 모델 `tbm_feature-doc-e2e-mock-policy` 의 PR **#123**
+(`77158c2`, `rct_20260922-0001` — 13차 패스가 등재해 둔 `llm::tests` 프로세스 전역 env 레이스의 해소)이
+`stub_llm_fail_trigger_fires_only_on_the_named_input` 에 **추가 6행 · 제거 2행(순 +4)** 을 들여왔다.
+18차 패스(#124)는 머지 직전 착지라 줄 수·지문만 재고정하고 판정을 넘겼고, 이 패스가 그것을 받는다.
+**순 제거 3행 · 유지 3행.**
+
+| 자리 | 판정 | 근거 |
+|---|---|---|
+| 테스트 본문 `//` 3행 (「The needle is deliberately unlike any other prompt in this binary: / `an_ask()` is shared with the sibling tests, so it must not carry the / needle while the env is set.」) | **제거 3** | 결론 명제(「needle 은 다른 테스트의 프롬프트가 담을 수 없어야 한다」)가 열 줄 위 `///` doc 의 마지막 절과 **같은 명제의 두 벌째**다. 남는 사실 「`an_ask()` 는 형제 테스트와 공유된다」는 같은 `mod tests` 안에서 네 테스트가 `an_ask()` 를 부르는 것이 그대로 말한다(①). 경위는 PR #123 본문 4항이 `stub_answer()`·`an_ask()`·needle 겹침을 축자에 가깝게 다시 적는다(③) |
+| `///` doc 의 재작성분 2행 → 3행 (「… The env writes stay inside this one test, but the variable is / process-global and `stub_answer` reads it for every Stub-mode ask in this / binary — so the needle must be one no other test's prompt can carry.」) | **유지 3** | 정책 본문의 유지 대상 두 항목에 정면으로 걸린다 — 프로세스 전역 env 를 `stub_answer` 가 **모든 Stub 모드 ask 에서** 읽는다는 **동시성 계약**이자, 공유 픽스처와 겹치면 형제 테스트가 429 로 죽는다는 **실패 모드의 함정**이다. 게다가 #123 이 **거짓이던 두 절을 정정한 자리**이므로 여기를 걷으면 원장이 닫은 결함의 이유가 코드 옆에서 사라진다 |
+
+**정본을 어디에 둘 것인가** — 증분 재판정 ⑤·⑨ 의 잣대(「복제된 명제는 강제하는 코드 옆 한 벌만」)를 적용해
+**`///` doc** 을 정본으로 골랐다. 두 자리는 같은 함수 안에 열 줄 거리로 붙어 있어 「코드 옆」이 둘 다 참이고,
+갈림은 *무엇을 말하는가* 로 갈렸다 — `///` 는 **왜** 고유해야 하는지(전역 env · 공유 읽기)를 말하는 **유일한**
+자리이고, `//` 3행은 그 결론만 되풀이한다. ⑤ 에서 `assert_strict_schema` 옆을 정본으로 고른 것과 같은 형태다.
+
+**「애매하면 남긴다」와의 관계** — 제거한 3행이 담은 명제는 남긴 3행이 담은 명제의 **부분집합**이라, 지워서
+어디에도 남지 않게 되는 지식이 0이다. 이 유형이 비대칭 비용 규칙에 걸리지 않는 이유다.
+
+**등재된 유보의 해소도 이 패스가 기록했다.** 13차 패스가 「`llm.rs:494-499` 의 주석이 거짓이고 그 거짓이 실제
+flake 를 덮는다 … 테스트 수정이 따라붙는 **별개 작업**이다. 여기서는 등재만 한다」로 남긴 항목을 #123 이 이미
+수행했다. 원장 1곳과 판정 상세 3곳(13차 등재 · 14차 재확인 · 15차 flake 메모)에 **해소됨**을 덧붙였고, 발견
+기록은 지우지 않았다 — 그 블록이 #123 의 착수 근거이고, 지우면 다음 감지가 같은 결함을 처음부터 다시 연다.
+
+줄 수·지문: **이 판정 자신의 효과**는 `backend/src/llm.rs` 단독 **165 → 162 /
+`85395e10f1b3950e5992fbfd46fe4547daef91308fdd0822dbdd9cbe3cd73897`** 이다(순 제거 3). 유지분(순 +1)이
+남아 #123 이전 값 602/`87c1c5cd…` 로는 돌아가지 않는다.
+
+**원장 1행의 절대값은 이 판정만으로 정해지지 않는다.** 이 패스를 준비하는 사이 자매 PR **#128**
+(`c1b39ad`, 19차 패스)과 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝난 단계만 다시 실행)이 차례로 착지했고,
+#121 이 1행 범위의 `analysis.rs`(+5) · `worker_api.rs`(+21)에 **순 +26행**을 열었다. 그래서 머지 시점
+트리의 1행 값은 **629 / `39b8ea030947a0fcf65b26057198a392c7dd8ec308857ce92c4c3c3f82ca7ba8`** 이고, 그중
+**603행이 판정 완료 · 26행이 #121 발 미판정 증분**이다(판정하지 않고 다음 감지에 넘긴다 — 원장 1행의
+「자매 착지 재실측」). 같은 착지가 원장 4·5·7·9행에도 순 +13행을 열어 이 패스가 **값만** 재고정했다.
+전역 지문은 부모 `b4a6b30` 의 `lines=2649 files=135` / `224bb8ac…` →
+**`lines=2646 files=135`** / `bb3c1bf975da6bb48b5ef4f31b0024e5804d3707a5ac7f8e7334ae15ca63bda2`.
+
+**검증** — 문자열·문자 리터럴을 인식하는 stripper 로 주석을 전건 걷어낸 뒤 부모 `b4a6b30` 과 바이트 비교해
+`backend/src/llm.rs` **IDENTICAL**(비주석 무접촉 · `git diff` 도 `//` 3행 삭제뿐). 리베이스한 트리에서
+`cargo test --offline --release` **224 passed / 0 failed**(#121 이 더한 2건 포함),
+`llm::` 모듈만 5회 반복해도 전건 통과 — 13차 패스가 등재한 「15회 중 1회 실패」가 #123 이후 재현되지 않는다.
+`check-data-format-change.py` **`✅ 해당 없음`**(⇒ `review/manual-approval` = success) ·
+`check-scenario-e2e.py` · `check-mockup-render.py` · `check-journey-mockup.py` rc=0 — 새 `passes/*.md` 를
+만들지 않았으므로 허브 R9(`docs/index.html` 의 `Documents` 수·링크 집합)은 건드리지 않았다.
+

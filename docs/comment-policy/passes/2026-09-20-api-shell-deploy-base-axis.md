@@ -235,6 +235,8 @@ claim 직전(2026-09-20T16:2xZ) `/pulls?state=open` 전수 재조회: **#91**(�
   `FEATUREDOC_STUB_LLM_FAIL` 을 읽는다. `llm.rs` 는 원장 1행의 범위라 **증분 재판정**이고, 주석만
   고쳐서는 flake 가 남으므로 **테스트 수정이 따라붙는 별개 작업**이다. 열린 #93 이 `llm.rs` 를
   건드리므로 순서를 그쪽에 맞춰야 한다.
+  **— 해소됨(2026-09-22 · PR #123 `77158c2` · `rct_20260922-0001`)**, 판정은
+  [2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑪」.
 - **`README.md` 의 「secret.yaml은 gitignore」가 사실이 아니다** — `.gitignore` 에는
   `tools/node_modules/` 와 `__pycache__/` 둘뿐이다. 이 패스가
   `kustomization.yaml` 의 secret 문단을 ②로 걷으면서 대조하다 발견했다. **문서 자체의 품질은 이

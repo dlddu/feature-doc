@@ -606,9 +606,6 @@ mod tests {
         );
 
         // Env set and the input carries the needle: real-shaped provider failure.
-        // The needle is deliberately unlike any other prompt in this binary:
-        // `an_ask()` is shared with the sibling tests, so it must not carry the
-        // needle while the env is set.
         const NEEDLE: &str = "stub-llm-fail-needle-rct20260922";
         std::env::set_var("FEATUREDOC_STUB_LLM_FAIL", NEEDLE);
         let mut hit = an_ask();
