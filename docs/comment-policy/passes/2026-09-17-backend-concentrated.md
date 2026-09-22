@@ -376,3 +376,26 @@ doc(`:666-667`) · `cross_cutting.rs::the_schema_is_only_a_schema` 의 doc(`:265
 결과: 1행의 줄 수·지문이 #112 이전 값 **590 / `9757b6b5…`** 으로 되돌아왔다 — 부모 `bf48b45` 에서 같은
 4파일을 재계산한 값과 바이트 동일(#112 가 이 4파일에 더한 것이 이 5행뿐이고 전건 제거했으므로).
 `analysis.rs` 는 주석 제거 후 부모와 바이트 동일(stripper md5 `5ae2c305`).
+
+## 증분 재판정 ⑨ — `#108` 이 이 축에 더한 26행 (2026-09-22 · `rct_20260922-0001`)
+
+사람 PR **#108**(AC4.9 출력 언어 설정)이 `analysis.rs` 5 · `llm.rs` 18 · `worker_api.rs` 3 = **26행**을
+들여왔다. 판정 맥락과 이 축 밖의 5파일은
+[2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md)에 있다. **제거 15 · 유지 11.**
+
+| 자리 | 판정 | 근거 |
+|---|---|---|
+| `analysis.rs` `AnalysisView.llm_language` doc 2행 (「The language this run's LLM prose is written in, fixed when it was triggered. `None` for a run triggered before the setting existed.」) | **제거 2** | 앞 문장은 필드 이름·타입의 재진술(①). 뒤 문장은 이 PR 이 일곱 자리에 적은 명제이고 **정본은 `settings.rs::analysis_language`** 로 골랐다 |
+| `analysis.rs` `create` 의 복사 지점 주석 3행 (「Copied, not referenced: the stages of this analysis are claimed one gate at a time, and the language they write in must not move with the setting between them.」) | **유지 3** | 이 축의 **정본**. 불변식을 *만드는* 코드(설정을 읽어 INSERT 에 싣는 자리) 옆이고, 12차 패스의 잣대가 고른 자리다 |
+| `llm.rs` `Language` enum doc 2행 → 1행 | **제거 1** | 꼬리 「the user's own setting, snapshotted onto each analysis when it is triggered」가 위 정본의 사본. 요약 1행만 남겼다 |
+| `llm.rs` `Language` 의 「Only prose moves with it …」 4행 | **유지 4** | **판단 갈림 1.** 지시문이 *무엇을* 고정하는지는 바로 아래 `instruction()` 리터럴이 축자로 복원하지만, *왜*(뒤 단계와 화면이 그 값으로 조인한다 → 번역하면 조인이 깨진다)는 어디에도 없다 |
+| `llm.rs` `instruction()` doc 2행 → 1행 | **제거 1** | 「Appended to every stage's system turn」은 `system_turn()` 의 `format!("{}\n{}", self.system, lang.instruction())` 이 그대로 말한다(①). 테스트 설계 제약(「One sentence per concern」)만 남겼다 |
+| `llm.rs` `DEFAULT_LANGUAGE` doc 2행 → 1행 | **제거 1** | 「Matches the column default in the schema, which is the value an existing user row reads as」는 `0012_llm_language.sql` 의 `NOT NULL DEFAULT 'ko'` 가 말한다(① — SQL) |
+| `llm.rs` `Ask::language` 필드 doc 2행 | **제거 2** | 「`None` adds no instruction」은 바로 아래 `system_turn()` 의 `None => Cow::Borrowed(self.system)` 갈래(①). 뒤 절은 일곱 벌 명제의 사본 |
+| `llm.rs` `Ask::system_turn` doc 1행 | **제거 1** | 「the stage's own instruction, then the language line」은 본문 `format!` 이 축자로 적는다(①) |
+| `llm.rs` `anthropic_body` doc 2행 | **제거 2** | **rustdoc 링크만의 교차 참조.** `openai_body` 의 doc 이 이미 「built apart from the call so a test can read it without a network」를 말한다 — 정책 본문: 링크를 위해서만 문장을 남기지 않는다. 증분 ③ 과 같은 판정 |
+| `llm.rs` 테스트 `the_language_line_rides_the_system_turn_on_both_providers` doc 2행 | **제거 2** | fn 이름 + 본문의 네 단정(두 provider 동일 · `starts_with("sys\n")` · 언어 이름 포함 · `never translate`)이 그 문장 자체(①) |
+| `llm.rs` `// The user turn is where the input lives; the language must not leak into it.` 1행 | **유지 1** | **판단 갈림 2.** 바로 아래 단정은 값이 *같다*고만 말하고 「새어 들면 안 된다」는 금지를 말하지 않는다 |
+| `worker_api.rs` `ClaimView.llm_language` doc 3행 | **제거 3** | 세 문장 모두 사본이다 — 스냅숏 명제(정본 `analysis.rs`) · 일곱 벌 명제(정본 `settings.rs`) · 「워커는 지시를 더하지 않는다」(`llm.rs` 의 코드). 「see the column's note in the analysis module」은 링크 전용이고, 그 note 자체가 이 패스에서 제거된다 |
+
+지문: **616행 `d1229629…` → 601행 `f9c76bd1802d88aebf6ad5833a32038d3445f4d374941f3e70796cd9f84b7547`**.

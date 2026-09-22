@@ -18,11 +18,9 @@ test('AC4.9: 출력 언어는 사용자별로 저장되고, 분석은 시작 시
   await page.getByTestId('connect-app').click();
   await expect(page.getByTestId('connection')).toBeVisible();
 
-  // 고른 적 없는 사용자는 한국어로 시작한다.
   await expect(page.getByTestId('lang-ko')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'false');
 
-  // 누르는 즉시 저장된다 — 키 등록 버튼을 거치지 않는다.
   await page.getByTestId('lang-en').click();
   await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'true');
   await expect
@@ -34,7 +32,6 @@ test('AC4.9: 출력 언어는 사용자별로 저장되고, 분석은 시작 시
   await page.getByTestId('register-key').click();
   await expect(page.getByTestId('active-key')).toBeVisible();
 
-  // 다시 열어도 유지된다.
   await page.reload();
   await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'true');
 
@@ -51,7 +48,6 @@ test('AC4.9: 출력 언어는 사용자별로 저장되고, 분석은 시작 시
     .poll(async () => (await (await page.request.get('/api/settings')).json()).llmLanguage)
     .toBe('ko');
 
-  // 이미 시작한 분석은 시작할 때의 언어를 유지한다.
   const stillEn = await page.request.get(`/api/analyses/${firstRun.id}`);
   expect(stillEn.ok()).toBe(true);
   expect((await stillEn.json()).llmLanguage).toBe('en');
@@ -62,7 +58,6 @@ test('AC4.9: 출력 언어는 사용자별로 저장되고, 분석은 시작 시
   expect(second.status()).toBe(201);
   expect((await second.json()).llmLanguage).toBe('ko');
 
-  // 지원하지 않는 값은 거부되고 저장된 설정을 덮어쓰지 않는다.
   const refused = await page.request.put('/api/settings', { data: { llmLanguage: 'ja' } });
   expect(refused.status()).toBe(400);
   expect((await (await page.request.get('/api/settings')).json()).llmLanguage).toBe('ko');

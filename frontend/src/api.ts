@@ -32,7 +32,6 @@ export type LlmKey = {
 
 export type ProviderId = 'anthropic' | 'openai' | 'google';
 
-/** The languages the backend's `llm::Language` accepts. */
 export type LlmLanguage = 'ko' | 'en';
 
 /** Full-page navigation, not fetch — the OAuth redirect chain is the browser's to follow. */
@@ -140,7 +139,6 @@ export type Analysis = {
   estLlmCalls: number;
   estCostCents: number;
   createdAt: number;
-  /** Fixed when the run was triggered; `null` for a run that predates the setting. */
   llmLanguage: LlmLanguage | null;
   /** Denormalized onto the list row so a card can show progress without a second fetch. */
   stagesDone: number;

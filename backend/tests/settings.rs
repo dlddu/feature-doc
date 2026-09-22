@@ -140,8 +140,6 @@ async fn one_users_choice_does_not_reach_another() {
     assert_eq!(language_of(&state, &bob).await, "ko");
 }
 
-/// The analysis is written in the language that was set when it was triggered —
-/// changing the setting afterwards steers the next analysis, not this one.
 #[tokio::test]
 async fn an_analysis_keeps_the_language_it_was_triggered_with() {
     let (state, _p) = stub_state().await;
@@ -161,8 +159,6 @@ async fn an_analysis_keeps_the_language_it_was_triggered_with() {
     assert_eq!(second["llmLanguage"], "ko");
 }
 
-/// A run triggered before the setting existed has no language on it, and the claim
-/// says so rather than inventing one — the worker then leaves its prompt untouched.
 #[tokio::test]
 async fn a_run_without_a_language_is_claimed_without_one() {
     let (state, _p) = stub_state().await;

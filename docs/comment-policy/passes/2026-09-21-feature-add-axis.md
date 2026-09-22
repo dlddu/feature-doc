@@ -259,3 +259,18 @@ reconciler task `rct_20260921-0010`(모델 `tbm_feature-doc-comment-redundancy`)
 - **이미 판정된 spec 12개의 Isolation 블록** — 13차·문서 편집 축이 적어 둔 후속 후보 그대로(원장 3·4·5·6·7·8행에
   걸치는 증분 재판정, 한 패스로). 이 패스는 새 파일 `sc03-03` 에만 최신 규약을 적용했고 12개는 손대지 않았다.
 - 잔여 D2 4파일/45행 · D6·D5 2파일/59행 — 사람 게이트, 변동 없음.
+
+## 증분 재판정 ① — `#108` 이 `feature_add.rs` 에 더한 1행 (2026-09-22 · `rct_20260922-0001`)
+
+사람 PR **#108**(AC4.9 출력 언어 설정)이 `backend/src/feature_add.rs::draft` 에 1행을 들여왔다:
+`// 초안은 이 분석의 목록에 들어가므로 목록의 나머지와 같은 언어로 쓴다.`
+(바로 아래 `let language = crate::settings::analysis_language(&state.db, &id).await?;`)
+
+**제거 1.** 「이 분석의 … 언어」는 호출하는 함수 이름 `analysis_language` 가 말하고(①), 「산출물이 들어가는
+문서와 같은 언어로 쓴다」는 그 함수의 doc 이 **이 축의 정본**으로 적는다 — 「including the ones the API makes
+directly (edit proposals, manual feature drafts), so their prose matches the document it lands in」. 같은 자리가
+`doc_edit::propose` 에도 한 벌 있었고 같은 판정으로 걷었다(원장 17행). 판정 맥락은
+[2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md).
+
+지문: **46행 `3fb54093…` → 45행 `b596e7392db0110e03721163ee6946ca87d58b58aba894f6a556f9ec481294a7`** —
+**이 패스 직전 원장 값으로 바이트 그대로 복귀**했다.

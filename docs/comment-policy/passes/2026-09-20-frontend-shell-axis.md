@@ -309,3 +309,19 @@ for」 — `CredentialsSetup.tsx` 는 `#83` 이 `GrantRepoAccess.tsx` + `Registe
 결과: 10행의 줄 수·지문이 #112 이전 값 **85 / `89959a07…`** 으로 되돌아왔다(트리거 `fc6d191` 의 87 /
 `673c2f59…` 에서 −2 — 부모 `bf48b45` 재계산과 바이트 동일). `api.ts` 는 주석 제거 후 부모와 바이트
 동일(stripper md5 `9f2f4f0f`), `npm run build` rc=0.
+
+## 증분 재판정 ⑥ — 원장 10행에 #108 이 연 +6행 (2026-09-22 · `rct_20260922-0001`)
+
+사람 PR **#108**(AC4.9 출력 언어 설정)이 `frontend/src/api.ts` 2 · `frontend/src/RegisterLlmKey.tsx` 4 =
+**6행**을 들여왔다. 판정 맥락은 [2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md).
+**제거 3 · 유지 3.**
+
+| 자리 | 판정 | 근거 |
+|---|---|---|
+| `api.ts` `/** The languages the backend's `llm::Language` accepts. */` (바로 아래 `export type LlmLanguage = 'ko' \| 'en';`) | **제거 1** | 선언 재진술(①) — 주석이 말하는 목록을 선언이 그대로 적는다. 백엔드 타입으로의 교차 참조도 이름에서 복원된다 |
+| `api.ts` `Analysis.llmLanguage` 의 `/** Fixed when the run was triggered; `null` for a run that predates the setting. */` | **제거 1** | 두 문장 모두 사본 — 스냅숏 명제(정본 `analysis.rs::create`)와 일곱 벌 명제(정본 `settings.rs::analysis_language`) |
+| `RegisterLlmKey.tsx` `// Order is display order; labels are each language's own name for itself.` | **제거 1** | 선언 재진술(①). 배열의 순서가 곧 표시 순서이고(바로 아래 `.map`), 라벨이 각 언어의 자기 이름이라는 것은 리터럴 `'한국어'` · `'English'` 가 말한다. 바로 위에 남아 있는 provider 쪽 주석(「Screen-only: this order and its first entry decide what a user who has never chosen starts on …」)은 *기본값을 정한다*는 다른 명제라 영향 없다 |
+| `RegisterLlmKey.tsx` `// Saved on tap: the choice is independent of the key form, so it must not wait for — or be lost with — "저장하고 계속".` 2행 | **유지 2** | 선택이 키 등록 폼과 **독립**이라는 것은 `selectLanguage` 본문에서 복원되지 않는다(폼 제출 경로가 다른 함수다). 「저장하고 계속」과 함께 잃으면 안 된다는 금지도 코드가 말하지 않는다 |
+| `RegisterLlmKey.tsx` `// `null` until the stored value arrives, so no button reads as chosen before then.` 1행 | **유지 1** | `useState<LlmLanguage \| null>(null)` 은 초기값만 말하고, *왜* `null` 인지(도착 전에 어느 버튼도 선택으로 읽히면 안 된다)는 240행 아래의 `disabled` · `aria-pressed` 와 묶어야 보인다. 정책의 「애매하면 남긴다」 |
+
+지문: **91행 `e4a3bdeb…` → 88행 `fd84aea84c1e740650d84f0eb07f00721c5b61153c59a7747d88bf607585b2e9`**.

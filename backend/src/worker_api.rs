@@ -142,9 +142,6 @@ struct ClaimView {
     /// `None` when the user has no active key — the stage then fails with a clear
     /// reason instead of the worker inventing a result. Never persisted, never logged.
     llm_api_key: Option<String>,
-    /// The analysis's own output language, not the owner's current setting — see
-    /// the column's note in the analysis module. `None` for a run triggered before
-    /// the setting existed; the worker then adds no language instruction.
     llm_language: Option<String>,
 }
 
