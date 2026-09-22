@@ -590,8 +590,9 @@ mod tests {
     /// real-shaped provider failure exactly when the env names a prompt substring
     /// the input carries, the deterministic answer otherwise. The trigger adds a
     /// failure real has — it never removes one, and it is inert in every other
-    /// analysis. The env writes stay inside this one test; no other test reads
-    /// this variable, so parallel test runs cannot race on it.
+    /// analysis. The env writes stay inside this one test, but the variable is
+    /// process-global and `stub_answer` reads it for every Stub-mode ask in this
+    /// binary — so the needle must be one no other test's prompt can carry.
     #[tokio::test]
     async fn stub_llm_fail_trigger_fires_only_on_the_named_input() {
         let http = reqwest::Client::new();
@@ -605,9 +606,14 @@ mod tests {
         );
 
         // Env set and the input carries the needle: real-shaped provider failure.
-        std::env::set_var("FEATUREDOC_STUB_LLM_FAIL", "a\nb");
-        let hit = an_ask();
-        assert!(hit.user.contains("a\nb"));
+        // The needle is deliberately unlike any other prompt in this binary:
+        // `an_ask()` is shared with the sibling tests, so it must not carry the
+        // needle while the env is set.
+        const NEEDLE: &str = "stub-llm-fail-needle-rct20260922";
+        std::env::set_var("FEATUREDOC_STUB_LLM_FAIL", NEEDLE);
+        let mut hit = an_ask();
+        hit.user = format!("{}\n{}", hit.user, NEEDLE);
+        assert!(hit.user.contains(NEEDLE));
         let err = ask(&http, Mode::Stub, Provider::OpenAI, None, hit)
             .await
             .unwrap_err();
