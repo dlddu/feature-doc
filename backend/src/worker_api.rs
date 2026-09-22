@@ -119,9 +119,14 @@ struct ClaimView {
     ///
     /// A stage that already **succeeded** is not offered again. That is what makes
     /// the post-approval re-queue safe: stage 4 opens without stages 2-3 re-running
-    /// their LLM calls and overwriting the very document the user approved. The one
-    /// exception is spelled out in [`offered_stages`].
+    /// their LLM calls and overwriting the very document the user approved. The rule
+    /// is spelled out in [`offered_stages`].
     executable_stages: Vec<String>,
+    /// Stage 2's stored document, carried when stage 3 is offered **without** stage
+    /// 2 — i.e. when stage 3 alone is being re-run (AC1.5). Stage 3 plans over this
+    /// landscape; carrying it is what lets the re-run leave stage 2 untouched.
+    /// `None` whenever stage 2 is offered too (the worker then uses this pass's).
+    cross_cutting_document: Option<serde_json::Value>,
     /// The patterns the reviewer approved (AC1.3), when they have. Stage 4's input,
     /// carried on the claim so the worker needs no second round-trip — and so the
     /// gate and the input come from the same read of the same row.
@@ -263,13 +268,25 @@ async fn claim(
     let approved_patterns = approved_patterns(&state, &job.id).await?;
     let approved_candidates = approved_candidates(&state, &job.id).await?;
     let dependency_requests = pending_dependency_requests(&state, &job.id).await?;
+    let landscape = stored_landscape(&state, &job.id).await?;
     let executable_stages = offered_stages(
         &state,
         &job.id,
-        approved_patterns.is_some(),
-        acceptance_pending(&state, &job.id, &approved_candidates).await?,
+        Gates {
+            strategy_approved: approved_patterns.is_some(),
+            candidates_approved: !approved_candidates.is_empty(),
+            acceptance_pending: acceptance_pending(&state, &job.id, &approved_candidates).await?,
+            landscape_stored: landscape.is_some(),
+        },
     )
     .await?;
+    let offers = |k: &str| executable_stages.iter().any(|s| s == k);
+    let cross_cutting_document =
+        if offers(pipeline::DISCOVERY_STRATEGY) && !offers(pipeline::CROSS_CUTTING) {
+            landscape
+        } else {
+            None
+        };
 
     Ok(Json(ClaimView {
         id: job.id,
@@ -277,6 +294,7 @@ async fn claim(
         repo_name: job.repo_name,
         branch: job.branch,
         executable_stages,
+        cross_cutting_document,
         approved_patterns: approved_patterns.unwrap_or_default(),
         approved_candidates,
         dependency_requests,
@@ -393,14 +411,37 @@ pub async fn pending_dependency_requests(
     .await?)
 }
 
+/// The gate values [`offered_stages`] decides on, read once per claim.
+pub struct Gates {
+    /// The reviewer approved a strategy (AC1.3) — stage 4's gate.
+    pub strategy_approved: bool,
+    /// At least one feature candidate is approved — stage 5's gate.
+    pub candidates_approved: bool,
+    /// An approved feature has no acceptance document yet ([`acceptance_pending`]).
+    pub acceptance_pending: bool,
+    /// Stage 2's document is stored, so stage 3 can be offered on its own.
+    pub landscape_stored: bool,
+}
+
 /// Which stages this claim offers.
 ///
-/// The rule is "a stage that has not succeeded yet", with one deliberate exception:
-/// `cross_cutting` is offered whenever `discovery_strategy` is still pending, because
-/// stage 3 takes stage 2's document **as an in-pass argument**. Without the
-/// exception, retrying a failed stage 3 would arrive with no landscape to plan over
-/// and silently do nothing — the behaviour before this rule existed (every stage
-/// re-ran, every time) is preserved for exactly that path.
+/// The rule is "a stage that has not succeeded yet" and whose gate is open. A stage
+/// that finished is back at `pending` only when a person asked for it to run again
+/// (AC1.5's per-stage retry, which covers succeeded stages too) — so the same rule
+/// is what re-runs exactly that stage and nothing behind it.
+///
+/// `cross_cutting` is also offered while `discovery_strategy` is pending **and** no
+/// stage-2 document is stored: stage 3 plans over stage 2's landscape, and without
+/// one it would arrive with nothing to plan over and silently do nothing. When the
+/// document is stored the claim carries it instead (`crossCuttingDocument`), which is
+/// what lets re-running stage 3 leave stage 2 untouched.
+///
+/// Stage 5 is offered when an approved feature is not yet documented (the reason
+/// that does not look at stage status — see [`acceptance_pending`]) **or** when the
+/// stage row is `pending` while candidates are approved, which is the re-run of a
+/// stage whose document already covers every approved feature. `pending`, not "not
+/// succeeded": a *failed* stage 5 waits for its own retry rather than riding along
+/// on a re-run someone asked of a different stage.
 ///
 /// `fetch` is always offered. It is the only non-LLM stage, it is what produces the
 /// path list every later stage reads, and re-measuring the same tree costs a single
@@ -408,33 +449,50 @@ pub async fn pending_dependency_requests(
 pub async fn offered_stages(
     state: &AppState,
     analysis_id: &str,
-    strategy_approved: bool,
-    acceptance_pending: bool,
+    gates: Gates,
 ) -> Result<Vec<String>, AppError> {
     let rows: Vec<(String, String)> =
         sqlx::query_as("SELECT key, status FROM analysis_stages WHERE analysis_id = ?")
             .bind(analysis_id)
             .fetch_all(&state.db)
             .await?;
-    let done = |key: &str| {
-        rows.iter()
-            .any(|(k, s)| k == key && s == stage_status::SUCCEEDED)
-    };
+    let is = |key: &str, status: &str| rows.iter().any(|(k, s)| k == key && s == status);
+    let done = |key: &str| is(key, stage_status::SUCCEEDED);
 
     let mut offered = vec![pipeline::FETCH.to_string()];
-    if !done(pipeline::CROSS_CUTTING) || !done(pipeline::DISCOVERY_STRATEGY) {
+    if !done(pipeline::CROSS_CUTTING)
+        || (!done(pipeline::DISCOVERY_STRATEGY) && !gates.landscape_stored)
+    {
         offered.push(pipeline::CROSS_CUTTING.to_string());
     }
     if !done(pipeline::DISCOVERY_STRATEGY) {
         offered.push(pipeline::DISCOVERY_STRATEGY.to_string());
     }
-    if strategy_approved && !done(pipeline::FEATURE_CANDIDATES) {
+    if gates.strategy_approved && !done(pipeline::FEATURE_CANDIDATES) {
         offered.push(pipeline::FEATURE_CANDIDATES.to_string());
     }
-    if acceptance_pending {
+    if gates.acceptance_pending
+        || (gates.candidates_approved
+            && is(pipeline::ACCEPTANCE_DEPENDENCIES, stage_status::PENDING))
+    {
         offered.push(pipeline::ACCEPTANCE_DEPENDENCIES.to_string());
     }
     Ok(offered)
+}
+
+/// Stage 2's stored document, when there is one.
+async fn stored_landscape(
+    state: &AppState,
+    analysis_id: &str,
+) -> Result<Option<serde_json::Value>, AppError> {
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",
+    )
+    .bind(analysis_id)
+    .bind(pipeline::CROSS_CUTTING)
+    .fetch_optional(&state.db)
+    .await?;
+    Ok(row.and_then(|(content,)| serde_json::from_str(&content).ok()))
 }
 
 /// Whether a stage behind a human gate is still waiting — i.e. whether handing this
@@ -451,7 +509,13 @@ async fn work_remains(state: &AppState, analysis_id: &str) -> Result<bool, AppEr
     }
     let approved = approved_candidates(state, analysis_id).await?;
     let pending = acceptance_pending(state, analysis_id, &approved).await?;
-    let offered = offered_stages(state, analysis_id, strategy_approved, pending).await?;
+    let gates = Gates {
+        strategy_approved,
+        candidates_approved: !approved.is_empty(),
+        acceptance_pending: pending,
+        landscape_stored: stored_landscape(state, analysis_id).await?.is_some(),
+    };
+    let offered = offered_stages(state, analysis_id, gates).await?;
     if offered
         .iter()
         .any(|k| k == pipeline::FEATURE_CANDIDATES || k == pipeline::ACCEPTANCE_DEPENDENCIES)

@@ -495,3 +495,88 @@ async fn the_document_is_readable_by_its_owner_and_nobody_else() {
 
     let _ = std::fs::remove_file(&path);
 }
+
+async fn retry(state: &AppState, session: &str, id: &str, key: &str) -> StatusCode {
+    build_router(state.clone())
+        .oneshot(user_send(
+            "POST",
+            &format!("/api/analyses/{id}/stages/{key}/retry"),
+            session,
+            json!({}),
+        ))
+        .await
+        .unwrap()
+        .status()
+}
+
+async fn stage_statuses(state: &AppState, id: &str) -> Vec<(String, String)> {
+    sqlx::query_as("SELECT key, status FROM analysis_stages WHERE analysis_id = ? ORDER BY seq")
+        .bind(id)
+        .fetch_all(&state.db)
+        .await
+        .unwrap()
+}
+
+/// AC1.5 / test/01 시나리오 8: re-running a stage that already succeeded offers that
+/// stage — and nothing behind it — to the next claim. Later stages keep their
+/// output and the reviewer keeps their decisions.
+#[tokio::test]
+async fn rerunning_a_succeeded_stage_offers_that_stage_alone() {
+    let (state, path) = stub_state().await;
+    let session = login_installed(&state, 5, "erin").await;
+    let id = enqueue(&state, &session, "payments-api").await;
+    run_to_candidates(&state, &session, &id).await;
+    let list = candidates(&state, &session, &id).await;
+    let first = list["candidates"][0]["key"].as_str().unwrap().to_string();
+    decide(&state, &session, &id, &first, json!({ "decision": "approve" })).await;
+    let job = claim(&state).await;
+    run_stage_five(&state, &id, &job).await;
+    assert!(stage_statuses(&state, &id).await.iter().all(|(_, s)| s == "succeeded"));
+
+    // `fetch` is offered on every claim (it produces the path list), so each expected
+    // list starts with it; what matters is that only the re-run stage joins it.
+    let cases: [(&str, &[&str]); 5] = [
+        ("fetch", &["fetch"]),
+        ("cross_cutting", &["fetch", "cross_cutting"]),
+        ("discovery_strategy", &["fetch", "discovery_strategy"]),
+        ("feature_candidates", &["fetch", "feature_candidates"]),
+        ("acceptance_dependencies", &["fetch", "acceptance_dependencies"]),
+    ];
+    for (key, expected) in cases {
+        assert_eq!(retry(&state, &session, &id, key).await, StatusCode::OK, "{key}");
+        assert_eq!(status_of(&state, &id).await, "queued", "{key}");
+        for (k, s) in stage_statuses(&state, &id).await {
+            let want = if k == key { "pending" } else { "succeeded" };
+            assert_eq!(s, want, "re-running {key} must leave {k} alone");
+        }
+
+        let job = claim(&state).await;
+        assert_eq!(offered(&job), expected, "re-running {key}");
+        if key == "discovery_strategy" {
+            // Stage 3 plans over the stored landscape instead of re-running stage 2.
+            assert_eq!(job["crossCuttingDocument"], json!({ "categories": [] }));
+        } else {
+            assert!(job["crossCuttingDocument"].is_null(), "{key}: {job}");
+        }
+
+        if key == "acceptance_dependencies" {
+            run_stage_five(&state, &id, &job).await;
+        } else {
+            report(&state, &id, key, "succeeded").await;
+            finish(&state, &id, "awaiting_pipeline").await;
+        }
+        assert_eq!(status_of(&state, &id).await, "awaiting_pipeline", "{key}");
+    }
+
+    // The reviewer's decision survived every re-run, stage 4's included.
+    let list = candidates(&state, &session, &id).await;
+    let approved = list["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|c| c["decision"] == "approved")
+        .count();
+    assert_eq!(approved, 1);
+    assert!(try_claim(&state).await.is_none(), "no work left once every re-run finished");
+    let _ = std::fs::remove_file(&path);
+}
