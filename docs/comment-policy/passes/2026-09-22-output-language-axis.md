@@ -125,13 +125,20 @@ user's, the vocabulary is the code's, and the code is the one that moved.」 —
 
 | 제거한 주석 | ① 바로 아래 코드 | ② 문서 |
 |---|---|---|
-| `// 고른 적 없는 사용자는 한국어로 시작한다.` | `expect(getByTestId('lang-ko')).toHaveAttribute('aria-pressed', 'true')` | 「**기본값은 한국어다**」 · 사전 조건 「출력 언어를 고른 적이 없다」 (`docs/prd/04-platform.md` 에 「고른 적 없는 사용자」 축자) |
-| `// 누르는 즉시 저장된다 — 키 등록 버튼을 거치지 않는다.` | 클릭 → `aria-pressed=true` → `/api/settings` 폴링이 `en` | 「선택은 **누르는 즉시 저장**되어」 (축자) |
-| `// 다시 열어도 유지된다.` | `page.reload()` 뒤 `aria-pressed=true` | 「**다시 열어도 유지**된다」 (축자) |
+| `// 고른 적 없는 사용자는 한국어로 시작한다.` | `expect(page.getByTestId('lang-ko').locator('input')).toBeChecked()` | 「**기본값은 한국어다**」 · 사전 조건 「출력 언어를 고른 적이 없다」 (`docs/prd/04-platform.md` 에 「고른 적 없는 사용자」 축자) |
+| `// 누르는 즉시 저장된다 — 키 등록 버튼을 거치지 않는다.` | 클릭 → `locator('input')` 이 `toBeChecked()` → `/api/settings` 폴링이 `en` | 「선택은 **누르는 즉시 저장**되어」 (축자) |
+| `// 다시 열어도 유지된다.` | `page.reload()` 뒤 `locator('input')` 이 `toBeChecked()` | 「**다시 열어도 유지**된다」 (축자) |
 | `// 이미 시작한 분석은 시작할 때의 언어를 유지한다.` | 설정을 `ko` 로 바꾼 뒤 `firstRun` 의 `llmLanguage` 가 `en` | 「English일 때 시작한 분석은 이후 설정을 한국어로 바꿔도 English로 기록된 채 남고」 |
 | `// 지원하지 않는 값은 거부되고 저장된 설정을 덮어쓰지 않는다.` | `PUT {llmLanguage:'ja'}` → 400, 이어서 `GET` 이 `ko` | 「지원하지 않는 언어 값은 거부되고(HTTP 400) 저장된 설정은 바뀌지 않는다」 |
 
 원장 13차 패스가 같은 유형을 「순 제거」로 닫은 선례를 따른다.
+
+> **인용 갱신(2026-09-22 · `rct_20260922-0004`)** — 위 「① 바로 아래 코드」 칸의 단정 셋은 원래
+> `toHaveAttribute('aria-pressed', 'true')` 였다. #119 가 그 버튼을 native radio 로 바꾸며 단정을
+> `locator('input')).toBeChecked()` 로 갈아치웠으므로 문면만 현재 spec
+> (`e2e/tests/sc04-14-llm-output-language.spec.ts:21-46`)에 맞춰 고쳤다. **제거 판정 5행은 무수정** —
+> 새 단정이 같은 명제를 말하므로 복원 경로 ①은 그대로 선다. 이 행(원장 20행)의 주석은 움직이지
+> 않았으므로 **지문도 무수정**이다.
 
 ## 증분 — 판정 완료 원장 행 안의 41행 (원장 1·5·10·17·18행)
 
