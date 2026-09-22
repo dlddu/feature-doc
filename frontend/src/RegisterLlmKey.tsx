@@ -60,7 +60,7 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
-  // `null` until the stored value arrives, so no button reads as chosen before then.
+  // `null` until the stored value arrives, so no option reads as chosen before then.
   const [language, setLanguage] = useState<LlmLanguage | null>(null);
 
   useEffect(() => {
@@ -280,17 +280,21 @@ export function RegisterLlmKey({ onBack, onReady }: Props) {
         <span className="caps">출력 언어</span>
         <div className="segment" style={{ marginTop: 4 }}>
           {LANGUAGES.map((l) => (
-            <button
+            <label
               key={l.id}
-              type="button"
               className={`seg${l.id === language ? ' active' : ''}`}
-              onClick={() => selectLanguage(l.id)}
-              disabled={language === null}
-              aria-pressed={l.id === language}
               data-testid={`lang-${l.id}`}
             >
+              <input
+                type="radio"
+                name="out-lang"
+                value={l.id}
+                checked={l.id === language}
+                onChange={() => selectLanguage(l.id)}
+                disabled={language === null}
+              />
               {l.label}
-            </button>
+            </label>
           ))}
         </div>
         <p className="body sm">분석 결과의 문장을 이 언어로 받아요. 다음에 시작하는 분석부터 적용됩니다.</p>
