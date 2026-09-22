@@ -18,11 +18,11 @@ test('AC4.9: 출력 언어는 사용자별로 저장되고, 분석은 시작 시
   await page.getByTestId('connect-app').click();
   await expect(page.getByTestId('connection')).toBeVisible();
 
-  await expect(page.getByTestId('lang-ko')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('lang-ko').locator('input')).toBeChecked();
+  await expect(page.getByTestId('lang-en').locator('input')).not.toBeChecked();
 
   await page.getByTestId('lang-en').click();
-  await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('lang-en').locator('input')).toBeChecked();
   await expect
     .poll(async () => (await (await page.request.get('/api/settings')).json()).llmLanguage)
     .toBe('en');
@@ -33,7 +33,7 @@ test('AC4.9: 출력 언어는 사용자별로 저장되고, 분석은 시작 시
   await expect(page.getByTestId('active-key')).toBeVisible();
 
   await page.reload();
-  await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('lang-en').locator('input')).toBeChecked();
 
   const first = await page.request.post('/api/analyses', {
     data: { repoUrl: 'stub-account/payments-api', branch: null },
@@ -43,7 +43,7 @@ test('AC4.9: 출력 언어는 사용자별로 저장되고, 분석은 시작 시
   expect(firstRun.llmLanguage).toBe('en');
 
   await page.getByTestId('lang-ko').click();
-  await expect(page.getByTestId('lang-ko')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('lang-ko').locator('input')).toBeChecked();
   await expect
     .poll(async () => (await (await page.request.get('/api/settings')).json()).llmLanguage)
     .toBe('ko');

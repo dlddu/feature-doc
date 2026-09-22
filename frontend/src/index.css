@@ -281,6 +281,12 @@ body {
   color: var(--text-primary);
   font-weight: 500;
 }
+.segment .seg input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
 
 .ico {
   flex: none;
