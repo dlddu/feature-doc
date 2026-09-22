@@ -188,6 +188,9 @@ async fn propose(
         None => (llm::DEFAULT_PROVIDER, None),
     };
 
+    // 고친 문장은 문서의 나머지와 같은 언어여야 한다 — 사용자의 지금 설정이 아니라 분석의 언어.
+    let language = crate::settings::analysis_language(&state.db, &id).await?;
+
     let answer = llm::ask(
         &state.http,
         state.config.doubles.llm,
@@ -195,6 +198,7 @@ async fn propose(
         key.as_deref(),
         Ask {
             system: SYSTEM,
+            language,
             user: prompt(&before, &request, &avoid),
             schema: schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급

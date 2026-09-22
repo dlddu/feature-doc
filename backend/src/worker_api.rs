@@ -142,6 +142,10 @@ struct ClaimView {
     /// `None` when the user has no active key — the stage then fails with a clear
     /// reason instead of the worker inventing a result. Never persisted, never logged.
     llm_api_key: Option<String>,
+    /// The analysis's own output language, not the owner's current setting — see
+    /// the column's note in the analysis module. `None` for a run triggered before
+    /// the setting existed; the worker then adds no language instruction.
+    llm_language: Option<String>,
 }
 
 /// One approved feature candidate as stage 5 receives it.
@@ -162,6 +166,7 @@ struct ClaimRow {
     repo_owner: String,
     repo_name: String,
     branch: String,
+    llm_language: Option<String>,
 }
 
 /// Atomically takes the oldest claimable job, or answers `204` when the queue is
@@ -199,7 +204,7 @@ async fn claim(
                ) \
            AND (status = ? \
                 OR (status = ? AND lease_expires_at IS NOT NULL AND lease_expires_at < ?)) \
-     RETURNING id, user_id, installation_id, repo_owner, repo_name, branch",
+     RETURNING id, user_id, installation_id, repo_owner, repo_name, branch, llm_language",
     )
     .bind(status::RUNNING)
     .bind(&req.worker_id)
@@ -282,6 +287,7 @@ async fn claim(
         installation_token,
         llm_provider,
         llm_api_key,
+        llm_language: job.llm_language,
     })
     .into_response())
 }

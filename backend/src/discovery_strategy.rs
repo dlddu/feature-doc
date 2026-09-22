@@ -109,6 +109,7 @@ pub async fn propose(
     mode: crate::config::Mode,
     provider: llm::Provider,
     key: Option<&str>,
+    language: Option<llm::Language>,
     owner: &str,
     name: &str,
     branch: &str,
@@ -126,6 +127,7 @@ pub async fn propose(
         key,
         Ask {
             system: SYSTEM,
+            language,
             user: prompt(owner, name, branch, &paths, cross_cutting),
             schema: schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
@@ -195,6 +197,7 @@ mod tests {
             crate::config::Mode::Stub,
             llm::Provider::OpenAI,
             None,
+            None,
             "acme",
             "widgets",
             "main",
@@ -234,6 +237,7 @@ mod tests {
             &reqwest::Client::new(),
             crate::config::Mode::Stub,
             llm::Provider::OpenAI,
+            None,
             None,
             "acme",
             "widgets",

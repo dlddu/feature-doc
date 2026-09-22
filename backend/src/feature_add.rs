@@ -170,6 +170,9 @@ async fn draft(
         None => (llm::DEFAULT_PROVIDER, None),
     };
 
+    // 초안은 이 분석의 목록에 들어가므로 목록의 나머지와 같은 언어로 쓴다.
+    let language = crate::settings::analysis_language(&state.db, &id).await?;
+
     let answer = llm::ask(
         &state.http,
         state.config.doubles.llm,
@@ -177,6 +180,7 @@ async fn draft(
         key.as_deref(),
         Ask {
             system: SYSTEM,
+            language,
             user: prompt(&owner, &name, &branch, &request, &paths),
             schema: schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
