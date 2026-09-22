@@ -1,10 +1,14 @@
 # 데이터 저장 형식 변경 판정 → 사람 리뷰 필요 여부 신호.
 #
 # PR 이 DB 스키마나 그 밖에 영속되는 데이터의 형식을 **건드리지 않았다고 판정되면** head
-# 커밋에 commit status `review/data-format` = success 를 붙인다. 건드렸을 가능성이 있으면
+# 커밋에 commit status `review/manual-approval` = success 를 붙인다. 건드렸을 가능성이 있으면
 # 아무 status 도 붙이지 않는다 — 이 status 는 "그 관점의 사람 리뷰는 생략해도 된다"는
 # 적극적 확인이고, 없으면 사람이 본다. 규칙(D1·D6)과 의도적으로 보지 않는 것은
 # `tools/check-data-format-change.py` 헤더에 있다.
+#
+# status 이름이 `review/manual-approval` 인 이유: 이 레포의 수동 승인 신호는 이것 하나이고
+# (econ-opinion-monitor 와 같은 이름), 판정 관점(저장 형식)이 아니라 「사람 승인을 생략해도
+# 되는가」라는 신호의 뜻을 이름에 둔다. 사람이 승인할 때도 같은 context 로 success 를 붙인다.
 #
 # 문서 게이트들과 달리 ci.yml 의 `ci-gate` 에 묶지 않는다. 합격/불합격 검사가 아니라 리뷰
 # 라우팅 신호라서, 형식이 바뀐 PR 도 이 job 자체는 초록으로 끝난다.
@@ -68,11 +72,11 @@ jobs:
         run: |
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
             -f state=success \
-            -f context=review/data-format \
+            -f context=review/manual-approval \
             -f description="DB 스키마·데이터 저장 형식 변경 없음 (자동 판정)" \
             -f target_url="$RUN_URL" > /dev/null
-          echo "review/data-format = success → ${HEAD_SHA}"
+          echo "review/manual-approval = success → ${HEAD_SHA}"
 
       - name: note (changed → no status)
         if: steps.judge.outputs.needs_review == 'true'
-        run: echo "::notice::저장 형식에 닿는 변경이 있어 review/data-format 을 붙이지 않았다 — 사람 리뷰 대상. 근거는 job summary."
+        run: echo "::notice::저장 형식에 닿는 변경이 있어 review/manual-approval 을 붙이지 않았다 — 사람 리뷰 대상. 근거는 job summary."
