@@ -399,3 +399,18 @@ doc(`:666-667`) · `cross_cutting.rs::the_schema_is_only_a_schema` 의 doc(`:265
 | `worker_api.rs` `ClaimView.llm_language` doc 3행 | **제거 3** | 세 문장 모두 사본이다 — 스냅숏 명제(정본 `analysis.rs`) · 일곱 벌 명제(정본 `settings.rs`) · 「워커는 지시를 더하지 않는다」(`llm.rs` 의 코드). 「see the column's note in the analysis module」은 링크 전용이고, 그 note 자체가 이 패스에서 제거된다 |
 
 지문: **616행 `d1229629…` → 601행 `f9c76bd1802d88aebf6ad5833a32038d3445f4d374941f3e70796cd9f84b7547`**.
+
+## 증분 재판정 ⑩ — #114(슬라이스 6d)가 `worker_api.rs` 에 연 +2행 · 2026-09-22
+
+reconciler task `rct_20260922-0005`. 사람 PR **#114**(`aacd0b4`, AC3.5 충돌 처리)가 `submit_document` 의
+`inherit` 호출 위에 2행을 더했다. **순 제거 1행 · 유지 1행**(2행 → 1행 재작성).
+
+- 제거: 「인수 문서가 서는 순간이 직전 분석의 편집을 이어받을 자리다(AC3.5)」 — `docs/doc-tracker/2026-09.md`
+  슬라이스 6d 행이 「재분석 문서가 저장되는 자리(`worker_api::submit_document`)에서 … **재생**한다」로 거의
+  축자로 적는다(복원 경로 ②). `(AC3.5)` 꼬리표는 중복 유형 ③.
+- **유지**: 「저장과 같은 요청 안에서 이어받아야 워커가 5단계를 `succeeded` 로 보고하기 전에 충돌이 서 있다」 —
+  *왜 같은 요청 안이어야 하는가*는 **호출 순서가 만드는 계약**이고, doc-tracker 도 PR 본문도 이 순서를 적지
+  않는다. 정책 본문이 유지 대상으로 이름 붙인 「워커 임대·큐 드레인·claim/lease 같은 동시성 계약」이다.
+
+줄 수·지문: 601 / `f9c76bd1…` → (트리거) 603 → **602 / `87c1c5cd…`**. 유지분이 남아 #114 이전 값으로는
+돌아가지 않는다. 맥락 [2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md).

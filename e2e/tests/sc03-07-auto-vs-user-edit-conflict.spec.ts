@@ -10,7 +10,6 @@ import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers, setWorkerEnv } from '../support/cluster';
 import { acceptanceOf, runToAcceptance, signInWithCredentials } from '../support/acceptance';
 
-/** 세 번째 리비전 — 트리가 한 걸음 더 나아가고 첫 문장을 다르게 읽는다(EXT-03 더블 안). */
 const REVISION = 'FEATUREDOC_STUB_REPO_REVISION';
 
 type Sentences = { given: string; when: string; then: string };
@@ -46,7 +45,6 @@ test.describe('AC3.5: 자동 재분석은 사용자 편집을 결정 없이 덮�
       await signInWithCredentials(page, 'sc0307');
       await scaleWorkers(1);
 
-      // ── 사전 조건: 첫 분석 + 사용자의 마지막 편집 ───────────────────────
       const first = await runToAcceptance(page, 'payments-api', 1);
       const key = first.confirmed[0];
       const autoBefore = await firstThen(page, first.id, key);
@@ -65,7 +63,6 @@ test.describe('AC3.5: 자동 재분석은 사용자 편집을 결정 없이 덮�
       expect(approved.ok(), '편집 승인').toBeTruthy();
       expect(await firstThen(page, first.id, key), '편집이 문서에 섰다').toBe(mine);
 
-      // ── 코드가 바뀐 뒤의 재분석 ──────────────────────────────────────
       await scaleWorkers(0);
       setWorkerEnv(REVISION, '3');
       await scaleWorkers(1);
@@ -88,7 +85,6 @@ test.describe('AC3.5: 자동 재분석은 사용자 편집을 결정 없이 덮�
       expect(conflict.auto.then, '자동 결과 쪽').toBe(autoNow);
       expect(conflict.mergeProposal).toBeNull();
 
-      // ── 달라진 것: 배너와 「확인 필요」, 한 곳을 열어야 넘어간다 ────────
       await page.goto(`/#/analyses/${second.id}/diff`);
       await expect(page.getByTestId('diff-conflict-banner')).toBeVisible();
       await expect(page.getByTestId('diff-conflict-count')).toHaveText('1');
@@ -103,13 +99,11 @@ test.describe('AC3.5: 자동 재분석은 사용자 편집을 결정 없이 덮�
       await expect(page.getByTestId('diff-to-conflict')).toBeEnabled();
       await page.getByTestId('diff-to-conflict').click();
 
-      // ── 충돌 화면: 양쪽이 나란히, 결정 전에는 저장되지 않는다 ─────────
       await expect(page).toHaveURL(new RegExp(`/conflicts/${conflict.id}$`));
       await expect(page.getByTestId('conflict-mine')).toHaveText(mine);
       await expect(page.getByTestId('conflict-auto')).toHaveText(autoNow);
       await expect(page.getByTestId('save-decision')).toBeDisabled();
 
-      // ── 병합(LLM 보조): 제안이 오고, 버리면 미해소로 남고, 확정해야 선다 ─
       await page.getByTestId('decide-merge').check();
       await expect(page.getByTestId('merge-panel')).toBeVisible();
       const firstMerge = (await page.getByTestId('merge-added').first().innerText()).replace(

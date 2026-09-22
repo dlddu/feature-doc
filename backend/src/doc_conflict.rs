@@ -1,25 +1,4 @@
 //! AC3.5: 코드 자동 분석과 사용자 편집의 충돌 처리.
-//!
-//! 재분석은 자동 문서를 새로 쓴다. 사람이 앞선 분석에서 승인한 편집(AC3.1)은 그 분석
-//! 안에서만 겹쳐 읽히므로(0009), 아무것도 하지 않으면 새 문서에서 사용자 문장은 그냥
-//! 사라진다 — 그것이 곧 「자동 결과가 편집을 덮어쓴 것」이다. 그래서 재분석 문서가
-//! 저장되는 순간 [`inherit`] 가 직전 분석의 편집을 새 자동 문서 위에 **재생**한다:
-//! 편집이 고쳐 쓴 당시의 문장이 새 문서에도 그대로 있으면 그 편집을 이 분석으로
-//! 이월하고(같은 표, `carried_from`), 자동 결과가 그 자리를 다르게 썼으면 어느 쪽도
-//! 얹지 않고 **충돌 행**을 세운다. 열린 충돌 동안 문서에는 자동 결과가 서고 사용자
-//! 문장은 앞선 분석의 행에 그대로 남는다 — 잃은 것이 아니라 얹지 않은 것이다.
-//!
-//! 결정은 사람만 내린다. `auto` 는 충돌을 닫을 뿐이고, `mine` 은 이 분석에 승인 편집
-//! 행을 세워 사용자 문장이 다시 서게 하며, `merge` 는 모델이 두 문장을 합친 제안을
-//! 0009 의 proposed 행으로 내고 사람이 확정해야 겹친다(AC3.1 과 같은 승인 규약).
-//! 합친 제안을 버리면 충돌은 열린 채 남고, 그 거부 행이 다음 합치기의 회피 입력이 된다.
-//! 결정하지 않은 충돌은 다음 재분석에서도 편집과 같은 자격으로 재생되어 다시 선다.
-//!
-//! 충돌 검출은 **자리 단위**다 — 편집의 `before` 를 새 문서의 같은 자리에서 먼저 찾고,
-//! 없으면 그 feature 의 다른 자리에서 찾는다(자리가 밀렸을 뿐 문장은 그대로인 경우).
-//! 어디에도 없을 때만 충돌이다. feature 자체가 새 문서에 없거나 시나리오 수가 줄어 그
-//! 자리가 없어진 편집은 얹을 상대가 없어 충돌로 세우지 않는다 — 그 편집도 앞선 분석의
-//! 이력에는 남는다.
 
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
@@ -38,7 +17,6 @@ use crate::pipeline;
 use crate::state::AppState;
 use crate::util::now_unix;
 
-/// 충돌 행의 상태 어휘. 0012 의 CHECK 와 같은 값이어야 한다.
 pub mod status {
     pub const OPEN: &str = "open";
     pub const AUTO: &str = "auto";
@@ -46,7 +24,6 @@ pub mod status {
     pub const MERGED: &str = "merged";
 }
 
-/// 합친 제안이 0009 의 `request` 칸에 남기는 문장 — 이력에서 「무엇을 부탁했는가」다.
 pub const MERGE_REQUEST: &str = "내가 고친 문장과 이번 자동 결과 합치기";
 pub const MERGE_REQUEST_KEEP: &str =
     "내가 고친 문장과 이번 자동 결과 합치기 — 내가 덧붙인 문단은 그대로";
@@ -93,11 +70,9 @@ pub struct ConflictView {
     status: String,
     source: String,
     request: String,
-    /// 사람이 승인해 그 자리에 서 있던 문장(들).
     mine: Vec<Sentences>,
     /// 그 편집이 고쳐 쓴 당시의 자동 문장.
     before: Sentences,
-    /// 이번 자동 결과.
     auto: Sentences,
     mine_decided_at: i64,
     previous_analysis_id: String,
@@ -119,7 +94,6 @@ pub struct MergeProposalView {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ListView {
-    /// 아직 결정하지 않은 것 — 배너와 「미해소」 표시가 세는 수.
     open: usize,
     conflicts: Vec<ConflictView>,
 }
@@ -153,7 +127,6 @@ struct ConflictRow {
     decided_at: Option<i64>,
 }
 
-/// 재생할 편집 하나 — 앞선 분석의 승인 편집이거나, 그 분석에서도 결정되지 않은 충돌.
 struct Inherited {
     edit_id: String,
     feature_key: String,
@@ -165,16 +138,12 @@ struct Inherited {
     decided_at: i64,
 }
 
-/// 공백만 다른 문장은 같은 문장이다(`diff::scenarios_of` 와 같은 규칙).
 fn same(a: &Sentences, b: &Sentences) -> bool {
     let norm = |t: &str| t.split_whitespace().collect::<Vec<_>>().join(" ");
     norm(&a.given) == norm(&b.given) && norm(&a.when) == norm(&b.when) && norm(&a.then) == norm(&b.then)
 }
 
 /// 재분석 문서가 저장된 직후, 직전 분석의 편집을 이 문서 위에 재생한다.
-///
-/// 같은 문서가 다시 저장되면(단계 재시도) 지난 재생의 흔적 — 이월 행과 열린 충돌 — 을
-/// 걷어 내고 처음부터 다시 한다. 사람이 이미 내린 결정은 걷어 내지 않는다.
 pub async fn inherit(state: &AppState, analysis_id: &str, doc: &Value) -> Result<(), AppError> {
     sqlx::query("DELETE FROM feature_doc_edits WHERE analysis_id = ? AND carried_from IS NOT NULL")
         .bind(analysis_id)
@@ -257,8 +226,7 @@ pub async fn inherit(state: &AppState, analysis_id: &str, doc: &Value) -> Result
     Ok(())
 }
 
-/// 같은 타깃의 직전 분석 중 인수 문서를 가진 것 — 편집은 문서 위에만 있으므로 문서
-/// 없는 분석은 이어받을 것이 없다. 정렬은 `analysis::analysis_diff` 와 같다.
+/// 같은 타깃의 직전 분석 중 인수 문서를 가진 것 — 편집은 문서 위에만 있으므로 문서 없는 분석은 이어받을 것이 없다.
 async fn previous_documented(state: &AppState, analysis_id: &str) -> Result<Option<String>, AppError> {
     let row: Option<(String,)> = sqlx::query_as(
         "SELECT prev.id \
@@ -412,8 +380,6 @@ async fn one(
     Ok(Json(view(&state, &doc, row).await?))
 }
 
-/// `auto` 는 그대로 닫고, `mine` 은 사용자 문장을 이 분석에 승인 편집으로 다시 세운다.
-/// 합치기는 여기가 아니라 [`merge`] 다 — 결정이 아니라 제안이기 때문이다.
 async fn decide(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -462,9 +428,7 @@ async fn decide(
     Ok(Json(view(&state, &doc, row).await?))
 }
 
-/// 두 문장을 합친 제안을 받는다. 제안은 0009 의 proposed 행이라 승인 전까지 문서는
-/// 그대로다. 아직 결정되지 않은 제안이 이미 있으면 그것을 돌려준다 — 새로고침이 모델을
-/// 한 번 더 부르게 하지 않는다.
+/// 두 문장을 합친 제안을 받는다.
 async fn merge(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -494,7 +458,6 @@ async fn merge(
         None => (llm::DEFAULT_PROVIDER, None),
     };
 
-    // 합치는 두 문장이 이미 이 분석의 언어로 쓰였고, 합친 결과가 그 자리에 선다.
     let language = crate::settings::analysis_language(&state.db, &id).await?;
 
     let answer = llm::ask(

@@ -770,7 +770,6 @@ export async function restoreFeature(id: string, deletion: string): Promise<Feat
   return (await res.json()) as FeatureDeletion;
 }
 
-/** 자동 재분석이 사람이 고쳐 둔 문장과 같은 자리에서 갈린 것(AC3.5). 열린 동안 문서에는 자동 결과가 선다. */
 export type DocConflict = {
   id: string;
   featureKey: string;
@@ -819,7 +818,6 @@ export async function getConflict(id: string, conflict: string): Promise<DocConf
   return (await res.json()) as DocConflict;
 }
 
-/** `auto` 는 그대로 닫고 `mine` 은 사용자 문장을 다시 세운다 — 둘 다 고른 순간이 결정이다. */
 export async function decideConflict(
   id: string,
   conflict: string,
@@ -833,7 +831,6 @@ export async function decideConflict(
   return (await res.json()) as DocConflict;
 }
 
-/** 합친 문장을 제안받는다. 제안은 결정이 아니라 확정해야 문서에 선다. */
 export async function proposeMerge(
   id: string,
   conflict: string,

@@ -33,7 +33,6 @@ type Props = {
   onBack: () => void;
   /** 「달라진 곳 보기」 → that feature's acceptance document. */
   onOpenFeature: (featureKey: string) => void;
-  /** 「부딪힌 곳 정리하기」 → the first conflict still open. */
   onOpenConflict: (conflictId: string) => void;
 };
 

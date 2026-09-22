@@ -278,8 +278,6 @@ fn prompt(
 /// string — the same reason stages 2-4 do it. A constant would still match if the
 /// wiring were cut, so the e2e would keep passing over a dead stage.
 fn stub_logic(subjects: &[Subject], paths: &[String]) -> Value {
-    // 트리에 규정 파일이 들어오면 첫 문장이 달라진다 — 코드가 바뀌어 같은 시나리오를
-    // 다르게 읽게 된 재분석의 결정적 재현이다(`repo_scan::Revision::Third`).
     let rewritten = paths
         .iter()
         .any(|p| p.ends_with(crate::repo_scan::REWRITE_MARKER));
@@ -624,8 +622,6 @@ mod tests {
         assert!(feature["contradictions"].as_array().unwrap().is_empty());
     }
 
-    /// 리비전 2 는 문장을 바꾸지 않고(02#시나리오 8 의 「시나리오 문장은 그대로다」),
-    /// 리비전 3 만 첫 문장을 다르게 쓴다 — 그것도 그 한 문장뿐이다.
     #[test]
     fn only_the_rewrite_marker_changes_a_sentence_and_only_the_first() {
         use crate::repo_scan::{stub_scan_at, Revision};

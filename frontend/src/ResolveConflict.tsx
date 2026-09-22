@@ -18,13 +18,10 @@ type Decision = '' | 'auto' | 'mine' | 'merge';
 type Props = {
   id: string;
   conflictId: string;
-  /** 부딪힌 문장 → 달라진 것. */
   onBack: () => void;
-  /** 「결정 저장하고 후보 보기」 → 기능 후보. */
   onSaved: () => void;
 };
 
-/** `내가 고친 것 · 2026-08-24` — the day the reader approved that sentence. */
 function dayOf(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
 }
@@ -46,7 +43,6 @@ export function ResolveConflict({ id, conflictId, onBack, onSaved }: Props) {
         if (!active) return;
         setConflict(next);
         setUnresolved(all.open);
-        // 결정되지 않은 합친 제안이 서 있으면 그 자리로 돌아온다.
         if (next.mergeProposal?.status === 'proposed') setDecision('merge');
       })
       .catch((e: unknown) => active && setError(messageOf(e)));
