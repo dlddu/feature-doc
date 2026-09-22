@@ -78,7 +78,6 @@ pub fn stub_scan(name: &str, branch: &str) -> Result<ScanResult, String> {
 /// representation was updated» could no longer be observed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Revision {
-    /// The tree every first analysis sees.
     First,
     /// One more source file; the acceptance sentences stay as they were.
     Second,
@@ -89,7 +88,6 @@ pub enum Revision {
 }
 
 impl Revision {
-    /// Paths this revision adds on top of the previous one.
     fn added(self) -> &'static [&'static str] {
         match self {
             Revision::First => &[],

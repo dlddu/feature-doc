@@ -345,3 +345,23 @@ for」 — `CredentialsSetup.tsx` 는 `#83` 이 `GrantRepoAccess.tsx` + `Registe
 
 지문: **88행 `fd84aea84c1e740650d84f0eb07f00721c5b61153c59a7747d88bf607585b2e9` → 88행
 `7e6915aac99e80dc5c903a0a962066d446091e80602ff26ee65d21f84cd6bd60`**.
+
+## 증분 재판정 ⑧ — #114(슬라이스 6d)가 `api.ts` 에 연 +3행 · 2026-09-22
+
+reconciler task `rct_20260922-0005`. **전건 제거 3행.**
+
+- `DocConflict` 타입 JSDoc(「자동 재분석이 사람이 고쳐 둔 문장과 같은 자리에서 갈린 것(AC3.5). 열린 동안
+  문서에는 자동 결과가 선다.」) — 정본은 `backend/src/doc_conflict.rs`(같은 패스에서 모듈 머리 요약을 유지).
+  `(AC3.5)` 꼬리표는 ③, 뒤 문장은 doc-tracker 6d 행의 「열린 동안 문서에는 자동 결과가 서고 …」 축자.
+- `decideConflict` JSDoc(「`auto` 는 그대로 닫고 `mine` 은 사용자 문장을 다시 세운다 — 둘 다 고른 순간이
+  결정이다.」) — doc-tracker 6d 행의 「결정 셋」 문장의 사본.
+- `proposeMerge` JSDoc(「합친 문장을 제안받는다. 제안은 결정이 아니라 확정해야 문서에 선다.」) —
+  `doc_conflict::merge` 의 요약(유지)과 같은 명제.
+
+셋 다 **전송 경계(API 타입·함수)의 재진술**이라 ⑥ 의 「한 명제의 일곱 벌 — 나머지 여섯 벌은 전송 경계의
+재진술이라 제거했다」와 같은 잣대다. ⚠️ ③·④ 가 「export 함수 JSDoc 요약 1줄은 유지」로 남긴 선례와 갈리는데,
+그 둘은 **요약이 함수 이름 너머를 말하는 경우**였다. 여기 두 함수의 JSDoc 은 결정 규약 자체를 다시 적는
+본문이라 요약 1줄의 자리가 아니다 — 이름(`decideConflict` · `proposeMerge`)이 이미 요약이다.
+
+줄 수·지문이 **#114 이전 값 88 / `7e6915aa…` 로 바이트 동일 복귀**했다.
+맥락 [2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md).

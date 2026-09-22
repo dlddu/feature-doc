@@ -254,3 +254,33 @@ data plane 패스가 단독으로 할 수 없다. 그때까지는 **화면 머�
 이 절로 **판정 완료 범위 안의 미판정 증분은 0** 이 된다(#93 9행 → `rct_20260921-0001` · #91 5행 → `-0002` ·
 #99 25행 → `-0003` · #101 2행 → 이 절). 다음 증분은 자매 모델의 수렴 슬라이스가 e2e·프런트를 다시 쓸 때
 같은 형태로 열린다. 증분 밖 잔여(14파일/242행)는 원장이 적은 사람 게이트 셋 그대로다.
+
+## 증분 재판정 ③ — #114(슬라이스 6d)가 연 15행 증분 · 2026-09-22
+
+reconciler task `rct_20260922-0005`. `repo_scan.rs` **+14 −5**(제자리 재작성 — 같은 명제 5행이 한국어에서
+영어로 다시 쓰였다) · `AnalysisDiff.tsx` **+6**. **순 제거 3행 · 유지 12행.**
+
+### 제거 3행
+
+- `Revision::First` 의 `/// The tree every first analysis sees.` — variant 이름이 그대로 말하는 ① 선언 재진술.
+- `/// Paths this revision adds on top of the previous one.` — 필드 이름(`adds`)과 반환 타입의 재진술.
+- `AnalysisDiff.tsx` 의 `onResolve` prop JSDoc(`/** 「부딪힌 곳 정리하기」 → the first conflict still open. */`) —
+  이름과 화면 카피의 재진술. 같은 패스가 `ResolveConflict.tsx` 의 같은 모양 2건을 함께 걷었다.
+
+### 유지 12행
+
+- **「리비전은 더하기만 한다」 4행**(`Each revision only **adds** paths on top of the one before it — removing or
+  renaming a path would move the feature keys built on it, and «the same feature's representation was updated»
+  could no longer be observed.`) — **스텁 충실도의 불변식**이다. *왜* 더하기만 해야 하는지(feature 키가 경로
+  위에 세워져 있어 관측 대상 자체가 움직인다)는 코드에도 docs 에도 문장으로 없다.
+- **리비전 2·3 의 variant doc 5행** — 이 축이 **리비전 어휘의 정본**이다. 원장 4행(`acceptance.rs`)에 있던
+  같은 명제의 사본 2건을 이 판정이 걷었으므로, 여기가 유일한 벌이 된다.
+- `REVISION_THIRD_PATH` doc 1행 · 환경변수 파싱의 하위 호환 2행(「값을 세지 않던 시절의 spec 이 넣던 `2` 가
+  그대로 두 번째로 읽힌다」 — 낡은 spec 과의 계약).
+- `AnalysisDiff.tsx` 의 「한 곳을 읽어야 넘어간다」 표시의 수명 4행(`sessionStorage` 를 고른 이유 — 화면을
+  떠나도 살아남지만 탭을 넘기지는 않는다)과 「배너가 세는 것은 충돌 행이 아니라 **기능**이다 — 한 기능에 두
+  자리가 부딪혀도 한 건」 1행. 둘 다 화면 불변식이고 doc-tracker 는 배너의 존재만 적는다.
+  (앞의 4행은 `/**` 여는 줄까지 지문에 3행으로 들어온다 — 본문 「지문과 사각지대」.)
+
+줄 수·지문: 133 / `4aa7a8eb…` → (트리거) 148 → **145 / `2e366521…`**.
+맥락 [2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md).

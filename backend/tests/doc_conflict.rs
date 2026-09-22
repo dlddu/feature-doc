@@ -1,7 +1,4 @@
 //! 자동 재분석과 사용자 편집의 충돌 처리(AC3.5) — 라우터를 그대로 돌려 본다.
-//!
-//! 두 분석은 같은 타깃이고, 두 번째 분석의 자동 문서는 워커가 넣는 값이라 여기서
-//! 「코드가 바뀌어 같은 시나리오를 다르게 읽었다」를 문장 하나로 재현한다.
 mod common;
 
 use axum::body::Body;
@@ -76,8 +73,6 @@ async fn json_body(resp: axum::response::Response) -> serde_json::Value {
     serde_json::from_slice(&bytes).unwrap()
 }
 
-/// 같은 타깃의 분석 하나를 큐에 넣고 워커가 집게 한 뒤, 첫 시나리오의 `then` 이
-/// `first_then` 인 인수 문서를 세운다.
 async fn analysis_with_document(state: &AppState, session: &str, first_then: &str) -> String {
     let resp = build_router(state.clone())
         .oneshot(user_post(
@@ -157,7 +152,6 @@ async fn thens(state: &AppState, session: &str, id: &str) -> Vec<String> {
         .collect()
 }
 
-/// 첫 시나리오를 한 줄 부탁으로 고쳐 쓰고 승인한다 — 사용자의 마지막 편집.
 async fn edit_first_scenario(state: &AppState, session: &str, id: &str) -> String {
     let resp = build_router(state.clone())
         .oneshot(user_post(
@@ -222,7 +216,6 @@ async fn an_edit_whose_sentence_survived_the_reanalysis_is_carried_over() {
     );
     assert_eq!(conflicts(&state, &s, &second).await["open"], 0);
 
-    // 다시 저장돼도(단계 재시도) 이월은 한 번이다.
     submit_document(&state, &second, FIRST_THEN).await;
     let doc = thens(&state, &s, &second).await;
     assert_eq!(doc.len(), 2);
@@ -366,7 +359,6 @@ async fn merging_is_a_proposal_that_only_the_reader_can_turn_into_a_decision() {
         "승인하지 않았는데 문서가 바뀌었다"
     );
 
-    // 같은 제안을 다시 부르면 모델을 부르지 않고 그 제안을 돌려준다.
     let (_, same) = post(&state, &s, &format!("{base}/merge"), json!({})).await;
     assert_eq!(same["mergeProposal"]["id"], proposed["mergeProposal"]["id"]);
 
