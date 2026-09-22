@@ -494,6 +494,9 @@ async fn merge(
         None => (llm::DEFAULT_PROVIDER, None),
     };
 
+    // 합치는 두 문장이 이미 이 분석의 언어로 쓰였고, 합친 결과가 그 자리에 선다.
+    let language = crate::settings::analysis_language(&state.db, &id).await?;
+
     let answer = llm::ask(
         &state.http,
         state.config.doubles.llm,
@@ -501,6 +504,7 @@ async fn merge(
         key.as_deref(),
         Ask {
             system: SYSTEM_MERGE,
+            language,
             user: prompt(&mine, &auto, req.keep_mine, &avoid),
             schema: doc_edit::schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
