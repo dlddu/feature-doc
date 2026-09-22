@@ -3,7 +3,7 @@
 #
 # PR 의 변경(merge-base..head)에서 **변경된 파일 경로**만 보고, 사람 리뷰가 꼭 필요한 두
 # 경우에 닿았는지 판정한다. 닿지 않았으면 워크플로 `review — data format` 이 head 커밋에
-# commit status `review/data-format` = success 를 붙이고, 닿았으면 **아무 status 도 붙이지
+# commit status `review/manual-approval` = success 를 붙이고, 닿았으면 **아무 status 도 붙이지
 # 않는다**. 즉 이 status 는 "그 관점의 사람 리뷰는 생략해도 된다"는 **적극적 확인**이고,
 # 없다고 해서 실패는 아니다. 판정이 불가능하면(git 실패 등) 종료 코드 2 로 끝나고 status 는
 # 붙지 않는다.
@@ -85,7 +85,7 @@ def main():
 
     out = ["## 데이터 저장 형식 변경 판정: "
            + ("⚠️ 사람 리뷰 필요 (status 미부여)" if needs_review
-              else "✅ 해당 없음 (`review/data-format` = success)"),
+              else "✅ 해당 없음 (`review/manual-approval` = success)"),
            "", f"변경 파일 {len(files)}개 · 범위 `{rng}`", ""]
     for rule in sorted(hits):
         out.append(f"### {rule} — {len(hits[rule])}건")
