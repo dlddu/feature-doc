@@ -1,10 +1,7 @@
-//! Envelope encryption for credential material (AC4.3).
+//! Envelope encryption for credential material.
 //!
-//! Each secret gets a fresh random 256-bit data-encryption key (DEK). The secret
-//! is sealed with the DEK under AES-256-GCM; the DEK itself is then wrapped with
-//! the process key-encryption key (KEK). Only the wrapped DEK and ciphertext are
-//! persisted — the plaintext secret and the plaintext DEK never touch disk, and
-//! the DEK is scrubbed from memory after sealing.
+//! Only the wrapped DEK and ciphertext are persisted — plaintext secret and plaintext DEK
+//! never touch disk, and the DEK is scrubbed on wrap (best-effort — Rust guarantees no erasure).
 
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
@@ -12,8 +9,8 @@ use rand::RngCore;
 
 use crate::error::AppError;
 
-/// The persisted result of [`seal`]: everything needed to later [`open`] the secret,
-/// none of which reveals it without the KEK.
+/// Everything that is persisted for a sealed secret; none of these fields
+/// reveals it without the KEK.
 pub struct Envelope {
     pub ciphertext: Vec<u8>,
     pub nonce: Vec<u8>,
@@ -21,7 +18,6 @@ pub struct Envelope {
     pub dek_nonce: Vec<u8>,
 }
 
-/// Seals `plaintext` under a fresh DEK, wrapping that DEK with `kek`.
 pub fn seal(kek: &[u8; 32], plaintext: &[u8]) -> Result<Envelope, AppError> {
     let mut dek = [0u8; 32];
     rand::rngs::OsRng.fill_bytes(&mut dek);
@@ -40,7 +36,6 @@ pub fn seal(kek: &[u8; 32], plaintext: &[u8]) -> Result<Envelope, AppError> {
         .encrypt(Nonce::from_slice(&dek_nonce), dek.as_ref())
         .map_err(|_| AppError::internal("seal: dek wrap failed"))?;
 
-    // Best-effort scrub of the plaintext DEK now that it is wrapped.
     dek.iter_mut().for_each(|b| *b = 0);
 
     Ok(Envelope {
@@ -51,7 +46,6 @@ pub fn seal(kek: &[u8; 32], plaintext: &[u8]) -> Result<Envelope, AppError> {
     })
 }
 
-/// Recovers the plaintext from an [`Envelope`], unwrapping the DEK with `kek`.
 /// Any tampering (GCM tag mismatch) or wrong KEK yields an error, never garbage.
 pub fn open(kek: &[u8; 32], env: &Envelope) -> Result<Vec<u8>, AppError> {
     if env.nonce.len() != 12 || env.dek_nonce.len() != 12 {
