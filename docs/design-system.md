@@ -384,6 +384,8 @@ html, body {
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-feature-settings: "ss01", "cv11";
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 ```
 
