@@ -44,6 +44,10 @@ body {
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-feature-settings: 'ss01', 'cv11';
+  /* iOS Safari 는 넓게 번진 블록의 글자를 제멋대로 키운다(text autosizing).
+     한 줄이 넘쳐도 글자 크기는 디자인 시스템 값 그대로 둔다. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 .screen {
@@ -718,6 +722,35 @@ button.ico { cursor: pointer; }
 .dep:last-child { border-bottom: 0; }
 .dep .dname { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary); }
 .dep .esrc { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
+
+/* 횡단 관심사의 근거 줄 — 목업 `.ev` 를 옮긴다. 목업은 경로를 하나만 그리지만 구현은
+   근거 경로를 전부 그리므로, 경로는 한 줄에 하나씩 두고 긴 경로는 아무 데서나 꺾어
+   카드 밖으로 새지 않게 한다. 이름 칸은 최소 42% 를 지켜 한 글자씩 세로로 쌓이지
+   않는다. `.ename`·`.esrc` 는 `.ev` 아래로 한정한다(위 `.dep` 과 같은 방침). */
+.ev { display: flex; gap: 12px; align-items: baseline; }
+.ev + .ev { margin-top: 12px; }
+.ev .ename {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.ev .esrc {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 58%;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.ev .esrc > span { display: block; }
+.ev .tag { flex: none; }
 
 .ext-note {
   display: flex;

@@ -142,10 +142,10 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
                 이 저장소에서는 근거를 찾지 못했어요
               </p>
             ) : (
-              <div className="stack-10" style={{ marginTop: 10 }}>
+              <div style={{ marginTop: 12 }}>
                 {section.items.map((item, i) => (
-                  <div className="row between" key={`${section.axis}-${i}`} data-testid="concern">
-                    <span className="label" data-testid="concern-name">
+                  <div className="ev" key={`${section.axis}-${i}`} data-testid="concern">
+                    <span className="ename" data-testid="concern-name">
                       {item.name}
                     </span>
                     {item.evidence.length === 0 ? (
@@ -154,17 +154,25 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
                         근거 없음
                       </span>
                     ) : (
-                      <span className="meta" data-testid="concern-evidence">
-                        {item.evidence.join(' · ')}
+                      // One path per line: joined with ' · ' they wrapped mid-path and
+                      // the separators landed at the start of the next line.
+                      <span className="esrc" data-testid="concern-evidence">
+                        {item.evidence.map((path) => (
+                          <span key={path}>{path}</span>
+                        ))}
                       </span>
                     )}
                   </div>
                 ))}
               </div>
             )}
-            <p className="legend" style={{ marginTop: 12 }}>
-              <span className="mk">↳</span> 근거를 찾지 못한 항목은 지어내지 않고 그대로 표시합니다
-            </p>
+            {/* The legend explains the 근거 없음 tag, so — as in the mockup — it sits
+                only under an axis that actually shows one. */}
+            {section.items.some((item) => item.evidence.length === 0) && (
+              <p className="legend" style={{ marginTop: 12 }}>
+                <span className="mk">↳</span> 근거를 찾지 못한 항목은 지어내지 않고 그대로 표시합니다
+              </p>
+            )}
           </div>
         ))}
       </div>
