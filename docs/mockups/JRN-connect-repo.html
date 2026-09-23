@@ -697,6 +697,9 @@ body { min-height: 100dvh; }
   display: flex;
   justify-content: center;
 }
+/* 단계 섹션이 flex item 으로 내용 폭(=0, .screen 이 absolute)까지 줄지 않게 */
+.stage > .stp { width: 100%; }
+.frame { margin-inline: auto; }
 .stp { display: none; }
 .stp.on { display: block; }
 
