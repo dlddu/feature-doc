@@ -183,6 +183,120 @@ fn stub_paths(name: &str, files: i64) -> Vec<String> {
         .collect()
 }
 
+/// The head of one file, as read for stage 2's context.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileExcerpt {
+    pub path: String,
+    pub body: String,
+    /// The file continued past `max_bytes`; the model is told so it does not
+    /// mistake a cut-off head for the whole file.
+    pub truncated: bool,
+}
+
+/// Reads the first `max_bytes` of each path in `owner/name@branch`.
+///
+/// A path that cannot be read (removed since the tree was listed, not text, a
+/// transient 5xx) is left out rather than failing the caller: the excerpts are
+/// context on top of the path list, and the stage still has its evidence without
+/// them. A missing token is still an error, as it is for [`scan`].
+pub async fn read_files(
+    http: &reqwest::Client,
+    mode: Mode,
+    api_base: &str,
+    owner: &str,
+    name: &str,
+    branch: &str,
+    token: Option<&str>,
+    paths: &[String],
+    max_bytes: usize,
+) -> Result<Vec<FileExcerpt>, String> {
+    match mode {
+        // mock-exception: EXT-03 — 파일 본문 읽기도 실 설치 토큰으로 실 저장소의 contents API를 불러야 한다
+        Mode::Stub => stub_read(name, branch, paths, max_bytes),
+        Mode::Real => {
+            let token =
+                token.ok_or_else(|| "no installation token for repository fetch".to_string())?;
+            let mut out = Vec::new();
+            for path in paths {
+                match real_read(http, api_base, owner, name, branch, token, path).await {
+                    Ok(bytes) => out.push(excerpt(path, &bytes, max_bytes)),
+                    Err(reason) => {
+                        tracing::warn!(%path, %reason, "file excerpt skipped");
+                    }
+                }
+            }
+            Ok(out)
+        }
+    }
+}
+
+/// Answers only for paths the stub tree of the same repository and branch holds —
+/// a path outside it is skipped exactly as the real `404` is, so the double never
+/// hands stage 2 a file the real API could not.
+fn stub_read(
+    name: &str,
+    branch: &str,
+    paths: &[String],
+    max_bytes: usize,
+) -> Result<Vec<FileExcerpt>, String> {
+    let tree = stub_scan(name, branch)?.paths;
+    Ok(paths
+        .iter()
+        .filter(|p| tree.contains(p))
+        .map(|p| excerpt(p, format!("// stub body of {p}\n").as_bytes(), max_bytes))
+        .collect())
+}
+
+/// Cuts on a UTF-8 boundary so a multi-byte character is never split into
+/// replacement noise at the end of an excerpt.
+fn excerpt(path: &str, bytes: &[u8], max_bytes: usize) -> FileExcerpt {
+    let text = String::from_utf8_lossy(bytes);
+    let mut end = text.len().min(max_bytes);
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    FileExcerpt {
+        path: path.to_string(),
+        body: text[..end].to_string(),
+        truncated: end < text.len(),
+    }
+}
+
+async fn real_read(
+    http: &reqwest::Client,
+    api_base: &str,
+    owner: &str,
+    name: &str,
+    branch: &str,
+    token: &str,
+    path: &str,
+) -> Result<Vec<u8>, String> {
+    let mut url =
+        url::Url::parse(api_base).map_err(|_| "github api base is not a URL".to_string())?;
+    url.path_segments_mut()
+        .map_err(|_| "github api base cannot take a path".to_string())?
+        .pop_if_empty()
+        .extend(["repos", owner, name, "contents"])
+        .extend(path.split('/'));
+    url.query_pairs_mut().append_pair("ref", branch);
+    let resp = http
+        .get(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .header("Accept", "application/vnd.github.raw+json")
+        .header("User-Agent", "featuredoc-worker/0.1")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await
+        .map_err(|_| "github contents request failed".to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("github contents rejected ({})", resp.status().as_u16()));
+    }
+    resp.bytes()
+        .await
+        .map(|b| b.to_vec())
+        .map_err(|_| "github contents: body unreadable".to_string())
+}
+
 async fn real_scan(
     http: &reqwest::Client,
     api_base: &str,
@@ -261,6 +375,32 @@ async fn real_scan(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stub_read_answers_only_for_paths_in_the_stub_tree() {
+        let paths = vec![
+            "payments-api/src/main.rs".to_string(),
+            "payments-api/not/in/tree.rs".to_string(),
+        ];
+        let read = stub_read("payments-api", "main", &paths, 4096).unwrap();
+        assert_eq!(read.len(), 1, "a path the real API would 404 must be skipped");
+        assert_eq!(read[0].path, "payments-api/src/main.rs");
+        assert!(!read[0].truncated);
+        assert_eq!(
+            stub_read("payments-api", "no-such-branch", &paths, 4096),
+            Err("github tree rejected (404)".to_string())
+        );
+    }
+
+    #[test]
+    fn excerpt_cuts_on_a_char_boundary_and_says_it_cut() {
+        let e = excerpt("a.md", "가나다".as_bytes(), 4);
+        assert_eq!(e.body, "가");
+        assert!(e.truncated);
+        let whole = excerpt("a.md", b"abc", 10);
+        assert_eq!(whole.body, "abc");
+        assert!(!whole.truncated);
+    }
 
     #[test]
     fn stub_scan_is_deterministic_and_positive() {

@@ -18,7 +18,7 @@
    | `FEATUREDOC_DOUBLE_GITHUB_AUTH` | 로그인 신원 | EXT-01 | API |
    | `FEATUREDOC_DOUBLE_GITHUB_APP` | App 설치·설치 토큰·저장소 목록 | EXT-02 | API |
    | `FEATUREDOC_DOUBLE_LLM_KEY` | LLM 키 라이브 검증 | EXT-04 | API |
-   | `FEATUREDOC_DOUBLE_REPO_SCAN` | 저장소 트리 스캔 | EXT-03 | API · 워커 |
+   | `FEATUREDOC_DOUBLE_REPO_SCAN` | 저장소 트리 스캔 · 핵심 파일 본문 읽기 | EXT-03 | API · 워커 |
    | `FEATUREDOC_DOUBLE_LLM` | LLM 호출·고정 답 공급 | LLM-01 | API · 워커 |
 
    각 env는 **그 경계를 소유한 프로세스만** 읽는다. LLM·트리 스캔 두 경계는 두 프로세스가 소유한다 — 분석 파이프라인은 워커가, AC3.1 편집 제안과 AC3.2 빠진 feature 추가의 근거 찾기는 큐를 타지 않고 API가 직접 모델을 부르므로(2026-09-21, #92·#107) **같은 이름을 각자의 프로세스에서** 읽고, 근거 찾기가 워커의 1단계와 같은 트리 스캔을 API에서 한 번 더 하므로(워커가 본 경로 목록은 저장되지 않는다) `FEATUREDOC_DOUBLE_REPO_SCAN`도 같은 방식으로 공유된다(#107). 값이 아니라 이름을 공유하는 것이라 한쪽만 stub인 배포가 가능하고, 오버레이의 API 패치와 워커 패치가 이 env를 따로 켠다. 그 밖의 경계는 API Deployment에 워커 더블을 켤 수단이 없고 그 역도 같아서, 「하나를 켜면 전부 켜진다」는 성질이 배선 수준에서 사라졌다. 미설정은 언제나 실연동이므로 아무 말도 하지 않는 배포는 아무것도 stub하지 않는다.
@@ -37,6 +37,7 @@ SQLite·봉투 암호화·세션·워커 큐·워커 replica 임대(`e2e/support
 **충실도 결함**(stub이 real보다 관대한 분기)은 등재 여부와 무관하게 drift이며, 등재로 덮지 않고 코드로 고친다. 현행 보증:
 
 - `repo_scan::stub_scan`은 스텁 저장소 집합에 없는 브랜치를 real과 같은 `github tree rejected (404)`로 거부한다(2026-08-13 수정).
+- `repo_scan::stub_read`는 같은 저장소·브랜치의 스텁 트리에 있는 경로에만 본문을 답하고, 그 밖의 경로는 real이 `404`를 건너뛰듯 건너뛴다 — 실 API가 줄 수 없는 파일을 2단계에 건네지 않는다(2026-09-24 등재와 함께).
 - `llmkey` stub 검증은 길이 ≥ 20 **그리고** `provider.prefix()` 시작 형식만 받아들여, 미지원 제공자 키를 real과 같은 거부 사유로 막는다(2026-09-02 수정).
 - `llm::stub_answer`는 `FEATUREDOC_STUB_LLM_FAIL`이 지정한 프롬프트 부분열이 ask 입력에 실재할 때 real과 같은 한도 초과 오류(`LLM rejected the request (429)`)로 실패하고, 그 밖의 입력은 결정적 답을 유지한다 — stub은 실 LLM의 실패(한도 초과·시간 초과)를 표현하지 못했던 원장 R1을 충실도 확장으로 닫은 것(2026-09-18, `rct_20260918-0001`).
 - `bin/worker.rs`의 `provider_for`는 활성 LLM 키가 없는 job을 더블 활성 여부와 무관하게 real과 같은 사유(`no active LLM key for this user; register one to analyze`)로 거부한다. 이전에는 LLM 더블이 켜져 있으면 키 없는 job을 기본 제공자로 진행시켜, **분석의 진입 조건이 e2e에서만 느슨했다** — real보다 관대한 분기이므로 등재가 아니라 제거로 닫았다(2026-09-18, `rct_20260918-0002`). LLM 카테고리가 「키 선택」 경로를 덮을 수 없다는 조항과도 같은 결론이다. 이에 기대고 있던 `sc04-07`·`sc04-08`은 다른 분석 spec과 같은 키 등록 셋업을 갖췄다.
@@ -64,7 +65,7 @@ SQLite·봉투 암호화·세션·워커 큐·워커 replica 임대(`e2e/support
 | 2 | `backend/src/github_api.rs` | `Mode::Stub` | EXT-01 | `FEATUREDOC_DOUBLE_GITHUB_AUTH` | 코드 교환·GitHub 사용자 조회의 결정적 더블 |
 | 3 | `backend/src/github.rs` | `Mode::Stub` | EXT-02 | `FEATUREDOC_DOUBLE_GITHUB_APP` | App 설치 유입 URL 대체(설치 완료 콜백 재현) |
 | 4 | `backend/src/github_app.rs` | `Mode::Stub` | EXT-02 | `FEATUREDOC_DOUBLE_GITHUB_APP` | 설치 토큰 발급 · 설치 메타 · 접근 가능 저장소 목록 · 저장소 개수 (4곳) |
-| 5 | `backend/src/repo_scan.rs` | `Mode::Stub` | EXT-03 | `FEATUREDOC_DOUBLE_REPO_SCAN` | 저장소 트리 스캔의 결정적 더블 |
+| 5 | `backend/src/repo_scan.rs` | `Mode::Stub` | EXT-03 | `FEATUREDOC_DOUBLE_REPO_SCAN` | 저장소 트리 스캔과 핵심 파일 본문 읽기(2단계 문맥)의 결정적 더블 (2곳) |
 | 6 | `backend/src/llm.rs` | `Mode::Stub` | LLM-01 | `FEATUREDOC_DOUBLE_LLM` | `ask`의 stub 응답 디스패치(워커 런타임 경로) |
 | 7 | `backend/src/cross_cutting.rs` | `stub: stub_answer` | LLM-01 | `FEATUREDOC_DOUBLE_LLM` | 횡단 추출 Ask의 고정 답 공급(제품 경로) |
 | 8 | `backend/src/cross_cutting.rs` | `Mode::Stub` | LLM-01 | —(테스트가 직접 지정) | `#[cfg(test)]` 단위 테스트 모듈 내 사용 (3곳) |
@@ -85,7 +86,7 @@ SQLite·봉투 암호화·세션·워커 큐·워커 replica 임대(`e2e/support
 |------|----------|------------------|---------------|
 | EXT-01 | EXT | 실제 GitHub OAuth 동의 화면·실제 계정 왕복이 필요 — kind CI에서 안전하게 구동 불가 | sc04-11, sc04-12 |
 | EXT-02 | EXT | 실제 GitHub App 설치(계정·동의)와 App JWT 서명용 실제 개인키가 필요 | sc04-01, sc01-01 |
-| EXT-03 | EXT | 트리 스캔은 실 설치 토큰으로 실 저장소의 recursive git tree를 읽어야 한다. 더블 안의 리비전 스위치 `FEATUREDOC_STUB_REPO_REVISION`(비어 있지 않으면 2 · `3` 이면 3, 더하기만)은 시간이 지나 달라진 트리를 결정적으로 재현한다 — 2 는 문장을 바꾸지 않고 3 은 인수 기준 첫 문장을 다르게 읽게 한다(`acceptance::stub_logic`) | sc01-01, sc01-06, sc02-08, sc03-07 |
+| EXT-03 | EXT | 트리 스캔은 실 설치 토큰으로 실 저장소의 recursive git tree를 읽어야 한다. 2단계가 읽는 진입점·매니페스트 파일의 앞부분(`repo_scan::read_files`)도 같은 토큰으로 실 저장소의 contents API를 불러야 해서 같은 경계·같은 env에 속한다. 더블 안의 리비전 스위치 `FEATUREDOC_STUB_REPO_REVISION`(비어 있지 않으면 2 · `3` 이면 3, 더하기만)은 시간이 지나 달라진 트리를 결정적으로 재현한다 — 2 는 문장을 바꾸지 않고 3 은 인수 기준 첫 문장을 다르게 읽게 한다(`acceptance::stub_logic`) | sc01-01, sc01-06, sc02-08, sc03-07 |
 | EXT-04 | EXT | 키 라이브 검증은 실 프로바이더 키(과금 자격)로 인증된 요청을 해야 한다 | sc04-03, sc04-04, sc04-13 |
 | LLM-01 | LLM | 실 LLM 응답은 비결정적·과금 — 시나리오 3의 결정성 조항(재분석 시 `unchanged`, 항목이 분석 트리의 경로를 근거로 듦)이 고정 답을 요구. AC2.x는 한 걸음 더 나아가 **인수 기준 문장마다 근거 코드 위치가 분석 트리 안에 있는지**를 단정하므로, 근거가 결정적이지 않으면 단정 자체가 성립하지 않는다. AC2.4·AC2.5의 의존성 항목도 같다 — 분류가 7종 안에서 갈리고 근거가 이 분석이 본 경로이거나 명시적으로 비어 있어야 한다는 단정은 고정 답 위에서만 선다. AC3.1의 편집 제안도 같다 — 승인 뒤 시나리오가 **하나 늘고 원래는 남는다**(03#시나리오 1), 두 번째 제안의 문면이 **거부한 것과 다르다**(03#시나리오 2)는 제안 내용에 대한 단정이라 고정 답(요청에 따라 두 모양 중 하나로 답하고, 거부된 문면을 회피하는 규칙을 스텁도 지킨다) 없이는 성립하지 않는다. AC3.2의 근거 찾기도 같다 — 초안의 **모든 근거 경로가 이 분석의 트리 안이고 문장이 가리킨 곳**이며 시나리오 수가 근거 수와 같고 의존성 후보가 7종 안에서 분류된다(03#시나리오 3), 트리에 없는 문장에는 **근거 없음**으로 답해 초안 0건·`evidenceFound=false`가 된다(03#시나리오 4)는 산출물 내용에 대한 단정이라 고정 답(요청 낱말이 든 트리 안 경로만 근거로 드는 결정적 규칙) 없이는 성립하지 않는다 AC3.5 의 합치기도 같다 — 제안이 **내가 보탠 내용과 이번 자동 결과를 모두 담고**(03#시나리오 7), 버린 합친 문장이 다시 오지 않는다는 제안 내용에 대한 단정이라 고정 답(사람의 마지막 문장 + 자동 결과, 거부 문면 회피) 없이는 성립하지 않는다 | sc01-01, sc01-03, sc01-04, sc01-07, sc02-01, sc02-02, sc02-04, sc02-05, sc02-06, sc02-07, sc03-01, sc03-02, sc03-03, sc03-04, sc03-07 |
 
