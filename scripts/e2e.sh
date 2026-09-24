@@ -7,6 +7,8 @@ IMAGE="${IMAGE:-featuredoc:dev}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
+# CI 는 e2e 의존성과 Playwright 브라우저를 앞 단계에서 (캐시와 함께) 설치해 둔다.
+SKIP_PLAYWRIGHT_INSTALL="${SKIP_PLAYWRIGHT_INSTALL:-0}"
 
 PF_PID=""
 
@@ -73,8 +75,10 @@ echo "[7/7] run e2e (smoke + playwright)"
 BASE_URL="http://localhost:${LOCAL_PORT}" bash "${ROOT}/e2e/smoke.sh"
 (
   cd "${ROOT}/e2e"
-  if [ ! -d node_modules ]; then npm install; fi
-  npx playwright install --with-deps chromium >/dev/null
+  if [ "${SKIP_PLAYWRIGHT_INSTALL}" != "1" ]; then
+    if [ ! -d node_modules ]; then npm install; fi
+    npx playwright install --with-deps chromium >/dev/null
+  fi
   BASE_URL="http://localhost:${LOCAL_PORT}" npm test
 )
 

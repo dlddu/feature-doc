@@ -173,11 +173,15 @@ kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로
 
 ### CI (GitHub Actions)
 
-`.github/workflows/ci.yml` — 단일 워크플로, `ubuntu-24.04-arm` runner. 네 job:
+`.github/workflows/ci.yml` — PR 전용, `ubuntu-24.04-arm` runner. main push 는 `image.yml`(빌드·pin)과 `cache-warm.yml`(캐시 저장)이 받습니다.
 
-- **`cargo`** — `cargo test --release`. `Swatinem/rust-cache`가 registry와 target/의 의존성 빌드를 캐시합니다(저장은 main에서만, PR은 main 캐시를 읽기만). main 푸시·모든 PR에서 실행.
-- **`e2e`** — kind+kubectl 설치 → `docker/build-push-action`(`load: true`, GHA 캐시)으로 `featuredoc:dev` 빌드 → `SKIP_BUILD=1 scripts/e2e.sh`(클러스터 e2e). `cargo`와 나란히 돕니다.
-- **`push`** — `needs: [cargo, e2e]`로 둘 다 그린 후에만. `docker/setup-buildx-action` + `docker/login-action` + `docker/metadata-action` + `docker/build-push-action@v6`(GHA 캐시) 조합으로 `ghcr.io/<owner>/featuredoc`에 푸시. **태그는 커밋 SHA 하나뿐입니다** — `latest`도, 브랜치 롤링 태그도 만들지 않습니다.
+- **`cargo`** — `cargo test --profile ci`. `ci` 프로필(`backend/Cargo.toml`)은 dev 기반이라 release 의 LTO·`codegen-units = 1` 없이 테스트 바이너리를 빌드합니다(배포 바이너리는 Dockerfile 이 release 로 빌드하고 e2e 가 그것을 검증). `Swatinem/rust-cache`가 registry와 target/의 의존성 빌드를 캐시합니다 — PR 에서는 읽기만 하고, 저장은 main push 때 `cache-warm.yml`이 같은 `shared-key`로 합니다.
+- **`e2e`** — merge ref(PR + 그 시점 main)를 체크아웃 → kind+kubectl 설치 → `docker/build-push-action`(`load: true`, GHA 캐시)으로 `featuredoc:dev` 빌드 → Playwright chromium(main 이 저장한 브라우저 캐시를 복원, 적중 시 apt 의존성만 설치) → `SKIP_BUILD=1 SKIP_PLAYWRIGHT_INSTALL=1 scripts/e2e.sh`. 통과하면 같은 실행의 `cargo` job 이 그린인지 확인한 뒤 `ghcr.io/<owner>/featuredoc:<head sha>`로 푸시합니다. 머지 커밋의 트리가 head 트리와 같으면(브랜치가 main 을 이미 포함) 빌드 입력이 동일하므로 **방금 테스트한 그 빌드**를 재컴파일 없이 올리고, 다르면(브랜치가 뒤처짐) head 를 따로 빌드해 올립니다. **태그는 커밋 SHA 하나뿐입니다** — `latest`도, 브랜치 롤링 태그도 만들지 않습니다.
+- **`ci-gate`** — 유일한 필수 체크. 위 job 과 문서 게이트 3종이 모두 success 인지 판정합니다.
+
+`.github/workflows/image.yml` — main push 전용.
+
+- **`push`** — main 커밋을 빌드해 `ghcr.io/<owner>/featuredoc:<sha>`로 푸시(GHA 캐시).
 - **`pin`** — `needs: push`, **main 푸시에서만**. `deploy/k8s/deployment.yaml`과 `worker-deployment.yaml`의 이미지 태그를 방금 빌드한 커밋 SHA로 바꾼 커밋을 **`deploy` 브랜치**로 force-push합니다(= `main@SHA` + 고정 커밋 하나, `Source-Commit: <sha>` 트레일러). main은 ruleset(필수 체크 `ci-gate`)으로 보호되어 되커밋하지 않으며, Flux는 `deploy`를 추적합니다. `contents: write`는 이 job에만 부여하고 기본 `GITHUB_TOKEN`만 쓰므로 장기 크레덴셜이 없습니다. 늦게 끝난 옛 실행은 deploy가 이미 더 새 커밋을 가리키면 건너뜁니다.
 
 > **태그 = 배포 상태.** 지금 운영에 무엇이 떠 있는지는 **`deploy` 브랜치**의 `deploy/k8s/deployment.yaml` 태그 한 줄이 그대로 말해줍니다(main에 남은 값은 운영과 무관). PR 빌드도 이미지는 `<head sha>`로 올라가지만(preview 환경이 이 태그를 씁니다) 매니페스트를 건드리지 않으므로 **머지 전에는 운영에 닿을 수 없습니다.** 롤백은 main에 revert PR을 올리는 것입니다 — 머지되면 그 커밋으로 다시 빌드·고정됩니다(소스가 같으면 빌드 캐시가 통째로 히트).
