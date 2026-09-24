@@ -628,6 +628,24 @@ impl Worker {
             .await
             .map_err(|e| format!("could not renew lease: {e}"))?;
 
+        let excerpts = repo_scan::read_files(
+            &self.http,
+            self.doubles.repo_scan,
+            &self.github_api_base,
+            &job.repo_owner,
+            &job.repo_name,
+            &job.branch,
+            job.installation_token.as_deref(),
+            &cross_cutting::key_files(paths),
+            cross_cutting::MAX_EXCERPT_BYTES,
+        )
+        .await?;
+        // Reading a handful of files is several round trips; renew again so the
+        // model call starts with a full lease.
+        self.heartbeat(&job.id)
+            .await
+            .map_err(|e| format!("could not renew lease: {e}"))?;
+
         let answer = cross_cutting::extract(
             &self.http,
             self.doubles.llm,
@@ -638,6 +656,7 @@ impl Worker {
             &job.repo_name,
             &job.branch,
             paths,
+            &excerpts,
         )
         .await?;
 
@@ -657,6 +676,7 @@ impl Worker {
         tracing::info!(
             analysis_id = %job.id,
             model = %answer.model,
+            excerpts = excerpts.len(),
             "cross-cutting stage complete"
         );
         Ok(answer.content)

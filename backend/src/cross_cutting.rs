@@ -1,12 +1,16 @@
 //! Stage 2 of the analysis pipeline.
 //!
-//! The input is the file-path list stage 1 measured — paths only, never blob
-//! contents: a path is enough evidence for what this stage has to cite, and
-//! fetching bodies would put the whole tree through the LLM boundary.
+//! The input is the file-path list stage 1 measured, plus the heads of a few
+//! entry-point and manifest files ([`key_files`]). Paths alone cannot show what
+//! decides an architecture answer — a binary that embeds its frontend, handlers
+//! that call a client library directly — but reading the whole tree would put it
+//! all through the LLM boundary. So only an allowlist of well-known file names is
+//! read, and each only up to [`MAX_EXCERPT_BYTES`]. Evidence stays paths.
 
 use serde_json::{json, Value};
 
 use crate::llm::{self, Ask};
+use crate::repo_scan::FileExcerpt;
 
 /// In PRD order — the screen renders the axes in this order, not the document's.
 pub const AXES: [(&str, &str); 5] = [
@@ -51,6 +55,36 @@ const AXIS_GUIDE: [(&str, &str); 5] = [
     ),
 ];
 
+/// How many files [`key_files`] picks, and how much of each is read. Together they
+/// bound what the excerpts add to the prompt (≈ 32 KB).
+pub const MAX_KEY_FILES: usize = 8;
+pub const MAX_EXCERPT_BYTES: usize = 4000;
+
+/// File names read for context, most telling first. Names only — never a pattern
+/// that could match a credentials file.
+const KEY_FILE_NAMES: [&str; 32] = [
+    // entry points
+    "main.go", "main.rs", "lib.rs", "main.py", "app.py", "manage.py", "main.ts",
+    "main.tsx", "main.js", "index.ts", "server.ts", "server.js", "app.ts", "app.js",
+    "Program.cs", "main.kt",
+    // build and workspace manifests
+    "go.mod", "Cargo.toml", "package.json", "pyproject.toml", "requirements.txt",
+    "pom.xml", "build.gradle", "build.gradle.kts", "Gemfile", "composer.json",
+    "pnpm-workspace.yaml", "go.work",
+    // how it is shipped
+    "Dockerfile", "docker-compose.yml", "docker-compose.yaml", "kustomization.yaml",
+];
+
+/// Directories whose files describe someone else's code or a test fixture, not
+/// this repository's structure.
+const SKIPPED_DIRS: [&str; 10] = [
+    "vendor", "node_modules", "third_party", "testdata", "fixtures", "test", "tests",
+    "e2e", "examples", "docs",
+];
+
+/// Deeper than this and a manifest is usually a sub-package's, not the project's.
+const MAX_KEY_FILE_DEPTH: usize = 4;
+
 /// How many paths are handed to the model. A cap keeps the prompt bounded on large
 /// repositories; taking the *first* N of a sorted list rather than a sample keeps
 /// it deterministic.
@@ -59,6 +93,8 @@ const MAX_PATHS: usize = 400;
 const SYSTEM: &str = "\
 You analyze a source repository's file tree and extract its cross-cutting concerns.
 Work only from the paths you are given: never invent a file that is not in the list.
+Some files also come with the head of their content. Use it to judge how the code
+is structured and wired together, but cite only paths from the list.
 Every item must cite at least one path from the list as its evidence.
 If an axis has no supporting evidence in the tree, return an empty item list for it
 rather than guessing.";
@@ -124,9 +160,15 @@ fn stub_answer(paths: &[String]) -> Value {
     json!({ "categories": categories })
 }
 
-fn prompt(owner: &str, name: &str, branch: &str, paths: &[String]) -> String {
+fn prompt(
+    owner: &str,
+    name: &str,
+    branch: &str,
+    paths: &[String],
+    excerpts: &[FileExcerpt],
+) -> String {
     let listed = paths.join("\n");
-    format!(
+    let mut text = format!(
         "Repository: {owner}/{name}@{branch}\n\
          Files ({shown} of {total}):\n{listed}\n\n\
          Extract the cross-cutting concerns for each of these axes:\n{axes}\n\n\
@@ -139,7 +181,51 @@ fn prompt(owner: &str, name: &str, branch: &str, paths: &[String]) -> String {
             .map(|(key, guide)| format!("- {key}: {guide}"))
             .collect::<Vec<_>>()
             .join("\n"),
-    )
+    );
+    if !excerpts.is_empty() {
+        text.push_str("\n\nHeads of key files (entry points and manifests):");
+        for e in excerpts {
+            let cut = if e.truncated { " (truncated)" } else { "" };
+            text.push_str(&format!(
+                "\n\n----- {}{cut} -----\n{}",
+                e.path, e.body
+            ));
+        }
+    }
+    text
+}
+
+/// Which files' heads [`extract`] should be given, from the same list the prompt
+/// shows — so every excerpt belongs to a path the model may cite.
+pub fn key_files(paths: &[String]) -> Vec<String> {
+    let mut picked: Vec<(usize, usize, String)> = input_paths(paths)
+        .into_iter()
+        .filter_map(|p| {
+            let parts: Vec<&str> = p.split('/').collect();
+            let (file, dirs) = parts.split_last()?;
+            if parts.len() > MAX_KEY_FILE_DEPTH || dirs.iter().any(|d| SKIPPED_DIRS.contains(d)) {
+                return None;
+            }
+            let rank = KEY_FILE_NAMES.iter().position(|n| n == file)?;
+            let depth = parts.len();
+            Some((rank, depth, p))
+        })
+        .collect();
+    // Most telling name first, then the shallowest copy of it, then by path — a
+    // total order, so the same tree always yields the same excerpts.
+    picked.sort();
+    // One copy of each name before any second copy: eight `main.go`s under `cmd/`
+    // would otherwise crowd out the `go.mod` that says how they fit together.
+    let (first, rest): (Vec<_>, Vec<_>) = picked
+        .iter()
+        .enumerate()
+        .partition(|(i, (rank, _, _))| *i == 0 || picked[i - 1].0 != *rank);
+    first
+        .into_iter()
+        .chain(rest)
+        .take(MAX_KEY_FILES)
+        .map(|(_, (_, _, p))| p.clone())
+        .collect()
 }
 
 pub fn input_paths(paths: &[String]) -> Vec<String> {
@@ -160,12 +246,13 @@ pub async fn extract(
     name: &str,
     branch: &str,
     paths: &[String],
+    excerpts: &[FileExcerpt],
 ) -> Result<llm::Answer, String> {
     let paths = input_paths(paths);
     if paths.is_empty() {
         return Err("repository tree is empty; nothing to analyze".to_string());
     }
-    llm::ask(
+    let mut answer = llm::ask(
         http,
         mode,
         provider,
@@ -173,13 +260,72 @@ pub async fn extract(
         Ask {
             system: SYSTEM,
             language,
-            user: prompt(owner, name, branch, &paths),
+            user: prompt(owner, name, branch, &paths, excerpts),
             schema: schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
             stub: stub_answer(&paths),
         },
     )
-    .await
+    .await?;
+    let dropped = keep_listed_evidence(&mut answer.content, &paths);
+    if dropped.paths > 0 {
+        tracing::warn!(
+            paths = dropped.paths,
+            items = dropped.items,
+            "cross-cutting evidence outside the listed tree dropped"
+        );
+    }
+    Ok(answer)
+}
+
+/// What [`keep_listed_evidence`] removed.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Dropped {
+    pub paths: usize,
+    pub items: usize,
+}
+
+/// Holds the model to the one rule the prompt can only ask for: evidence comes
+/// from the list it was shown. File contents in the prompt make it easy to
+/// cite a file a handler name suggests but the tree does not have, so this is
+/// code rather than an instruction the model may bend — the same stance
+/// `acceptance::merge` takes on contradictions.
+///
+/// A cited directory is kept when it is the parent of a listed path: models name
+/// `app/src` for "the source tree", and the claim is checkable. An item left with
+/// no evidence goes, because an item without a path is exactly the guess the
+/// stage promises not to make.
+pub fn keep_listed_evidence(doc: &mut Value, paths: &[String]) -> Dropped {
+    let listed = |cited: &str| {
+        let cited = cited.trim_end_matches('/');
+        paths.iter().any(|p| {
+            p == cited || (p.starts_with(cited) && p.as_bytes().get(cited.len()) == Some(&b'/'))
+        })
+    };
+    let mut dropped = Dropped::default();
+    let Some(categories) = doc.get_mut("categories").and_then(Value::as_array_mut) else {
+        return dropped;
+    };
+    for items in categories
+        .iter_mut()
+        .filter_map(|c| c.get_mut("items").and_then(Value::as_array_mut))
+    {
+        for item in items.iter_mut() {
+            if let Some(evidence) = item.get_mut("evidence").and_then(Value::as_array_mut) {
+                let before = evidence.len();
+                evidence.retain(|e| e.as_str().is_some_and(|p| listed(p)));
+                dropped.paths += before - evidence.len();
+            }
+        }
+        let before = items.len();
+        items.retain(|item| {
+            item.get("evidence")
+                .and_then(Value::as_array)
+                .is_some_and(|e| !e.is_empty())
+        });
+        dropped.items += before - items.len();
+    }
+    dropped
 }
 
 /// Shaped to match stage 1's own detail line, which the same row renders.
@@ -217,15 +363,134 @@ mod tests {
         ]
     }
 
+    fn answer_citing(evidence: &[&[&str]]) -> Value {
+        let items: Vec<Value> = evidence
+            .iter()
+            .enumerate()
+            .map(|(i, paths)| json!({ "name": format!("item {i}"), "evidence": paths }))
+            .collect();
+        json!({ "categories": [{ "axis": "architecture", "items": items }] })
+    }
+
+    fn cited(doc: &Value) -> Vec<Vec<String>> {
+        doc["categories"][0]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| {
+                i["evidence"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|p| p.as_str().unwrap().to_string())
+                    .collect()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn evidence_outside_the_listed_tree_is_dropped_and_so_is_an_item_left_with_none() {
+        let listed = input_paths(&tree());
+        let mut doc = answer_citing(&[
+            &["src/main.rs", "src/handlers/pod_logs.rs"],
+            &["src/invented.rs"],
+            &["Cargo.toml"],
+        ]);
+        let dropped = keep_listed_evidence(&mut doc, &listed);
+        assert_eq!(dropped, Dropped { paths: 2, items: 1 });
+        assert_eq!(
+            cited(&doc),
+            vec![vec!["src/main.rs".to_string()], vec!["Cargo.toml".to_string()]]
+        );
+        assert_eq!(detail(&doc), "5 categories · 2 items");
+    }
+
+    #[test]
+    fn a_cited_directory_counts_only_when_it_holds_a_listed_path() {
+        let listed = input_paths(&tree());
+        let mut doc = answer_citing(&[&["src/middleware", "deploy/base/"], &["src/mid"], &["srcx"]]);
+        let dropped = keep_listed_evidence(&mut doc, &listed);
+        assert_eq!(dropped, Dropped { paths: 2, items: 2 });
+        assert_eq!(
+            cited(&doc),
+            vec![vec!["src/middleware".to_string(), "deploy/base/".to_string()]]
+        );
+    }
+
+    #[test]
+    fn the_stub_answer_survives_the_evidence_check_untouched() {
+        let listed = input_paths(&tree());
+        let mut doc = stub_answer(&listed);
+        let before = doc.clone();
+        assert_eq!(keep_listed_evidence(&mut doc, &listed), Dropped::default());
+        assert_eq!(doc, before);
+    }
+
     #[test]
     fn the_prompt_describes_every_axis_in_screen_order() {
-        let text = prompt("acme", "widgets", "main", &input_paths(&tree()));
+        let text = prompt("acme", "widgets", "main", &input_paths(&tree()), &[]);
         let keys: Vec<&str> = AXES.iter().map(|(key, _)| *key).collect();
         let guided: Vec<&str> = AXIS_GUIDE.iter().map(|(key, _)| *key).collect();
         assert_eq!(guided, keys, "every schema axis needs a guide line, in order");
         for (key, guide) in AXIS_GUIDE {
             assert!(text.contains(&format!("- {key}: {guide}")), "{key} not described");
         }
+    }
+
+    fn owned(paths: &[&str]) -> Vec<String> {
+        paths.iter().map(|p| p.to_string()).collect()
+    }
+
+    #[test]
+    fn key_files_picks_entry_points_and_manifests_but_not_tests_or_vendored_code() {
+        let tree = owned(&[
+            "README.md",
+            "go.mod",
+            "main.go",
+            "handlers/pods.go",
+            "frontend/package.json",
+            "frontend/src/main.tsx",
+            "vendor/github.com/x/y/main.go",
+            "e2e/k8s/kustomization.yaml",
+            "test/fixtures/Dockerfile",
+            "a/b/c/d/main.go",
+            ".env",
+        ]);
+        assert_eq!(
+            key_files(&tree),
+            owned(&["main.go", "frontend/src/main.tsx", "go.mod", "frontend/package.json"])
+        );
+    }
+
+    #[test]
+    fn key_files_takes_one_of_each_name_before_a_second_copy() {
+        let mut tree: Vec<String> = (0..10).map(|i| format!("cmd/tool{i}/main.go")).collect();
+        tree.push("go.mod".to_string());
+        let picked = key_files(&tree);
+        assert_eq!(picked.len(), MAX_KEY_FILES);
+        assert!(picked.contains(&"go.mod".to_string()), "{picked:?}");
+        assert_eq!(key_files(&tree), picked, "the choice must be deterministic");
+    }
+
+    #[test]
+    fn the_prompt_carries_each_excerpt_under_its_path_and_marks_a_cut() {
+        let excerpts = vec![
+            FileExcerpt {
+                path: "main.go".to_string(),
+                body: "//go:embed frontend/dist".to_string(),
+                truncated: true,
+            },
+            FileExcerpt {
+                path: "go.mod".to_string(),
+                body: "module x".to_string(),
+                truncated: false,
+            },
+        ];
+        let text = prompt("acme", "widgets", "main", &input_paths(&tree()), &excerpts);
+        assert!(text.contains("----- main.go (truncated) -----\n//go:embed frontend/dist"));
+        assert!(text.contains("----- go.mod -----\nmodule x"));
+        let bare = prompt("acme", "widgets", "main", &input_paths(&tree()), &[]);
+        assert!(!bare.contains("Heads of key files"), "no section without excerpts");
     }
 
     #[test]
@@ -253,6 +518,7 @@ mod tests {
             "widgets",
             "main",
             &paths,
+            &[],
         )
         .await
         .unwrap();
@@ -290,6 +556,7 @@ mod tests {
                 "widgets",
                 "main",
                 &paths,
+                &[],
             )
         };
         assert_eq!(run().await.unwrap().content, run().await.unwrap().content);
@@ -307,6 +574,7 @@ mod tests {
             "acme",
             "widgets",
             "main",
+            &[],
             &[],
         )
         .await
