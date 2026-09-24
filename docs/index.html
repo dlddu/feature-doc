@@ -331,33 +331,6 @@
       word-break: keep-all;
     }
 
-    .preview-stage {
-      display: grid;
-      min-height: 590px;
-      place-items: center;
-      overflow: hidden;
-      background: var(--surface);
-    }
-
-    .preview-window {
-      position: relative;
-      width: 255px;
-      height: 555px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-
-    .preview-window iframe {
-      position: absolute;
-      inset: 0 auto auto 0;
-      width: 425px;
-      height: 924px;
-      border: 0;
-      pointer-events: none;
-      transform: scale(0.6);
-      transform-origin: top left;
-    }
-
     .open-link {
       display: flex;
       align-items: center;
@@ -440,10 +413,6 @@
 
       .grid {
         grid-template-columns: minmax(0, 1fr);
-      }
-
-      .preview-stage {
-        min-height: 570px;
       }
     }
 
@@ -843,9 +812,6 @@
               <li><a href="mockups/JRN-connect-repo.html#STP-confirm-cost"><code>STP-confirm-cost</code> 비용을 확인하고 시작 누르기</a></li>
               </ul>
             </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/JRN-connect-repo.html#STP-grant-repo-access" title="JRN-connect-repo 여정 목업 미리보기" loading="lazy" tabindex="-1"></iframe></div>
-            </div>
             <a class="open-link" href="mockups/JRN-connect-repo.html">Open journey</a>
           </article>
         </div>
@@ -871,9 +837,6 @@
               <li><a href="mockups/JRN-discover-features.html#STP-sift-candidates"><code>STP-sift-candidates</code> 진짜 기능과 아닌 것 가르기</a></li>
               <li><a href="mockups/JRN-discover-features.html#STP-add-missing"><code>STP-add-missing</code> 빠진 기능 직접 추가하기</a></li>
               </ul>
-            </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/JRN-discover-features.html#STP-sift-candidates" title="JRN-discover-features 여정 목업 미리보기" loading="lazy" tabindex="-1"></iframe></div>
             </div>
             <a class="open-link" href="mockups/JRN-discover-features.html">Open journey</a>
           </article>
@@ -901,9 +864,6 @@
               <li><a href="mockups/JRN-review-feature.html#STP-decide-diff"><code>STP-decide-diff</code> 제안된 변경을 승인하거나 버리기</a></li>
               </ul>
             </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/JRN-review-feature.html#STP-read-scenarios" title="JRN-review-feature 여정 목업 미리보기" loading="lazy" tabindex="-1"></iframe></div>
-            </div>
             <a class="open-link" href="mockups/JRN-review-feature.html">Open journey</a>
           </article>
         </div>
@@ -929,9 +889,6 @@
               <li><a href="mockups/JRN-follow-code-change.html#STP-recheck-candidates"><code>STP-recheck-candidates</code> 후보 목록의 변화 확인하기</a></li>
               </ul>
             </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/JRN-follow-code-change.html#STP-scan-diff" title="JRN-follow-code-change 여정 목업 미리보기" loading="lazy" tabindex="-1"></iframe></div>
-            </div>
             <a class="open-link" href="mockups/JRN-follow-code-change.html">Open journey</a>
           </article>
         </div>
@@ -956,9 +913,6 @@
               <li><a href="mockups/JRN-understand-feature.html#STP-check-scope"><code>STP-check-scope</code> 이 기능이 무엇에 얽혀 있는지 훑기</a></li>
               <li><a href="mockups/JRN-understand-feature.html#STP-flag-ambiguity"><code>STP-flag-ambiguity</code> 이상한 부분을 자연어로 넘기기</a></li>
               </ul>
-            </div>
-            <div class="preview-stage" aria-hidden="true">
-              <div class="preview-window"><iframe src="mockups/JRN-understand-feature.html#STP-grasp-behavior" title="JRN-understand-feature 여정 목업 미리보기" loading="lazy" tabindex="-1"></iframe></div>
             </div>
             <a class="open-link" href="mockups/JRN-understand-feature.html">Open journey</a>
           </article>
