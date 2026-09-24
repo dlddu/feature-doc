@@ -154,8 +154,6 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
                         근거 없음
                       </span>
                     ) : (
-                      // One path per line: joined with ' · ' they wrapped mid-path and
-                      // the separators landed at the start of the next line.
                       <span className="esrc" data-testid="concern-evidence">
                         {item.evidence.map((path) => (
                           <span key={path}>{path}</span>
@@ -166,8 +164,6 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
                 ))}
               </div>
             )}
-            {/* The legend explains the 근거 없음 tag, so — as in the mockup — it sits
-                only under an axis that actually shows one. */}
             {section.items.some((item) => item.evidence.length === 0) && (
               <p className="legend" style={{ marginTop: 12 }}>
                 <span className="mk">↳</span> 근거를 찾지 못한 항목은 지어내지 않고 그대로 표시합니다
