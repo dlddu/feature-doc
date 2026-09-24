@@ -46,7 +46,7 @@
 | `backend/src/doc_conflict.rs` · `backend/tests/doc_conflict.rs` · `frontend/src/ResolveConflict.tsx` · `e2e/tests/sc03-07-auto-vs-user-edit-conflict.spec.ts` (충돌 해소 축 — 슬라이스 6d #114 가 들여온 새 파일 4개 — `backend/migrations/0013_feature_doc_conflicts.sql` 는 **D1 사람 게이트 풀**로 보류) | 31 | `f43867463dd13fda9123330dfcb247a35df8482e5cc8bc68da63ef769d1e106f` | 순 제거 55행(모듈 머리의 기제 서술 21 + 3 — doc-tracker 6d 행이 재생·이월·충돌·결정 셋·미결정 재생·범위 밖을 거의 축자로 적는다(②) · 전송 경계와 선언 재진술 · 테스트 helper·의도 주석 8 · e2e 절 구분 5 · 화면 prop JSDoc) · **유지 31행** · **낡아서 거짓인 주석 1건 적발** — `status` 모듈 doc 이 「0012 의 CHECK 와 같은 값이어야 한다」고 적었으나 그 CHECK 는 **0013** 에 있고 0012 는 「어휘는 코드가 판정하며 이 파일에 CHECK 로 박지 않는다」고 스스로 적는다(제거 근거 강화) · 기계 판독 `// 검증 시나리오:` 1건 · `mock-exception:` 1건 · **화면 머리의 목업 매핑 1건**(M1 이 읽는다) 보존 — [passes/2026-09-22-conflict-axis.md](passes/2026-09-22-conflict-axis.md) |
 
 | `backend/src/crypto.rs` (봉투 암호화 1파일 — 13차 패스가 판정해 두고 **없어진 D2 규칙** 때문에 보류했던 몫) | 7 | `c646e3003f7eb8e96c33ede3d86b0365ea303cafe61529f488c68630b8df9e0f` | 순 제거 6행 · 유지 7행 — 13차 패스가 「보류분의 판정 결과」에 적어 둔 **제거 6 · 유지 7** 을 문면 그대로 적용했다(시그니처 재진술 `///` 2건(`seal`·`open`) · 모듈 머리의 **동작 서술** 3행(`seal()` 본문이 그대로 그 순서다) · `(AC4.3)` 꼬리표 · `Envelope` doc 의 rustdoc 링크 전용 교차 참조(`[`seal`]`·`[`open`]`) · `// Best-effort scrub …` 인라인은 모듈 머리 불변식에 **흡수**(2벌 → 1벌)) · **유지 7행**: 모듈 머리 불변식(persist 되는 것은 wrapped DEK 와 ciphertext 뿐 — 평문 비밀·평문 DEK 는 디스크에 닿지 않고 DEK 는 wrap 즉시 best-effort 로 지워진다; 「best-effort」는 Rust 가 소거를 보장하지 않아 코드에서 복원되지 않는다) · `Envelope` 의 「저장되는 전부이며 KEK 없이는 어느 것도 비밀을 드러내지 않는다」 · `open` 의 「변조(GCM 태그 불일치)·잘못된 KEK 는 **오류가 되지, 쓰레기 평문이 되지 않는다**」 · **주석 제거 후 부모와 코드 바이트 동일 1/1** · `cargo test --release` 통과 · 문서 게이트 3종 rc=0 · **판정기 `✅ 해당 없음`**(가짜 벽이 걷혔다는 세 번째 증거) · 허브 `Documents` 47 → 48 — [passes/2026-09-22-false-wall-teardown.md](passes/2026-09-22-false-wall-teardown.md) |
-| `backend/src/db.rs` · `backend/tests/migrations.rs` · `backend/src/models.rs` · `deploy/k8s/pvc.yaml` (무인 자유 풀 4파일 — 19차 패스가 「판정 자체가 없다」로 명시 인계한 몫) | 17 | `b15045231102a7e23c54dd0f43311233c7ff438202b5ea308275881e760a9907` | 순 제거 16행(`connect` 요약 `///` 2 + 딸린 빈 `///` 1 — 바로 아래 빌더 세 호출의 번역 · `replicas: 1`/`Recreate` 문장 1(`deploy/k8s/deployment.yaml:8-11` + `backend/migrations/README.md:113`) · `backend/tests/migrations.rs` 모듈 머리 3 → 1 · **`APPLIED`·`PRE_CLEANUP` 출처 블록 7행이 `backend/migrations/README.md:26-32,36-37` 의 축자 사본** · `every_migration_file_is_pinned` doc 2 · 리스 컬럼 주석 2 → 1) · 유지 17행 · **판단이 갈려 남긴 것 1건**(`deploy/k8s/pvc.yaml` 의 「SQLite is single-writer」 — 인과가 복원 경로 넷 어디에도 없다) · `APPLIED`·`PRE_CLEANUP` 의 **값과 `.sql` 파일은 무접촉** · **주석 아닌 바이트가 부모와 동일 2/2** · `cargo test --release` **225 passed / 0 failed**(24 스위트) · 문서 게이트 3종 rc=0 · **판정기 `✅ 해당 없음`(probe 가 아니라 이 PR 의 실제 diff 로 실측)** — [passes/2026-09-22-free-pool-storage-axis.md](passes/2026-09-22-free-pool-storage-axis.md) |
+| `backend/src/db.rs` · `backend/tests/migrations.rs` · `backend/src/models.rs` · `deploy/k8s/pvc.yaml` (무인 자유 풀 4파일 — 19차 패스가 「판정 자체가 없다」로 명시 인계한 몫) | 17 | `b15045231102a7e23c54dd0f43311233c7ff438202b5ea308275881e760a9907` | 순 제거 16행(`connect` 요약 `///` 2 + 딸린 빈 `///` 1 — 바로 아래 빌더 세 호출의 번역 · `replicas: 1`/`Recreate` 문장 1(`deploy/k8s/deployment.yaml:8-11` + `backend/migrations/README.md:113`) · `backend/tests/migrations.rs` 모듈 머리 3 → 1 · **`APPLIED`·`PRE_CLEANUP` 출처 블록 7행이 `backend/migrations/README.md:26-32,36-37` 의 축자 사본** · `every_migration_file_is_pinned` doc 2 · 리스 컬럼 주석 2 → 1) · 유지 17행 · **판단이 갈려 남긴 것 1건**(`deploy/k8s/pvc.yaml` 의 「SQLite is single-writer」 — 인과가 복원 경로 넷 어디에도 없다) · `APPLIED`·`PRE_CLEANUP` 의 **값과 `.sql` 파일은 무접촉** · **주석 아닌 바이트가 부모와 동일 2/2** · `cargo test --release` **237 passed / 0 failed**(24 스위트) · 문서 게이트 3종 rc=0 · **판정기 `✅ 해당 없음`(probe 가 아니라 이 PR 의 실제 diff 로 실측)** — [passes/2026-09-22-free-pool-storage-axis.md](passes/2026-09-22-free-pool-storage-axis.md) |
 
 **합계**: 판정 **133파일**(지문의 파일 집합 기준으로는 128 — `format.ts` · `backend/tests/crypto.rs` ·
 `backend/tests/analyses.rs` · `deploy/k8s/kustomization.yaml` · `backend/tests/settings.rs` 가 전건 제거로 주석
@@ -64,15 +64,18 @@ AC1.5 확장)이 원장 **1·4·5·7·9행**에 연 것이고(각 행의 「자�
 그 축과 함께 볼지 따로 볼지는 **다음 계획에서 정한다**」로 명시 인계한 **무인 자유 풀 4파일 33행**을 받아
 **새 행 23**(17행)으로 닫았다 — **순 제거 16행**. `.sql` 은 한 글자도 건드리지 않았고
 (`backend/tests/migrations.rs` 는 D1 경로 `backend/migrations/**` 밖이다), 판정기가 **이 PR 의 실제 diff 에
-`✅ 해당 없음`** 을 냈다. **이 패스만의 효과**는 `lines=2654 files=135` → `lines=2638 files=135` 다.
-**이 트리의 검산은 행 열의 합 2,458 + 행 열 밖 미판정 증분 8 + 잔여 172 = 전역 2,638** 이다.
+`✅ 해당 없음`** 을 냈다. **이 패스만의 효과**는 `lines=2726 files=135` → `lines=2710 files=135` 다.
+**이 트리의 검산은 행 열의 합 2,458 + 행 열 밖 미판정 증분 80 + 잔여 172 = 전역 2,710** 이다.
 
-⚠️ **이 트리에서 행 9·10 은 재현되지 않는다 — 기록 오류가 아니라 #132·#134 의 미판정 증분이다.**
-이 패스가 준비된 뒤 사람 PR **#132**(`c063d0f`, 횡단 관심사 근거 줄 레이아웃)와 **#134**(`28ba332`,
-횡단 관심사 프롬프트 축별 설명)가 판정 완료 범위 안 두 행에 **순 +8행**(행 9 +6 — `cross_cutting.rs` 3 ·
-`CrossCuttingConcerns.tsx` 3 · 행 10 +2 — `index.css` 2)을 더했다. 증분 재판정은 **새 행이 아니라 원래
-행의 결과 칸 갱신**이므로(「읽는 법」) 21차 패스는 이것을 섞지 않고 **`rct_20260922-0009`** 로 넘긴다.
-**나머지 21행은 줄 수·지문 둘 다 전건 재현된다**(실측 21/23).
+⚠️ **이 트리에서 행 5·7·9·10 은 재현되지 않는다 — 기록 오류가 아니라 사람 PR 넷의 미판정 증분이다.**
+이 패스가 준비된 뒤 사람 PR **#132**(`c063d0f`, 횡단 관심사 근거 줄 레이아웃) · **#134**(`28ba332`,
+횡단 관심사 프롬프트 축별 설명) · **#137**(`fd6cdad`, 횡단 관심사 단계의 파일 앞부분 문맥) ·
+**#138**(`95d3395`, 경로 상한의 디렉터리 고른 샘플)이 판정 완료 범위 안 네 행에 **순 +80행**을 더했다 —
+행 5 +2(`bin/worker.rs`) · 행 7 +14(`repo_scan.rs`) · 행 9 +62(`cross_cutting.rs` 59 ·
+`CrossCuttingConcerns.tsx` 3) · 행 10 +2(`index.css`). 증분 재판정은 **새 행이 아니라 원래 행의 결과 칸
+갱신**이므로(「읽는 법」) 21차 패스는 이것을 섞지 않는다 — #132·#134 의 8행은 **`rct_20260922-0009`** 가
+받았고, #137·#138 의 **72행은 다음 감지가 여는 몫**이다.
+**나머지 19행은 줄 수·지문 둘 다 전건 재현된다**(실측 19/23).
 
 **20차 패스(#129)가 그 직전 트리를 만들었다.** 사람 PR 이 아니라 **자매 모델의 reconcile PR #123**
 (`77158c2` · `tbm_feature-doc-e2e-mock-policy` `rct_20260922-0001`)이 판정 완료 범위 안
@@ -113,8 +116,8 @@ AC1.5 확장)이 원장 **1·4·5·7·9행**에 연 것이고(각 행의 「자�
 같은 창에 착지하며 머지 트리에서 재실측해 적어 둔 정정이고, 이 패스에서도 그대로다.
 
 **미판정 잔여**: **7파일 / 172행**
-(이 패스의 트리 기준 — 전역 `lines=2630 files=135`). 전역 지문의 파일 목록에서 판정 133파일을 **집합으로 뺀**
-값이며, 뺄셈과도 일치한다(172 == 2,630 − 2,458). #114 가 들여온 마이그레이션 `0013_feature_doc_conflicts.sql`
+(이 패스의 트리 기준 — 전역 `lines=2710 files=135` 에서 **행 열 밖 미판정 증분 80 을 뺀 2,630**).
+전역 지문의 파일 목록에서 판정 133파일을 **집합으로 뺀** 값이며, 뺄셈과도 일치한다(172 == 2,630 − 2,458). #114 가 들여온 마이그레이션 `0013_feature_doc_conflicts.sql`
 24행이 잔여에 새로 들어왔고, **#121 이 들여온 새 파일 `e2e/tests/sc01-08-succeeded-stage-rerun.spec.ts` 13행**도
 같은 형태로 들어왔다 — 문서 편집 축이 「자매 슬라이스가 새 파일을 들여올 때마다 새 잔여가 생긴다」고 적어
 둔 그대로다(#92 → 0009, #107 → 0010, #112 → 0011, #108 → 0012, **#114 → 0013**, **#121 → `sc01-08`**).

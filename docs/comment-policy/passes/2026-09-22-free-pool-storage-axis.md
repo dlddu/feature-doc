@@ -19,7 +19,7 @@ reconciler task `rct_20260922-0008`(모델 `tbm_feature-doc-comment-redundancy`)
 
 ## `backend/tests/migrations.rs` 는 D1 이 아니다 — 무인 경로를 이 PR 자신으로 쟀다
 
-19차 패스가 probe 로 확인한 것을 이 패스는 **실제 diff 로** 확인했다. 현재 main(`074c325`) 대비
+19차 패스가 probe 로 확인한 것을 이 패스는 **실제 diff 로** 확인했다. 현재 main(`95d3395`) 대비
 이 브랜치로 `python3 tools/check-data-format-change.py --base origin/main --head HEAD --verbose` 를
 돌리면 **`✅ 해당 없음 (review/manual-approval = success)`** 이다(검사한 파일 `backend/src/db.rs` ·
 `backend/tests/migrations.rs`). D1 은 `backend/migrations/**` 경로이고 이 테스트 파일은 그 밖이라,
@@ -150,9 +150,9 @@ WAL 문단의 논거(EFS 볼륨 · `-shm` 공유 · sqlx 0.8 기본값 변동)�
 ## 검증
 
 - **주석 아닌 바이트가 부모와 동일 2/2** — 줄머리 `//`·`///`·`//!`·블록 주석을 걷어낸 잔여의 md5 가
-  `backend/src/db.rs` · `backend/tests/migrations.rs` 둘 다 부모(`074c325`)와 같다.
+  `backend/src/db.rs` · `backend/tests/migrations.rs` 둘 다 부모(`95d3395`)와 같다.
   `APPLIED`·`PRE_CLEANUP` 의 값과 SQL 파일은 무접촉이다.
-- `cargo test --manifest-path backend/Cargo.toml --release` — **225 passed / 0 failed**(24 스위트).
+- `cargo test --manifest-path backend/Cargo.toml --release` — **237 passed / 0 failed**(24 스위트).
 - 문서 게이트 3종 rc=0(`check-journey-mockup.py` · `check-mockup-render.py` · `check-scenario-e2e.py`).
   새 패스 파일이 늘었으므로 허브(`docs/index.html`)에 `doc-row` 1건을 더하고 `Documents` 선언을
   48 → 49 로 올렸다(R9).
@@ -160,12 +160,13 @@ WAL 문단의 논거(EFS 볼륨 · `-shm` 공유 · sqlx 0.8 기본값 변동)�
 
 ## 이 패스가 병합되면
 
-- 전역 주석 지문: 부모(`074c325`) `lines=2654 files=135` → **`lines=2638 files=135`** /
-  `5ab21dd08a8c04d32bebfcbf9c016fd3b269be7d4511b9621c4648ae5870ffe9`
+- 전역 주석 지문: 부모(`95d3395`) `lines=2726 files=135` → **`lines=2710 files=135`** /
+  `e8db65a0d567d1535adef31c723d788035dea25ae035bf5951ac86e4e38b2b30`
   (**순 제거 16행**, 파일 수 불변 — 주석이 0행이 된 파일이 없다).
-  이 패스는 세 base 위에서 측정됐고 **순 제거 16 은 셋 다 같다**: `b4a6b30`(#129 착지 전)
+  이 패스는 **네 base 위에서 측정됐고 순 제거 16 은 넷 다 같다**: `b4a6b30`(#129 착지 전)
   `lines=2649` → `2633`, `27d9b81`(#129 착지 직후) `lines=2646` → `2630`,
-  `074c325`(현재 base) `lines=2654` → `2638`. **절대값은 자매 착지로 움직이고 순 제거는 안 움직인다** —
+  `074c325`(#131~#136 착지 후) `lines=2654` → `2638`, `95d3395`(현재 base — #137·#138 착지 후)
+  `lines=2726` → `2710`. **절대값은 자매 착지로 움직이고 순 제거는 안 움직인다** —
   그래서 완료 기준이 절대 지문이 아니다(아래).
 - **완료 기준은 절대 지문이 아니라 「부모 대비 순 제거 16행」과 「4파일이 원장 행을 갖는다」이다.**
   실제로 #129 가 먼저 착지했고 그 뒤 사람 PR 5건(#131~#136)이 더 들어와 절대값이 두 번 움직였지만,
@@ -174,7 +175,7 @@ WAL 문단의 논거(EFS 볼륨 · `-shm` 공유 · sqlx 0.8 기본값 변동)�
 ## 범위 밖 (후속)
 
 - **`e2e/tests/sc01-08-succeeded-stage-rerun.spec.ts` 13행** — #121(`b4a6b30`, AC1.5 확장)이 들여온
-  **새 미판정 파일**이다. 이 패스의 측정점(`074c325`)에 이미 들어와 있지만 task 의 gap 이 지목한
+  **새 미판정 파일**이다. 이 패스의 측정점(`95d3395`)에 이미 들어와 있지만 task 의 gap 이 지목한
   4파일 밖이라 건드리지 않았다. 다음 감지가 여는 몫이다.
 - **판정 완료 범위 안의 미판정 증분 47행** — #121 이 이미 판정된 파일들에 더한 **39행**(20차 패스가
   줄 수·지문만 자매 착지 재실측으로 따라 적어 행 열 **안**에 있다)과, 이 패스가 준비된 뒤 #132·#134 가
