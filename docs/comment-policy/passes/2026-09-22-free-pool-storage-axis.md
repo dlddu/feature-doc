@@ -4,6 +4,11 @@ reconciler task `rct_20260922-0008`(모델 `tbm_feature-doc-comment-redundancy`)
 19차 패스(#128)가 가짜 벽을 걷어 내며 **「벽은 걷혔지만 판정 자체가 없다 … 그 축과 함께 볼지
 따로 볼지는 다음 계획에서 정한다」**로 명시 인계한 **4파일 33행**이 이 패스의 전부다.
 
+> **이 문서의 측정 기재값은 PR head 의 base 에 묶인다.** 아래 「검증」·「이 패스가 병합되면」의
+> 부모 SHA·테스트 수·게이트 결과는 그때의 base 에서 잰 값이다. 자매 착지로 base 를 올리면
+> **원장 행뿐 아니라 이 파일의 수치까지 같이 다시 잰다.** 현재형으로 쓴 「현재 main」·「부모」·
+> 「측정점」의 SHA 는 전부 그 base 여야 하고, 의도된 이력(세 base 열거 · 사람 PR 귀속)은 예외다.
+
 | 파일 | 전 | 후 | 순 제거 | 요지 |
 |---|---|---|---|---|
 | `backend/src/db.rs` | 17 | **13** | 4 | `connect` 요약 2행이 바로 아래 빌더 호출의 번역 · `replicas: 1`/`Recreate` 문장은 매니페스트와 마이그레이션 README 가 그대로 말한다 |
@@ -14,7 +19,7 @@ reconciler task `rct_20260922-0008`(모델 `tbm_feature-doc-comment-redundancy`)
 
 ## `backend/tests/migrations.rs` 는 D1 이 아니다 — 무인 경로를 이 PR 자신으로 쟀다
 
-19차 패스가 probe 로 확인한 것을 이 패스는 **실제 diff 로** 확인했다. 현재 main(`b4a6b30`) 대비
+19차 패스가 probe 로 확인한 것을 이 패스는 **실제 diff 로** 확인했다. 현재 main(`074c325`) 대비
 이 브랜치로 `python3 tools/check-data-format-change.py --base origin/main --head HEAD --verbose` 를
 돌리면 **`✅ 해당 없음 (review/manual-approval = success)`** 이다(검사한 파일 `backend/src/db.rs` ·
 `backend/tests/migrations.rs`). D1 은 `backend/migrations/**` 경로이고 이 테스트 파일은 그 밖이라,
@@ -145,9 +150,9 @@ WAL 문단의 논거(EFS 볼륨 · `-shm` 공유 · sqlx 0.8 기본값 변동)�
 ## 검증
 
 - **주석 아닌 바이트가 부모와 동일 2/2** — 줄머리 `//`·`///`·`//!`·블록 주석을 걷어낸 잔여의 md5 가
-  `backend/src/db.rs` · `backend/tests/migrations.rs` 둘 다 부모(`b4a6b30`)와 같다.
+  `backend/src/db.rs` · `backend/tests/migrations.rs` 둘 다 부모(`074c325`)와 같다.
   `APPLIED`·`PRE_CLEANUP` 의 값과 SQL 파일은 무접촉이다.
-- `cargo test --manifest-path backend/Cargo.toml --release` — **224 passed / 0 failed**(24 스위트).
+- `cargo test --manifest-path backend/Cargo.toml --release` — **225 passed / 0 failed**(24 스위트).
 - 문서 게이트 3종 rc=0(`check-journey-mockup.py` · `check-mockup-render.py` · `check-scenario-e2e.py`).
   새 패스 파일이 늘었으므로 허브(`docs/index.html`)에 `doc-row` 1건을 더하고 `Documents` 선언을
   48 → 49 로 올렸다(R9).
@@ -169,7 +174,7 @@ WAL 문단의 논거(EFS 볼륨 · `-shm` 공유 · sqlx 0.8 기본값 변동)�
 ## 범위 밖 (후속)
 
 - **`e2e/tests/sc01-08-succeeded-stage-rerun.spec.ts` 13행** — #121(`b4a6b30`, AC1.5 확장)이 들여온
-  **새 미판정 파일**이다. 이 패스의 측정점(`b4a6b30`)에 이미 들어와 있지만 task 의 gap 이 지목한
+  **새 미판정 파일**이다. 이 패스의 측정점(`074c325`)에 이미 들어와 있지만 task 의 gap 이 지목한
   4파일 밖이라 건드리지 않았다. 다음 감지가 여는 몫이다.
 - **판정 완료 범위 안의 미판정 증분 47행** — #121 이 이미 판정된 파일들에 더한 **39행**(20차 패스가
   줄 수·지문만 자매 착지 재실측으로 따라 적어 행 열 **안**에 있다)과, 이 패스가 준비된 뒤 #132·#134 가
