@@ -176,7 +176,7 @@ kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로
 `.github/workflows/ci.yml` — PR 전용, `ubuntu-24.04-arm` runner. main push 는 `image.yml`(빌드·pin)과 `cache-warm.yml`(캐시 저장)이 받습니다.
 
 - **`cargo`** — `cargo test --profile ci`. `ci` 프로필(`backend/Cargo.toml`)은 dev 기반이라 release 의 LTO·`codegen-units = 1` 없이 테스트 바이너리를 빌드합니다(배포 바이너리는 Dockerfile 이 release 로 빌드하고 e2e 가 그것을 검증). `Swatinem/rust-cache`가 registry와 target/의 의존성 빌드를 캐시합니다 — PR 에서는 읽기만 하고, 저장은 main push 때 `cache-warm.yml`이 같은 `shared-key`로 합니다.
-- **`e2e`** — PR **head 커밋**을 체크아웃 → kind+kubectl 설치 → `docker/build-push-action`(`load: true`, GHA 캐시)으로 `featuredoc:dev` 빌드 → Playwright chromium(main 이 저장한 브라우저 캐시를 복원, 적중 시 apt 의존성만 설치) → `SKIP_BUILD=1 SKIP_PLAYWRIGHT_INSTALL=1 scripts/e2e.sh`. 통과하면 같은 실행의 `cargo` job 이 그린인지 확인한 뒤, **방금 테스트한 그 빌드**를 `ghcr.io/<owner>/featuredoc:<head sha>`로 푸시합니다(같은 builder 라 재컴파일 없이 업로드만). **태그는 커밋 SHA 하나뿐입니다** — `latest`도, 브랜치 롤링 태그도 만들지 않습니다.
+- **`e2e`** — merge ref(PR + 그 시점 main)를 체크아웃 → kind+kubectl 설치 → `docker/build-push-action`(`load: true`, GHA 캐시)으로 `featuredoc:dev` 빌드 → Playwright chromium(main 이 저장한 브라우저 캐시를 복원, 적중 시 apt 의존성만 설치) → `SKIP_BUILD=1 SKIP_PLAYWRIGHT_INSTALL=1 scripts/e2e.sh`. 통과하면 같은 실행의 `cargo` job 이 그린인지 확인한 뒤 `ghcr.io/<owner>/featuredoc:<head sha>`로 푸시합니다. 머지 커밋의 트리가 head 트리와 같으면(브랜치가 main 을 이미 포함) 빌드 입력이 동일하므로 **방금 테스트한 그 빌드**를 재컴파일 없이 올리고, 다르면(브랜치가 뒤처짐) head 를 따로 빌드해 올립니다. **태그는 커밋 SHA 하나뿐입니다** — `latest`도, 브랜치 롤링 태그도 만들지 않습니다.
 - **`ci-gate`** — 유일한 필수 체크. 위 job 과 문서 게이트 3종이 모두 success 인지 판정합니다.
 
 `.github/workflows/image.yml` — main push 전용.
