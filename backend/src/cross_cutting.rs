@@ -17,6 +17,40 @@ pub const AXES: [(&str, &str); 5] = [
     ("middleware", "미들웨어 (인증 · 로깅 · 캐시 등)"),
 ];
 
+/// What each axis asks for, as the model reads it — the labels in [`AXES`] are screen copy.
+/// Examples name kinds of evidence, never concrete paths: a concrete path in the
+/// prompt is one the model can cite even when the tree does not contain it.
+const AXIS_GUIDE: [(&str, &str); 5] = [
+    (
+        "infrastructure",
+        "deployment manifests and infrastructure-as-code \
+         (e.g. Kubernetes / Helm / Kustomize manifests, Dockerfiles, compose files, \
+         Terraform or other IaC, CI/CD deploy workflows)",
+    ),
+    (
+        "repository_structure",
+        "whether the repository is a monorepo and how it is divided into modules, \
+         packages or services (e.g. workspace manifests, per-module build files, \
+         top-level directory split)",
+    ),
+    (
+        "architecture",
+        "layering and architectural patterns such as DDD, MVC or hexagonal \
+         (e.g. controller / service / repository directories, domain / ports / adapters, \
+         separate API and worker processes)",
+    ),
+    (
+        "framework",
+        "frameworks and runtimes (e.g. web or UI framework, language runtime and \
+         toolchain, as shown by build manifests, lockfiles and entry points)",
+    ),
+    (
+        "middleware",
+        "concerns applied across requests such as authentication, sessions, \
+         logging / tracing, caching and rate limiting",
+    ),
+];
+
 /// How many paths are handed to the model. A cap keeps the prompt bounded on large
 /// repositories; taking the *first* N of a sorted list rather than a sample keeps
 /// it deterministic.
@@ -95,14 +129,16 @@ fn prompt(owner: &str, name: &str, branch: &str, paths: &[String]) -> String {
     format!(
         "Repository: {owner}/{name}@{branch}\n\
          Files ({shown} of {total}):\n{listed}\n\n\
-         Extract the cross-cutting concerns for each of these axes: {axes}.",
+         Extract the cross-cutting concerns for each of these axes:\n{axes}\n\n\
+         The examples describe kinds of evidence, not files in this repository: \
+         cite only paths from the list above.",
         shown = paths.len(),
         total = paths.len(),
-        axes = AXES
+        axes = AXIS_GUIDE
             .iter()
-            .map(|(key, _)| *key)
+            .map(|(key, guide)| format!("- {key}: {guide}"))
             .collect::<Vec<_>>()
-            .join(", "),
+            .join("\n"),
     )
 }
 
@@ -179,6 +215,17 @@ mod tests {
             "src/middleware/auth.rs".to_string(),
             "src/main.rs".to_string(), // duplicate — must be collapsed
         ]
+    }
+
+    #[test]
+    fn the_prompt_describes_every_axis_in_screen_order() {
+        let text = prompt("acme", "widgets", "main", &input_paths(&tree()));
+        let keys: Vec<&str> = AXES.iter().map(|(key, _)| *key).collect();
+        let guided: Vec<&str> = AXIS_GUIDE.iter().map(|(key, _)| *key).collect();
+        assert_eq!(guided, keys, "every schema axis needs a guide line, in order");
+        for (key, guide) in AXIS_GUIDE {
+            assert!(text.contains(&format!("- {key}: {guide}")), "{key} not described");
+        }
     }
 
     #[test]
