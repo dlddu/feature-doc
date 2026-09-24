@@ -1,6 +1,4 @@
-//! Verifies that `db::connect` applies the migrations and creates the schema —
-//! and that the migrations that have already been applied somewhere are never
-//! edited again.
+//! Migration application, schema shape, and applied-migration immutability.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -50,8 +48,7 @@ async fn migrations_create_expected_tables() {
         );
     }
 
-    // The worker's lease columns are what make a claim reclaimable (AC4.5); an
-    // `ALTER TABLE` that silently went missing would only surface at runtime.
+    // An `ALTER TABLE` that silently went missing would only surface at runtime.
     let columns: Vec<(String,)> = sqlx::query_as("SELECT name FROM pragma_table_info('analyses')")
         .fetch_all(&pool)
         .await
@@ -68,10 +65,6 @@ async fn migrations_create_expected_tables() {
     let _ = std::fs::remove_file(&path);
 }
 
-// Pins the file bytes accepted by main at PR #98 — a comment-only pass whose
-// production `_sqlx_migrations` repair was done by hand before the merge.
-// This SHA-256 guard is not evidence of deployed DB repair; sqlx stores SHA-384.
-// See migrations/README.md for provenance and the release preflight.
 const APPLIED: [(&str, &str); 13] = [
     ("0001_init.sql", "d318541ba2d08dd74d917f424c42657d6859a7692294d7c9b478238dabe59d3b"),
     ("0002_github_tokens.sql", "a62a0ecb0a7cdd303a1e06bc2420d7ab9a853836af36db9aabc6a35caa05514b"),
@@ -110,8 +103,6 @@ fn applied_migrations_are_never_edited() {
     }
 }
 
-/// The pin above is only as good as its coverage: a new migration that nobody adds
-/// to `APPLIED` is unprotected from the moment it ships.
 #[test]
 fn every_migration_file_is_pinned() {
     let mut found: Vec<String> = std::fs::read_dir(migrations_dir())
@@ -157,9 +148,6 @@ async fn current_migration_history_survives_reconnect() {
     std::fs::remove_file(path).expect("remove temporary database");
 }
 
-// SHA-384 of the six files changed by PR #44, from its parent
-// 636ee771dd404ad7cf383d1bfadcc5036ab7fac6. These are source fixtures, not
-// observations of a production database. Migration 0002 did not change.
 const PRE_CLEANUP: [(i64, &str); 6] = [
     (1, "032f48530ee375551f2f229919ca3d77b77718bc3003121623a4d85f1fcee73048bf711725af980717a56692bdc73232"),
     (3, "848f967794d8e9e7965d454e52b4067c6c688b1db332d1e40a9a292606b8f5282d8596518b5fc64305e1b4611c73cf3b"),
