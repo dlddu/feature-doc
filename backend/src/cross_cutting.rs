@@ -69,10 +69,12 @@ const KEY_FILE_NAMES: [&str; 32] = [
     "Program.cs", "main.kt",
     // build and workspace manifests
     "go.mod", "Cargo.toml", "package.json", "pyproject.toml", "requirements.txt",
-    "pom.xml", "build.gradle", "build.gradle.kts", "Gemfile", "composer.json",
-    "pnpm-workspace.yaml", "go.work",
+    "pom.xml", "build.gradle", "build.gradle.kts", "pnpm-workspace.yaml", "go.work",
+    // how the services run together, ahead of the rarer manifests below
+    "docker-compose.yml", "docker-compose.yaml",
+    "Gemfile", "composer.json",
     // how it is shipped
-    "Dockerfile", "docker-compose.yml", "docker-compose.yaml", "kustomization.yaml",
+    "Dockerfile", "kustomization.yaml",
 ];
 
 /// Directories whose files describe someone else's code or a test fixture, not
@@ -82,12 +84,18 @@ const SKIPPED_DIRS: [&str; 10] = [
     "e2e", "examples", "docs",
 ];
 
+/// Code that is not the product's structure — helper scripts and dev tooling —
+/// kept out of the excerpts, though still in the path list.
+const NOT_STRUCTURE_DIRS: [&str; 3] = ["scripts", "tools", "hack"];
+
+/// Directory names that mark the main one of several same-named entry points.
+const ENTRY_DIR_HINTS: [&str; 4] = ["server", "api", "app", "web"];
+
 /// Deeper than this and a manifest is usually a sub-package's, not the project's.
 const MAX_KEY_FILE_DEPTH: usize = 4;
 
 /// How many paths are handed to the model. A cap keeps the prompt bounded on large
-/// repositories; taking the *first* N of a sorted list rather than a sample keeps
-/// it deterministic.
+/// repositories; [`input_paths`] decides which ones make it.
 const MAX_PATHS: usize = 400;
 
 const SYSTEM: &str = "\
@@ -165,17 +173,22 @@ fn prompt(
     name: &str,
     branch: &str,
     paths: &[String],
+    total: usize,
     excerpts: &[FileExcerpt],
 ) -> String {
     let listed = paths.join("\n");
+    let sampled = if total > paths.len() {
+        ", sampled across directories; tests, docs and vendored files go first"
+    } else {
+        ""
+    };
     let mut text = format!(
         "Repository: {owner}/{name}@{branch}\n\
-         Files ({shown} of {total}):\n{listed}\n\n\
+         Files ({shown} of {total}{sampled}):\n{listed}\n\n\
          Extract the cross-cutting concerns for each of these axes:\n{axes}\n\n\
          The examples describe kinds of evidence, not files in this repository: \
          cite only paths from the list above.",
         shown = paths.len(),
-        total = paths.len(),
         axes = AXIS_GUIDE
             .iter()
             .map(|(key, guide)| format!("- {key}: {guide}"))
@@ -198,42 +211,124 @@ fn prompt(
 /// Which files' heads [`extract`] should be given, from the same list the prompt
 /// shows — so every excerpt belongs to a path the model may cite.
 pub fn key_files(paths: &[String]) -> Vec<String> {
-    let mut picked: Vec<(usize, usize, String)> = input_paths(paths)
+    let mut picked: Vec<((usize, bool, usize, String), String)> = input_paths(paths)
         .into_iter()
         .filter_map(|p| {
             let parts: Vec<&str> = p.split('/').collect();
             let (file, dirs) = parts.split_last()?;
-            if parts.len() > MAX_KEY_FILE_DEPTH || dirs.iter().any(|d| SKIPPED_DIRS.contains(d)) {
+            if parts.len() > MAX_KEY_FILE_DEPTH
+                || dirs
+                    .iter()
+                    .any(|d| SKIPPED_DIRS.contains(d) || NOT_STRUCTURE_DIRS.contains(d))
+            {
                 return None;
             }
             let rank = KEY_FILE_NAMES.iter().position(|n| n == file)?;
-            let depth = parts.len();
-            Some((rank, depth, p))
+            let parent = dirs.last().copied().unwrap_or("");
+            // An `index.ts` deep in a tree re-exports a folder; only a package's
+            // own `index` (at its root or directly under `src`) is an entry point.
+            if file.starts_with("index.") && dirs.len() > 1 && parent != "src" {
+                return None;
+            }
+            // Among several `cmd/*/main.go`, the one named for a server or for its
+            // own service is the one that shows how the thing is wired. A file at
+            // the root of the repository or of a top-level directory is that
+            // directory's own, and counts the same.
+            let plain = !(dirs.len() <= 1
+                || ENTRY_DIR_HINTS.contains(&parent)
+                || Some(&parent) == dirs.first());
+            let top = if dirs.is_empty() { String::new() } else { dirs[0].to_string() };
+            Some(((rank, plain, parts.len(), top), p))
         })
         .collect();
-    // Most telling name first, then the shallowest copy of it, then by path — a
-    // total order, so the same tree always yields the same excerpts.
-    picked.sort();
-    // One copy of each name before any second copy: eight `main.go`s under `cmd/`
-    // would otherwise crowd out the `go.mod` that says how they fit together.
+    // Most telling name first, then an entry-looking directory, then the shallowest,
+    // then by path — a total order, so the same tree always yields the same excerpts.
+    picked.sort_by(|a, b| (&a.0 .0, a.0 .1, a.0 .2, &a.1).cmp(&(&b.0 .0, b.0 .1, b.0 .2, &b.1)));
+    // One copy of each name per top-level directory before any further copy: eight
+    // `main.go`s under `cmd/` would otherwise crowd out the `go.mod` that says how
+    // they fit together, while a backend and a worker each keep their own.
+    let mut seen = std::collections::BTreeSet::new();
     let (first, rest): (Vec<_>, Vec<_>) = picked
-        .iter()
-        .enumerate()
-        .partition(|(i, (rank, _, _))| *i == 0 || picked[i - 1].0 != *rank);
+        .into_iter()
+        .partition(|((rank, _, _, top), _)| seen.insert((*rank, top.clone())));
     first
         .into_iter()
         .chain(rest)
         .take(MAX_KEY_FILES)
-        .map(|(_, (_, _, p))| p.clone())
+        .map(|(_, p)| p)
         .collect()
 }
 
+/// The paths every LLM stage sees, capped at [`MAX_PATHS`] and returned sorted.
+///
+/// Over the cap, the first N of a sorted list is the wrong cut: it drops whole
+/// top-level directories that happen to sort last, and those are often a
+/// project's own services (`worker/`, `k8s/`) rather than its tests. So the
+/// sample goes round-robin across directories — each directory's entry points
+/// and manifests first — and takes the project's code before what supports it
+/// (tests, fixtures, docs, vendored code). Every choice is a total order on the
+/// paths, so the same tree always yields the same list.
 pub fn input_paths(paths: &[String]) -> Vec<String> {
-    let mut sorted = paths.to_vec();
-    sorted.sort();
-    sorted.dedup();
-    sorted.truncate(MAX_PATHS);
-    sorted
+    let mut all = paths.to_vec();
+    all.sort();
+    all.dedup();
+    if all.len() <= MAX_PATHS {
+        return all;
+    }
+    let (code, supporting): (Vec<String>, Vec<String>) =
+        all.into_iter().partition(|p| !is_supporting(p));
+    let mut picked = Vec::with_capacity(MAX_PATHS);
+    for tier in [code, supporting] {
+        take_round_robin(tier, MAX_PATHS - picked.len(), &mut picked);
+    }
+    picked.sort();
+    picked
+}
+
+/// Whether a path supports the code rather than being it.
+fn is_supporting(path: &str) -> bool {
+    let (dirs, file) = path.rsplit_once('/').unwrap_or(("", path));
+    dirs.split('/')
+        .any(|d| SKIPPED_DIRS.contains(&d) || d.starts_with("__"))
+        || file.contains("_test.")
+        || file.contains(".test.")
+        || file.contains(".spec.")
+}
+
+/// Directories are told apart by their first two levels: one level lumps
+/// `backend/internal/*` into a single queue, and more splits a monorepo into so
+/// many that each gets a file or two.
+fn directory_of(path: &str) -> &str {
+    let dir = path.rsplit_once('/').map_or("", |(d, _)| d);
+    match dir.match_indices('/').nth(1) {
+        Some((i, _)) => &dir[..i],
+        None => dir,
+    }
+}
+
+fn take_round_robin(tier: Vec<String>, budget: usize, out: &mut Vec<String>) {
+    let mut queues: std::collections::BTreeMap<String, std::collections::VecDeque<String>> =
+        Default::default();
+    for p in tier {
+        queues.entry(directory_of(&p).to_string()).or_default().push_back(p);
+    }
+    for queue in queues.values_mut() {
+        queue
+            .make_contiguous()
+            .sort_by_key(|p| (!KEY_FILE_NAMES.contains(&p.rsplit('/').next().unwrap_or(p)), p.clone()));
+    }
+    let mut taken = 0;
+    while taken < budget && queues.values().any(|q| !q.is_empty()) {
+        for queue in queues.values_mut() {
+            if taken == budget {
+                break;
+            }
+            if let Some(p) = queue.pop_front() {
+                out.push(p);
+                taken += 1;
+            }
+        }
+    }
 }
 
 pub async fn extract(
@@ -248,6 +343,12 @@ pub async fn extract(
     paths: &[String],
     excerpts: &[FileExcerpt],
 ) -> Result<llm::Answer, String> {
+    let total = {
+        let mut all = paths.to_vec();
+        all.sort();
+        all.dedup();
+        all.len()
+    };
     let paths = input_paths(paths);
     if paths.is_empty() {
         return Err("repository tree is empty; nothing to analyze".to_string());
@@ -260,7 +361,7 @@ pub async fn extract(
         Ask {
             system: SYSTEM,
             language,
-            user: prompt(owner, name, branch, &paths, excerpts),
+            user: prompt(owner, name, branch, &paths, total, excerpts),
             schema: schema(),
             // mock-exception: LLM-01 — 실 LLM 산출물에 대한 결정적 단정을 위해 고정 답을 공급
             stub: stub_answer(&paths),
@@ -428,7 +529,7 @@ mod tests {
 
     #[test]
     fn the_prompt_describes_every_axis_in_screen_order() {
-        let text = prompt("acme", "widgets", "main", &input_paths(&tree()), &[]);
+        let text = prompt("acme", "widgets", "main", &input_paths(&tree()), 4, &[]);
         let keys: Vec<&str> = AXES.iter().map(|(key, _)| *key).collect();
         let guided: Vec<&str> = AXIS_GUIDE.iter().map(|(key, _)| *key).collect();
         assert_eq!(guided, keys, "every schema axis needs a guide line, in order");
@@ -473,6 +574,33 @@ mod tests {
     }
 
     #[test]
+    fn key_files_prefers_each_service_s_own_entry_point_over_tools_and_barrels() {
+        let tree = owned(&[
+            "app/package.json",
+            "app/src/components/index.ts",
+            "backend/cmd/reset-user/main.go",
+            "backend/cmd/seed-diary/main.go",
+            "backend/cmd/server/main.go",
+            "backend/go.mod",
+            "scripts/openrouter-mock/server.js",
+            "worker/cmd/worker/main.go",
+            "worker/go.mod",
+        ]);
+        assert_eq!(
+            key_files(&tree),
+            owned(&[
+                "backend/cmd/server/main.go",
+                "worker/cmd/worker/main.go",
+                "backend/go.mod",
+                "worker/go.mod",
+                "app/package.json",
+                "backend/cmd/reset-user/main.go",
+                "backend/cmd/seed-diary/main.go",
+            ])
+        );
+    }
+
+    #[test]
     fn the_prompt_carries_each_excerpt_under_its_path_and_marks_a_cut() {
         let excerpts = vec![
             FileExcerpt {
@@ -486,10 +614,10 @@ mod tests {
                 truncated: false,
             },
         ];
-        let text = prompt("acme", "widgets", "main", &input_paths(&tree()), &excerpts);
+        let text = prompt("acme", "widgets", "main", &input_paths(&tree()), 4, &excerpts);
         assert!(text.contains("----- main.go (truncated) -----\n//go:embed frontend/dist"));
         assert!(text.contains("----- go.mod -----\nmodule x"));
-        let bare = prompt("acme", "widgets", "main", &input_paths(&tree()), &[]);
+        let bare = prompt("acme", "widgets", "main", &input_paths(&tree()), 4, &[]);
         assert!(!bare.contains("Heads of key files"), "no section without excerpts");
     }
 
@@ -502,6 +630,72 @@ mod tests {
         let mut sorted = a.clone();
         sorted.sort();
         assert_eq!(a, sorted);
+    }
+
+    /// Shaped like the tree that exposed the old cut: a front end and a back end
+    /// that sort first and fill the cap, a service and its manifests that sort
+    /// last, and tests spread through all of it.
+    fn oversized_tree() -> Vec<String> {
+        let mut tree = Vec::new();
+        for i in 0..250 {
+            tree.push(format!("app/src/screens/screen_{i:03}.tsx"));
+            tree.push(format!("app/src/screens/__tests__/screen_{i:03}.test.tsx"));
+        }
+        for i in 0..150 {
+            tree.push(format!("backend/internal/records/file_{i:03}.go"));
+            tree.push(format!("backend/internal/records/file_{i:03}_test.go"));
+        }
+        tree.extend(owned(&[
+            "backend/go.mod",
+            "worker/go.mod",
+            "worker/cmd/worker/main.go",
+            "worker/internal/tasks/aipreview/task.go",
+            "k8s/base/worker-deployment.yaml",
+            "k8s/base/kustomization.yaml",
+        ]));
+        tree
+    }
+
+    #[test]
+    fn over_the_cap_every_directory_is_sampled_and_code_comes_before_tests() {
+        let tree = oversized_tree();
+        let picked = input_paths(&tree);
+        assert_eq!(picked.len(), MAX_PATHS);
+        for late in [
+            "worker/go.mod",
+            "worker/cmd/worker/main.go",
+            "worker/internal/tasks/aipreview/task.go",
+            "k8s/base/worker-deployment.yaml",
+            "k8s/base/kustomization.yaml",
+        ] {
+            assert!(picked.contains(&late.to_string()), "{late} sorts last but must be seen");
+        }
+        assert!(
+            !picked.iter().any(|p| is_supporting(p)),
+            "406 non-test paths exist, so no test should take a slot"
+        );
+        let mut sorted = picked.clone();
+        sorted.sort();
+        assert_eq!(picked, sorted, "the prompt lists paths in order");
+        assert_eq!(input_paths(&tree), picked, "the sample must be deterministic");
+        assert!(key_files(&tree).contains(&"worker/cmd/worker/main.go".to_string()));
+    }
+
+    #[test]
+    fn under_the_cap_nothing_is_dropped() {
+        let mut tree = oversized_tree();
+        tree.truncate(MAX_PATHS);
+        let mut expected = tree.clone();
+        expected.sort();
+        assert_eq!(input_paths(&tree), expected);
+    }
+
+    #[test]
+    fn the_prompt_says_when_the_list_is_a_sample() {
+        let listed = input_paths(&tree());
+        assert!(prompt("acme", "widgets", "main", &listed, 4, &[]).contains("Files (4 of 4):"));
+        assert!(prompt("acme", "widgets", "main", &listed, 900, &[])
+            .contains("Files (4 of 900, sampled across directories"));
     }
 
     #[tokio::test]
