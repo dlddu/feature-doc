@@ -188,17 +188,11 @@ fn stub_paths(name: &str, files: i64) -> Vec<String> {
 pub struct FileExcerpt {
     pub path: String,
     pub body: String,
-    /// The file continued past `max_bytes`; the model is told so it does not
-    /// mistake a cut-off head for the whole file.
+    /// Surfaced to the model so a cut-off head is not read as the whole file.
     pub truncated: bool,
 }
 
 /// Reads the first `max_bytes` of each path in `owner/name@branch`.
-///
-/// A path that cannot be read (removed since the tree was listed, not text, a
-/// transient 5xx) is left out rather than failing the caller: the excerpts are
-/// context on top of the path list, and the stage still has its evidence without
-/// them. A missing token is still an error, as it is for [`scan`].
 pub async fn read_files(
     http: &reqwest::Client,
     mode: Mode,
@@ -230,9 +224,6 @@ pub async fn read_files(
     }
 }
 
-/// Answers only for paths the stub tree of the same repository and branch holds —
-/// a path outside it is skipped exactly as the real `404` is, so the double never
-/// hands stage 2 a file the real API could not.
 fn stub_read(
     name: &str,
     branch: &str,
@@ -247,8 +238,6 @@ fn stub_read(
         .collect())
 }
 
-/// Cuts on a UTF-8 boundary so a multi-byte character is never split into
-/// replacement noise at the end of an excerpt.
 fn excerpt(path: &str, bytes: &[u8], max_bytes: usize) -> FileExcerpt {
     let text = String::from_utf8_lossy(bytes);
     let mut end = text.len().min(max_bytes);

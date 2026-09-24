@@ -207,9 +207,6 @@ export function AnalysisProgress({
                 이 단계만 다시 시도
               </button>
             )}
-            {/* AC1.5 covers finished stages too. Only that stage re-runs; the ones
-                behind it keep their result. Hidden while the job is queued or
-                running — the server refuses a reset under a live lease anyway. */}
             {stage.status === 'succeeded' && !ACTIVE.has(analysis.status) && (
               <button
                 className="btn btn-ghost block"
