@@ -723,8 +723,8 @@ button.ico { cursor: pointer; }
 .dep .dname { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary); }
 .dep .esrc { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
 
-.ev { display: flex; gap: 12px; align-items: baseline; }
-.ev + .ev { margin-top: 12px; }
+.ev { display: flex; gap: 8px; align-items: baseline; }
+.ev + .ev { margin-top: 9px; }
 .ev .ename {
   flex: 1 1 0;
   min-width: 0;
