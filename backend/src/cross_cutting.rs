@@ -252,7 +252,7 @@ pub async fn extract(
     if paths.is_empty() {
         return Err("repository tree is empty; nothing to analyze".to_string());
     }
-    llm::ask(
+    let mut answer = llm::ask(
         http,
         mode,
         provider,
@@ -266,7 +266,66 @@ pub async fn extract(
             stub: stub_answer(&paths),
         },
     )
-    .await
+    .await?;
+    let dropped = keep_listed_evidence(&mut answer.content, &paths);
+    if dropped.paths > 0 {
+        tracing::warn!(
+            paths = dropped.paths,
+            items = dropped.items,
+            "cross-cutting evidence outside the listed tree dropped"
+        );
+    }
+    Ok(answer)
+}
+
+/// What [`keep_listed_evidence`] removed.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Dropped {
+    pub paths: usize,
+    pub items: usize,
+}
+
+/// Holds the model to the one rule the prompt can only ask for: evidence comes
+/// from the list it was shown. File contents in the prompt make it easy to
+/// cite a file a handler name suggests but the tree does not have, so this is
+/// code rather than an instruction the model may bend — the same stance
+/// `acceptance::merge` takes on contradictions.
+///
+/// A cited directory is kept when it is the parent of a listed path: models name
+/// `app/src` for "the source tree", and the claim is checkable. An item left with
+/// no evidence goes, because an item without a path is exactly the guess the
+/// stage promises not to make.
+pub fn keep_listed_evidence(doc: &mut Value, paths: &[String]) -> Dropped {
+    let listed = |cited: &str| {
+        let cited = cited.trim_end_matches('/');
+        paths.iter().any(|p| {
+            p == cited || (p.starts_with(cited) && p.as_bytes().get(cited.len()) == Some(&b'/'))
+        })
+    };
+    let mut dropped = Dropped::default();
+    let Some(categories) = doc.get_mut("categories").and_then(Value::as_array_mut) else {
+        return dropped;
+    };
+    for items in categories
+        .iter_mut()
+        .filter_map(|c| c.get_mut("items").and_then(Value::as_array_mut))
+    {
+        for item in items.iter_mut() {
+            if let Some(evidence) = item.get_mut("evidence").and_then(Value::as_array_mut) {
+                let before = evidence.len();
+                evidence.retain(|e| e.as_str().is_some_and(|p| listed(p)));
+                dropped.paths += before - evidence.len();
+            }
+        }
+        let before = items.len();
+        items.retain(|item| {
+            item.get("evidence")
+                .and_then(Value::as_array)
+                .is_some_and(|e| !e.is_empty())
+        });
+        dropped.items += before - items.len();
+    }
+    dropped
 }
 
 /// Shaped to match stage 1's own detail line, which the same row renders.
@@ -302,6 +361,69 @@ mod tests {
             "src/middleware/auth.rs".to_string(),
             "src/main.rs".to_string(), // duplicate — must be collapsed
         ]
+    }
+
+    fn answer_citing(evidence: &[&[&str]]) -> Value {
+        let items: Vec<Value> = evidence
+            .iter()
+            .enumerate()
+            .map(|(i, paths)| json!({ "name": format!("item {i}"), "evidence": paths }))
+            .collect();
+        json!({ "categories": [{ "axis": "architecture", "items": items }] })
+    }
+
+    fn cited(doc: &Value) -> Vec<Vec<String>> {
+        doc["categories"][0]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| {
+                i["evidence"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|p| p.as_str().unwrap().to_string())
+                    .collect()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn evidence_outside_the_listed_tree_is_dropped_and_so_is_an_item_left_with_none() {
+        let listed = input_paths(&tree());
+        let mut doc = answer_citing(&[
+            &["src/main.rs", "src/handlers/pod_logs.rs"],
+            &["src/invented.rs"],
+            &["Cargo.toml"],
+        ]);
+        let dropped = keep_listed_evidence(&mut doc, &listed);
+        assert_eq!(dropped, Dropped { paths: 2, items: 1 });
+        assert_eq!(
+            cited(&doc),
+            vec![vec!["src/main.rs".to_string()], vec!["Cargo.toml".to_string()]]
+        );
+        assert_eq!(detail(&doc), "5 categories · 2 items");
+    }
+
+    #[test]
+    fn a_cited_directory_counts_only_when_it_holds_a_listed_path() {
+        let listed = input_paths(&tree());
+        let mut doc = answer_citing(&[&["src/middleware", "deploy/base/"], &["src/mid"], &["srcx"]]);
+        let dropped = keep_listed_evidence(&mut doc, &listed);
+        assert_eq!(dropped, Dropped { paths: 2, items: 2 });
+        assert_eq!(
+            cited(&doc),
+            vec![vec!["src/middleware".to_string(), "deploy/base/".to_string()]]
+        );
+    }
+
+    #[test]
+    fn the_stub_answer_survives_the_evidence_check_untouched() {
+        let listed = input_paths(&tree());
+        let mut doc = stub_answer(&listed);
+        let before = doc.clone();
+        assert_eq!(keep_listed_evidence(&mut doc, &listed), Dropped::default());
+        assert_eq!(doc, before);
     }
 
     #[test]
