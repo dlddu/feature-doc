@@ -17,9 +17,7 @@ pub const AXES: [(&str, &str); 5] = [
     ("middleware", "미들웨어 (인증 · 로깅 · 캐시 등)"),
 ];
 
-/// What each axis asks for, as the model reads it — the labels in [`AXES`] are screen copy.
-/// Examples name kinds of evidence, never concrete paths: a concrete path in the
-/// prompt is one the model can cite even when the tree does not contain it.
+/// A concrete path here is one the model can cite even when the tree does not contain it.
 const AXIS_GUIDE: [(&str, &str); 5] = [
     (
         "infrastructure",

@@ -336,3 +336,62 @@ detector가 넘긴 브리프는 경합을 **7파일 / 296행**으로 적었다. 
   다만 이 패스가 **그 패턴이 `.rs` 파일에서는 게이트 입력이 아니라는 사실**을 실측으로 좁혔다
   (`discover_screens()` 는 `frontend/src/*.tsx` 만 훑는다) — 확장할 때 범위를 tsx 로 한정할
   근거가 된다.
+
+## 증분 재판정 ③ — 원장 9행에 #134 · #132 가 연 +6행 (2026-09-24 · `rct_20260922-0009`)
+
+reconciler task `rct_20260922-0009`. **순 제거 5행 · 유지 1행**(3행 → 1행 재작성 포함).
+
+판정 전 재현으로 먼저 고정한 것: 행 기재값 142 / `5a4aea6e…` 는 **트리거 커밋 `27d9b81` 에서
+바이트 일치**하고, HEAD `074c325` 에서 148 / `26eaec9f…` 로 갈린다. 증분 `+6` 이 전역 지문
+`2646 → 2654` 의 `+8` 중 6을 설명하고 나머지 2는 원장 10행(`index.css`)이라 **잔차 0** 이다
+(행 지문은 「행 지문을 재현하는 법」대로 개행 포함 해시, 전역은 미포함 — 두 규약을 모두 돌려
+행 규약 쪽이 맞는 것을 확인했다).
+
+### 제거 — `backend/src/cross_cutting.rs` `AXIS_GUIDE` doc 2행 (#134)
+
+- 「What each axis asks for, as the model reads it」 — 상수 이름 `AXIS_GUIDE` 와 바로 아래 리터럴이
+  그대로 말하는 **선언 재진술**(①).
+- 「the labels in [`AXES`] are screen copy」 — `AXES` 자신의 doc 「In PRD order — the screen renders
+  the axes in this order」(①)와 PR #134 본문 「한글 라벨(`AXES`)은 화면 카피라 건드리지 않았다」(③)의
+  **두 벌째**. rustdoc 링크만의 교차 참조를 위해 문장을 남기지 않는다는 9행의 기존 잣대도 같은 방향이다.
+- 「Examples name kinds of evidence, never concrete paths」 — **열 줄 아래 `prompt()` 리터럴이 모델에게
+  그대로 말하는 문장**(`The examples describe kinds of evidence, not files in this repository: cite only
+  paths from the list above.`)의 두 벌째다. 증분 재판정 ⑤·⑨·⑪ 의 「복제된 명제는 **강제하는 코드 옆**
+  한 벌만」을 적용하면, 실제로 모델에 전달되어 규칙을 *강제하는* 쪽은 프롬프트 리터럴이므로 그쪽을
+  정본으로 둔다(①).
+
+### 제거 — `frontend/src/CrossCuttingConcerns.tsx` 3행 (#132)
+
+- 근거 줄 `' · '` join 실패 모드 2행(「joined with `' · '` they wrapped mid-path and the separators
+  landed at the start of the next line」) — PR #132 본문 증상절이 「경로를 ` · ` 로 이어 붙여 경로
+  중간에서 꺾이고 구분점이 다음 줄 앞에 옴」으로 **축자에 가깝게** 적는다(③). 같은 명제의 정본은
+  `index.css` 쪽 `.ev` 블록이었고 그 블록은 원장 10행에서 함께 판정했다.
+- legend 배치 1행(「the legend … sits only under an axis that actually shows one」) — **바로 아래
+  `section.items.some((item) => item.evidence.length === 0) && …` 가드가 그 문장 자체**이고(①),
+  「as in the mockup」은 목업(②)과 PR #132 수정절 「legend 는 목업처럼 `근거 없음` 항목이 있는 축에만」(③)이
+  복원한다. 세 경로가 겹치는 이 패스에서 가장 명백한 제거다.
+
+### 유지 1행 — 리터럴을 묶는 함정
+
+`/// A concrete path here is one the model can cite even when the tree does not contain it.`
+
+프롬프트 리터럴은 「예시는 종류다」라는 **규칙만** 말하고 *왜* 그래야 하는지는 어디에도 없다.
+「프롬프트에 박힌 구체 경로는 트리에 없어도 모델이 그대로 인용할 수 있다」는 LLM 경계의 실패 모드이고,
+`AXIS_GUIDE` 리터럴을 고치는 사람이 바로 그 자리에서 읽어야 하는 제약이다. PR #134 「설계 메모」가
+같은 말을 적지만(③), 이 명제를 **강제하는 테스트가 없다** — `the_prompt_describes_every_axis_in_screen_order`
+는 축 키의 1:1 과 설명 줄의 탑재만 단정하고 「구체 경로가 없음」은 보지 않는다. 정책 본문의 「애매하면
+남긴다」와 「실패 모드의 함정」에 걸리므로 3행을 1행으로 줄여 남겼다.
+
+### 값
+
+142(기재 · 트리거 바이트 일치) → 148(유입 후) → **143 /
+`515d540af0130cb52fee733de80ed48f2dfd6aaa9831cbf3c28bcd7e541ddf2b`**.
+
+### 판정하지 않은 것
+
+- #121 이 연 `backend/tests/progress.rs` 2행 — 9행의 「자매 착지 재실측」에 **이관으로 등재된** 항목이라
+  이번 범위가 아니다.
+- 열린 PR **#137**(`cross_cutting.rs` +278/-10) · **#138**(+223/-29) 이 들일 주석. #137 의 훅은
+  모듈 머리(`//!` 3행 → 6행)와 `MAX_KEY_FILES`·`KEY_FILE_NAMES` 의 새 doc·구분선 주석이라 **이 패스의
+  줄(20~22)과 겹치지 않는다**(hunk 실측: #137 은 1..12 · 51..56 · … 로 20~22 를 건드리지 않는다).
+  착지하면 9행을 다시 열므로 **다음 감지의 몫**이다.

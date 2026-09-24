@@ -723,10 +723,6 @@ button.ico { cursor: pointer; }
 .dep .dname { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary); }
 .dep .esrc { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
 
-/* 횡단 관심사의 근거 줄 — 목업 `.ev` 를 옮긴다. 목업은 경로를 하나만 그리지만 구현은
-   근거 경로를 전부 그리므로, 경로는 한 줄에 하나씩 두고 긴 경로는 아무 데서나 꺾어
-   카드 밖으로 새지 않게 한다. 이름 칸은 최소 42% 를 지켜 한 글자씩 세로로 쌓이지
-   않는다. `.ename`·`.esrc` 는 `.ev` 아래로 한정한다(위 `.dep` 과 같은 방침). */
 .ev { display: flex; gap: 12px; align-items: baseline; }
 .ev + .ev { margin-top: 12px; }
 .ev .ename {
