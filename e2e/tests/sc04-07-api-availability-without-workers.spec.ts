@@ -21,6 +21,7 @@
 // is per-user state and sharing an identity would let specs clobber each other.
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
+import { installApp } from '../support/github-app';
 
 /**
  * The pre-conditions for enqueuing anything that will actually run. Driven through
@@ -30,9 +31,7 @@ import { scaleWorkers } from '../support/cluster';
 async function signInWithApp(request: APIRequestContext): Promise<void> {
   const login = await request.get('/api/auth/login?as=ac45');
   expect(login.ok()).toBeTruthy();
-  // The App "Setup URL" callback is a GET that redirects back into the SPA.
-  const setup = await request.get('/api/github/setup?installation_id=4242');
-  expect(setup.ok()).toBeTruthy();
+  await installApp(request);
 
   const connection = await request.get('/api/github/connection');
   expect(connection.ok()).toBeTruthy();
