@@ -7,6 +7,8 @@ on:
 permissions:
   contents: read
   packages: write
+  # e2e job 이 push 직전에 같은 실행의 cargo job 결과를 조회한다.
+  actions: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,7 +16,8 @@ concurrency:
 
 jobs:
   # cargo test 와 kind e2e 는 서로를 기다릴 이유가 없어 두 job 으로 나란히 돈다.
-  # push(image.yml 호출)는 둘 다 그린일 때만 이미지를 올린다.
+  # 이미지 push 는 e2e job 의 마지막 단계다 — e2e 가 테스트한 바로 그 이미지를
+  # 다시 빌드하지 않고 올리고, cargo 까지 그린일 때만 올린다.
   #
   # PR 의 필수 상태 체크는 맨 아래 `ci-gate` 하나뿐이다. 새 검사를 추가할 때는
   # branch protection 을 건드리지 말고 그 job 의 needs 에만 넣는다.
@@ -25,23 +28,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # registry 에 더해 target/ 의 의존성 빌드까지 캐시한다. 저장은 main 에서만 —
-      # PR 마다 저장하면 저장소 캐시 한도를 채워 buildx 캐시까지 밀어내고, PR 은
-      # main 의 캐시를 읽을 수 있어 잃는 것이 없다.
+      # registry 에 더해 target/ 의 의존성 빌드까지 캐시한다. 여기서는 읽기만 한다 —
+      # PR 마다 저장하면 저장소 캐시 한도를 채워 buildx 캐시까지 밀어내고, PR 스코프
+      # 캐시는 다른 PR 이 읽지도 못한다. 저장은 main push 때 cache-warm.yml 이
+      # 같은 shared-key·프로필로 한다(이 워크플로는 main 에서 돌지 않는다).
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          shared-key: backend-test
+          save-if: false
 
+      # `--profile ci`(Cargo.toml): dev 기반. release 의 LTO·codegen-units=1 로
+      # featuredoc 크레이트만 5분 넘게 컴파일하던 것을 없앤다. 배포 바이너리는
+      # 여전히 Dockerfile 에서 release 로 빌드되고 e2e 가 그것을 검증한다.
       - name: Test backend (cargo test)
-        run: cargo test --manifest-path backend/Cargo.toml --release
+        run: cargo test --manifest-path backend/Cargo.toml --profile ci
 
   e2e:
     name: test (kind e2e)
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
+      # 이 job 이 빌드한 이미지를 그대로 <head sha> 태그로 올리므로 merge ref 가
+      # 아니라 head 커밋을 빌드·테스트한다(태그와 내용이 어긋나지 않게).
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -67,37 +79,107 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # push job 과 같은 GHA 캐시를 쓴다 — 평범한 `docker build` 는 이 캐시에 닿지 못해
-      # 매번 처음부터 빌드했다. 여기서 쌓은 레이어는 같은 실행의 push job 이 이어받는다.
+      - name: Lowercase owner
+        run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        env:
+          # revision 라벨도 merge 커밋이 아니라 태그와 같은 head SHA 로.
+          DOCKER_METADATA_PR_HEAD_SHA: 'true'
+        with:
+          images: ghcr.io/${{ env.OWNER_LC }}/featuredoc
+          tags: |
+            # 커밋 SHA 하나뿐(image.yml 과 같은 규칙). preview 환경이 이 태그를 쓴다.
+            type=raw,value=${{ github.event.pull_request.head.sha }}
+
+      # image.yml(main)과 같은 GHA 캐시를 쓴다 — 평범한 `docker build` 는 이 캐시에
+      # 닿지 못해 매번 처음부터 빌드했다.
       - name: Build e2e image (featuredoc:dev)
         uses: docker/build-push-action@v6
         with:
           context: .
           load: true
           tags: featuredoc:dev
+          labels: ${{ steps.meta.outputs.labels }}
           # 로컬 docker 에 load 만 하는 이미지라 provenance attestation 이 필요 없다.
           provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # 브라우저는 main 에서 cache-warm.yml 이 저장한 것을 읽기만 한다(rust-cache 와
+      # 같은 이유로 PR 에서는 저장하지 않는다). 적중하면 다운로드를 건너뛰고 시스템
+      # 의존성(apt)만 설치한다. e2e.sh 는 SKIP_PLAYWRIGHT_INSTALL=1 로 설치를 건너뛴다.
+      - name: Restore Playwright browsers
+        id: pw-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install e2e deps + Playwright chromium
+        working-directory: e2e
+        env:
+          PW_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          npm ci
+          if [ "$PW_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
       - name: e2e (kind → smoke + playwright)
         env:
           IMAGE: featuredoc:dev
           SKIP_BUILD: '1'
+          SKIP_PLAYWRIGHT_INSTALL: '1'
         run: bash scripts/e2e.sh
 
-  # 이미지 빌드·push 는 image.yml 에 있다(main push 때 단독으로도 돈다).
-  # image.yml 의 pin job 이 contents: write 를 선언하므로 호출하는 쪽도 그만큼
-  # 허용해야 워크플로가 유효하다. pin 자체는 PR 에서 조건상 skip 된다.
-  push:
-    needs: [cargo, e2e]
-    permissions:
-      contents: write
-      packages: write
-    uses: ./.github/workflows/image.yml
+      # ── push ─────────────────────────────────────────────────────────────────
+      # 예전에는 별도 push job(image.yml 호출)이 head SHA 를 다시 체크아웃해 이미지를
+      # 새로 빌드했다(merge ref 로 빌드한 e2e 와 캐시가 어긋나 매번 ~76초). 이제 e2e 가
+      # 통과시킨 바로 그 빌드를 올린다. 「cargo 도 그린일 때만」 규칙은 유지한다:
+      # cargo 는 보통 먼저 끝나 있으므로 이 대기는 사실상 즉시 지나간다.
+      - name: Wait for cargo job
+        id: cargo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?filter=latest
+        run: |
+          for _ in $(seq 1 120); do
+            state=$(gh api "$RUN_URL" --jq '.jobs[] | select(.name == "test (cargo)") | "\(.status) \(.conclusion)"')
+            case "$state" in
+              "completed success") echo "ok=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+              completed*) echo "::notice::cargo job 이 ${state#completed } — 이미지를 올리지 않는다(ci-gate 가 실패로 판정)."
+                          echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::cargo job 이 20분 안에 끝나지 않았다."; exit 1
+
+      - name: Log in to GHCR
+        if: steps.cargo.outputs.ok == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 위 빌드와 같은 컨텍스트·같은 builder 라 모든 레이어가 builder 의 로컬 캐시에서
+      # 나온다 — 다시 컴파일하지 않고 export 와 업로드만 한다.
+      - name: Push image (ghcr, <head sha>)
+        if: steps.cargo.outputs.ok == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   # 문서 정합성 게이트 3종. 각자 파일에 있고 여기서 부른다 — 실패하면 체크 이름
-  # (`docs-… / …`)만으로 어느 칸이 깨졌는지 드러난다. push 는 이들을 기다리지 않는다.
+  # (`docs-… / …`)만으로 어느 칸이 깨졌는지 드러난다. 이미지 push 는 이들을 기다리지 않는다.
   docs-journey-mockup:
     uses: ./.github/workflows/docs-journey-mockup.yml
 
@@ -113,7 +195,7 @@ jobs:
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [cargo, e2e, push, docs-journey-mockup, docs-mockup-render, docs-scenario-e2e]
+    needs: [cargo, e2e, docs-journey-mockup, docs-mockup-render, docs-scenario-e2e]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 2
     steps:
