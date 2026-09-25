@@ -206,8 +206,6 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates, onOpenHistory 
         >
           이 기능 삭제하기
         </button>
-        {/* 여정 `JRN-restore-history` 의 `STP-open-history` 가 요구하는 진입점 — 이력이
-            검수 화면 깊숙이 있으면 그 여정 자체가 시작되지 않는다. */}
         <button
           className="btn btn-ghost block"
           type="button"

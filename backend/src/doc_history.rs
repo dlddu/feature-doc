@@ -1,18 +1,4 @@
-//! AC3.4: 이 기능 문서가 어떻게 변해 왔는지 보고, 임의 시점으로 되돌리는 흐름.
-//!
-//! 이력은 지어내지 않는다 — 자동 분석이 쓴 기준선 하나, 0009 의 **승인된** 편집들,
-//! 0014 의 복원들이 전부다. 제안이나 거부된 편집은 문서를 바꾸지 않았으므로 변경이
-//! 아니고, 출처는 그 행에 적힌 값을 그대로 읽는다(자동 / 사용자 by LLM / 사용자 직접).
-//!
-//! 복원은 **재생 구간을 자르는 일**이다(0014 주석). 그래서 이 모듈의 중심은 한 feature 의
-//! 사건을 순서대로 걸으며 「그 사건 직후에 서 있던 편집 목록」을 남기는 한 번의 통과다.
-//! 복원은 자기가 가리키는 항목의 그 목록을 그대로 다시 쓰고, 그래서 복원의 복원도,
-//! 잘려 나갔던 편집으로 되돌아가는 것도 따로 다룰 일이 없다.
-//!
-//! 순서는 시각이 아니라 **세대**로 엮는다 — 편집은 자기가 선 복원(`after_restore`)의
-//! 뒤에 오고, 복원은 `seq` 로 줄을 선다. 초 단위 시각으로 엮으면 복원과 그 직후의 편집이
-//! 같은 초에 들어왔을 때 앞뒤를 가릴 수 없고, 그 한 번의 모호함이 「복원 뒤에 한 편집이
-//! 조용히 사라진다」로 나타난다.
+//! 변경 이력 조회와 임의 시점 복원.
 
 use std::collections::{HashMap, HashSet};
 
@@ -83,19 +69,12 @@ struct EntryView {
     kind: String,
     source: String,
     at: i64,
-    /// 사람이 부탁한 한 줄. 자동 기준선과 복원에는 없다.
     request: Option<String>,
-    /// 그 편집이 고쳐 쓴 당시의 문장.
     before: Option<Sentences>,
-    /// 그 편집이 그 자리에 세운 문장(들).
     after: Vec<Sentences>,
-    /// 앞선 분석에서 이어받은 편집이면 그 원본 편집 id — 같은 편집을 두 번 세지 않게 한다.
     carried_from: Option<String>,
-    /// 복원이 고른 항목.
     restored_to: Option<String>,
-    /// 지금 문서가 서 있는 자리.
     current: bool,
-    /// 지금 문서에 그 편집이 얹혀 있는가. 복원으로 잘려 나간 편집은 이력에 남되 서지 않는다.
     standing: bool,
 }
 
@@ -112,22 +91,16 @@ struct HistoryView {
 #[serde(rename_all = "camelCase")]
 struct PreviewView {
     entry_id: String,
-    /// 그 시점의 인수 시나리오 — 되돌리면 문서가 이렇게 된다.
     scenarios: Vec<Sentences>,
-    /// 지금과 견준 줄. 비어 있으면 이미 그 시점이다.
     lines: Vec<diff::ScenarioLine>,
-    /// 이미 그 시점이면 되돌릴 것이 없다 — 여정의 「확인만 하고 유지」.
     is_current: bool,
 }
 
-/// 한 feature 의 사건 하나. 순서는 [`steps`] 가 세운다.
 enum Step<'a> {
     Edit(&'a EditRow),
     Restore(&'a RestoreRow),
 }
 
-/// 세대 순서 — 복원이 없던 때의 편집들, 그다음 복원마다 그 복원과 그 뒤의 편집들.
-///
 /// 어느 세대에도 들지 못한 편집(가리키는 복원 행이 사라진 경우)은 마지막에 붙인다.
 /// 이력에서 조용히 빠지느니 순서가 거친 편이 낫다.
 fn steps<'a>(edits: &'a [EditRow], restores: &'a [RestoreRow]) -> Vec<Step<'a>> {
@@ -154,9 +127,6 @@ fn steps<'a>(edits: &'a [EditRow], restores: &'a [RestoreRow]) -> Vec<Step<'a>> 
 }
 
 /// 사건을 순서대로 걸으며 「그 사건 직후에 서 있던 편집」을 남긴다.
-///
-/// 복원은 자기가 가리키는 항목의 목록을 그대로 다시 쓴다 — 그래서 복원의 복원도,
-/// 한 번 잘려 나갔던 편집으로 되돌아가는 것도 이 한 줄에서 함께 성립한다.
 fn walk(steps: &[Step<'_>]) -> (Vec<String>, HashMap<String, Vec<String>>) {
     let mut active: Vec<String> = Vec::new();
     let mut snapshots: HashMap<String, Vec<String>> = HashMap::new();
@@ -208,9 +178,7 @@ pub(crate) async fn restores(
     .await?)
 }
 
-/// 지금 문서에 서 있는 승인 편집 id — 겹쳐 읽기(`doc_edit::overlay`)와 다음 분석으로의
-/// 이월(`doc_conflict::inherit`)이 같은 집합을 본다. 복원이 하나도 없으면 승인 편집
-/// 전부이므로, 이 표가 비어 있는 동안은 도입 전과 완전히 같은 결과가 나온다.
+/// 지금 문서에 서 있는 승인 편집 id.
 pub async fn standing_edits(
     state: &AppState,
     analysis_id: &str,
@@ -338,7 +306,6 @@ async fn load(
     Ok((edits, restore_rows))
 }
 
-/// 자동 기준선의 시각 — 그 분석이 인수 문서를 쓴 때.
 async fn baseline_at(state: &AppState, analysis_id: &str) -> Result<i64, AppError> {
     let row: Option<(i64,)> = sqlx::query_as(
         "SELECT created_at FROM analysis_documents WHERE analysis_id = ? AND kind = ?",
@@ -476,8 +443,6 @@ async fn restore(
     crate::analysis::owned_analysis(&state, &user.id, &id).await?;
     let (_, _, is_current) = snapshot_of(&state, &id, &key, &entry).await?;
     if is_current {
-        // 되돌릴 것이 없는 복원은 이력만 늘린다. 확인만 하고 유지하는 것은 그냥
-        // 떠나는 일이지 기록할 변경이 아니다(여정 §4 「확인만 하고 유지」).
         return Err(AppError::Conflict("이미 그 시점의 상태입니다".into()));
     }
 

@@ -1,11 +1,4 @@
-// 여정 `docs/user-journey/JRN-restore-history.md` 의 구현 — 세 단계를 한 화면에 접었다
-// (`STP-open-history` 목록 · `STP-trace-origin` 출처 · `STP-restore-point` 미리보기와 복원).
-//
-// **목업이 없다.** 그 여정은 시각화 산출물이 없는 「수용된 위험」이고, 문서 권위 순서
-// (가치 > PRD > 테스트 > 여정 > 목업 > 구현)에서 목업이 없으면 여정 문서가 이긴다.
-// 그래서 이 파일에는 다른 화면들이 첫 줄에 다는 목업 매핑 주석이 없다 — 없는 목업을
-// 가리키면 `tools/check-mockup-render.py` 가 유령 화면으로 잡는다. 그 사실은 숨기지
-// 않고 `docs/doc-tracker/` 의 「수용된 위험」과 「활성 대조 대상」 절에 적혀 있다.
+// 여정 `JRN-restore-history` 의 세 단계를 한 화면에 접은 구현.
 
 import { useEffect, useState } from 'react';
 import { getHistory, getHistoryPoint, restoreHistoryPoint } from './api';
@@ -15,7 +8,6 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** 출처 셋은 AC3.4 의 어휘 그대로다 — 뭉뚱그리면 원인을 특정할 수 없어 복원이 도박이 된다. */
 function sourceLabel(entry: HistoryEntry): string {
   if (entry.kind === 'restore') return '사용자 · 시점 복원';
   if (entry.source === 'user_llm') return '사용자 · 도움받아 작성';

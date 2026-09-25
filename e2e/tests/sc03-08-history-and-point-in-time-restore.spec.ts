@@ -1,9 +1,5 @@
 // 검증 시나리오: 03-doc-management.md#시나리오 8
 //
-// 사전 조건의 세 변경은 각자 자기 경로로 실제로 일어난다 — 자동 분석이 쓴 기준선, 재분석
-// 충돌을 「내 문장 유지」로 결정해 선 사용자 직접 변경(sc03-07 의 경로), 그 위의 LLM 보조
-// 수정(sc03-01 의 경로). 출처를 지어내지 않아야 「출처가 구분되어 보인다」가 관측이 된다.
-//
 // Isolation: leases the worker replica count and one worker env var — rules in
 // `e2e/support/cluster.ts`. Signs in as its own stub user (`?as=sc0308`).
 import { expect, test, type Page } from '@playwright/test';
@@ -94,7 +90,6 @@ test.describe('AC3.4: 변경마다 출처가 남고, 고른 시점으로 정확�
         'user_direct',
         'user_llm',
       ]);
-      // 목록은 최근 것이 위 — 두 번째 변경은 가운데 칸이다.
       const secondChange = entries.nth(1);
       await expect(secondChange).toHaveAttribute('data-source', 'user_direct');
       await expect(entries.nth(0)).toHaveAttribute('data-current', 'true');
@@ -114,7 +109,6 @@ test.describe('AC3.4: 변경마다 출처가 남고, 고른 시점으로 정확�
       await expect(page.getByTestId('history-count')).toHaveText('4');
       expect(await firstThen(page, second.id, key), '고른 시점으로 복원되지 않았다').toBe(direct);
 
-      // 복원 자체가 이력이고, 잘린 변경은 사라지지 않고 「서 있지 않음」이 된다.
       const after = page.getByTestId('history-entry');
       await expect(after.nth(0)).toHaveAttribute('data-kind', 'restore');
       await expect(after.nth(0)).toHaveAttribute('data-current', 'true');
@@ -127,7 +121,6 @@ test.describe('AC3.4: 변경마다 출처가 남고, 고른 시점으로 정확�
       await expect(page.getByTestId('history-count')).toHaveText('5');
       expect(await firstThen(page, second.id, key), '복원을 되돌리지 못했다').toBe(helped);
 
-      // 이미 그 시점이면 되돌릴 것이 없다 — 확인만 하고 그대로 둔다.
       await page.getByTestId('history-entry').nth(0).getByTestId('pick-point').click();
       await expect(page.getByTestId('preview-same')).toBeVisible();
       await expect(page.getByTestId('restore-point')).toBeDisabled();
