@@ -805,9 +805,7 @@ button.ico { cursor: pointer; }
   .collection > .cand + .cand { margin-top: 0; }
 }
 
-/* 긴 결과의 요약 → 상세 단계 노출(AC4.4). Compact 에서는 제목 줄만 남기고 접히고,
-   첫 확장 브레이크포인트부터는 같은 화면이 펼쳐진 채로 선다 — 여는 주체는 화면이
-   넘겨 주는 `open` 이므로 이 파일은 표식만 그린다. */
+/* 여는 주체는 화면이 넘기는 `open` — CSS 로 펼치면 DOM 상태와 보이는 상태가 갈리므로 표식만 그린다. */
 .disclosure > summary {
   cursor: pointer;
   list-style: none;
