@@ -296,10 +296,8 @@ async fn claim_hands_over_the_target_and_the_executable_stage() {
     assert!(body["installationToken"].is_string());
 }
 
-/// Takes the App's access away the way an uninstall does: the installation row is
-/// what `accessible_repos` reads first, so removing it leaves nothing granted —
-/// without touching a process-wide stub switch that sibling tests in this binary
-/// would see. The narrowing-the-selection shape is driven end to end by `sc04-02`.
+/// Takes the App's access away without touching a process-wide stub switch that
+/// sibling tests in this binary would see.
 async fn uninstall(state: &AppState) {
     sqlx::query("DELETE FROM installations")
         .execute(&state.db)
@@ -336,7 +334,6 @@ async fn a_job_whose_access_was_revoked_is_stopped_rather_than_claimed() {
     assert_eq!(error.as_deref(), Some(featuredoc::analysis::ACCESS_REVOKED));
     assert_eq!(lease, None, "stopping releases the lease");
 
-    // Closed, not merely skipped: a second claim finds nothing left to reconsider.
     assert_eq!(claim(&state, "w1").await.status(), StatusCode::NO_CONTENT);
 }
 
@@ -396,7 +393,6 @@ async fn revoking_access_mid_run_stops_the_job_at_the_next_lease_boundary() {
         "one story on the screen, not two"
     );
 
-    // The screen reads the flag, not the sentence.
     let detail = build_router(state.clone())
         .oneshot(
             Request::builder()
