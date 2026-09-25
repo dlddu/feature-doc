@@ -338,3 +338,64 @@ python3 tools/check-data-format-change.py --base <main tip> --head <probe> --ver
 `✅ 변경 없음` 이 아니면 그 축은 무인 슬라이스가 아니다. 13차 패스는 `crypto.rs` 로 이 벽에
 부딪혔고 원장에 D2 를 적어 뒀지만, **경로 규칙은 D2 하나가 아니다**(D1·D2·D5-pvc·D6). 「D2 목록에
 없다」로는 충분하지 않고, 판정기를 돌린 출력만이 충분하다.
+
+## 증분 재판정 ② (2026-09-25 · `rct_20260925-0009`) — `backend/tests/worker.rs` 22행
+
+- **기준 트리**: 부모 **`4d2cc84`** (main, 32차 패스 #159 착지 직후 — 계획 시점 부모 `84d312a` 에서
+  두 번 리베이스했고(`b09f505`(#157) → `4d2cc84`(#159)) 이 범위의 줄 수·지문은 **세 base 에서 바이트 동일**하다)
+- **유입원**: PR **#155**(`9c01489`, 슬라이스 7b — AC4.7 분석 작업의 격리, 모델 `tbm_feature-doc-docs-impl`)
+- **PR**: #160 (33차 패스)
+
+원장 행 14 의 줄 수 칸은 #155 착지로 **20 → 42** 가 돼 있었다. 증가분은 **gross == net == 22**
+(이 창에서 제거 0행 — `Counter(now) − Counter(old)` 와 `Counter(old) − Counter(now)` 를 둘 다 세어
+확인했다. 개작이 순증에 숨는 유형이 아니다).
+
+### 판정 규칙 — 이 패스가 먼저 세운 것
+
+#155 는 reconciler 루프가 만든 PR 이라 본문이 설계 판단을 **절 단위로 길게** 적는다. 그래서 거의 모든
+줄이 **경로 ③** 히트가 되고, 규칙 없이 적용하면 유지가 0 에 수렴한다. 이 패스는 아래로 갈랐다:
+
+- **닫는다(서사)** — 「왜 이렇게 만들었나」 · AC 꼬리표 · 시나리오 문장 인용 · 절 제목 · 단계 열거 ·
+  단정·선언·시그니처 재진술. 함수 이름과 함수 안의 `assert` **FAIL 문면**은 강력한 ① 원본이다.
+- **남긴다(가드)** — 「이 값이 무엇과 같아야 하는가 / 무엇을 넣지 말라 / 이걸 빼면 무엇이 **조용히**
+  약해지는가」. PR 본문은 **편집 지점에서 읽히지 않으므로** 비용이 비대칭이고, 이것이 README 의
+  「애매하면 남긴다」가 보호하는 것이다.
+- **정본 지정** — 같은 명제가 여러 벌이면 **강제하는 코드 옆 한 벌**만 남긴다(원장 행 1 의 증분
+  재판정 ⑤·⑨·⑪·⑫ 가 세운 규약).
+
+### 판정 표
+
+| 자리 | 문면(요약) | 판정 | 근거 |
+|---|---|---|---|
+| `login_installed_with` `///` 2 | `login_installed` with the installation id spelled out, for the one suite that has to tell two users' installations apart… | **제거 2** | ① 시그니처의 `installation_id: i64` 와 유일 호출부(`11_001`·`11_002`) · ③ #155 본문 §1 「위임만 바꿔 호출부 동작이 불변」 · **비공개 fn** 이라 「`pub` 요약 1줄 유지」 대상이 아니다(행 4 증분 ④ 선례) |
+| `register_key` `///` 2 | Registers an active LLM key for this session's user, so a claim for their job has a key to carry. | **제거 2** | ① 이름 · 본문 `POST /api/llm-keys` · 단정 메시지 `register {provider} key` · 자매 헬퍼 `set_language` 는 애초에 무주석 |
+| 새 테스트 `///` 483-484 (2) | `AC4.7 (04#시나리오 10 의 두 번째 기대 결과): …` | **제거 2** | ② `docs/test/04-platform.md#시나리오 10` 기대 결과 두 번째 문장 축자 · ① fn 이름 `one_worker_claiming_two_users_jobs_never_mixes_their_context` · AC 꼬리표 전건 제거 선례(원장 행 12) |
+| 같은 `///` 486-491 (6) | 「이 단정이 왜 claim 층에 있나 …」 | **제거 6** | ② `docs/doc-tracker/2026-09.md` 매핑 행의 **「자동화 밖 잔여」 칸**과 변경 이력 행이 축자에 가깝게 소유 · ③ #155 본문 §1 *「워커 프로세스를 두 번 돌리지 않는 이유」* 절 · 「워커는 영속을 하나도 소유하지 않는다」는 **주석 스스로 `worker_api` 모듈 주석을 정본으로 지목**하고 실측으로 그 자리에 있다(「So the worker owns *no* persistence: it claims work and reports progress through these routes」) |
+| 같은 `///` 493-494 (2) | 「관측 가능하게 만드는 두 값 …」 | **제거 2** | ② doc-tracker 두 자리가 `ghs_stub_<installation_id>_…` 를 축자로 적는다 · ① `a_token.starts_with("ghs_stub_11001_")` 와 FAIL 문면 「alice 의 설치로 발급되지 않았다」 |
+| 같은 `///` 485 · 492 (2) | 빈 `///` | **제거 2** | 블록에 딸린 빈 줄 |
+| 인라인 506 (1) | 「Bob 만 언어를 골랐다 — 분석 행에 고정되는 값이라 claim 에도 갈려 나온다.」 | **제거 1** | ① 바로 아래 `set_language(&state, &bob, "en")` 가 bob 만 · 스냅숏 계약의 **정본은 원장 행 1 증분 ⑨ 가 지정한 `analysis.rs` 의 복사 지점**(「Copied, not referenced: … must not move with the setting between them」) |
+| 인라인 512 (1) | 「같은 worker id 로 두 번. 큐 순서에 기대지 않고 job id 로 되찾는다.」 | **제거 1** | ① `claim(&state, "w1")` 두 번 + `by_id` HashMap 과 `by_id.get(&alice_job)` |
+| 인라인 526 (1) | `⑴ 자격증명: 각 claim 은 그 job 주인의 것만 싣는다.` | **제거 1** | ① 네 단정과 FAIL 문면 「alice 의 job 에 alice 의 키」 |
+| 인라인 532 (1) | `⑵ 그리고 상대의 것은 어디에도 없다 — 값 비교만으로는 "둘 다 실렸다"를 못 잡는다.` | **유지 1** (절 제목만 떼고 제자리 재작성) | ②③ 히트는 **실재한다**. 그럼에도 남긴 것은 이 두 `assert!` 를 지우면 위 등식 단정만 남아 「둘 다 실렸다」를 **아무도 못 잡는** 상태가 조용히 되기 때문이다 — 「…가 빠지면 조용히 …」 형태의 편집 지점 가드 |
+| 인라인 542 (1) | `⑶ 설치 토큰은 그 사용자의 설치로 발급된다(stub 토큰이 id 를 품는다).` | **제거 1** | ① `starts_with("ghs_stub_11001_")` 와 FAIL 문면 · ② doc-tracker 축자 |
+| 인라인 554 (1) | `⑷ 사용자 선호도 job 별로 갈린다.` | **제거 1** | ① `assert_eq!(b["llmLanguage"], "en", "bob 이 고른 언어")` · `assert_ne!(…, "alice 는 고른 적이 없다")` |
+
+**순 제거 21행 · 유지 1행.** 테스트 함수에 `///` 가 하나도 남지 않는 것은 이 원장의 선례와 같다 —
+본문 1차 판정이 이 행에서 「테스트 이름이 그대로 말하는 `///` 10행」을 걷었고, 원장 행 4 의 증분 재판정
+④ 가 「비공개 테스트 fn 이라 `pub` doc 요약 유지 규칙 대상이 아니다」로 같은 형태를 닫았다.
+이 자리의 **정본은 `docs/doc-tracker/2026-09.md` 매핑 행의 「자동화 밖 잔여」 칸**이다 — 시나리오 10 을
+건드리는 사람이 반드시 지나는 표이고, `check-scenario-e2e.py` 가 읽는 자리이기도 하다.
+
+### 검증 (부모 `4d2cc84`)
+
+- **행 지문** 20(등재값) → 42(#155 착지) → **21 / `d4414d5fc3a243b00181ac2ad4c75e7408e31491730fc5a86723881f09d35c97`**
+  (행 규약 — 개행 **포함** 해시. 전역 규약으로는 `5318cb91…`). 이 행의 5파일은 열린 #157(`backend/src/llm.rs`)
+  과 착지한 #156(`frontend/src/index.css` · `tools/check-mockup-render.py`) **어느 쪽도 건드리지 않으므로**
+  이 값은 **base 이동에 불변**이다.
+- **코드 무변경** — 블록 주석 인식 stripper 로 부모와 md5 **동일**(`d0a137a4692ed8140b5b308dd2502ac7`).
+  보강: 비주석 diff **0줄** · `assert`/`expect(` 62 == 62 · `;` 168 == 168.
+- **`cargo test --release` 무영향** — 이 호스트에 cargo 가 없어 직접 돌리지 못했다. 대신 세 줄로 닫는다:
+  ⑴ 주석을 걷어낸 코드가 부모와 **바이트 동일**, ⑵ 레포에 `missing_docs` 계열 lint 선언이 **없다**
+  (`backend/src/lib.rs`·`main.rs` 전수 — `#![deny]`·`#![warn]` 0건), ⑶ 이 파일의 doctest 대상 코드블록
+  (` ``` `) **0건**. CI 의 `cargo` 잡이 보는 것은 이 셋이 전부다.
+- **문서 게이트 3종 rc=0** · **판정기 `✅ 해당 없음`**(D1·D6 무접촉 — `SELF_PATHS` 는 실측 2항).
