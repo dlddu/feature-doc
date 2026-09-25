@@ -339,3 +339,60 @@ let mut cross_cutting_doc: Option<serde_json::Value> = job.cross_cutting_documen
 이 시점의 전건 산술: 전역 2732 → **2672 /
 `2ed67e589879ca7fd094e68239f6da7d998ccc8ba2d3ba3e75db253102d65897`** · 행 합 2523 → 2463 ·
 잔여 **209 불변** ⇒ **행 합 −60 == 전역 −60, 잔차 0**.
+
+## 증분 재판정 ⑥ — `#148` 이 `bin/worker.rs` · `deploy/e2e/kustomization.yaml` 에 더한 5행 (2026-09-25 · `rct_20260925-0013`)
+
+`#148`(`67c15ad`, e2e 폴링 단축)이 워커 유휴 폴링을 env 로 덮을 수 있게 만들면서 이 행에 **순 +5행**을
+열었다(190 → 195 / `2394fbc09d8f799417e9efb81f5e4a97badd995430f2b1955e81c136b4009c27`). 두 파일에
+걸치지만 **하나의 명제가 두 벌로 적힌 것**이라 함께 본다.
+
+### 제거 3행 — 비공개 const 의 `///` (`bin/worker.rs`)
+
+```rust
+/// Default pause after an empty claim. `FEATUREDOC_WORKER_IDLE_POLL_MS` overrides
+/// it — the e2e overlay lowers it because every queue hand-off in a spec otherwise
+/// waits out up to this long.
+const IDLE_POLL: Duration = Duration::from_secs(2);
+```
+
+- **「`pub` 항목의 `///` 요약 1줄 유지」 조항의 대상이 아니다** — `IDLE_POLL` 은 **비공개 const** 다.
+- 1행 「Default pause after an empty claim」은 ① 이다: 이름 `IDLE_POLL` + `Duration::from_secs(2)` +
+  claim 루프의 `Ok(None) => idle_poll` 한 줄이 「빈 claim 뒤 이만큼 쉰다」를 그대로 말한다.
+- 2행 「`FEATUREDOC_WORKER_IDLE_POLL_MS` overrides it」도 ① 이다 — **같은 파일 아래의 신설
+  `fn idle_poll()`** 이 그 env 를 읽어 파싱하고 실패 시 `IDLE_POLL` 로 떨어지는 코드 그 자체다.
+  이름을 주석이 한 번 더 적을 뿐이다.
+- 2~3행 「the e2e overlay lowers it because every queue hand-off in a spec otherwise waits out up to
+  this long」은 ①(overlay 가 `FEATUREDOC_WORKER_IDLE_POLL_MS: "200"` 으로 값까지 보인다)과
+  ③(PR #148 본문 §변경 1항 「**e2e overlay 에서만** 200ms. 운영 기본값은 그대로」 · 2항 「큐 hand-off 가
+  세 번이라 hop 마다 두 폴링 대기가 겹쳤습니다」)로 이중 복원된다.
+
+**바로 아래 `ERROR_BACKOFF` 의 `///` 1행을 유지한 것과 어긋나지 않는다.** 그 줄
+(`/// Back-off when the API is unreachable, so a restarting API is not hammered.`)은 이 패스가 판정해
+**유지**한 쌍둥이지만, 그 한 줄이 담은 **왜**(재기동 중인 API 를 두들기지 않으려고)는 이름에도
+호출부에도 다른 문서에도 없다 — 네 경로 어디에서도 복원되지 않는다. `IDLE_POLL` 의 **왜**는 ③ 본문에
+축자로 있다. 같은 규칙에 술어 값이 다를 뿐이라 **선례를 뒤집는 것이 아니다.**
+
+### 제거 2행 — 같은 명제의 두 벌째 (`deploy/e2e/kustomization.yaml`)
+
+```yaml
+                  # 기본 2 s 면 spec 의 큐 hand-off(claim → 전략 승인 → 후보 확정)마다
+                  # 최대 2 s 씩 쉰다. 클러스터에 이 spec 하나만 도는 e2e 에선 짧아도 된다.
+                  - name: FEATUREDOC_WORKER_IDLE_POLL_MS
+                    value: "200"
+```
+
+- 위 `bin/worker.rs` 3행과 **같은 명제의 두 벌째**다. 이 행이 이미 두 번 같은 자리를 같은 이유로
+  닫았다 — **증분 재판정 ②**(#92, 이 파일의 API env 위 2행 · 전건 제거)와 **③**(#107, 같은 파일
+  API env 위 2행 · 전건 제거). `#148` 이 더한 것은 **또 새 env 위의 2행**이고, 이번에도 ③(PR 본문)이
+  그 명제를 축자로 갖는다.
+- 남는 자리를 따로 세우지 않는다 — 두 벌 중 어느 쪽도 네 경로 밖의 지식을 담고 있지 않아, 「정본을
+  어디에 둘 것인가」가 아니라 **둘 다 복원 가능**한 경우다.
+
+### 값
+
+판정 5행 · **순 제거 5행 · 유지 0행**. 195 → **190 /
+`80748ab3041408f76823e2cac502b043fef3ebe055628efc883742b36ae593a5`** 로, ②·③·④ 와 같이
+**#148 이전 값으로 바이트 동일 복귀**한다. 이 행에 **미판정 증분은 남지 않는다.**
+
+> 같은 창(`#148`)이 들여온 신설 파일 `e2e/support/clock.ts` 9행은 이 행이 아니라 **행 밖 잔여**이며
+> [2026-09-25-e2e-clock-helper.md](2026-09-25-e2e-clock-helper.md) 가 **전건 유지**로 판정했다.
