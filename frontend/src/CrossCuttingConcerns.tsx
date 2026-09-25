@@ -111,13 +111,13 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
     <main className="screen">
       <Appbar onBack={onBack} />
 
-      <h1 className="h-display" style={{ marginTop: 24 }}>
-        내 코드가 서 있는 바닥
-      </h1>
-      <p className="h-display-sub" data-testid="concerns-lede">
-        항목마다 근거가 된 코드 위치를 함께 적었어요. 같은 커밋을 다시 분석하면 같은 결과가
-        나오고, 달라지면 무엇이 달라졌는지 항목별로 알려 드립니다.
-      </p>
+      <div style={{ marginTop: 18 }}>
+        <h1 className="h-display">내 코드가 서 있는 바닥</h1>
+        <p className="h-display-sub" data-testid="concerns-lede">
+          항목마다 근거가 된 코드 위치를 함께 적었어요. 같은 커밋을 다시 분석하면 같은 결과가
+          나오고, 달라지면 무엇이 달라졌는지 항목별로 알려 드립니다.
+        </p>
+      </div>
 
       <div className="row" style={{ marginTop: 14, gap: 8 }} data-testid="reproducibility">
         <span className="tag" data-verdict={doc.reproducibility.verdict}>
@@ -126,7 +126,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
         <span className="meta">{doc.model}</span>
       </div>
 
-      <div className="stack-14" style={{ marginTop: 22 }}>
+      <div className="stack-14" style={{ marginTop: 18 }}>
         {sections.map((section) => (
           <div className="card" key={section.axis} data-testid="axis" data-axis={section.axis}>
             <div className="section-title">
@@ -134,7 +134,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
               <span className="count">{section.items.length}</span>
             </div>
             {section.items.length === 0 ? (
-              <p className="body sm" data-testid="axis-empty">
+              <p className="body sm" style={{ marginTop: 10 }} data-testid="axis-empty">
                 이 저장소에서는 근거를 찾지 못했어요
               </p>
             ) : (
