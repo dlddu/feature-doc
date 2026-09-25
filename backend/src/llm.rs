@@ -598,7 +598,6 @@ mod tests {
     async fn stub_llm_fail_trigger_fires_only_on_the_named_input() {
         let http = reqwest::Client::new();
 
-        // Env unset: nothing changes.
         std::env::remove_var("FEATUREDOC_STUB_LLM_FAIL");
         assert!(
             ask(&http, Mode::Stub, Provider::OpenAI, None, an_ask())
@@ -606,7 +605,6 @@ mod tests {
                 .is_ok()
         );
 
-        // Env set and the input carries the needle: real-shaped provider failure.
         const NEEDLE: &str = "stub-llm-fail-needle-rct20260922";
         std::env::set_var("FEATUREDOC_STUB_LLM_FAIL", NEEDLE);
         let mut hit = an_ask();
@@ -617,7 +615,6 @@ mod tests {
             .unwrap_err();
         assert_eq!(err, "LLM rejected the request (429)");
 
-        // Env set but the input misses the needle: still the deterministic answer.
         let mut miss = an_ask();
         miss.user = "an input that does not carry the needle".to_string();
         assert!(
