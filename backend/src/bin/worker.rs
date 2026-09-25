@@ -25,9 +25,6 @@ use serde::Deserialize;
 use serde_json::json;
 use tokio::signal::unix::{signal, SignalKind};
 
-/// Default pause after an empty claim. `FEATUREDOC_WORKER_IDLE_POLL_MS` overrides
-/// it — the e2e overlay lowers it because every queue hand-off in a spec otherwise
-/// waits out up to this long.
 const IDLE_POLL: Duration = Duration::from_secs(2);
 /// Back-off when the API is unreachable, so a restarting API is not hammered.
 const ERROR_BACKOFF: Duration = Duration::from_secs(5);

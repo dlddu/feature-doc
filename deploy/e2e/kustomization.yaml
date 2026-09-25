@@ -85,7 +85,5 @@ patches:
                     value: "stub"
                   - name: FEATUREDOC_DOUBLE_LLM
                     value: "stub"
-                  # 기본 2 s 면 spec 의 큐 hand-off(claim → 전략 승인 → 후보 확정)마다
-                  # 최대 2 s 씩 쉰다. 클러스터에 이 spec 하나만 도는 e2e 에선 짧아도 된다.
                   - name: FEATUREDOC_WORKER_IDLE_POLL_MS
                     value: "200"
