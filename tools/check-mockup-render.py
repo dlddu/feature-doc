@@ -20,6 +20,10 @@
 #                   실패한다(형제 게이트의 원장 래칫과 같은 방침).
 #  M6 표기 규약     `data-sample` 규약의 오용(잎이 아닌 자리·상호작용 요소)과
 #                   `data-variant` 규약의 오용(열거 없는 단독 변이·전진 행동)을 잡는다.
+#  M8 접힘 affordance  구현이 목업에 없는 접힘 기구(`<details class="…disclosure…">`)를 쓸 때,
+#                   그것이 펼쳐진 채로 서는 폭(= `viewport.ts` 의 `WIDE_QUERY`)에서는 제목 줄에
+#                   affordance(`cursor: pointer` · `summary::after` 표식)가 남아 있지 않다 —
+#                   그 폭의 목업은 같은 줄을 정적인 `div.section-title` 로 그리기 때문이다.
 #  M7 앱바 슬롯     활성 (화면, 단계) 쌍마다 목업 `<header class="appbar">` 의 슬롯 수와
 #                   구현 앱바의 슬롯 수를 대조한다. 슬롯은 `icon-btn`·`appbar-title`·
 #                   `appbar-sub`·`btn-link` 중 하나를 클래스로 가진 요소다. 원장 행의
@@ -27,10 +31,11 @@
 #                   `(단계 전체)` 와 같은 방식의 명시적 면제다.
 #
 # ── 이 게이트가 보지 않는 것(의도적) ─────────────────────────────────────
-#  * 규칙 5(구조·수치) 중 **자동화된 것은 앱바 슬롯 수(M7) 하나뿐**이다. 나머지 CSS
+#  * 규칙 5(구조·수치) 중 **자동화된 것은 앱바 슬롯 수(M7)와 접힘 affordance 폭(M8) 둘뿐**이다. 나머지 CSS
 #    클래스·px 대조는 여전히 사람 몫이다. M7 을 넣은 이유는 그 한 조각이 카피 게이트의
 #    사각지대에 정확히 들어앉기 때문이다 — 슬롯이 통째로 빠져도 카피는 한 글자도 줄지
 #    않아 M3 가 영원히 초록이다(2026-09-18, 우측 자리표시자 부재 3건이 그렇게 숨어 있었다).
+#    M8 도 같은 자리다 — 표식 `▴` 가 목업에 없는 폭에 그려져도 카피는 한 글자도 줄지 않는다(2026-09-25).
 #  * 실행 스크린샷 픽셀 비교는 모델 정의상 범위 밖이다.
 #  * 구현측 카피 추출(M3B)은 모듈 상수 테이블에 영문으로만 적힌 라벨(예: `STATUS_BADGE`
 #    의 `Queued`)을 잡지 못한다 — 그런 라벨을 가진 화면은 「대조 보류」에 있어야 하고,
@@ -372,6 +377,64 @@ def impl_appbar(path: Path) -> str | None:
     return header.group(1) if header else None
 
 
+DETAILS_DISCLOSURE = re.compile(r'<details[^>]*className=\{?["\'`][^"\'`]*\bdisclosure\b')
+
+
+def wide_breakpoint() -> int | None:
+    """접힘이 풀리는 폭. `viewport.ts` 의 `WIDE_QUERY` 가 그 값의 단일 소스다."""
+    path = SRC_DIR / "viewport.ts"
+    if not path.exists():
+        return None
+    found = re.search(r"WIDE_QUERY\s*=\s*['\"`]\(min-width:\s*(\d+)px\)['\"`]",
+                      path.read_text(encoding="utf-8"))
+    return int(found.group(1)) if found else None
+
+
+def css_declarations(text: str, width: int, prefix: str) -> dict[tuple[str, str], str]:
+    """`width` 에서 살아있는 선언을 소스 순서로 해석해 (선택자, 속성) -> 값 으로 돌려준다.
+
+    같은 명세도의 규칙만 다루므로 뒤에 오는 선언이 이긴다 — 그래서 `@media` 블록이
+    그 블록이 잡으려는 규칙보다 **앞**에 서 있으면 조용히 무력해진다. 이 함수는 그
+    순서를 그대로 따라가므로 선언 위치가 틀리면 같이 틀린 답을 낸다(= 그것을 잡는다)."""
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    out: dict[tuple[str, str], str] = {}
+
+    def walk(block: str, active: bool) -> None:
+        i = 0
+        while True:
+            open_at = block.find("{", i)
+            if open_at < 0:
+                return
+            head = block[i:open_at].strip()
+            depth, j = 1, open_at + 1
+            while j < len(block) and depth:
+                depth += (block[j] == "{") - (block[j] == "}")
+                j += 1
+            body = block[open_at + 1:j - 1]
+            if head.startswith("@media"):
+                low = re.search(r"min-width:\s*(\d+)px", head)
+                high = re.search(r"max-width:\s*(\d+)px", head)
+                applies = active and "prefers-" not in head
+                if low and width < int(low.group(1)):
+                    applies = False
+                if high and width > int(high.group(1)):
+                    applies = False
+                walk(body, applies)
+            elif not head.startswith("@") and active:
+                for selector in (part.strip() for part in head.split(",")):
+                    if not selector.startswith(prefix):
+                        continue
+                    for decl in body.split(";"):
+                        if ":" not in decl:
+                            continue
+                        prop, value = decl.split(":", 1)
+                        out[(selector, prop.strip())] = value.strip()
+            i = j
+
+    walk(text, True)
+    return out
+
+
 def root_tokens(text: str) -> dict[str, str]:
     block = re.search(r":root\s*\{(.*?)\}", text, flags=re.S)
     if not block:
@@ -609,6 +672,39 @@ def main() -> int:
             else:
                 note(f"M7 ok [{screen} ↔ {step}] 슬롯 {mockup_slots}")
     print(f"M7 앱바 슬롯 — 대조 {compared}쌍 · 면제 {exempted}화면 · 불일치 {mismatched}건")
+
+    # M8 — 접힘 affordance 가 그여지는 폭. 목업은 접힘 변이를 그리지 않으므로
+    # 구현이 접힘을 쓰는 것 자체는 원장이 덤는다(권위 순서상 AC4.4 가 위다).
+    # 그러나 **펼쳐진 채로 서는 폭**은 AC4.4 자신이 「동일 화면을 확장 적용」이라
+    # 적어 구현 편을 들어 주지 않고, 그 폭의 목업은 정적인 `div.section-title` 이다.
+    wide = wide_breakpoint()
+    folds = sum(len(DETAILS_DISCLOSURE.findall(path.read_text(encoding="utf-8")))
+                for path in sorted(SRC_DIR.glob("*.tsx")))
+    css_text = INDEX_CSS.read_text(encoding="utf-8")
+    disclosure_rules = sum(1 for (selector, _) in css_declarations(css_text, 0, ".disclosure"))
+    if wide is None:
+        fail("M8", "`viewport.ts` 의 `WIDE_QUERY` 에서 확장 브레이크포인트를 읽지 못했다")
+    elif folds == 0 or disclosure_rules == 0:
+        # 공전 방지 — 이 규칙은 모집단이 비면 한 건도 안 걸리고도 초록이다.
+        fail("M8", f"접힘 기구를 찾지 못했다(`<details …disclosure>` {folds}건 · "
+                   f"`.disclosure` 규칙 {disclosure_rules}건) — 규칙이 공전한다")
+    else:
+        if not re.search(rf"@media \(min-width:\s*{wide}px\)", css_text):
+            fail("M8", f"`index.css` 에 `@media (min-width: {wide}px)` 블록이 없다 — "
+                       f"접힘과 레이아웃이 「compact」를 다르게 본다")
+        wide_decls = css_declarations(css_text, wide, ".disclosure")
+        live = []
+        if wide_decls.get((".disclosure > summary", "cursor")) == "pointer":
+            live.append("`cursor: pointer`")
+        for selector in (".disclosure > summary::after", ".disclosure[open] > summary::after"):
+            content = wide_decls.get((selector, "content"))
+            if content is not None and content != "none":
+                live.append(f"`{selector} {{ content: {content} }}`")
+        for item in live:
+            fail("M8", f"{wide}px 에서 접힘 affordance 가 남아 있다 — {item}. "
+                       f"그 폭의 목업은 정적인 `div.section-title` 다")
+        print(f"M8 접힘 affordance 폭 — 접힘 {folds}건 · `.disclosure` 선언 {disclosure_rules}개 · "
+              f"{wide}px 잔존 affordance {len(live)}건")
 
     report()
     return 1 if failures else 0
