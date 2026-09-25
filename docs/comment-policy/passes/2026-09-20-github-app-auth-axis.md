@@ -281,3 +281,35 @@ diff 0줄」 검사는 주석 재작성에 딸려 사라진 선언을 놓치므�
   [2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑪」.
 - **지문 사각지대(파이썬 `"""docstring"""`)** — 판정 기준 자체의 개정이라
   `reconciler-tobe-modeler` 의 몫이다(11차 패스가 이미 등재했다).
+
+## 증분 재판정 ⑫ — #141 이 이 축에 연 +14행 (2026-09-25 · `rct_20260925-0001`)
+
+**창.** 자매 모델 `tbm_feature-doc-e2e-mock-policy` 의 `rct_20260924-0001`(PR **#141**, `c405ad7`)이
+`verify_user_owns_installation` 의 stub 충실도 결함을 닫으면서 이 축에 **추가 15 · 제거 1 = 순 +14행**을
+열었다(`github_app.rs` 9 · `backend/tests/github.rs` 6). 12차 패스가 **71행**으로 닫은 행이 **85행**이 돼
+지문이 재현되지 않았고, 22차 패스(#130)가 이것을 「다음 감지가 여는 몫」으로 명시 인계했다.
+원장 규약대로 **새 행을 만들지 않고 행 12 의 결과 칸을 갱신**한다 — 71 → **78행**,
+지문 `261ad979…` → `97ae560b9ae8673b2aa747c947c71aee8c075392de5a0394a2cdbec299f7f273`.
+
+**이 창은 12차 패스가 「복제된 명제 — 정본을 한 곳으로 모았다」로 지운 것과 같은 유형을 되들였다.**
+그때 「Setup URL `installation_id` 스푸핑」 명제가 **네 벌**까지 복제돼 있던 것을 한 곳으로 모았는데,
+#141 이 같은 명제를 `github_app.rs` 와 `backend/tests/github.rs` 에 **다시 두 벌** 심었고 그 두 벌이
+모두 `docs/e2e-mocking-policy.md, 충실도 보증` 을 자기 입으로 인용한다.
+
+| 위치 | 주석 | 판정 | 근거 |
+|---|---|---|---|
+| `github_app.rs` `verify_user_owns_installation` doc 5~6행 | `Returning Ok(()) for every id would accept what real rejects, which the mocking policy counts as a fidelity defect regardless of registration (docs/e2e-mocking-policy.md, 충실도 보증).` | **제거 2행** | 이 코드가 아니라 **없는 구현의 반사실**을 말하고, 그 판정 규칙은 `docs/e2e-mocking-policy.md` 37행 *「**충실도 결함**(stub이 real보다 관대한 분기)은 등재 여부와 무관하게 drift이며, 등재로 덮지 않고 코드로 고친다」* 가 소유한다. 주석이 **파일명과 절 이름을 직접 적어** 원본을 가리킨다 — 복원 경로 ②의 가장 좁은 형태 |
+| `github_app.rs` 같은 doc 1~4행 | `The Setup URL's installation_id is attacker-controlled (GitHub does not sign it), so it must be confirmed against the user's own installations. The stub has no GitHub to ask, so it confirms against the only id its own install flow ever hands out — [stub_installation_id] of this user.` | **유지 4행** | 앞 문장은 **상류의 문서화되지 않은 동작**(GitHub 이 이 값에 서명하지 않는다)이고 뒷 문장은 **stub 이 real 과 갈리는 지점**이다 — 정책이 이름으로 열거한 유지 대상 둘 |
+| `github_app.rs` `stub_installation_id` doc 4행 | `Lives here rather than beside the install route because [verify_user_owns_installation] has to check against the very value that flow issued.` | **유지 4행 (판단 갈림)** | 배치 사유는 `docs/e2e-mocking-policy.md` 의 *「발급하는 쪽과 검증하는 쪽이 같은 `stub_installation_id` 정의를 보게 해 닫았다」* 로 복원되지만, 그 문서는 **모킹 충실도**의 기록이지 이 함수의 계약 문서가 아니다. 「애매하면 남긴다」 |
+| `backend/tests/github.rs` 테스트 doc 3행 | `The Setup URL's installation_id is attacker-controlled, and the stub must refuse another user's the way real does — a stub that accepts every id would be more permissive than real (docs/e2e-mocking-policy.md, 충실도 보증).` | **제거 3행** | 세 절이 각각 ① 바로 위 `github_app.rs` doc 의 두 벌째, ① 테스트 이름 `a_setup_callback_for_someone_elses_installation_is_refused` 의 영어 풀이, ② 정책 문서 인용이다. 14차 패스가 같은 유형(「테스트 이름이 그대로 말하는 `///` 10」)을 지운 선례 |
+| `backend/tests/github.rs` 인라인 2행 | `bob 에게 발급됐을 id 를 alice 의 세션으로 가져온다 — real 이라면 alice 의 설치 / 목록에 없어 Forbidden 이다.` | **제거 1행 · 유지 1행 (판단 갈림)** | 앞 절은 바로 아래 두 줄(`let bob = stub_installation_id(2);` · `assert_ne!(bob, stub_installation_id(1));`)의 축자 번역이라 지웠다(①). 뒷 절 `real 이라면 alice 의 설치 목록에 없어 Forbidden 이다` 는 **충실도 경계**라 한 줄로 남겼다 |
+| `backend/tests/github.rs` 인라인 1행 | `거부된 설치가 연결로 남지 않는다.` | **제거 1행** | 절 제목. 바로 아래 `/api/github/connection` GET 과 `assert_eq!(json_body(resp).await["installed"], false)` 가 그 문장이다(①) |
+
+**합: 제거 7 · 유지 78.** `github_app.rs` 21 → **19**, `backend/tests/github.rs` 10 → **5**.
+**비주석 +/- 0줄** — 지운 것은 주석 줄뿐이고 `.rs` 의 동작 코드는 한 글자도 바뀌지 않았다.
+
+**자매 모델의 등재 근거는 깎이지 않았다.** `tbm_feature-doc-e2e-mock-policy` 가 이 자리에서 소유한 것은
+허용목록 4행(`backend/src/github_app.rs` × `Mode::Stub` × EXT-02)과 그 지점 직전 줄의 표기 주석
+`// mock-exception: EXT-02 — …` 인데, 표기 주석은 DIRECTIVE 로 이 모델의 지문·판정 **양쪽에서 제외**되고
+이 패스는 그 줄을 건드리지 않았다(`grep -c 'mock-exception:' backend/src/github_app.rs` 불변).
+충실도 보증의 **원본**인 `docs/e2e-mocking-policy.md` 도 0줄 변화다 — 지운 것은 그 문서의 **사본** 쪽이다.
