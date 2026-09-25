@@ -149,8 +149,23 @@ export function AnalysisProgress({
         onBack={onBack}
       />
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
-        <ProgressRing percent={percent} />
+      <div className="metric-grid" style={{ marginTop: 16 }}>
+        <div className="cell">
+          <div className="k">Progress</div>
+          <div className="v" data-testid="progress-percent">
+            {percent}%
+          </div>
+        </div>
+        <div className="cell">
+          <div className="k">Cost so far</div>
+          <div className="v" data-testid="cost-so-far">
+            {formatCost(analysis.spend.costCents)}
+          </div>
+        </div>
+      </div>
+
+      <div className="progress" style={{ marginTop: 12 }}>
+        <i style={{ width: percent + '%' }} />
       </div>
 
       <details className="disclosure" open={wide} data-testid="pipeline-disclosure">
@@ -259,24 +274,6 @@ export function AnalysisProgress({
         </div>
       )}
 
-      <div className="card row between" style={{ marginTop: 14 }} data-testid="spend">
-        <div>
-          <div className="caps">Est. LLM Spend</div>
-          <div className="row" style={{ gap: 8, marginTop: 8 }}>
-            <span className="metric" style={{ fontSize: 15 }}>
-              {formatCost(analysis.estCostCents)}
-            </span>
-            <span className="meta">실측 누적은 아직 계측 전</span>
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div className="caps">Est. Calls</div>
-          <div className="metric" style={{ fontSize: 15, marginTop: 8 }}>
-            {analysis.estLlmCalls}
-          </div>
-        </div>
-      </div>
-
       <div className="btn-row" style={{ marginTop: 18 }}>
         <button
           className="btn btn-secondary grow"
@@ -319,39 +316,6 @@ function Appbar({ title, sub, onBack }: { title: string; sub: string; onBack: ()
       </div>
       <span className="icon-btn ghost" aria-hidden="true" />
     </header>
-  );
-}
-
-function ProgressRing({ percent }: { percent: number }) {
-  const radius = 62;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - Math.min(100, Math.max(0, percent)) / 100);
-  return (
-    <div className="ring">
-      <svg width="148" height="148" viewBox="0 0 148 148">
-        <circle cx="74" cy="74" r={radius} fill="none" stroke="var(--border-default)" strokeWidth="2" />
-        <circle
-          cx="74"
-          cy="74"
-          r={radius}
-          fill="none"
-          stroke="var(--text-primary)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeDasharray={circumference.toFixed(1)}
-          strokeDashoffset={offset.toFixed(1)}
-          transform="rotate(-90 74 74)"
-        />
-      </svg>
-      <div className="readout">
-        <span className="pct" data-testid="progress-percent">
-          {percent}
-        </span>
-        <span className="caps" style={{ marginTop: 3, fontSize: 8, letterSpacing: '0.1em' }}>
-          Percent Complete
-        </span>
-      </div>
-    </div>
   );
 }
 

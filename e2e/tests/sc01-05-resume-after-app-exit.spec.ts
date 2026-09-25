@@ -56,7 +56,7 @@ test.describe('AC1.5: 비동기 진행 가시성과 복귀', () => {
 
       await page.goto(`/#/analyses/${good}`);
       await expect(page.getByTestId('pipeline-count')).toHaveText('0 of 5');
-      await expect(page.getByTestId('progress-percent')).toHaveText('0');
+      await expect(page.getByTestId('progress-percent')).toHaveText('0%');
       await expect(page.getByTestId('stage')).toHaveCount(5);
       await expect(page.locator('[data-stage="fetch"]')).toContainText('저장소 내려받기');
       await expect(page.locator('[data-stage="fetch"]')).toContainText('대기 중');
@@ -68,17 +68,18 @@ test.describe('AC1.5: 비동기 진행 가시성과 복귀', () => {
 
       await page.goto(`/#/analyses/${good}`);
       await expect(page.getByTestId('pipeline-count')).toHaveText('3 of 5');
-      await expect(page.getByTestId('progress-percent')).toHaveText('60');
+      await expect(page.getByTestId('progress-percent')).toHaveText('60%');
       // The stub repository is 2300 KiB ⇒ 766 files · 2.2 MB (repo_scan::stub_scan);
       // the number is the worker's measurement, not a fixture in this file.
       await expect(page.locator('[data-stage="fetch"]')).toContainText('766 files · 2.2 MB');
       await expect(page.getByTestId('awaiting-pipeline')).toBeVisible();
-      // Cost is still the pre-flight estimate — measured spend is AC4.6.
-      await expect(page.getByTestId('spend')).toContainText('Est. LLM Spend');
+      // 화면이 말하는 비용은 측정된 것이다(AC4.6) — 세 단계가 돌았으니 0 이 아니다.
+      // 얼마인지는 `sc04-09` 가 재고, 여기서는 「진행과 비용이 같은 서버 상태」만 본다.
+      await expect(page.getByTestId('cost-so-far')).not.toHaveText('$0.00');
 
       await page.reload();
       await expect(page.getByTestId('pipeline-count')).toHaveText('3 of 5');
-      await expect(page.getByTestId('progress-percent')).toHaveText('60');
+      await expect(page.getByTestId('progress-percent')).toHaveText('60%');
       await expect(page.locator('[data-stage="fetch"]')).toContainText('766 files · 2.2 MB');
 
       await page.goto('/');

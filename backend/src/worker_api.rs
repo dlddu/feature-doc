@@ -722,10 +722,18 @@ struct DocumentReq {
     worker_id: String,
     content: serde_json::Value,
     model: String,
+    /// How many provider calls this document cost. Defaults to 1 so a worker that
+    /// predates the field still reports the common case rather than zero.
+    #[serde(default = "one_call")]
+    calls: i64,
     #[serde(default)]
     input_tokens: i64,
     #[serde(default)]
     output_tokens: i64,
+}
+
+fn one_call() -> i64 {
+    1
 }
 
 /// Stores a stage's document output. Lease-guarded like [`report_stage`], so a
@@ -751,11 +759,12 @@ async fn submit_document(
 
     sqlx::query(
         "INSERT INTO analysis_documents \
-         (id, analysis_id, kind, content, content_hash, model, input_tokens, output_tokens, created_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         (id, analysis_id, kind, content, content_hash, model, calls, input_tokens, output_tokens, created_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT(analysis_id, kind) DO UPDATE SET \
            content = excluded.content, content_hash = excluded.content_hash, \
-           model = excluded.model, input_tokens = excluded.input_tokens, \
+           model = excluded.model, calls = excluded.calls, \
+           input_tokens = excluded.input_tokens, \
            output_tokens = excluded.output_tokens, created_at = excluded.created_at",
     )
     .bind(uuid::Uuid::new_v4().to_string())
@@ -764,11 +773,24 @@ async fn submit_document(
     .bind(&serialized)
     .bind(&hash)
     .bind(&req.model)
+    .bind(req.calls.max(0))
     .bind(req.input_tokens)
     .bind(req.output_tokens)
     .bind(now_unix())
     .execute(&state.db)
     .await?;
+
+    // 운영자가 보는 자리 — 단계별 호출·토큰이 로그에도 남는다(AC4.6). 화면은 집계를
+    // 읽지만 그때는 이미 합쳐진 뒤라, 어느 단계가 얼마를 썼는지는 여기서만 보인다.
+    tracing::info!(
+        analysis_id = %id,
+        stage = %kind,
+        model = %req.model,
+        calls = req.calls,
+        input_tokens = req.input_tokens,
+        output_tokens = req.output_tokens,
+        "llm usage recorded"
+    );
 
     // 저장과 같은 요청 안에서 이어받아야 워커가 5단계를 `succeeded` 로 보고하기 전에 충돌이 서 있다.
     if kind == pipeline::ACCEPTANCE_DEPENDENCIES {

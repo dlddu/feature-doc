@@ -31,8 +31,9 @@
 //!    comparing the stored content hash is what turns that into something the
 //!    screen can show rather than something the reader has to take on trust.
 //!
-//! Real per-call cost accounting is still AC4.6: what these views report is the
-//! pre-flight estimate, never a measured spend.
+//! Two costs travel on these views and they are not the same number: `est_*` is
+//! the pre-flight estimate the user decided on before any call, and `spend` is
+//! what the calls actually reported (AC4.6, [`crate::usage`]).
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
@@ -157,6 +158,11 @@ struct AnalysisDetailView {
     started_at: Option<i64>,
     finished_at: Option<i64>,
     stages: Vec<StageView>,
+    /// What this analysis has actually cost so far (AC4.6), as opposed to the
+    /// `est_*` fields above, which were guessed from repository size before the
+    /// first call. The screen shows this one; the estimate stays for the
+    /// pre-flight decision that produced it.
+    spend: crate::usage::Spend,
 }
 
 #[derive(sqlx::FromRow)]
@@ -607,6 +613,8 @@ async fn load_detail(
     .fetch_all(&state.db)
     .await?;
 
+    let spend = crate::usage::of_analysis(&state.db, id).await?;
+
     Ok(AnalysisDetailView {
         analysis,
         access_revoked: run.error.as_deref() == Some(ACCESS_REVOKED),
@@ -614,6 +622,7 @@ async fn load_detail(
         started_at: run.started_at,
         finished_at: run.finished_at,
         stages,
+        spend,
     })
 }
 
@@ -676,7 +685,8 @@ fn parse_repo(input: &str) -> Result<(String, String), AppError> {
 
 /// Deterministic pre-flight heuristic (AC1.1: show the expected scale before the user
 /// triggers). Derived only from the repo's reported size — an order-of-magnitude the
-/// user sees on Connect Repository, never a hard cost. Real per-call accounting lands with AC4.6.
+/// user sees on Connect Repository, never a hard cost — and never revised afterwards:
+/// what was actually spent is measured separately ([`crate::usage`]).
 struct Estimate {
     files: i64,
     llm_calls: i64,

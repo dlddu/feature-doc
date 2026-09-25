@@ -1,0 +1,12 @@
+-- 측정된 LLM 호출 수 (AC4.6).
+--
+-- 토큰은 이미 호출을 낳은 행마다 적혀 있지만(`analysis_documents` ·
+-- `feature_dependency_requests` · `feature_doc_edits` · `feature_additions`), 행 수를
+-- 호출 수로 읽으면 한 자리에서 어긋난다 — 인수 시나리오 단계는 논리 호출과 테스트 호출
+-- 둘을 한 문서로 합쳐 한 행만 남기고(`acceptance::derive`), 테스트 경로가 없는 저장소에서는
+-- 한 번만 부른다. 즉 그 행이 1회인지 2회인지는 저장된 값에서 복원되지 않는다.
+--
+-- 그래서 행이 대표하는 호출 수를 그 행에 함께 적는다. 다른 세 테이블은 항상 1회라
+-- 열을 늘리지 않고 집계가 리터럴 1을 쓴다 — 없는 변동을 스키마로 표현하지 않는다.
+-- 기본값 1 은 이 열이 생기기 전에 적힌 행을 위한 것이다(합쳐진 행은 그때도 1행이었다).
+ALTER TABLE analysis_documents ADD COLUMN calls INTEGER NOT NULL DEFAULT 1;

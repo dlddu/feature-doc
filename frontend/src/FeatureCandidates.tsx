@@ -7,12 +7,14 @@
 import { useEffect, useState } from 'react';
 import {
   approveCandidate,
+  getAnalysis,
   getCandidates,
   mergeCandidates,
   rejectCandidate,
   renameCandidate,
 } from './api';
 import type { CandidateList, FeatureCandidate, PreviousDeletion, PreviousRejection } from './api';
+import { formatCost } from './format';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -49,12 +51,18 @@ export function FeatureCandidates({ id, onBack, onFinish }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
+  // 여기까지 쌓인 실제 비용(AC4.6). 목록과 따로 읽는다 — 후보를 고르는 동안 비용이
+  // 더 늘지는 않으므로 결정마다 다시 읽을 이유가 없고, 못 읽어도 결정은 막지 않는다.
+  const [spentCents, setSpentCents] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
     getCandidates(id)
       .then((l) => active && setList(l))
       .catch((e: unknown) => active && setError(messageOf(e)));
+    getAnalysis(id)
+      .then((a) => active && setSpentCents(a.spend.costCents))
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -234,6 +242,13 @@ export function FeatureCandidates({ id, onBack, onFinish }: Props) {
               취소
             </button>
           </div>
+        </div>
+      )}
+
+      {spentCents !== null && (
+        <div className="card row between" style={{ marginTop: 16 }} data-testid="sift-cost">
+          <span className="body sm">누적 비용</span>
+          <span className="metric">{formatCost(spentCents)}</span>
         </div>
       )}
 
