@@ -381,7 +381,6 @@ DETAILS_DISCLOSURE = re.compile(r'<details[^>]*className=\{?["\'`][^"\'`]*\bdisc
 
 
 def wide_breakpoint() -> int | None:
-    """접힘이 풀리는 폭. `viewport.ts` 의 `WIDE_QUERY` 가 그 값의 단일 소스다."""
     path = SRC_DIR / "viewport.ts"
     if not path.exists():
         return None
@@ -391,9 +390,7 @@ def wide_breakpoint() -> int | None:
 
 
 def css_declarations(text: str, width: int, prefix: str) -> dict[tuple[str, str], str]:
-    """`width` 에서 살아있는 선언을 소스 순서로 해석해 (선택자, 속성) -> 값 으로 돌려준다.
-
-    같은 명세도의 규칙만 다루므로 뒤에 오는 선언이 이긴다 — 그래서 `@media` 블록이
+    """같은 명세도의 규칙만 다루므로 뒤에 오는 선언이 이긴다 — 그래서 `@media` 블록이
     그 블록이 잡으려는 규칙보다 **앞**에 서 있으면 조용히 무력해진다. 이 함수는 그
     순서를 그대로 따라가므로 선언 위치가 틀리면 같이 틀린 답을 낸다(= 그것을 잡는다)."""
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
@@ -673,10 +670,6 @@ def main() -> int:
                 note(f"M7 ok [{screen} ↔ {step}] 슬롯 {mockup_slots}")
     print(f"M7 앱바 슬롯 — 대조 {compared}쌍 · 면제 {exempted}화면 · 불일치 {mismatched}건")
 
-    # M8 — 접힘 affordance 가 그여지는 폭. 목업은 접힘 변이를 그리지 않으므로
-    # 구현이 접힘을 쓰는 것 자체는 원장이 덤는다(권위 순서상 AC4.4 가 위다).
-    # 그러나 **펼쳐진 채로 서는 폭**은 AC4.4 자신이 「동일 화면을 확장 적용」이라
-    # 적어 구현 편을 들어 주지 않고, 그 폭의 목업은 정적인 `div.section-title` 이다.
     wide = wide_breakpoint()
     folds = sum(len(DETAILS_DISCLOSURE.findall(path.read_text(encoding="utf-8")))
                 for path in sorted(SRC_DIR.glob("*.tsx")))
@@ -685,7 +678,6 @@ def main() -> int:
     if wide is None:
         fail("M8", "`viewport.ts` 의 `WIDE_QUERY` 에서 확장 브레이크포인트를 읽지 못했다")
     elif folds == 0 or disclosure_rules == 0:
-        # 공전 방지 — 이 규칙은 모집단이 비면 한 건도 안 걸리고도 초록이다.
         fail("M8", f"접힘 기구를 찾지 못했다(`<details …disclosure>` {folds}건 · "
                    f"`.disclosure` 규칙 {disclosure_rules}건) — 규칙이 공전한다")
     else:
