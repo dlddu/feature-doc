@@ -137,9 +137,8 @@ export function AnalysisProgress({
   const percent = stagesTotal === 0 ? 0 : Math.round((stagesDone / stagesTotal) * 100);
   // At most one stage is failed at a time — the pipeline stops there.
   const failed = stages.find((stage) => stage.status === 'failed');
-  // AC4.1: the job was stopped because the App no longer grants access to this
-  // repository. Re-running a stage cannot recover that, so the stage-level retry
-  // notice and buttons stand down and the server's reason is what the user reads.
+  // Re-running a stage cannot recover a revoked access, so the stage-level retry
+  // notice and buttons stand down.
   const revoked = analysis.accessRevoked;
 
   return (

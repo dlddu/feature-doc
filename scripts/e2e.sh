@@ -13,12 +13,9 @@ PF_PID=""
 PF_LOG="${PF_LOG:-/tmp/featuredoc-pf.log}"
 
 # The forward is supervised rather than one-shot. `kubectl port-forward svc/…` binds to
-# one pod behind the Service and exits when that pod goes away, and the API Deployment is
-# `strategy: Recreate` (SQLite on a ReadWriteOnce volume), so any spec that edits API env
-# leaves a window with no pod at all and the forward dies for good. Respawning against
-# whatever pod is ready now is what makes an API rollout survivable; the counterpart is
-# `setApiEnv` in e2e/support/cluster.ts, which does not return until this has landed, so
-# no spec ever observes the window.
+# one pod behind the Service and exits when that pod goes away, so any spec that edits
+# API env kills it for good. Respawning against whatever pod is ready now is what makes
+# an API rollout survivable.
 supervise_port_forward() {
   local child=''
   trap 'kill "${child}" 2>/dev/null || true; exit 0' TERM INT

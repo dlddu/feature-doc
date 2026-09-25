@@ -205,13 +205,10 @@ pub async fn list_repositories(
     }
 }
 
-/// Narrows what the stub installation grants, so a test can take repository access
-/// away the way a user does on GitHub (AC4.1's "해제·범위 축소").
+/// Narrows what the stub installation grants (AC4.1's "해제·범위 축소").
 ///
 /// Unset is the full stub installation, so a deployment that says nothing keeps the
-/// three repositories every other spec relies on. The value is a comma-separated
-/// list of repository names; an empty value grants none, which is what an
-/// uninstall looks like from here.
+/// three repositories every other spec relies on.
 const STUB_ACCESS: &str = "FEATUREDOC_STUB_REPO_ACCESS";
 
 fn stub_granted_names() -> Option<Vec<String>> {

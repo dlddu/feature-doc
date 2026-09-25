@@ -151,11 +151,8 @@ struct AnalysisDetailView {
     #[serde(flatten)]
     analysis: AnalysisView,
     error: Option<String>,
-    /// Whether this job was stopped by AC4.1's revocation policy. Derived from the
-    /// stored reason rather than a second column so the two can never disagree, and
-    /// decided here rather than by the screen matching on a sentence — the screen
-    /// needs it because "retry this stage" is not a recovery path when the access
-    /// the stage needs is gone.
+    /// Derived from the stored reason rather than a second column, so the two can
+    /// never disagree.
     access_revoked: bool,
     started_at: Option<i64>,
     finished_at: Option<i64>,
@@ -632,21 +629,10 @@ pub(crate) async fn accessible_repos(
 
 /// The one reason string a revocation stop writes to `analyses.error` (AC4.1).
 ///
-/// It is the notice the user reads, so it lives here beside the check that causes
-/// it rather than being restated on the screen: one sentence, one owner, and the
-/// progress screen renders whatever the server put in the row. It names no
-/// installation id, repository or token — the reason a user needs is what to do
-/// next (AC4.3).
+/// It names no installation id, repository or token — the reason a user needs is
+/// what to do next (AC4.3).
 pub const ACCESS_REVOKED: &str = "저장소 접근이 해제되어 진행 중이던 분석을 현재 호출까지만 마무리하고 중단했습니다. App 설치나 저장소 접근 범위를 되돌린 뒤 다시 시작해 주세요.";
 
-/// Whether the App still grants this user access to this repository (AC4.1).
-///
-/// Uninstalling and narrowing the repository selection are the same answer here,
-/// which is why one call covers both: an uninstall leaves no `installations` row,
-/// and a narrowed selection leaves the row but drops the repository from the list.
-/// Nothing pushes either event to us — GitHub is asked at the moment the answer is
-/// needed, the same way the installation token is minted rather than stored.
-///
 /// An upstream failure is *not* revocation: it propagates, so a GitHub outage can
 /// never be mistaken for the user having taken access away.
 pub(crate) async fn still_granted(
