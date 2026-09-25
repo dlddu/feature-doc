@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { getAnalysis, getCrossCutting } from './api';
 import type { CrossCuttingDocument } from './api';
+import { useWideViewport } from './viewport';
 
 /** Insertion order is PRD order — `AXIS_ORDER` below takes it from these keys. */
 const AXIS_LABELS: Record<string, string> = {
@@ -47,6 +48,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
   const [error, setError] = useState<string | null>(null);
   const [strategyReady, setStrategyReady] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
+  const wide = useWideViewport();
 
   useEffect(() => {
     let active = true;
@@ -128,11 +130,17 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
 
       <div className="stack-14" style={{ marginTop: 18 }}>
         {sections.map((section) => (
-          <div className="card" key={section.axis} data-testid="axis" data-axis={section.axis}>
-            <div className="section-title">
+          <details
+            className="card disclosure"
+            key={section.axis}
+            data-testid="axis"
+            data-axis={section.axis}
+            open={wide}
+          >
+            <summary className="section-title">
               <span>{section.label}</span>
               <span className="count">{section.items.length}</span>
-            </div>
+            </summary>
             {section.items.length === 0 ? (
               <p className="body sm" style={{ marginTop: 10 }} data-testid="axis-empty">
                 이 저장소에서는 근거를 찾지 못했어요
@@ -153,7 +161,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
                 ))}
               </div>
             )}
-          </div>
+          </details>
         ))}
       </div>
 

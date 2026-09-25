@@ -804,3 +804,17 @@ button.ico { cursor: pointer; }
   .collection > * + *,
   .collection > .cand + .cand { margin-top: 0; }
 }
+
+/* 긴 결과의 요약 → 상세 단계 노출(AC4.4). Compact 에서는 제목 줄만 남기고 접히고,
+   첫 확장 브레이크포인트부터는 같은 화면이 펼쳐진 채로 선다 — 여는 주체는 화면이
+   넘겨 주는 `open` 이므로 이 파일은 표식만 그린다. */
+.disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::after {
+  content: "\00a0▾";
+  color: var(--text-quaternary);
+}
+.disclosure[open] > summary::after { content: "\00a0▴"; }

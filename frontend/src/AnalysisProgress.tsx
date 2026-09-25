@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAnalysis, retryStage } from './api';
 import type { AnalysisDetail, Stage } from './api';
 import { formatCost, formatDuration } from './format';
+import { useWideViewport } from './viewport';
 
 const POLL_MS = 2_000;
 
@@ -70,6 +71,7 @@ export function AnalysisProgress({
   const [retrying, setRetrying] = useState<string | null>(null);
   // Re-rendered on the poll tick so a running step's elapsed time keeps moving.
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const wide = useWideViewport();
   // Read inside the interval without making it a dependency (which would restart
   // the timer on every tick).
   const status = useRef<string | null>(null);
@@ -148,80 +150,82 @@ export function AnalysisProgress({
         <ProgressRing percent={percent} />
       </div>
 
-      <div className="section-title" style={{ marginTop: 34 }}>
-        <span>Pipeline</span>
-        <span className="count" data-testid="pipeline-count">
-          {stagesDone} of {stagesTotal}
-        </span>
-      </div>
+      <details className="disclosure" open={wide} data-testid="pipeline-disclosure">
+        <summary className="section-title" style={{ marginTop: 34 }}>
+          <span>Pipeline</span>
+          <span className="count" data-testid="pipeline-count">
+            {stagesDone} of {stagesTotal}
+          </span>
+        </summary>
 
-      <div className="stack" style={{ marginTop: 12 }}>
-        {stages.map((stage) => (
-          // `.card` wraps `.step` (the mockup puts both on one element) so a failed
-          // step can carry its retry action underneath the row.
-          <div className="card" key={stage.key} data-testid="stage" data-stage={stage.key}>
-            <div className={`step ${toneOf(stage.status)}`}>
-              <span className="ic">{stage.status === 'succeeded' && <CheckIcon />}</span>
-              <div className="body-col">
-                <div className="label">{titleOf(stage)}</div>
-                <div className="sub" data-testid="stage-sub">
-                  {subOf(stage)}
+        <div className="stack" style={{ marginTop: 12 }}>
+          {stages.map((stage) => (
+            // `.card` wraps `.step` (the mockup puts both on one element) so a failed
+            // step can carry its retry action underneath the row.
+            <div className="card" key={stage.key} data-testid="stage" data-stage={stage.key}>
+              <div className={`step ${toneOf(stage.status)}`}>
+                <span className="ic">{stage.status === 'succeeded' && <CheckIcon />}</span>
+                <div className="body-col">
+                  <div className="label">{titleOf(stage)}</div>
+                  <div className="sub" data-testid="stage-sub">
+                    {subOf(stage)}
+                  </div>
                 </div>
+                <span className="time">{elapsedOf(stage, now)}</span>
               </div>
-              <span className="time">{elapsedOf(stage, now)}</span>
+              {/* A stage that produced a document gets a way into it. Gated on the
+                  stage having succeeded, so the link never leads to a 404. */}
+              {stage.key === 'cross_cutting' && stage.status === 'succeeded' && (
+                <button
+                  className="btn btn-secondary block"
+                  type="button"
+                  style={{ marginTop: 12 }}
+                  onClick={onOpenCrossCutting}
+                  data-testid="open-cross-cutting"
+                >
+                  추출된 횡단 관심사 보기
+                </button>
+              )}
+              {/* 5단계가 쓰기 전에는 이 실행에 견줄 표현 자체가 없다. */}
+              {stage.key === 'acceptance_dependencies' && stage.status === 'succeeded' && (
+                <button
+                  className="btn btn-secondary block"
+                  type="button"
+                  style={{ marginTop: 12 }}
+                  onClick={onOpenDiff}
+                  data-testid="open-diff"
+                >
+                  무엇이 달라졌는지 보기
+                </button>
+              )}
+              {stage.status === 'failed' && (
+                <button
+                  className="btn btn-secondary block"
+                  type="button"
+                  style={{ marginTop: 12 }}
+                  disabled={retrying !== null}
+                  onClick={() => void retry(stage.key)}
+                  data-testid="retry"
+                >
+                  이 단계만 다시 시도
+                </button>
+              )}
+              {stage.status === 'succeeded' && !ACTIVE.has(analysis.status) && (
+                <button
+                  className="btn btn-ghost block"
+                  type="button"
+                  style={{ marginTop: 8 }}
+                  disabled={retrying !== null}
+                  onClick={() => void retry(stage.key)}
+                  data-testid="rerun"
+                >
+                  이 단계 다시 실행
+                </button>
+              )}
             </div>
-            {/* A stage that produced a document gets a way into it. Gated on the
-                stage having succeeded, so the link never leads to a 404. */}
-            {stage.key === 'cross_cutting' && stage.status === 'succeeded' && (
-              <button
-                className="btn btn-secondary block"
-                type="button"
-                style={{ marginTop: 12 }}
-                onClick={onOpenCrossCutting}
-                data-testid="open-cross-cutting"
-              >
-                추출된 횡단 관심사 보기
-              </button>
-            )}
-            {/* 5단계가 쓰기 전에는 이 실행에 견줄 표현 자체가 없다. */}
-            {stage.key === 'acceptance_dependencies' && stage.status === 'succeeded' && (
-              <button
-                className="btn btn-secondary block"
-                type="button"
-                style={{ marginTop: 12 }}
-                onClick={onOpenDiff}
-                data-testid="open-diff"
-              >
-                무엇이 달라졌는지 보기
-              </button>
-            )}
-            {stage.status === 'failed' && (
-              <button
-                className="btn btn-secondary block"
-                type="button"
-                style={{ marginTop: 12 }}
-                disabled={retrying !== null}
-                onClick={() => void retry(stage.key)}
-                data-testid="retry"
-              >
-                이 단계만 다시 시도
-              </button>
-            )}
-            {stage.status === 'succeeded' && !ACTIVE.has(analysis.status) && (
-              <button
-                className="btn btn-ghost block"
-                type="button"
-                style={{ marginTop: 8 }}
-                disabled={retrying !== null}
-                onClick={() => void retry(stage.key)}
-                data-testid="rerun"
-              >
-                이 단계 다시 실행
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </details>
 
       {failed !== undefined && (
         <div className="notice err" style={{ marginTop: 16 }} data-testid="stage-failed">
