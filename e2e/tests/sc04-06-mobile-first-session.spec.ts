@@ -1,17 +1,9 @@
 // 검증 시나리오: 04-platform.md#시나리오 6
 //
-// 목업은 어느 목록도 접힌 상태로 그리지 않는다. 접힘은 목업보다 위인 AC4.4 의 「긴 분석
-// 결과는 단계적으로 노출(요약 → 상세)된다」에서 오고, 그 어긋남은 편차 원장 3행으로
-// 등재돼 있다. 그래서 이 spec 의 관측 기준은 목업 카피가 아니라 **폭에 따라 접힘이
-// 갈리는가**다 — compact 에서 요약만 서고, 첫 확장 브레이크포인트에서 같은 화면이
-// 펼쳐지는 것.
+// 이 spec 의 관측 기준은 목업 카피가 아니라 **폭에 따라 접힘이 갈리는가**다 — compact 에서
+// 요약만 서고, 첫 확장 브레이크포인트에서 같은 화면이 펼쳐지는 것.
 //
-// 이 파일에 쓰인 수는 전부 문서에서 왔다: 390px 과 5분은 시나리오 6 의 실행 단계·기대
-// 결과, 600px 은 `frontend/src/index.css` 가 레이아웃을 확장하는 첫 브레이크포인트다.
-//
-// 네 단계를 걷는 것 자체가 시나리오의 단정이라 화면을 질러가지 않는다. 다만 각 단계
-// **안쪽**의 정합성은 그 단계를 소유한 spec 의 몫이다 — 보조 수정 3탭은 `sc03-01`,
-// 의존성 분류·필터는 `sc02-05` 가 세므로 여기서 다시 세지 않는다.
+// 네 단계를 걷는 것 자체가 시나리오의 단정이라 화면을 질러가지 않는다.
 //
 // Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 import { expect, test, type Page } from '@playwright/test';
@@ -21,7 +13,6 @@ import { traced } from '../support/dependencies';
 
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1280, height: 800 };
-/** 시나리오 6 의 기대 결과가 든 예산. 한 세션 전체에 걸리는 상한이다. */
 const SESSION_BUDGET_MS = 300_000;
 
 /** 한 손 조작의 관측 가능한 형태 — 이 폭에서 가로로 밀리는 것이 없다. */
@@ -94,8 +85,7 @@ test.describe('AC4.4: 모바일 폭에서 요약 → 상세로 훑는 5분 세�
       await expect(page.getByTestId('scenario-list')).toBeVisible();
 
       // (d) 의존성 1건 조회. 추적 전에는 목록이 비어 있어(`dependencies-unasked`) 화면에
-      // 걸 것이 없다 — 추적을 태우는 일 자체는 `sc02-05` 가 소유하므로 헬퍼로 맡기고,
-      // 여기서는 그 결과가 이 폭에서 읽히는지만 본다.
+      // 걸 것이 없어, 추적을 태우는 일은 `sc02-05` 소유의 헬퍼에 맡긴다.
       const deps = await traced(page, run.id, key);
       expect(deps.length, '의존성이 하나도 나오지 않았다').toBeGreaterThan(0);
 
@@ -107,8 +97,6 @@ test.describe('AC4.4: 모바일 폭에서 요약 → 상세로 훑는 5분 세�
       const elapsed = Date.now() - startedAt;
       expect(elapsed, `네 단계가 5분 예산을 넘었다 (${elapsed}ms)`).toBeLessThan(SESSION_BUDGET_MS);
 
-      // 데스크톱은 같은 화면을 확장 적용한다 — 접힘은 compact 전용이고,
-      // 600px 을 넘기면 같은 경로가 펼쳐진 채로 선다.
       await page.setViewportSize(DESKTOP);
       await page.goto(`/#/analyses/${run.id}/acceptance`);
       await expect(page.getByTestId('scenarios-disclosure')).toHaveAttribute('open', '');

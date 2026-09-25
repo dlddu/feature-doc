@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react';
 
-/** Compact (< 600px) is the base design; this is the first width the same screen expands at. */
+/** The first width `index.css` expands the layout at — the fold and the layout must agree. */
 export const WIDE_QUERY = '(min-width: 600px)';
 
-/**
- * True once the viewport reaches the first expansion breakpoint. Screens use it to
- * decide whether a long result starts summarised (AC4.4) or already unfolded — the
- * breakpoint is the one `index.css` already expands the layout at, so the fold and
- * the layout never disagree about what "compact" means.
- */
+/** True once the viewport reaches that expansion breakpoint. */
 export function useWideViewport(): boolean {
   const [wide, setWide] = useState(() => window.matchMedia(WIDE_QUERY).matches);
   useEffect(() => {
