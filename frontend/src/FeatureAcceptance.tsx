@@ -11,6 +11,7 @@ import type {
   FeatureAcceptance as Doc,
   FeatureDeletion,
 } from './api';
+import { useWideViewport } from './viewport';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -45,6 +46,7 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates, onOpenHistory 
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const wide = useWideViewport();
   const [generation, setGeneration] = useState(0);
 
   useEffect(() => {
@@ -155,18 +157,20 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates, onOpenHistory 
         </p>
       </div>
 
-      <div className="section-title" style={{ marginTop: 20 }}>
-        <span className="caps">인수 시나리오</span>
-        <span className="section-action" data-testid="scenario-count">
-          {current.scenarios.length}
-        </span>
-      </div>
+      <details className="disclosure" open={wide} data-testid="scenarios-disclosure">
+        <summary className="section-title" style={{ marginTop: 20 }}>
+          <span className="caps">인수 시나리오</span>
+          <span className="section-action" data-testid="scenario-count">
+            {current.scenarios.length}
+          </span>
+        </summary>
 
-      <div className="collection" style={{ marginTop: 12 }} data-testid="scenario-list">
-        {current.scenarios.map((scenario, index) => (
-          <Scenario key={scenario.evidence + index} scenario={scenario} index={index} />
-        ))}
-      </div>
+        <div className="collection" style={{ marginTop: 12 }} data-testid="scenario-list">
+          {current.scenarios.map((scenario, index) => (
+            <Scenario key={scenario.evidence + index} scenario={scenario} index={index} />
+          ))}
+        </div>
+      </details>
 
       {current.contradictions.length !== 0 && (
         <div className="notice warn on" style={{ marginTop: 16 }} data-testid="contradictions">
@@ -293,48 +297,51 @@ function Archive({
   error: string | null;
   onRestore: (deletion: string) => void;
 }) {
+  const wide = useWideViewport();
   return (
     <>
-      <div className="section-title" style={{ marginTop: 22 }}>
-        <span className="caps">보관소</span>
-        <span className="section-action" data-testid="archive-count">
-          {archive.length}
-        </span>
-      </div>
-      <div className="collection" style={{ marginTop: 12 }} data-testid="archive-list">
-        {archive.map((deletion) => (
-          <div
-            className="scn"
-            key={deletion.id}
-            data-testid="archived-feature"
-            data-key={deletion.key}
-            data-restorable={deletion.restorable}
-          >
-            <span className="sn" data-testid="archived-name">
-              {deletion.name}
-            </span>
-            {deletion.reason !== null && (
-              <span className="gwt" data-testid="archived-reason">
-                {deletion.reason}
-              </span>
-            )}
-            <div className="src">
-              <span className="esrc" data-testid="restore-until">
-                {dateOf(deletion.restoreUntil)}까지 되돌릴 수 있어요
-              </span>
-            </div>
-            <button
-              className="btn btn-ghost"
-              type="button"
-              disabled={busy || !deletion.restorable}
-              onClick={() => onRestore(deletion.id)}
-              data-testid="restore-feature"
+      <details className="disclosure" open={wide} data-testid="archive-disclosure">
+        <summary className="section-title" style={{ marginTop: 22 }}>
+          <span className="caps">보관소</span>
+          <span className="section-action" data-testid="archive-count">
+            {archive.length}
+          </span>
+        </summary>
+        <div className="collection" style={{ marginTop: 12 }} data-testid="archive-list">
+          {archive.map((deletion) => (
+            <div
+              className="scn"
+              key={deletion.id}
+              data-testid="archived-feature"
+              data-key={deletion.key}
+              data-restorable={deletion.restorable}
             >
-              되돌리기
-            </button>
-          </div>
-        ))}
-      </div>
+              <span className="sn" data-testid="archived-name">
+                {deletion.name}
+              </span>
+              {deletion.reason !== null && (
+                <span className="gwt" data-testid="archived-reason">
+                  {deletion.reason}
+                </span>
+              )}
+              <div className="src">
+                <span className="esrc" data-testid="restore-until">
+                  {dateOf(deletion.restoreUntil)}까지 되돌릴 수 있어요
+                </span>
+              </div>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                disabled={busy || !deletion.restorable}
+                onClick={() => onRestore(deletion.id)}
+                data-testid="restore-feature"
+              >
+                되돌리기
+              </button>
+            </div>
+          ))}
+        </div>
+      </details>
       {error !== null && (
         <p className="body sm" data-testid="archive-error">
           {error}

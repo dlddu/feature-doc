@@ -63,6 +63,12 @@ test.describe('AC3.1·AC3.4: 한 줄로 부탁한 수정이 3탭 안에 문서�
 
       // ── 탭 3 ─────────────────────────────────────────────────────────
       await page.getByTestId('approve-diff').click();
+
+      // 여기서부터는 결과 확인이라 탭 계수 밖이다. 390px 에서는 AC4.4 에 따라 인수
+      // 시나리오 절이 접힌 채 서므로, 목록을 보려면 요약을 한 번 펼쳐야 한다 —
+      // 세는 탭 셋(`request-edit`·`send-request`·`approve-diff`)은 위에서 이미 끝났다.
+      await expect(page.getByTestId('scenario-count')).toBeVisible();
+      await page.getByTestId('scenarios-disclosure').locator('summary').click();
       await expect(page.getByTestId('scenario-list')).toBeVisible();
 
       const after = (await acceptanceOf(page, run.id)) ?? [];
