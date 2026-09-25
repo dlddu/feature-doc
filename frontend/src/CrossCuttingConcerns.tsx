@@ -144,26 +144,14 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
                     <span className="ename" data-testid="concern-name">
                       {item.name}
                     </span>
-                    {item.evidence.length === 0 ? (
-                      <span className="tag warn" data-testid="concern-no-evidence">
-                        <span className="dot" />
-                        근거 없음
-                      </span>
-                    ) : (
-                      <span className="esrc" data-testid="concern-evidence">
-                        {item.evidence.map((path) => (
-                          <span key={path}>{path}</span>
-                        ))}
-                      </span>
-                    )}
+                    <span className="esrc" data-testid="concern-evidence">
+                      {item.evidence.map((path) => (
+                        <span key={path}>{path}</span>
+                      ))}
+                    </span>
                   </div>
                 ))}
               </div>
-            )}
-            {section.items.some((item) => item.evidence.length === 0) && (
-              <p className="legend" style={{ marginTop: 12 }}>
-                <span className="mk">↳</span> 근거를 찾지 못한 항목은 지어내지 않고 그대로 표시합니다
-              </p>
             )}
           </div>
         ))}
