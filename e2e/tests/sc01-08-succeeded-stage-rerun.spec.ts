@@ -10,6 +10,7 @@
 // `finally`; every assertion is about the job this spec created.
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
+import { afterSecond } from '../support/clock';
 import { installApp } from '../support/github-app';
 
 type StageRow = {
@@ -102,6 +103,7 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
       const strategyStage = page.locator('[data-stage="discovery_strategy"]');
       await expect(strategyStage.getByTestId('rerun')).toBeVisible();
       await expect(strategyStage.getByTestId('rerun')).toHaveText('이 단계 다시 실행');
+      await afterSecond(before.startedAt ?? 0);
       await strategyStage.getByTestId('rerun').click();
 
       // A *new* attempt: `startedAt` is cleared by the reset, so only a value that is
