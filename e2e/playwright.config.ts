@@ -15,6 +15,10 @@ export default defineConfig({
   use: {
     baseURL: process.env.BASE_URL ?? 'http://localhost:8080',
     trace: 'retain-on-failure',
+    // Actions have no default bound, so one mis-aimed click waits out the whole test
+    // timeout and reports only "test timeout" — no locator, nothing to diagnose from.
+    // 30s is above the slowest observed test (21.2s) and 20x below the 600s ceiling.
+    actionTimeout: 30_000,
   },
   projects: [
     {

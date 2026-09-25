@@ -17,6 +17,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
 import { acceptanceOf, runToAcceptance, signInWithCredentials } from '../support/acceptance';
+import { traced } from '../support/dependencies';
 
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1280, height: 800 };
@@ -79,14 +80,25 @@ test.describe('AC4.4: 모바일 폭에서 요약 → 상세로 훑는 5분 세�
       await expect(page.getByTestId('scenario-list')).toBeVisible();
 
       // (c) LLM 보조 수정 1회 — 3탭 규약 자체는 sc03-01 이 센다.
+      // `request-edit` 는 의존성 화면(`FeatureDependencies`)의 진입점이라 그 라우트에서만
+      // 선다. 검수 화면에 선 채로 누르면 영영 나타나지 않는 요소를 기다린다.
+      await page.goto(`/#/analyses/${run.id}/features/${encodeURIComponent(key)}/dependencies`);
       await page.getByTestId('request-edit').click();
       await page.getByTestId('edit-request').fill('만료된 카드 에러 케이스 1개 더 추가');
       await page.getByTestId('send-request').click();
       await expect(page.getByTestId('diff-added')).toHaveCount(1);
       await page.getByTestId('approve-diff').click();
+      // 승인 뒤 검수 화면은 새로 마운트되므로 이 폭에서 다시 접혀 있다.
+      await expect(page.getByTestId('scenario-count')).toBeVisible();
+      await page.getByTestId('scenarios-disclosure').locator('summary').click();
       await expect(page.getByTestId('scenario-list')).toBeVisible();
 
-      // (d) 의존성 1건 조회.
+      // (d) 의존성 1건 조회. 추적 전에는 목록이 비어 있어(`dependencies-unasked`) 화면에
+      // 걸 것이 없다 — 추적을 태우는 일 자체는 `sc02-05` 가 소유하므로 헬퍼로 맡기고,
+      // 여기서는 그 결과가 이 폭에서 읽히는지만 본다.
+      const deps = await traced(page, run.id, key);
+      expect(deps.length, '의존성이 하나도 나오지 않았다').toBeGreaterThan(0);
+
       await page.goto(`/#/analyses/${run.id}/features/${encodeURIComponent(key)}/dependencies`);
       await expect(page.getByTestId('dependency-list')).toBeVisible();
       await expect(page.getByTestId('dependency').first()).toBeVisible();
