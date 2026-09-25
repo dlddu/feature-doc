@@ -40,8 +40,13 @@ http-body-util = "0.1"
 
 [profile.release]
 strip = true
-lto = "thin"
-codegen-units = 1
+# 크로스 크레이트 LTO 를 끄고 codegen-units 는 기본값(16)으로 둔다. thin LTO +
+# codegen-units = 1 이던 때는 lib 최적화가 한 스레드로 돌고, 이어서 두 바이너리가
+# 각자 프로그램 전체를 다시 LTO 해 크레이트만 다시 빌드해도 ~54초가 걸렸다
+# (arm64 4코어 실측). 둘 중 하나만 바꾸면 줄지 않는다 — CGU 만 늘리면 쪼갠 만큼
+# 바이너리의 LTO 가 늘어난다. 둘 다 바꾸면 ~24초. 대가는 바이너리 ~20% 증가와
+# CPU 위주 코드의 몇 % 수준 차이인데, 이 서비스는 I/O·LLM 대기가 대부분이다.
+lto = false
 
 # CI 의 `cargo test` 전용 프로필. release 의 `lto`·`codegen-units = 1` 은 배포
 # 바이너리(Dockerfile)를 위한 것이라, 테스트 바이너리 20여 개마다 LTO 링크를
