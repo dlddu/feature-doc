@@ -181,7 +181,7 @@ kind 노드 이미지는 `kindest/node:v1.34.3@sha256:08497ee1…dd48` digest로
 - **`image`** — `e2e` 가 걸러진 PR 에서만. 그래도 preview 환경은 `<head sha>` 태그를 찾으므로 head 를 빌드해 푸시합니다(소스가 main 과 같아 GHA 캐시가 통째로 맞습니다).
 - **`ci-gate`** — 유일한 필수 체크. 위 job 과 문서 게이트 3종이 모두 success 인지 판정합니다. skipped 는 `changes` 가 「이번 PR 에선 안 돌아도 된다」고 판정한 job 에만 허용합니다.
 
-`.github/workflows/image.yml` — main push 전용.
+`.github/workflows/image.yml` — main push 전용. 이미지(`frontend/`·`backend/`·`Dockerfile`)와 운영 매니페스트(`deploy/k8s/`)에 닿지 않는 머지(`docs/`·`tools/`·`e2e/`·`scripts/`·`.claude/`·`deploy/e2e/`·`backend/tests/`·`README.md`·다른 워크플로)에는 돌지 않아 운영 파드도 재시작되지 않습니다 — 그 커밋은 `deploy`에 반영되지 않으므로 운영 커밋은 `Source-Commit` 트레일러로 확인합니다.
 
 - **`push`** — main 커밋을 빌드해 `ghcr.io/<owner>/featuredoc:<sha>`로 푸시(GHA 캐시).
 - **`pin`** — `needs: push`, **main 푸시에서만**. `deploy/k8s/deployment.yaml`과 `worker-deployment.yaml`의 이미지 태그를 방금 빌드한 커밋 SHA로 바꾼 커밋을 **`deploy` 브랜치**로 force-push합니다(= `main@SHA` + 고정 커밋 하나, `Source-Commit: <sha>` 트레일러). main은 ruleset(필수 체크 `ci-gate`)으로 보호되어 되커밋하지 않으며, Flux는 `deploy`를 추적합니다. `contents: write`는 이 job에만 부여하고 기본 `GITHUB_TOKEN`만 쓰므로 장기 크레덴셜이 없습니다. 늦게 끝난 옛 실행은 deploy가 이미 더 새 커밋을 가리키면 건너뜁니다.
