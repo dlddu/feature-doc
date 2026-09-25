@@ -14,8 +14,6 @@ async fn login_installed(state: &AppState, github_id: i64, login: &str) -> Strin
     login_installed_with(state, github_id, login, 4242).await
 }
 
-/// `login_installed` with the installation id spelled out, for the one suite that
-/// has to tell two users' installations apart in what a claim hands over.
 async fn login_installed_with(
     state: &AppState,
     github_id: i64,
@@ -44,8 +42,6 @@ async fn login_installed_with(
     session::create(&state.db, &user.id).await.unwrap()
 }
 
-/// Registers an active LLM key for this session's user, so a claim for their job
-/// has a key to carry.
 async fn register_key(state: &AppState, session: &str, provider: &str, key: &str) {
     let resp = build_router(state.clone())
         .oneshot(user_post(
@@ -480,18 +476,6 @@ async fn the_api_serves_and_the_queue_holds_while_no_worker_claims() {
     let body = json_body(listed).await;
     assert_eq!(body[0]["status"], "queued");
 }
-/// AC4.7 (04#시나리오 10 의 두 번째 기대 결과): 한 워커 인스턴스가 두 사용자의 job 을
-/// **연달아** 집어도 작업 컨텍스트가 섞이지 않는다.
-///
-/// 이 단정이 왜 claim 층에 있나: 워커는 영속을 하나도 소유하지 않고(`worker_api` 모듈
-/// 주석), 한 job 을 돌리는 데 필요한 모든 것 — 설치 토큰·LLM 키·제공자·언어 — 이 **그
-/// claim 응답으로만** 들어온다. 그래서 "동일 워커 인스턴스에서 처리되어도 데이터가 섞이지
-/// 않는다"가 성립하는지는 워커 프로세스를 두 번 돌려 보는 것이 아니라 **두 claim 이 각자
-/// 주인의 것만 싣는가**로 판정된다. 여기서 깨지면 워커가 무엇을 하든 격리가 깨지고,
-/// 여기서 성립하면 워커가 job 사이에 남길 수 있는 것이 없다.
-///
-/// 관측 가능하게 만드는 두 값: stub 설치 토큰은 `ghs_stub_<installation_id>_…` 이라 어느
-/// 설치로 발급됐는지 응답에 드러나고, LLM 키는 그 주인이 등록한 평문 그대로 실린다.
 #[tokio::test]
 async fn one_worker_claiming_two_users_jobs_never_mixes_their_context() {
     const ALICE_KEY: &str = "sk-ant-api03-aaaaaaaaaaaaaaaaaaaa";
@@ -503,13 +487,11 @@ async fn one_worker_claiming_two_users_jobs_never_mixes_their_context() {
 
     register_key(&state, &alice, "anthropic", ALICE_KEY).await;
     register_key(&state, &bob, "openai", BOB_KEY).await;
-    // Bob 만 언어를 골랐다 — 분석 행에 고정되는 값이라 claim 에도 갈려 나온다.
     set_language(&state, &bob, "en").await;
 
     let alice_job = enqueue(&state, &alice, "payments-api").await;
     let bob_job = enqueue(&state, &bob, "checkout-web").await;
 
-    // 같은 worker id 로 두 번. 큐 순서에 기대지 않고 job id 로 되찾는다.
     let first = json_body(claim(&state, "w1").await).await;
     let second = json_body(claim(&state, "w1").await).await;
     let mut by_id = std::collections::HashMap::new();
@@ -523,13 +505,12 @@ async fn one_worker_claiming_two_users_jobs_never_mixes_their_context() {
     assert_eq!(a["repoName"], "payments-api");
     assert_eq!(b["repoName"], "checkout-web");
 
-    // ⑴ 자격증명: 각 claim 은 그 job 주인의 것만 싣는다.
     assert_eq!(a["llmApiKey"], ALICE_KEY, "alice 의 job 에 alice 의 키");
     assert_eq!(a["llmProvider"], "anthropic");
     assert_eq!(b["llmApiKey"], BOB_KEY, "bob 의 job 에 bob 의 키");
     assert_eq!(b["llmProvider"], "openai");
 
-    // ⑵ 그리고 상대의 것은 어디에도 없다 — 값 비교만으로는 "둘 다 실렸다"를 못 잡는다.
+    // 값 비교만으로는 "둘 다 실렸다"를 못 잡는다 — 상대 것의 부재를 따로 센다.
     assert!(
         !a.to_string().contains(BOB_KEY),
         "alice 의 claim 이 bob 의 키를 흘렸다: {a}"
@@ -539,7 +520,6 @@ async fn one_worker_claiming_two_users_jobs_never_mixes_their_context() {
         "bob 의 claim 이 alice 의 키를 흘렸다: {b}"
     );
 
-    // ⑶ 설치 토큰은 그 사용자의 설치로 발급된다(stub 토큰이 id 를 품는다).
     let a_token = a["installationToken"].as_str().unwrap();
     let b_token = b["installationToken"].as_str().unwrap();
     assert!(
@@ -551,7 +531,6 @@ async fn one_worker_claiming_two_users_jobs_never_mixes_their_context() {
         "bob 의 설치로 발급되지 않았다: {b_token}"
     );
 
-    // ⑷ 사용자 선호도 job 별로 갈린다.
     assert_eq!(b["llmLanguage"], "en", "bob 이 고른 언어");
     assert_ne!(a["llmLanguage"], "en", "alice 는 고른 적이 없다");
 }
