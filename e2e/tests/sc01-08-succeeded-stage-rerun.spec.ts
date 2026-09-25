@@ -10,6 +10,7 @@
 // `finally`; every assertion is about the job this spec created.
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
+import { installApp } from '../support/github-app';
 
 type StageRow = {
   key: string;
@@ -53,7 +54,7 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
       await scaleWorkers(0);
 
       await page.goto('/api/auth/login?as=sc0108');
-      expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
+      await installApp(page.request);
       const key = await page.request.post('/api/llm-keys', {
         data: { provider: 'anthropic', key: 'sk-ant-api03-aaaaaaaaaaaaaaaaaaaa' },
       });

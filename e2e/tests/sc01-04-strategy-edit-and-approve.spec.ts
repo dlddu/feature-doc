@@ -16,6 +16,7 @@
 // Like every spec it signs in as its own stub user (`?as=ac13`).
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
+import { installApp } from '../support/github-app';
 
 type Entry = { pattern: string; source: 'generated' | 'user' };
 type Strategy = { entries: Entry[]; approved: boolean };
@@ -53,7 +54,7 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
       await scaleWorkers(0);
 
       await page.goto('/api/auth/login?as=ac13');
-      expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
+      await installApp(page.request);
       const key = await page.request.post('/api/llm-keys', {
         data: { provider: 'openai', key: 'sk-proj-cccccccccccccccccccccc' },
       });

@@ -7,6 +7,7 @@
 // test nor counted as an AC↔spec matching unit.
 
 import { expect, type Page } from '@playwright/test';
+import { installApp } from './github-app';
 
 export type AcceptanceScenario = {
   given: string;
@@ -62,7 +63,7 @@ async function statusOf(page: Page, id: string): Promise<string> {
  *  another AC's screen is setup, not verification. */
 export async function signInWithCredentials(page: Page, handle: string): Promise<void> {
   await page.goto(`/api/auth/login?as=${handle}`);
-  expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
+  await installApp(page.request);
   const key = await page.request.post('/api/llm-keys', {
     data: { provider: 'openai', key: 'sk-proj-dddddddddddddddddddddd' },
   });

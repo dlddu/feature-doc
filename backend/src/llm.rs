@@ -558,6 +558,7 @@ pub(crate) fn assert_strict_schema(schema: &Value) {
     walk(schema, "$");
 }
 
+// mock-exception: LLM-01 — 단위 테스트 모듈: 결정적 더블로 검증(E2E 예외가 아닌 지문 등재 — 정책: docs/e2e-mocking-policy.md)
 #[cfg(test)]
 mod tests {
     use super::*;

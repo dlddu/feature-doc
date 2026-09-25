@@ -8,6 +8,7 @@
 // Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
+import { installApp } from '../support/github-app';
 
 /** Must match `backend/src/cross_cutting.rs` AXES. */
 const AXES = [
@@ -59,7 +60,7 @@ test.describe('AC1.2: 횡단 관심사 자동 추출 및 문서화', () => {
       await scaleWorkers(0);
 
       await page.goto('/api/auth/login?as=ac12');
-      expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
+      await installApp(page.request);
       const key = await page.request.post('/api/llm-keys', {
         data: { provider: 'openai', key: 'sk-proj-bbbbbbbbbbbbbbbbbbbbbb' },
       });

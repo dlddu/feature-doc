@@ -26,6 +26,7 @@
 // 임대 창 안에서만 실재한다(setWorkerEnv: scale 0 뒤 set, finally에서 unset).
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers, setWorkerEnv } from '../support/cluster';
+import { installApp } from '../support/github-app';
 
 /** Stage keys seeded at enqueue, in pipeline order (backend/src/pipeline.rs). */
 const LATER_STAGES = [
@@ -73,7 +74,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       await scaleWorkers(0);
 
       await page.goto('/api/auth/login?as=sc0106');
-      expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
+      await installApp(page.request);
       const key = await page.request.post('/api/llm-keys', {
         data: { provider: 'anthropic', key: 'sk-ant-api03-aaaaaaaaaaaaaaaaaaaa' },
       });
@@ -168,7 +169,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       setWorkerEnv('FEATUREDOC_STUB_LLM_FAIL', 'end-user feature candidates');
 
       await page.goto('/api/auth/login?as=sc0106');
-      expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
+      await installApp(page.request);
       const key = await page.request.post('/api/llm-keys', {
         data: { provider: 'anthropic', key: 'sk-ant-api03-aaaaaaaaaaaaaaaaaaaa' },
       });

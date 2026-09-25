@@ -6,6 +6,7 @@
 // Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
+import { installApp } from '../support/github-app';
 
 type StageRow = {
   key: string;
@@ -45,7 +46,7 @@ test.describe('AC1.5: 비동기 진행 가시성과 복귀', () => {
       await scaleWorkers(0);
 
       await page.goto('/api/auth/login?as=ac15');
-      expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
+      await installApp(page.request);
       const key = await page.request.post('/api/llm-keys', {
         data: { provider: 'anthropic', key: 'sk-ant-api03-aaaaaaaaaaaaaaaaaaaa' },
       });

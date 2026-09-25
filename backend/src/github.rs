@@ -42,7 +42,7 @@ async fn install_url(
     let url = match state.config.doubles.github_app {
         // mock-exception: EXT-02 — 실제 GitHub App 설치는 실제 계정·동의가 필요
         Mode::Stub => {
-            let iid = stub_installation_id(user.github_id);
+            let iid = github_app::stub_installation_id(user.github_id);
             format!("/api/github/setup?installation_id={iid}&setup_action=install&state={nonce}")
         }
         Mode::Real => {
@@ -84,7 +84,7 @@ async fn setup(
         }
     }
 
-    github_app::verify_user_owns_installation(&state, &user.id, params.installation_id).await?;
+    github_app::verify_user_owns_installation(&state, &user, params.installation_id).await?;
 
     let info = github_app::fetch_installation(&state, params.installation_id).await?;
     installations::upsert(
@@ -213,6 +213,3 @@ async fn adopt_existing_installation(state: &AppState, user_id: &str) -> Option<
         .flatten()
 }
 
-fn stub_installation_id(github_id: i64) -> i64 {
-    10_000 + github_id.rem_euclid(90_000)
-}

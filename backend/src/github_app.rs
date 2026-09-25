@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::Mode;
 use crate::error::AppError;
+use crate::models::User;
 use crate::state::AppState;
 use crate::util::{now_unix, rfc3339_to_unix};
 
@@ -266,6 +267,7 @@ pub async fn list_user_installations(
     state: &AppState,
     user_id: &str,
 ) -> Result<Vec<UserInstallation>, AppError> {
+    // mock-exception: EXT-02 — 사용자별 설치 목록은 실제 사용자 토큰으로 실 계정의 설치를 읽어야 한다
     if state.config.doubles.github_app == Mode::Stub {
         return Ok(Vec::new());
     }
@@ -326,17 +328,26 @@ pub async fn list_user_installations(
 }
 
 /// The Setup URL's `installation_id` is attacker-controlled (GitHub does not sign
-/// it), so real mode must confirm it against the user's own installation list.
+/// it), so it must be confirmed against the user's own installations. The stub has
+/// no GitHub to ask, so it confirms against the only id its own install flow ever
+/// hands out — [`stub_installation_id`] of this user. Returning `Ok(())` for every
+/// id would accept what real rejects, which the mocking policy counts as a fidelity
+/// defect regardless of registration (docs/e2e-mocking-policy.md, 충실도 보증).
 pub async fn verify_user_owns_installation(
     state: &AppState,
-    user_id: &str,
+    user: &User,
     installation_id: i64,
 ) -> Result<(), AppError> {
+    // mock-exception: EXT-02 — 설치 소유 확인은 실제 사용자 토큰으로 실 계정의 설치 목록을 읽어야 한다
     if state.config.doubles.github_app == Mode::Stub {
-        return Ok(());
+        return if installation_id == stub_installation_id(user.github_id) {
+            Ok(())
+        } else {
+            Err(AppError::Forbidden)
+        };
     }
 
-    let installations = list_user_installations(state, user_id).await?;
+    let installations = list_user_installations(state, &user.id).await?;
     if installations
         .iter()
         .any(|i| i.installation_id == installation_id)
@@ -345,6 +356,14 @@ pub async fn verify_user_owns_installation(
     } else {
         Err(AppError::Forbidden)
     }
+}
+
+/// The single installation id the stub install flow hands out, derived from the
+/// user so two stub users never collide. Lives here rather than beside the install
+/// route because [`verify_user_owns_installation`] has to check against the very
+/// value that flow issued.
+pub fn stub_installation_id(github_id: i64) -> i64 {
+    10_000 + github_id.rem_euclid(90_000)
 }
 
 /// `iss` is the client ID, not the numeric App ID: both authenticate today, but

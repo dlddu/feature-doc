@@ -16,6 +16,7 @@
 // Like every spec it signs in as its own stub user (`?as=ac14`).
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
+import { installApp } from '../support/github-app';
 
 type Candidate = {
   key: string;
@@ -80,7 +81,7 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
       await scaleWorkers(0);
 
       await page.goto('/api/auth/login?as=ac14');
-      expect((await page.request.get('/api/github/setup?installation_id=4242')).ok()).toBeTruthy();
+      await installApp(page.request);
       const key = await page.request.post('/api/llm-keys', {
         data: { provider: 'openai', key: 'sk-proj-dddddddddddddddddddddd' },
       });
