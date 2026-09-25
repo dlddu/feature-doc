@@ -33,7 +33,7 @@ use crate::error::AppError;
 use crate::pipeline::{self, stage_status, status};
 use crate::state::AppState;
 use crate::util::now_unix;
-use crate::{github_app, installations};
+use crate::{analysis, github_app, installations};
 
 /// How long a claim is held before another worker may reclaim the job. Long enough
 /// to cover a stage plus the worker's HTTP timeouts; short enough that a killed
@@ -184,6 +184,47 @@ struct ClaimRow {
 /// this runs on an engine with weaker write serialisation — measured to be
 /// redundant today (removing it alone breaks no test; removing the subquery
 /// filter breaks `concurrent_workers_take_disjoint_jobs`).
+/// Applies AC4.1's revocation policy to one job: **finish the call already in
+/// flight, then stop**.
+///
+/// The policy is honoured by *where this is called from* rather than by anything
+/// here — both call sites sit on a lease boundary, between the worker's calls, so
+/// no request is ever cut off mid-flight and no LLM call already paid for is
+/// thrown away. This closes the row; the worker learns of it from the `409` its
+/// next lease-bearing call already returns, so the queue protocol is unchanged.
+///
+/// The running stage is closed with the same reason so the progress screen has
+/// one story, not two.
+async fn stop_for_revoked_access(state: &AppState, id: &str) -> Result<(), AppError> {
+    let now = now_unix();
+    sqlx::query(
+        "UPDATE analyses \
+            SET status = ?, error = ?, finished_at = ?, lease_expires_at = NULL, claimed_by = NULL \
+          WHERE id = ?",
+    )
+    .bind(status::FAILED)
+    .bind(analysis::ACCESS_REVOKED)
+    .bind(now)
+    .bind(id)
+    .execute(&state.db)
+    .await?;
+
+    sqlx::query(
+        "UPDATE analysis_stages SET status = ?, error = ?, finished_at = ? \
+          WHERE analysis_id = ? AND status = ?",
+    )
+    .bind(stage_status::FAILED)
+    .bind(analysis::ACCESS_REVOKED)
+    .bind(now)
+    .bind(id)
+    .bind(stage_status::RUNNING)
+    .execute(&state.db)
+    .await?;
+
+    tracing::info!(analysis_id = %id, "analysis stopped — repository access revoked");
+    Ok(())
+}
+
 async fn claim(
     State(state): State<AppState>,
     _auth: WorkerAuth,
@@ -229,6 +270,15 @@ async fn claim(
         worker_id = %req.worker_id,
         "analysis claimed"
     );
+
+    // AC4.1's revocation gate, asked before the job leaves the API. A job whose
+    // repository is no longer within the App's granted access is closed by the
+    // policy instead of being handed out; the worker is told the queue is empty and
+    // asks again, so one revoked job cannot wedge the queue behind it.
+    if !analysis::still_granted(&state, &job.user_id, &job.repo_owner, &job.repo_name).await? {
+        stop_for_revoked_access(&state, &job.id).await?;
+        return Ok(StatusCode::NO_CONTENT.into_response());
+    }
 
     // Mint the job-scoped installation token here rather than storing one anywhere
     // (AC4.1/AC4.3). A job whose installation has since been removed simply gets
@@ -545,11 +595,27 @@ async fn heartbeat(
     .execute(&state.db)
     .await?;
 
-    if res.rows_affected() == 1 {
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err(AppError::Conflict("lease no longer held".into()))
+    if res.rows_affected() != 1 {
+        return Err(AppError::Conflict("lease no longer held".into()));
     }
+
+    // The same gate as the claim, on the boundary the worker crosses between its
+    // calls: the renewal it just took is withdrawn rather than the call it is about
+    // to make being pre-empted.
+    let target: Option<(String, String, String)> = sqlx::query_as(
+        "SELECT user_id, repo_owner, repo_name FROM analyses WHERE id = ?",
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await?;
+    if let Some((user_id, owner, name)) = target {
+        if !analysis::still_granted(&state, &user_id, &owner, &name).await? {
+            stop_for_revoked_access(&state, &id).await?;
+            return Err(AppError::Conflict("lease no longer held".into()));
+        }
+    }
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Deserialize)]

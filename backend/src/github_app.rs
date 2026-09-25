@@ -205,14 +205,40 @@ pub async fn list_repositories(
     }
 }
 
+/// Narrows what the stub installation grants, so a test can take repository access
+/// away the way a user does on GitHub (AC4.1's "해제·범위 축소").
+///
+/// Unset is the full stub installation, so a deployment that says nothing keeps the
+/// three repositories every other spec relies on. The value is a comma-separated
+/// list of repository names; an empty value grants none, which is what an
+/// uninstall looks like from here.
+const STUB_ACCESS: &str = "FEATUREDOC_STUB_REPO_ACCESS";
+
+fn stub_granted_names() -> Option<Vec<String>> {
+    let raw = std::env::var(STUB_ACCESS).ok()?;
+    Some(
+        raw.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect(),
+    )
+}
+
 /// Three repos — the count must stay in step with [`repository_count`]'s stub arm.
+/// Both read [`stub_granted_names`] for that reason: one narrowing, two answers
+/// that cannot drift apart.
 fn stub_repositories() -> Vec<RepoRef> {
+    let granted = stub_granted_names();
     [
         ("payments-api", "main", 2300),
         ("checkout-web", "main", 5100),
         ("notif-worker", "main", 800),
     ]
     .into_iter()
+    .filter(|(name, _, _)| match &granted {
+        None => true,
+        Some(names) => names.iter().any(|n| n == name),
+    })
     .map(|(name, branch, size_kb)| RepoRef {
         owner: "stub-account".to_string(),
         name: name.to_string(),
@@ -226,7 +252,7 @@ fn stub_repositories() -> Vec<RepoRef> {
 pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<i64> {
     match state.config.doubles.github_app {
         // mock-exception: EXT-02 — 저장소 개수 조회는 실제 설치 토큰이 필요
-        Mode::Stub => Some(3),
+        Mode::Stub => Some(stub_repositories().len() as i64),
         Mode::Real => {
             let token = mint_installation_token(state, installation_id).await.ok()?;
             let url = format!(
