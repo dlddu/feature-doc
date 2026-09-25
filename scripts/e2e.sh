@@ -10,12 +10,38 @@ SKIP_BUILD="${SKIP_BUILD:-0}"
 SKIP_PLAYWRIGHT_INSTALL="${SKIP_PLAYWRIGHT_INSTALL:-0}"
 
 PF_PID=""
+PF_LOG="${PF_LOG:-/tmp/featuredoc-pf.log}"
+
+# The forward is supervised rather than one-shot. `kubectl port-forward svc/…` binds to
+# one pod behind the Service and exits when that pod goes away, and the API Deployment is
+# `strategy: Recreate` (SQLite on a ReadWriteOnce volume), so any spec that edits API env
+# leaves a window with no pod at all and the forward dies for good. Respawning against
+# whatever pod is ready now is what makes an API rollout survivable; the counterpart is
+# `setApiEnv` in e2e/support/cluster.ts, which does not return until this has landed, so
+# no spec ever observes the window.
+supervise_port_forward() {
+  local child=''
+  trap 'kill "${child}" 2>/dev/null || true; exit 0' TERM INT
+  while :; do
+    kubectl port-forward svc/featuredoc "${LOCAL_PORT}:8080" >>"${PF_LOG}" 2>&1 &
+    child=$!
+    wait "${child}" 2>/dev/null || true
+    echo "[pf] forward exited — re-establishing against the current pod" >>"${PF_LOG}"
+    sleep 1
+  done
+}
 
 cleanup() {
   if [ -n "${PF_PID}" ] && kill -0 "${PF_PID}" 2>/dev/null; then
-    echo "[cleanup] stop port-forward (pid ${PF_PID})"
+    echo "[cleanup] stop port-forward supervisor (pid ${PF_PID})"
     kill "${PF_PID}" 2>/dev/null || true
     wait "${PF_PID}" 2>/dev/null || true
+  fi
+  # kind e2e only ever runs in CI, so this log is the only surviving record of a mid-run
+  # pod swap. Print it rather than letting it go with the runner.
+  if [ -s "${PF_LOG}" ]; then
+    echo "[cleanup] port-forward log (${PF_LOG}):"
+    sed 's/^/  | /' "${PF_LOG}"
   fi
   if [ "${KEEP_CLUSTER}" != "1" ]; then
     echo "[cleanup] kind delete cluster --name ${CLUSTER_NAME}"
@@ -60,8 +86,9 @@ kubectl rollout status deployment/featuredoc --timeout=180s
 # that reports complete still proves the Deployment itself applied cleanly.
 kubectl rollout status deployment/featuredoc-worker --timeout=180s
 
-echo "[6/7] port-forward svc/featuredoc ${LOCAL_PORT}:8080"
-kubectl port-forward svc/featuredoc "${LOCAL_PORT}:8080" >/tmp/featuredoc-pf.log 2>&1 &
+echo "[6/7] port-forward svc/featuredoc ${LOCAL_PORT}:8080 (supervised)"
+: >"${PF_LOG}"
+supervise_port_forward &
 PF_PID=$!
 for _ in $(seq 1 30); do
   if curl -fsS "http://localhost:${LOCAL_PORT}/hello" >/dev/null 2>&1; then

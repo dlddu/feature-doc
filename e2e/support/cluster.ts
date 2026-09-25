@@ -94,21 +94,84 @@ export function setWorkerEnv(key: string, value: string | null): void {
   }
 }
 
+/** Pod names currently existing for the API Deployment, in any phase. */
+function apiPods(): string[] {
+  const out = kubectl(
+    'get',
+    'pods',
+    '-l',
+    'app.kubernetes.io/name=featuredoc',
+    '-o',
+    'jsonpath={.items[*].metadata.name}',
+  ).trim();
+  return out ? out.split(/\s+/) : [];
+}
+
+/** Bumped by the API server whenever an edit actually rewrites the pod template. */
+function apiGeneration(): string {
+  return kubectl('get', API_DEPLOY, '-o', 'jsonpath={.metadata.generation}').trim();
+}
+
 /**
- * Sets (or clears, with `value = null`) one env var on the **API** Deployment, and
- * waits for the rollout — unlike the worker, the API is what every request goes to,
- * so a spec may not continue while the old pod is still serving.
+ * Blocks until `BASE_URL` answers again.
+ *
+ * This is the assertion that matters, and it is deliberately *not* `rollout status`:
+ * the pod is not what the specs talk to. Every request goes through the single
+ * `kubectl port-forward` that `scripts/e2e.sh` owns, and that forward is bound to one
+ * pod — when the pod goes, the forward exits and the harness has to respawn it.
+ * Waiting on the Deployment instead let sc04-02 continue into that window, and the
+ * eleven sc04-* specs queued behind it went down with it on `ECONNREFUSED :8080`.
+ */
+async function waitForApi(): Promise<void> {
+  const base = process.env.BASE_URL ?? 'http://localhost:8080';
+  let last = 'no attempt made';
+  for (let i = 0; i < 240; i++) {
+    try {
+      const res = await fetch(`${base}/hello`);
+      if (res.ok) return;
+      last = `HTTP ${res.status}`;
+    } catch (e) {
+      last = e instanceof Error ? e.message : String(e);
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`${base}/hello did not come back within 120s (last: ${last})`);
+}
+
+/**
+ * Sets (or clears, with `value = null`) one env var on the **API** Deployment and
+ * returns only once `BASE_URL` is served by a pod that carries the new value.
  *
  * Deployment-wide state with the same lease rule as `setWorkerEnv`: set it inside
  * the spec's own block, clear it in `finally`. Used by sc04-02 to take repository
  * access away the way a user does on GitHub (`FEATUREDOC_STUB_REPO_ACCESS`,
  * `backend/src/github_app.rs`).
+ *
+ * Unlike the worker, the API cannot be restarted quietly: it is `strategy: Recreate`
+ * (SQLite on a ReadWriteOnce volume), so the old pod is gone *before* the new one
+ * starts and there is a window with nothing serving at all. Hence the three waits
+ * below — new pod, old pod gone, port actually answering — and hence the caller must
+ * `await` this. A rollout that nobody waited through is what broke the first run of
+ * sc04-02 and every sc04-* spec after it.
  */
-export function setApiEnv(key: string, value: string | null): void {
+export async function setApiEnv(key: string, value: string | null): Promise<void> {
+  const generationBefore = apiGeneration();
+  const podsBefore = new Set(apiPods());
   if (value === null) {
     kubectl('set', 'env', API_DEPLOY, `${key}-`);
   } else {
     kubectl('set', 'env', API_DEPLOY, `${key}=${value}`);
   }
-  kubectl('rollout', 'status', API_DEPLOY, '--timeout=180s');
+  // A no-op edit (clearing a var that was never set) rewrites nothing, so there is no
+  // rollout to wait for — and waiting for a pod swap that will never come would just
+  // burn the spec's timeout.
+  if (apiGeneration() !== generationBefore) {
+    kubectl('rollout', 'status', API_DEPLOY, '--timeout=180s');
+    for (let i = 0; i < 240; i++) {
+      const pods = apiPods();
+      if (pods.length > 0 && pods.every((name) => !podsBefore.has(name))) break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+  await waitForApi();
 }

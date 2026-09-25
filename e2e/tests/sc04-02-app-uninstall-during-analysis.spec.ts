@@ -58,7 +58,7 @@ test.describe('AC4.1: 진행 중 분석 도중 App 설치 해제', () => {
       await expect(page.getByTestId('access-revoked')).toHaveCount(0);
 
       // 사용자가 GitHub 에서 이 저장소를 App 의 접근 범위에서 뺀다.
-      setApiEnv(ACCESS, 'checkout-web,notif-worker');
+      await setApiEnv(ACCESS, 'checkout-web,notif-worker');
 
       await scaleWorkers(1);
 
@@ -88,14 +88,14 @@ test.describe('AC4.1: 진행 중 분석 도중 App 설치 해제', () => {
       await expect(page.getByTestId('stage-failed')).toHaveCount(0);
 
       // 범위를 되돌리면 다시 시작할 수 있다(통지가 안내하는 그대로).
-      setApiEnv(ACCESS, ALL_REPOS);
+      await setApiEnv(ACCESS, ALL_REPOS);
       const again = await page.request.post('/api/analyses', {
         data: { repoUrl: 'stub-account/payments-api', branch: null },
       });
       expect(again.status(), '접근을 되돌린 뒤에는 다시 시작된다').toBe(201);
     } finally {
       await scaleWorkers(0);
-      setApiEnv(ACCESS, null);
+      await setApiEnv(ACCESS, null);
     }
   });
 });
