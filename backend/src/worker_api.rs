@@ -122,9 +122,7 @@ struct ClaimView {
     /// their LLM calls and overwriting the very document the user approved. The rule
     /// is spelled out in [`offered_stages`].
     executable_stages: Vec<String>,
-    /// Stage 2's stored document, carried when stage 3 is offered **without** stage
-    /// 2 — i.e. when stage 3 alone is being re-run (AC1.5). Stage 3 plans over this
-    /// landscape; carrying it is what lets the re-run leave stage 2 untouched.
+    /// Stage 2's stored document, carried when stage 3 is offered **without** stage 2.
     /// `None` whenever stage 2 is offered too (the worker then uses this pass's).
     cross_cutting_document: Option<serde_json::Value>,
     /// The patterns the reviewer approved (AC1.3), when they have. Stage 4's input,
@@ -413,13 +411,9 @@ pub async fn pending_dependency_requests(
 
 /// The gate values [`offered_stages`] decides on, read once per claim.
 pub struct Gates {
-    /// The reviewer approved a strategy (AC1.3) — stage 4's gate.
     pub strategy_approved: bool,
-    /// At least one feature candidate is approved — stage 5's gate.
     pub candidates_approved: bool,
-    /// An approved feature has no acceptance document yet ([`acceptance_pending`]).
     pub acceptance_pending: bool,
-    /// Stage 2's document is stored, so stage 3 can be offered on its own.
     pub landscape_stored: bool,
 }
 
@@ -480,7 +474,6 @@ pub async fn offered_stages(
     Ok(offered)
 }
 
-/// Stage 2's stored document, when there is one.
 async fn stored_landscape(
     state: &AppState,
     analysis_id: &str,

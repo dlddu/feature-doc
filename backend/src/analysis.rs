@@ -215,19 +215,13 @@ async fn detail(
     Ok(Json(load_detail(&state, &user.id, &id).await?))
 }
 
-/// Re-runs one finished stage — failed *or* succeeded — and nothing else (AC1.5:
-/// "실패했거나 완료된 단계는 그 단계만 다시 실행할 수 있다", test/01 시나리오 6·8).
+/// Re-runs one finished stage — failed *or* succeeded — and nothing else.
 ///
 /// The retry is expressed as a *queue* operation rather than a second worker
 /// protocol: the stage row goes back to `pending` and the job goes back to
 /// `queued`, so the existing claim/lease path in [`crate::worker_api`] performs the
 /// re-run. Sibling stage rows are not touched, which is what keeps already-finished
 /// work (and its measured detail) intact.
-///
-/// Later stages are deliberately **not** invalidated when a succeeded stage re-runs:
-/// they keep the output — and the reviewer keeps the decisions — made against the
-/// earlier result. Re-running a stage is a request for a fresh result of *that*
-/// stage, not a restart of the pipeline behind it.
 async fn retry_stage(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
