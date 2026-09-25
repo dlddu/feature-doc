@@ -3,10 +3,6 @@
 // Everything rendered here is the stored document, never anything derived
 // client-side.
 //
-// Two places where this screen has no mockup counterpart to compare against: an
-// item renders *every* path it cites where the mockup draws one, and the
-// reproducibility line is drawn nowhere in the mockup at all.
-//
 // Arriving here says nothing about whether the strategy exists yet — stages finish
 // in order but not instantly — so the way out is gated rather than always offered.
 
@@ -123,7 +119,7 @@ export function CrossCuttingConcerns({ id, onBack, onOpenDiscoveryStrategy }: Pr
         나오고, 달라지면 무엇이 달라졌는지 항목별로 알려 드립니다.
       </p>
 
-      <div className="row" style={{ marginTop: 14 }} data-testid="reproducibility">
+      <div className="row" style={{ marginTop: 14, gap: 8 }} data-testid="reproducibility">
         <span className="tag" data-verdict={doc.reproducibility.verdict}>
           {reproText(doc)}
         </span>
