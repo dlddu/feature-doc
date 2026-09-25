@@ -41,9 +41,7 @@ http-body-util = "0.1"
 [profile.release]
 strip = true
 lto = "thin"
-# codegen-units 는 기본값(16)으로 둔다. 1 로 두면 코드 생성이 한 스레드로만 돌아
-# Docker 빌드에서 이 크레이트만 매번 ~1분이 걸렸다. 이 서비스는 I/O·LLM 대기가
-# 대부분이라 단일 CGU 가 주는 약간의 최적화 이득보다 빌드 시간이 더 비싸다.
+codegen-units = 1
 
 # CI 의 `cargo test` 전용 프로필. release 의 `lto`·`codegen-units = 1` 은 배포
 # 바이너리(Dockerfile)를 위한 것이라, 테스트 바이너리 20여 개마다 LTO 링크를
