@@ -329,3 +329,13 @@ let mut cross_cutting_doc: Option<serde_json::Value> = job.cross_cutting_documen
 판정 5행 · **순 제거 3행 · 유지 2행**. 195(#137 착지 후) → **192 /
 `b36ee596e5bf5353de6ca3cb8ea3dac138ca58ec2370c5d0ca493a4968e2dcc3`**.
 이 행에 **미판정 증분은 남지 않는다.**
+
+**자매 착지 재실측(2026-09-25 · #141)** — 머지 직전에 #141(`c405ad7`, 지문 사각지대 축)이 착지해
+`e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `sc04-08-worker-horizontal-scale.spec.ts`
+의 주석을 **제자리 수정**했다 — 5행의 줄 수는 195 → 193 이고 지문만 갈렸다. 원장 「자매 착지 재실측」
+규약대로 **판정을 다시 하지 않고 줄 수·지문만 재고정**한다:
+**190 / `80748ab3041408f76823e2cac502b043fef3ebe055628efc883742b36ae593a5`**.
+이 패스의 순 제거 −3행은 불변이다(193 → 190).
+이 시점의 전건 산술: 전역 2732 → **2672 /
+`2ed67e589879ca7fd094e68239f6da7d998ccc8ba2d3ba3e75db253102d65897`** · 행 합 2523 → 2463 ·
+잔여 **209 불변** ⇒ **행 합 −60 == 전역 −60, 잔차 0**.
