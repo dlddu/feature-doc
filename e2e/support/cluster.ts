@@ -13,6 +13,7 @@
 import { execFileSync } from 'node:child_process';
 
 const WORKER_DEPLOY = 'deployment/featuredoc-worker';
+const API_DEPLOY = 'deployment/featuredoc';
 
 export function kubectl(...args: string[]): string {
   return execFileSync('kubectl', args, { encoding: 'utf8', timeout: 120_000 });
@@ -91,4 +92,23 @@ export function setWorkerEnv(key: string, value: string | null): void {
   } else {
     kubectl('set', 'env', WORKER_DEPLOY, `${key}=${value}`);
   }
+}
+
+/**
+ * Sets (or clears, with `value = null`) one env var on the **API** Deployment, and
+ * waits for the rollout — unlike the worker, the API is what every request goes to,
+ * so a spec may not continue while the old pod is still serving.
+ *
+ * Deployment-wide state with the same lease rule as `setWorkerEnv`: set it inside
+ * the spec's own block, clear it in `finally`. Used by sc04-02 to take repository
+ * access away the way a user does on GitHub (`FEATUREDOC_STUB_REPO_ACCESS`,
+ * `backend/src/github_app.rs`).
+ */
+export function setApiEnv(key: string, value: string | null): void {
+  if (value === null) {
+    kubectl('set', 'env', API_DEPLOY, `${key}-`);
+  } else {
+    kubectl('set', 'env', API_DEPLOY, `${key}=${value}`);
+  }
+  kubectl('rollout', 'status', API_DEPLOY, '--timeout=180s');
 }

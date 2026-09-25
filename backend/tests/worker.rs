@@ -300,6 +300,123 @@ async fn claim_hands_over_the_target_and_the_executable_stage() {
     assert!(body["installationToken"].is_string());
 }
 
+/// Takes the App's access away the way an uninstall does: the installation row is
+/// what `accessible_repos` reads first, so removing it leaves nothing granted —
+/// without touching a process-wide stub switch that sibling tests in this binary
+/// would see. The narrowing-the-selection shape is driven end to end by `sc04-02`.
+async fn uninstall(state: &AppState) {
+    sqlx::query("DELETE FROM installations")
+        .execute(&state.db)
+        .await
+        .unwrap();
+}
+
+async fn analysis_row(state: &AppState, id: &str) -> (String, Option<String>, Option<i64>) {
+    sqlx::query_as("SELECT status, error, lease_expires_at FROM analyses WHERE id = ?")
+        .bind(id)
+        .fetch_one(&state.db)
+        .await
+        .unwrap()
+}
+
+/// AC4.1 「해제」 — a queued job whose access is gone is closed by the policy instead
+/// of being handed out, and the queue does not wedge behind it.
+#[tokio::test]
+async fn a_job_whose_access_was_revoked_is_stopped_rather_than_claimed() {
+    let (state, _p) = stub_state().await;
+    let s = login_installed(&state, 1, "alice").await;
+    let id = enqueue(&state, &s, "payments-api").await;
+
+    uninstall(&state).await;
+
+    assert_eq!(
+        claim(&state, "w1").await.status(),
+        StatusCode::NO_CONTENT,
+        "a revoked job is never handed to a worker"
+    );
+
+    let (status, error, lease) = analysis_row(&state, &id).await;
+    assert_eq!(status, "failed");
+    assert_eq!(error.as_deref(), Some(featuredoc::analysis::ACCESS_REVOKED));
+    assert_eq!(lease, None, "stopping releases the lease");
+
+    // Closed, not merely skipped: a second claim finds nothing left to reconsider.
+    assert_eq!(claim(&state, "w1").await.status(), StatusCode::NO_CONTENT);
+}
+
+/// AC4.1 「해제」 — access taken away *while the job runs*. The renewal is refused at
+/// the lease boundary, which is what makes "현재 호출까지만 마무리" true: the call the
+/// worker is in the middle of is never pre-empted, and the stage it was running is
+/// closed with the same reason the user reads.
+#[tokio::test]
+async fn revoking_access_mid_run_stops_the_job_at_the_next_lease_boundary() {
+    let (state, _p) = stub_state().await;
+    let s = login_installed(&state, 1, "alice").await;
+    let id = enqueue(&state, &s, "payments-api").await;
+    assert_eq!(claim(&state, "w1").await.status(), StatusCode::OK);
+
+    let running = build_router(state.clone())
+        .oneshot(worker_post(
+            &format!("/internal/analyses/{id}/stages/fetch"),
+            WORKER_TOKEN,
+            serde_json::json!({ "workerId": "w1", "status": "running" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(running.status(), StatusCode::NO_CONTENT);
+
+    uninstall(&state).await;
+
+    let heartbeat = build_router(state.clone())
+        .oneshot(worker_post(
+            &format!("/internal/analyses/{id}/heartbeat"),
+            WORKER_TOKEN,
+            serde_json::json!({ "workerId": "w1" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        heartbeat.status(),
+        StatusCode::CONFLICT,
+        "the worker stops through the path it already had"
+    );
+
+    let (status, error, lease) = analysis_row(&state, &id).await;
+    assert_eq!(status, "failed");
+    assert_eq!(error.as_deref(), Some(featuredoc::analysis::ACCESS_REVOKED));
+    assert_eq!(lease, None);
+
+    let (stage_status, stage_error): (String, Option<String>) = sqlx::query_as(
+        "SELECT status, error FROM analysis_stages WHERE analysis_id = ? AND key = 'fetch'",
+    )
+    .bind(&id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap();
+    assert_eq!(stage_status, "failed");
+    assert_eq!(
+        stage_error.as_deref(),
+        Some(featuredoc::analysis::ACCESS_REVOKED),
+        "one story on the screen, not two"
+    );
+
+    // The screen reads the flag, not the sentence.
+    let detail = build_router(state.clone())
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/analyses/{id}"))
+                .header(header::COOKIE, format!("fd_session={s}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(detail.status(), StatusCode::OK);
+    let body = json_body(detail).await;
+    assert_eq!(body["accessRevoked"], true);
+    assert_eq!(body["error"], featuredoc::analysis::ACCESS_REVOKED);
+}
+
 #[tokio::test]
 async fn an_expired_lease_returns_the_job_to_the_queue() {
     let (state, _p) = stub_state().await;

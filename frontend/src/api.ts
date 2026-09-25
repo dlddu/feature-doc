@@ -158,6 +158,11 @@ export type Stage = {
 
 export type AnalysisDetail = Analysis & {
   error: string | null;
+  /**
+   * Set when AC4.1's revocation policy stopped the job. The server decides it from
+   * the reason it stored, so the screen never matches on the sentence itself.
+   */
+  accessRevoked: boolean;
   startedAt: number | null;
   finishedAt: number | null;
   stages: Stage[];

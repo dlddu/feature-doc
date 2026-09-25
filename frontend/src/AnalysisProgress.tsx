@@ -137,6 +137,10 @@ export function AnalysisProgress({
   const percent = stagesTotal === 0 ? 0 : Math.round((stagesDone / stagesTotal) * 100);
   // At most one stage is failed at a time — the pipeline stops there.
   const failed = stages.find((stage) => stage.status === 'failed');
+  // AC4.1: the job was stopped because the App no longer grants access to this
+  // repository. Re-running a stage cannot recover that, so the stage-level retry
+  // notice and buttons stand down and the server's reason is what the user reads.
+  const revoked = analysis.accessRevoked;
 
   return (
     <main className="screen">
@@ -198,7 +202,7 @@ export function AnalysisProgress({
                   무엇이 달라졌는지 보기
                 </button>
               )}
-              {stage.status === 'failed' && (
+              {stage.status === 'failed' && !revoked && (
                 <button
                   className="btn btn-secondary block"
                   type="button"
@@ -210,7 +214,7 @@ export function AnalysisProgress({
                   이 단계만 다시 시도
                 </button>
               )}
-              {stage.status === 'succeeded' && !ACTIVE.has(analysis.status) && (
+              {stage.status === 'succeeded' && !revoked && !ACTIVE.has(analysis.status) && (
                 <button
                   className="btn btn-ghost block"
                   type="button"
@@ -227,7 +231,13 @@ export function AnalysisProgress({
         </div>
       </details>
 
-      {failed !== undefined && (
+      {revoked && analysis.error !== null && (
+        <div className="notice err" style={{ marginTop: 16 }} data-testid="access-revoked">
+          {analysis.error}
+        </div>
+      )}
+
+      {failed !== undefined && !revoked && (
         <div className="notice err" style={{ marginTop: 16 }} data-testid="stage-failed">
           <strong>{titleOf(failed)}</strong>
           {' 단계가 실패했어요. 앞 단계 결과는 그대로 있으니 이 단계만 다시 돌리면 됩니다.'}
