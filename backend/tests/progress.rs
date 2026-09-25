@@ -289,9 +289,8 @@ async fn retry_resets_only_the_failed_stage_and_requeues_the_job() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// A stage that has not finished has nothing to re-run: a pending stage will run on
-/// its own turn, and re-queueing on its behalf would silently start work the user
-/// did not ask for.
+/// A pending stage will run on its own turn; re-queueing on its behalf would
+/// silently start work the user did not ask for.
 #[tokio::test]
 async fn retry_is_refused_for_a_stage_that_has_not_finished() {
     let (state, path) = stub_state().await;
@@ -315,8 +314,6 @@ async fn retry_is_refused_for_a_stage_that_has_not_finished() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// AC1.5 covers succeeded stages too: "이 단계 다시 실행" resets that one row and
-/// re-queues the job, leaving its siblings — including the failed one — as they are.
 #[tokio::test]
 async fn retry_resets_a_succeeded_stage_and_leaves_its_siblings() {
     let (state, path) = stub_state().await;

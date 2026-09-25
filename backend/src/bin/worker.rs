@@ -246,8 +246,6 @@ impl Worker {
         // Stage 2 runs only if this build knows it *and* the queue offered it, so an
         // older worker against a newer API (or the reverse) degrades to stopping
         // early rather than reporting a stage it cannot run.
-        // Seeded from the claim when stage 3 re-runs without stage 2 (AC1.5): the
-        // landscape it plans over is the one already stored, left untouched.
         let mut cross_cutting_doc: Option<serde_json::Value> = job.cross_cutting_document.clone();
         if job
             .executable_stages
@@ -640,8 +638,7 @@ impl Worker {
             cross_cutting::MAX_EXCERPT_BYTES,
         )
         .await?;
-        // Reading a handful of files is several round trips; renew again so the
-        // model call starts with a full lease.
+        // Reading a handful of files is several round trips of its own.
         self.heartbeat(&job.id)
             .await
             .map_err(|e| format!("could not renew lease: {e}"))?;

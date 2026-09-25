@@ -284,3 +284,90 @@ reconciler task `rct_20260922-0005`. `repo_scan.rs` **+14 −5**(제자리 재�
 
 줄 수·지문: 133 / `4aa7a8eb…` → (트리거) 148 → **145 / `2e366521…`**.
 맥락 [2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md).
+
+## 증분 재판정 ④ — `#121` · `#137` 이 원장 7행에 연 15행 (2026-09-24 · `rct_20260924-0001`)
+
+등재된 **#121 1행**(`frontend/src/AnalysisProgress.tsx` — 「자매 착지 재실측」 2026-09-22)과, 그 뒤 착지한
+**#137**(`fd6cdad`)이 `backend/src/repo_scan.rs` 에 연 **14행**을 함께 판정한다.
+
+### ② 저장소 문서에서 복원되는 것 — `stub_read` doc 3행 (제거)
+
+```rust
+/// Answers only for paths the stub tree of the same repository and branch holds —
+/// a path outside it is skipped exactly as the real `404` is, so the double never
+/// hands stage 2 a file the real API could not.
+```
+
+`docs/e2e-mocking-policy.md` 39~40행이 **세 절을 모두** 적는다:
+
+> `repo_scan::stub_read`는 같은 저장소·브랜치의 스텁 트리에 있는 경로에만 본문을 답하고, 그 밖의
+> 경로는 real이 `404`를 건너뛰듯 건너뛴다 — 실 API가 줄 수 없는 파일을 2단계에 건네지 않는다
+
+그 문서가 **충실도 경계의 정본**이고(자매 모델 `tbm_feature-doc-e2e-mock-policy` 의 판정 표면),
+`#137` 이 같은 PR 에서 그 줄을 직접 넣었다. 주석은 그 등재의 사본이다. 정책 본문이 「stub 이 real 과
+갈리는 지점」을 유지 대상으로 드는 것은 **그것이 대개 어디에도 없기 때문**이고, 여기서는 있다.
+
+### ③ PR 본문에서 복원되는 것 — `read_files` doc 본문 5행 (제거)
+
+```rust
+///
+/// A path that cannot be read (removed since the tree was listed, not text, a
+/// transient 5xx) is left out rather than failing the caller: the excerpts are
+/// context on top of the path list, and the stage still has its evidence without
+/// them. A missing token is still an error, as it is for [`scan`].
+```
+
+`#137` PR 본문이 한 문장으로 적는다 — 「개별 파일 실패(404·5xx)는 건너뛰고 경로만으로 진행, 토큰
+없음은 기존 스캔과 같은 오류」(③). 코드도 같은 말을 한다: 실패는 `tracing::warn!` 뒤 `continue`,
+토큰 부재는 `ok_or_else` 로 `Err`(①). 마지막 문장은 **rustdoc 링크만의 교차 참조**(`[`scan`]`)라
+정책이 따로 막는 형태다. **요약 1줄은 남긴다** — 같은 파일의 `pub async fn scan` 이 이 패스 이후
+`/// Counts the blobs in `owner/name@branch` and sums their sizes.` 한 줄로 살아남은 그 규약이다.
+
+### ① 코드에서 복원되는 것 — `excerpt` doc 2행 (제거)
+
+```rust
+/// Cuts on a UTF-8 boundary so a multi-byte character is never split into
+/// replacement noise at the end of an excerpt.
+```
+
+바로 아래 `while !text.is_char_boundary(end) { end -= 1; }` 가 앞 절 그대로다(①). 뒤 절은 **사실과도
+어긋난다** — `String::from_utf8_lossy` 가 이미 돌아 `text` 는 유효한 `str` 이므로, 경계 아닌 곳을
+자르면 대체문자가 생기는 게 아니라 **패닉**한다. 낡아 틀린 사본은 제거 근거가 강해진다(정책 본문
+「충돌 시 기본 방향」). `#137` PR 본문도 「UTF-8 경계에서 자르고」로 적는다(③).
+
+### 2행 → 1행 재작성 — `truncated` 필드 doc
+
+```rust
+/// The file continued past `max_bytes`; the model is told so it does not
+/// mistake a cut-off head for the whole file.
+```
+
+앞 절은 필드 이름 `truncated` 와 그 대입 `truncated: end < text.len()` 이 말하고(①), 「the model is
+told」는 `cross_cutting.rs:199` 의 `let cut = if e.truncated { " (truncated)" } else { "" };` 가 말한다(①).
+남는 것은 **왜 알려야 하는가** 하나다 — 잘린 앞부분을 파일 전체로 읽는 LLM 경계의 함정.
+결과: `/// Surfaced to the model so a cut-off head is not read as the whole file.`
+
+### 유지 1행 — `FileExcerpt` 요약
+
+`/// The head of one file, as read for stage 2's context.` 는 `pub` 항목의 요약 1줄로 남긴다.
+
+### 전건 제거 — `AnalysisProgress.tsx` 3행 (#121)
+
+```jsx
+{/* AC1.5 covers finished stages too. Only that stage re-runs; the ones
+    behind it keep their result. Hidden while the job is queued or
+    running — the server refuses a reset under a live lease anyway. */}
+```
+
+네 절이 모두 복원된다 — 「AC1.5 covers finished stages too」는 **AC 조항 재진술**(②, 이 패스 「⑥ AC
+꼬리표」와 같은 형태) · 「Only that stage re-runs; the ones behind it keep their result」는 #121 PR 본문
+(「끝난 단계를 다시 돌려도 뒤 단계는 초기화하지 않는다」, ③) · 「Hidden while the job is queued or
+running」은 **바로 다음 줄의 가드** `!ACTIVE.has(analysis.status)`(①) · 「the server refuses a reset under
+a live lease」는 #121 PR 본문(「분석이 `running` 이면 여전히 409」, ③)이다.
+(지문에는 여는 줄 1행만 들어온다 — 본문 「지문과 사각지대」.)
+
+### 값
+
+판정 15행 · **순 제거 12행 · 유지 3행**(`repo_scan.rs` −11 · `AnalysisProgress.tsx` −1).
+160(#137 착지 후) → **148 / `d55bd63e1adc1672800636757f49c4ef9e406ea6e6f9b17b0117f743feac6481`**.
+이 행에 **미판정 증분은 남지 않는다.**

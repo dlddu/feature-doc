@@ -279,3 +279,63 @@ env 항목 자체는 그대로다. 새 파일 쪽 판정은 [2026-09-21-doc-edit
 지문: **197행 `e3005ab0…` → 190행 `632b0475182bf04b9ec8c21f3b69c5b91172ecee41e417f7a58b98cdb15ba66d`** —
 **이 패스 직전 원장 값으로 바이트 그대로 복귀**했다(#108 이 이 행에 들여온 주석이 전건 제거로 판정됐고, 편집이
 다른 줄을 건드리지 않았다는 독립 증거).
+
+## 증분 재판정 ⑤ — `#121` · `#137` 이 `bin/worker.rs` 에 연 5행 (2026-09-24 · `rct_20260924-0001`)
+
+원장 5행이 「판정하지 않고 다음 감지에 넘긴다」로 등재해 둔 **#121 3행**(「자매 착지 재실측」
+2026-09-22)과, 그 뒤 착지한 **#137**(`fd6cdad`)의 **2행**을 함께 판정한다. 다섯 줄 전부
+`backend/src/bin/worker.rs` 한 파일이다.
+
+### 제거 2행 — 같은 명제의 두 벌째 (#121)
+
+```rust
+// Seeded from the claim when stage 3 re-runs without stage 2 (AC1.5): the
+// landscape it plans over is the one already stored, left untouched.
+let mut cross_cutting_doc: Option<serde_json::Value> = job.cross_cutting_document.clone();
+```
+
+- 「Seeded from the claim when stage 3 re-runs without stage 2」는 **같은 PR 이 40행에 더한 필드 doc**
+  (`/// Stage 2's stored document, present when stage 3 is re-run on its own.`)의 두 벌째다. 정본은
+  그 필드 쪽이다 — 값이 언제 실리는지는 API↔워커 와이어 계약이고 `Claim` 이 그 계약의 자리다.
+  「복제된 명제는 강제하는 쪽 한 벌만」(원장 1행 증분 재판정 ⑤·⑨·⑪, 9행 ③)과 같은 잣대.
+- `(AC1.5)` 는 **AC 꼬리표**다(이 패스의 「③④」 절이 같은 형태로 8행을 걷었다).
+- 「left untouched」는 바로 그 줄의 `.clone()` 이 말한다(①).
+
+### 유지 1행 — 필드 doc (#121)
+
+`/// Stage 2's stored document, present when stage 3 is re-run on its own.` 는 남긴다. **언제 Some 인가**는
+`Option` 이 말하지 않고, `Claim` 의 자매 필드 세 개가 이 패스 이후 모두 같은 모양으로 살아남았다
+(`/// Empty until the reviewer approves — which is also when stage 4 is not offered.` 외 2). 이 구조체에서
+「이 필드가 언제 채워지는가」 한 줄은 유지 규약이다.
+
+### 2행 → 1행 재작성 — 임대 갱신 (#137)
+
+```rust
+// Reading a handful of files is several round trips; renew again so the
+// model call starts with a full lease.
+```
+
+- 뒤 절 「renew again so the model call starts with a full lease」는 **626행이 이미 말한다**
+  (`// The model call is the long one in this job; renew before it as `fetch` does.`) — 같은 함수 안의
+  두 벌째다. 이 패스가 「13벌까지 복제된 워커 임대 문단」을 걷어 7개 호출부 중 3곳만 남긴 그 기준을
+  그대로 적용한다.
+- 앞 절 「Reading a handful of files is several round trips」는 **왜 한 번 더 갱신하는가**이고, 그것만
+  남으면 626행과 겹치지 않는다. `#137` PR 본문이 같은 말을 적지만(③), 임대 staleness 는 정책 본문이
+  **유지 대상으로 명시 열거한 「워커 임대·claim/lease 동시성 계약」**이라 「애매하면 남긴다」를 따른다.
+- 결과: `// Reading a handful of files is several round trips of its own.`
+
+### 값
+
+판정 5행 · **순 제거 3행 · 유지 2행**. 195(#137 착지 후) → **192 /
+`b36ee596e5bf5353de6ca3cb8ea3dac138ca58ec2370c5d0ca493a4968e2dcc3`**.
+이 행에 **미판정 증분은 남지 않는다.**
+
+**자매 착지 재실측(2026-09-25 · #141)** — 머지 직전에 #141(`c405ad7`, 지문 사각지대 축)이 착지해
+`e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `sc04-08-worker-horizontal-scale.spec.ts`
+의 주석을 **제자리 수정**했다 — 5행의 줄 수는 195 → 193 이고 지문만 갈렸다. 원장 「자매 착지 재실측」
+규약대로 **판정을 다시 하지 않고 줄 수·지문만 재고정**한다:
+**190 / `80748ab3041408f76823e2cac502b043fef3ebe055628efc883742b36ae593a5`**.
+이 패스의 순 제거 −3행은 불변이다(193 → 190).
+이 시점의 전건 산술: 전역 2732 → **2672 /
+`2ed67e589879ca7fd094e68239f6da7d998ccc8ba2d3ba3e75db253102d65897`** · 행 합 2523 → 2463 ·
+잔여 **209 불변** ⇒ **행 합 −60 == 전역 −60, 잔차 0**.

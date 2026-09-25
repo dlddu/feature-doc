@@ -1,11 +1,9 @@
 //! Stage 2 of the analysis pipeline.
 //!
 //! The input is the file-path list stage 1 measured, plus the heads of a few
-//! entry-point and manifest files ([`key_files`]). Paths alone cannot show what
-//! decides an architecture answer — a binary that embeds its frontend, handlers
-//! that call a client library directly — but reading the whole tree would put it
-//! all through the LLM boundary. So only an allowlist of well-known file names is
-//! read, and each only up to [`MAX_EXCERPT_BYTES`]. Evidence stays paths.
+//! entry-point and manifest files ([`key_files`]) — an allowlist of names, each
+//! read only up to [`MAX_EXCERPT_BYTES`], because the rest of the tree must not
+//! cross the LLM boundary. Evidence stays paths.
 
 use serde_json::{json, Value};
 
@@ -53,25 +51,19 @@ const AXIS_GUIDE: [(&str, &str); 5] = [
     ),
 ];
 
-/// How many files [`key_files`] picks, and how much of each is read. Together they
-/// bound what the excerpts add to the prompt (≈ 32 KB).
 pub const MAX_KEY_FILES: usize = 8;
 pub const MAX_EXCERPT_BYTES: usize = 4000;
 
 /// File names read for context, most telling first. Names only — never a pattern
 /// that could match a credentials file.
 const KEY_FILE_NAMES: [&str; 32] = [
-    // entry points
     "main.go", "main.rs", "lib.rs", "main.py", "app.py", "manage.py", "main.ts",
     "main.tsx", "main.js", "index.ts", "server.ts", "server.js", "app.ts", "app.js",
     "Program.cs", "main.kt",
-    // build and workspace manifests
     "go.mod", "Cargo.toml", "package.json", "pyproject.toml", "requirements.txt",
     "pom.xml", "build.gradle", "build.gradle.kts", "pnpm-workspace.yaml", "go.work",
-    // how the services run together, ahead of the rarer manifests below
     "docker-compose.yml", "docker-compose.yaml",
     "Gemfile", "composer.json",
-    // how it is shipped
     "Dockerfile", "kustomization.yaml",
 ];
 
@@ -82,8 +74,6 @@ const SKIPPED_DIRS: [&str; 10] = [
     "e2e", "examples", "docs",
 ];
 
-/// Code that is not the product's structure — helper scripts and dev tooling —
-/// kept out of the excerpts, though still in the path list.
 const NOT_STRUCTURE_DIRS: [&str; 3] = ["scripts", "tools", "hack"];
 
 /// Directory names that mark the main one of several same-named entry points.
@@ -93,7 +83,7 @@ const ENTRY_DIR_HINTS: [&str; 4] = ["server", "api", "app", "web"];
 const MAX_KEY_FILE_DEPTH: usize = 4;
 
 /// How many paths are handed to the model. A cap keeps the prompt bounded on large
-/// repositories; [`input_paths`] decides which ones make it.
+/// repositories.
 const MAX_PATHS: usize = 400;
 
 const SYSTEM: &str = "\
@@ -206,8 +196,8 @@ fn prompt(
     text
 }
 
-/// Which files' heads [`extract`] should be given, from the same list the prompt
-/// shows — so every excerpt belongs to a path the model may cite.
+/// Picked from the same list the prompt shows, so every excerpt is a path the
+/// model may cite.
 pub fn key_files(paths: &[String]) -> Vec<String> {
     let mut picked: Vec<((usize, bool, usize, String), String)> = input_paths(paths)
         .into_iter()
@@ -223,15 +213,9 @@ pub fn key_files(paths: &[String]) -> Vec<String> {
             }
             let rank = KEY_FILE_NAMES.iter().position(|n| n == file)?;
             let parent = dirs.last().copied().unwrap_or("");
-            // An `index.ts` deep in a tree re-exports a folder; only a package's
-            // own `index` (at its root or directly under `src`) is an entry point.
             if file.starts_with("index.") && dirs.len() > 1 && parent != "src" {
                 return None;
             }
-            // Among several `cmd/*/main.go`, the one named for a server or for its
-            // own service is the one that shows how the thing is wired. A file at
-            // the root of the repository or of a top-level directory is that
-            // directory's own, and counts the same.
             let plain = !(dirs.len() <= 1
                 || ENTRY_DIR_HINTS.contains(&parent)
                 || Some(&parent) == dirs.first());
@@ -239,12 +223,7 @@ pub fn key_files(paths: &[String]) -> Vec<String> {
             Some(((rank, plain, parts.len(), top), p))
         })
         .collect();
-    // Most telling name first, then an entry-looking directory, then the shallowest,
-    // then by path — a total order, so the same tree always yields the same excerpts.
     picked.sort_by(|a, b| (&a.0 .0, a.0 .1, a.0 .2, &a.1).cmp(&(&b.0 .0, b.0 .1, b.0 .2, &b.1)));
-    // One copy of each name per top-level directory before any further copy: eight
-    // `main.go`s under `cmd/` would otherwise crowd out the `go.mod` that says how
-    // they fit together, while a backend and a worker each keep their own.
     let mut seen = std::collections::BTreeSet::new();
     let (first, rest): (Vec<_>, Vec<_>) = picked
         .into_iter()
@@ -258,14 +237,6 @@ pub fn key_files(paths: &[String]) -> Vec<String> {
 }
 
 /// The paths every LLM stage sees, capped at [`MAX_PATHS`] and returned sorted.
-///
-/// Over the cap, the first N of a sorted list is the wrong cut: it drops whole
-/// top-level directories that happen to sort last, and those are often a
-/// project's own services (`worker/`, `k8s/`) rather than its tests. So the
-/// sample goes round-robin across directories — each directory's entry points
-/// and manifests first — and takes the project's code before what supports it
-/// (tests, fixtures, docs, vendored code). Every choice is a total order on the
-/// paths, so the same tree always yields the same list.
 pub fn input_paths(paths: &[String]) -> Vec<String> {
     let mut all = paths.to_vec();
     all.sort();
@@ -283,7 +254,6 @@ pub fn input_paths(paths: &[String]) -> Vec<String> {
     picked
 }
 
-/// Whether a path supports the code rather than being it.
 fn is_supporting(path: &str) -> bool {
     let (dirs, file) = path.rsplit_once('/').unwrap_or(("", path));
     dirs.split('/')
@@ -377,23 +347,14 @@ pub async fn extract(
     Ok(answer)
 }
 
-/// What [`keep_listed_evidence`] removed.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Dropped {
     pub paths: usize,
     pub items: usize,
 }
 
-/// Holds the model to the one rule the prompt can only ask for: evidence comes
-/// from the list it was shown. File contents in the prompt make it easy to
-/// cite a file a handler name suggests but the tree does not have, so this is
-/// code rather than an instruction the model may bend — the same stance
-/// `acceptance::merge` takes on contradictions.
-///
-/// A cited directory is kept when it is the parent of a listed path: models name
-/// `app/src` for "the source tree", and the claim is checkable. An item left with
-/// no evidence goes, because an item without a path is exactly the guess the
-/// stage promises not to make.
+/// Drops cited evidence paths the input list does not hold, and any item left
+/// with none.
 pub fn keep_listed_evidence(doc: &mut Value, paths: &[String]) -> Dropped {
     let listed = |cited: &str| {
         let cited = cited.trim_end_matches('/');
@@ -630,9 +591,6 @@ mod tests {
         assert_eq!(a, sorted);
     }
 
-    /// Shaped like the tree that exposed the old cut: a front end and a back end
-    /// that sort first and fill the cap, a service and its manifests that sort
-    /// last, and tests spread through all of it.
     fn oversized_tree() -> Vec<String> {
         let mut tree = Vec::new();
         for i in 0..250 {

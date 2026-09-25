@@ -391,20 +391,141 @@ reconciler task `rct_20260922-0009`. **순 제거 5행 · 유지 1행**(3행 →
 순 +30행을 열었다(148 → 178). 판정을 다시 하지 않고 머지 시점 트리에서 **줄 수·지문만 재고정**한다:
 **173 / `f184887421a70d8275f2369a454708f8f471576e8188132919cc4b9bcb9a2d4e`**. 이 패스의 순 제거 −5행은 불변이고(178 → 173),
 원장 10행은 90 → 89 · 전역은 2700 → 2694 라 **행 합 −6 == 전역 −6, 잔차 0** 이 그대로 성립한다.
-#137 이 들인 30행은 **판정하지 않고 다음 감지에 넘긴다**.
+#137 이 들인 30행은 **판정하지 않고 다음 감지에 넘긴다** — **해소됨**(2026-09-24 · `rct_20260924-0001` · 아래 「증분 재판정 ④」).
 
 **자매 착지 재실측(2026-09-24 · #138)** — 위 재고정 직후 #138(`95d3395`)이 연이어 착지해 같은 파일에
 순 +26행을 더 열었다(178 → 204). 같은 절차로 한 번 더 재고정한다: **199 /
 `db92b2402cc84340e14148375e64e4080cdb16b1ad27b631ab7997c0cc2d669c`**. 순 제거 −5행은 불변이고(204 → 199), 원장 10행 90 → 89 ·
 전역 2726 → 2720 으로 **행 합 −6 == 전역 −6, 잔차 0** 이 그대로 성립한다.
-#138 이 들인 26행도 **판정하지 않고 다음 감지에 넘긴다**.
+#138 이 들인 26행도 **판정하지 않고 다음 감지에 넘긴다** — **해소됨**(2026-09-24 · `rct_20260924-0001` · 아래 「증분 재판정 ④」).
 
 ### 판정하지 않은 것
 
 - #121 이 연 `backend/tests/progress.rs` 2행 — 9행의 「자매 착지 재실측」에 **이관으로 등재된** 항목이라
-  이번 범위가 아니다.
+  이번 범위가 아니다. — **해소됨**(2026-09-24 · `rct_20260924-0001` · 아래 「증분 재판정 ④」).
 - 머지 직전에 연달아 **착지한** PR **#137**(`fd6cdad`, +278/-10 → 주석 30행)과 **#138**(`95d3395`,
   +223/-29 → 주석 26행)이 `cross_cutting.rs` 에 들인 합 56행. 둘 다 훅은 모듈 머리·상수 doc·구분선·
   경로 샘플링 서술이라 **이 패스의 줄(20~22)과 겹치지 않았고**, 머지 시점 트리에서도 이 패스가 걷어낸
   명제를 되살리지 않는다(순 제거 −5행 불변 · 잔차 0). 줄 수·지문은 위 「자매 착지 재실측」 두 절에서
   재고정했고, 그 56행의 **판정은 다음 감지의 몫**이다.
+  — **해소됨**(2026-09-24 · `rct_20260924-0001` · 아래 「증분 재판정 ④」).
+
+## 증분 재판정 ④ — 위 「판정하지 않은 것」 두 항목 58행 (2026-09-24 · `rct_20260924-0001`)
+
+바로 위 절이 다음 감지의 몫으로 넘긴 **#121 `backend/tests/progress.rs` 2행**과 **#137 30행 · #138 26행
+(`backend/src/cross_cutting.rs`)** 을 판정한다. 두 PR 모두 본문이 두껍다 — 판정의 대부분은 ③ 이다.
+
+### ③④ PR 본문 · 커밋 메시지에서 복원되는 것 (제거 33행)
+
+- **경로 샘플링 doc 본문 7행 + 구분 `///` 1행** (`input_paths`, 「Over the cap, the first N of a sorted
+  list is the wrong cut …」) — **#138 커밋 제목이 결론을 그대로 적는다**: 「경로 400개 상한을 디렉터리
+  고른 샘플로 — 알파벳 뒤쪽 서비스가 통째로 빠지지 않게」(④). PR 본문 「## 왜」는 실측까지 적는다
+  (dear-baby 458파일 중 `k8s/` 13 · `worker/` 12 · `scripts/` 6 이 통째로 잘렸다), 「## 무엇을」은 두 층 ·
+  디렉터리 라운드로빈 · 전순서를 적는다(③). 주석의 `(worker/, k8s/)` 예까지 같은 출처다.
+  **요약 1줄**(`/// The paths every LLM stage sees, capped at [`MAX_PATHS`] and returned sorted.`)은 남긴다.
+- **`keep_listed_evidence` doc 본문 9행** — #137 PR 본문 「## 추가: 근거 경로를 코드로 검증」이
+  **`acceptance::merge` 비교까지** 적는다: 「프롬프트 지시가 아니라 코드가 강제(`acceptance::merge` 의
+  모순 규칙과 같은 태도)」 · 「디렉터리 인용(`app/src`)은 목록의 경로를 품을 때만 인정」 · 「근거가 하나도
+  남지 않은 항목은 뺀다」(③). 주석이 든 구체 실패(`handlers/pod_logs.go`)도 같은 절에 있다.
+  10행을 **요약 1줄로 재작성**한다.
+- **`index.ts` 규칙 2행 · `cmd/*/main.go` 동점 규칙 4행** — #138 「## 무엇을」의 `key_files` 세 항목이
+  거의 축자다(③).
+- **이름 다양화 3행**(「One copy of each name per top-level directory …」) — #138 「같은 이름은 최상위
+  디렉터리마다 하나씩 먼저 뽑는다 → backend와 worker가 각자 `main.go`·`go.mod`를 가진다」 + #137
+  「`cmd/*/main.go` 여러 개가 `go.mod`를 밀어내지 않게」(③).
+- **정렬 전순서 2행**(「… a total order, so the same tree always yields the same excerpts.」) — 정렬 키
+  튜플이 순서를 그대로 말하고(①), #138 이 「모든 선택이 경로에 대한 전순서라 같은 트리는 같은 목록」을
+  적으며(③), **결정성을 강제하는 테스트가 있다**. 증분 재판정 ③ 이 1행을 남긴 근거는 「이를 강제하는
+  테스트가 없다」였다 — 여기서는 있으므로 같은 잣대가 반대로 떨어진다.
+- **`NOT_STRUCTURE_DIRS` doc 2행** — #138 「`scripts`·`tools`·`hack`은 excerpt 후보에서 제외(경로
+  목록에는 남음)」가 괄호 단서까지 같다(③).
+- **테스트 픽스처 doc 3행**(「Shaped like the tree that exposed the old cut …」) — #138 「## 왜」와
+  「## 실제 트리로 확인」 표가 그 트리의 모양을 적는다(③).
+
+### ① 코드 자체에서 복원되는 것 (제거 7행)
+
+- **`KEY_FILE_NAMES` 배열 안 절 제목 4행**(`// entry points` · `// build and workspace manifests` ·
+  `// how the services run together, ahead of the rarer manifests below` · `// how it is shipped`) —
+  바로 아래 이름들이 말한다. 이 패스가 **구분선 25행**을 걷은 그 유형이다(중복 유형 ④).
+- **`MAX_KEY_FILES`·`MAX_EXCERPT_BYTES` doc 2행** — 「How many files … and how much of each is read」는
+  두 상수 이름이고, 「Together they bound … (≈ 32 KB)」는 바로 아래 두 리터럴 `8` 과 `4000` 의 곱이다.
+- **`is_supporting` doc 1행**(`/// Whether a path supports the code rather than being it.`) — 함수 이름의
+  재진술.
+
+### 교차 참조만의 문장 (제거 2행)
+
+- **`Dropped` doc 1행**(`/// What [`keep_listed_evidence`] removed.`) — 구조체 이름과 링크뿐이다.
+  「링크를 위해서만 문장을 남기지 않는다」(정책 본문).
+- **`MAX_PATHS` doc 의 뒷절**(`; [`input_paths`] decides which ones make it.`) — 같은 형태. 앞 문장
+  (상한의 이유)은 남긴다.
+
+### 재작성 (6행 → 4행 · 2행 → 2행)
+
+- **모듈 머리 `//!` 6행 → 4행** — 살아남는 명제는 **「나머지 트리는 LLM 경계를 넘지 않는다」**이고,
+  그것은 #137 이 고쳐 쓰기 전 머리 주석에도 있던 이 파일의 설계 불변식이다. 반면 「a binary that embeds
+  its frontend, handlers that call a client library directly」 두 사례는 **#137 PR 본문 「## 왜」의 실측**
+  (kubernetes-dashboard `cf23ebb9`)이라 ③ 이다. 사례를 빼고 경계와 상한만 남긴다.
+- **`key_files` doc 2행** — 「Which files' heads [`extract`] should be given」은 링크로 돌려 말한 함수
+  이름이고, 첫 줄 `input_paths(paths)` 가 「from the same list」를 말한다(①). 불변식
+  「every excerpt is a path the model may cite」만 남긴다.
+
+### 유지 (13행)
+
+- **`KEY_FILE_NAMES` doc 2행** — 「Names only — never a pattern that could match a credentials file」은
+  정책 본문이 유지 대상으로 드는 **자격증명 비노출 불변식**이고, 이 목록에 패턴을 더하려는 사람이 바로
+  그 자리에서 읽어야 한다. #137 PR 본문이 같은 말을 적지만(③) 「애매하면 남긴다」가 이긴다.
+- **`SKIPPED_DIRS` doc 2행** — 열 개 이름이 아니라 **어떤 이름이 이 목록에 속하는지의 기준**을 적는다.
+  PR 본문에는 목록만 있고 기준이 없다.
+- **`ENTRY_DIR_HINTS` doc 1행 · `MAX_KEY_FILE_DEPTH` doc 1행** — 앞은 네 이름이 무엇을 가르는지,
+  뒤는 **왜 그 깊이인가**(더 깊으면 하위 패키지의 매니페스트)다. 둘 다 이름에 없다.
+- **`directory_of` doc 3행** — 「왜 두 단계인가」를 **양쪽 실패 모드로** 적는다(한 단계면
+  `backend/internal/*` 가 한 큐로 뭉치고, 더 쪼개면 모노레포가 파일 한두 개짜리 큐로 흩어진다).
+  #138 은 「상위 두 단계」라는 **결과**만 적는다 — 이 튜닝의 근거는 어디에도 없다.
+- **나머지 4행** — 위 재작성이 남긴 줄(`//!` 4행 중 경계 절, `key_files`·`keep_listed_evidence`·
+  `input_paths` 의 요약).
+
+### `backend/tests/progress.rs` 5행 (#121)
+
+- **제거 2행** — `/// AC1.5 covers succeeded stages too: "이 단계 다시 실행" resets that one row and
+  re-queues the job, leaving its siblings — including the failed one — as they are.` 는 **AC 조항 재진술**(②)
+  이고, 뒤 문장은 #121 PR 본문(「끝난 단계를 다시 돌려도 뒤 단계는 초기화하지 않는다」, ③)과 테스트
+  본문(①)이 함께 복원한다.
+- **3행 → 2행 재작성** — `/// A stage that has not finished has nothing to re-run: …` 의 앞 절은
+  테스트 이름 `retry_is_refused_for_a_stage_that_has_not_finished` 의 재진술이다(①). 거절의 **이유**만
+  남기면 같은 파일 391행의 자매 doc(`/// A worker still inside its lease owns the run. …`)과 같은
+  모양이 된다.
+
+### 값
+
+판정 58행 · **순 제거 45행 · 유지 13행**(`cross_cutting.rs` −42 · `tests/progress.rs` −3).
+199(#138 착지 후 재고정값) → **154 /
+`bd5221f83e91398f103943b598b814c107036cb874cfc947c062855e06230759`**.
+이 행에 **미판정 증분은 남지 않는다** — 위 「판정하지 않은 것」의 두 항목이 모두 닫혔다.
+
+### 검증 (판정 시점 로컬 실측)
+
+- 행 지문 재현 규약(개행 포함 해시)으로 5·7·9행을 재고정했고, **나머지 19행은 기재값 그대로
+  재현**된다(22행 전건 재현, 기재 ↔ 실측 일치).
+- **행 합 −60 == 전역 −60, 잔차 0**: 5행 −3 · 7행 −12 · 9행 −45 이고 전역은 2720 → **2660 /
+  `c2940dd43579b642a1ef1bd11416dd56a6176ca9dbf8d2b0b246398876460301`** 이다.
+- 네 Rust 파일의 **주석을 제외한 코드가 부모와 바이트 동일**하다(`cargo test --release` 는 이 diff 로
+  달라질 수 없다 — 이 레포에 `missing_docs` 류 린트가 없고 대상 파일에 doctest 가 없다).
+- 문서 게이트 3종(`docs-journey-mockup` · `docs-mockup-render` · `docs-scenario-e2e`) `rc=0`.
+  새 `.md` 를 만들지 않았으므로 허브 R9(문서 48건)은 불변이다.
+
+**자매 착지 재실측(2026-09-25 · #140)** — 머지 직전에 #140(`9b8effb`, `rct_20260924-0001` · 목업↔구현
+수렴 축)이 착지해 `frontend/src/CrossCuttingConcerns.tsx` 에서 주석 순 −4행을 걷어냈다(9행 199 → 195).
+원장 「자매 착지 재실측」 규약대로 **판정을 다시 하지 않고 줄 수·지문만 재고정**한다:
+**150 / `23fdab1d6e7206c5f21efc8253d7cbb901b99d83c20fc37495f9108dc2385fd1`**.
+이 패스의 순 제거 −45행은 불변이고(195 → 150), 전역은 2717 → **2657 /
+`579bfcc52669f5144969f2ef58d111ace5185426ba73ccb1220a1271183fcf93`** 이라 **행 합 −60 == 전역 −60 ·
+잔여 205 불변**이 그대로 성립한다. #140 이 걷어낸 4행은 그 PR 이 자기 축에서 이미 판정한 몫이고,
+내가 걷어낸 45행과 겹치지 않는다(199 − 4 − 45 = 150 으로 산술이 가산적인 것이 그 독립 증거다).
+
+또 자매 착지가 이어져 **이 슬라이스 범위(5·7·9행) 밖의 행**이 기재값과 어긋난다. 어느 것도 이 PR 이
+건드리지 않으며 **판정하지 않고 다음 감지에 넘긴다**:
+
+- **원장 12행**(GitHub App 인증 축, 71 → 85) — #141 이 `github.rs` · `github_app.rs` 에 주석을 들이고
+  `backend/tests/github.rs` 를 새로 들였다(지문 파일 수 135 → 136).
+- **원장 14행**(테스트 하네스 축)은 #142 가 `scripts/e2e.sh` 에 1행을 더해 20 → 21 로 어긋났다가,
+  **#145**(`0c5de43`, 24차 패스)가 그 1행을 증분 재판정해 **이미 닫았다** — 이 PR 이 할 몫이 없다.
