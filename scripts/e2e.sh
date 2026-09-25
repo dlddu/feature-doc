@@ -7,7 +7,6 @@ IMAGE="${IMAGE:-featuredoc:dev}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
-# CI 는 e2e 의존성과 Playwright 브라우저를 앞 단계에서 (캐시와 함께) 설치해 둔다.
 SKIP_PLAYWRIGHT_INSTALL="${SKIP_PLAYWRIGHT_INSTALL:-0}"
 
 PF_PID=""
