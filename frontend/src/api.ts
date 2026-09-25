@@ -866,11 +866,9 @@ export type HistoryEntry = {
   request: string | null;
   before: Sentences | null;
   after: Sentences[];
-  /** 앞선 분석에서 이어받은 편집이면 그 원본 id — 한 편집을 두 번 세지 않게 한다. */
   carriedFrom: string | null;
   restoredTo: string | null;
   current: boolean;
-  /** 지금 문서에 서 있는가. 복원으로 잘려 나간 편집은 이력에 남되 서지 않는다. */
   standing: boolean;
 };
 
@@ -912,7 +910,6 @@ export async function getHistoryPoint(
   return (await res.json()) as HistoryPreview;
 }
 
-/** 복원은 문서를 다시 쓰지 않는다 — 재생 구간을 자르고, 그 자름 자체가 이력에 남는다. */
 export async function restoreHistoryPoint(
   id: string,
   featureKey: string,

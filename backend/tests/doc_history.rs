@@ -1,8 +1,4 @@
-//! 변경 이력 조회와 임의 시점 복원(AC3.4) — 라우터를 그대로 돌려 본다.
-//!
-//! 복원이 문서를 다시 쓰지 않고 **재생 구간을 자른다**는 것이 여기서 단정된다:
-//! 되돌린 뒤에도 잘린 편집의 행은 그대로 남고(이력), 그 뒤에 한 편집은 살아남고,
-//! 복원 자체가 이력의 한 항목이라 그것을 골라 다시 되돌릴 수 있다.
+//! 변경 이력 조회와 임의 시점 복원 — 라우터를 그대로 돌려 본다.
 mod common;
 
 use axum::body::Body;
@@ -252,7 +248,6 @@ async fn restoring_a_point_puts_the_document_back_and_is_itself_a_change() {
     let latest = thens(&history(&state, &s, &id).await);
     assert_ne!(mid, latest);
 
-    // 되돌리기 전에 무엇이 달라지는지 먼저 보여 준다 — 여정의 복원 미리보기.
     let (status, view) = preview(&state, &s, &id, &first).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(view["isCurrent"], false);
@@ -275,7 +270,6 @@ async fn restoring_a_point_puts_the_document_back_and_is_itself_a_change() {
     );
     assert_eq!(list[2]["kind"], "edit", "잘렸다고 이력에서 지우지 않는다");
 
-    // 기준선까지 되돌리면 편집이 하나도 얹히지 않은 문서가 선다.
     let (status, back) = restore(&state, &s, &id, "auto").await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(thens(&back), baseline);
@@ -343,14 +337,12 @@ async fn a_restore_is_itself_a_point_that_can_be_restored_to() {
         .to_string();
     assert_ne!(thens(&after), latest);
 
-    // 복원이 잘못이었다면 그다음 시점으로 다시 되돌린다 — 되돌리기의 되돌리기.
     let (status, again) = restore(&state, &s, &id, &second).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(thens(&again), latest, "복원을 되돌리지 못했다");
     assert_ne!(undone, "");
     assert_eq!(entries(&again).len(), 5);
 
-    // 그 복원 자체를 고를 수도 있다.
     let (status, view) = preview(&state, &s, &id, &undone).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(view["isCurrent"], false);

@@ -97,8 +97,7 @@ pub fn scenarios_of(doc: &Value, key: &str) -> Vec<Scenario> {
         .collect()
 }
 
-/// 세 문장에서 견줄 값을 만든다 — 저장된 문서에서 읽을 때(`scenarios_of`)와 같은 규칙이라
-/// 「그 시점의 상태」와 지금을 견주는 쪽도 같은 눈으로 본다.
+/// 세 문장에서 견줄 값을 만든다.
 pub fn scenario_of(given: &str, when: &str, then: &str) -> Scenario {
     Scenario {
         identity: format!("{}\u{1}{}\u{1}{}", norm(given), norm(when), norm(then)),

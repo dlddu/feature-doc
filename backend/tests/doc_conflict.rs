@@ -230,7 +230,6 @@ async fn an_edit_the_reader_restored_away_is_not_carried_into_the_next_analysis(
     let mine = edit_first_scenario(&state, &s, &first).await;
     assert_eq!(thens(&state, &s, &first).await[0], mine);
 
-    // 읽던 사람이 그 편집 이전으로 되돌린다 — 편집 행은 이력에 남지만 문서에는 서지 않는다.
     let (status, _) = post(
         &state,
         &s,
