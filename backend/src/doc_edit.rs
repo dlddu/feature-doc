@@ -23,6 +23,9 @@ pub mod status {
 
 pub const SOURCE_USER_LLM: &str = "user_llm";
 
+/// 자동 분석이 쓴 것. 이력의 기준선이 그 출처를 가진다(AC3.4 의 어휘 셋 중 하나).
+pub const SOURCE_AUTO: &str = "auto";
+
 /// 프롬프트가 무한히 길어지지 않게 하는 것이 목적이고, 최근 것부터 담는다 — 사람이
 /// 방금 거부한 방향이 다음 제안에서 가장 먼저 피해야 할 방향이다.
 pub(crate) const MAX_AVOIDED: usize = 5;
@@ -212,11 +215,13 @@ async fn propose(
     })?;
 
     let row_id = uuid::Uuid::new_v4().to_string();
+    // 이 제안이 **어느 복원 뒤에** 서는지. 순서를 시각이 아니라 세대로 엮는다(0014).
+    let after_restore = crate::doc_history::current_restore(&state, &id, &req.key).await?;
     sqlx::query(
         "INSERT INTO feature_doc_edits \
            (id, analysis_id, feature_key, scenario_index, request, before_json, after_json, \
-            status, source, model, input_tokens, output_tokens, created_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            status, source, model, input_tokens, output_tokens, created_at, after_restore) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&row_id)
     .bind(&id)
@@ -231,6 +236,7 @@ async fn propose(
     .bind(answer.input_tokens)
     .bind(answer.output_tokens)
     .bind(now_unix())
+    .bind(after_restore.as_deref())
     .execute(&state.db)
     .await?;
 
@@ -348,8 +354,9 @@ pub async fn overlay(
     analysis_id: &str,
     doc: &mut Value,
 ) -> Result<(), AppError> {
-    let rows: Vec<(String, i64, String)> = sqlx::query_as(
-        "SELECT feature_key, scenario_index, after_json FROM feature_doc_edits \
+    let standing = crate::doc_history::standing_edits(state, analysis_id).await?;
+    let rows: Vec<(String, String, i64, String)> = sqlx::query_as(
+        "SELECT id, feature_key, scenario_index, after_json FROM feature_doc_edits \
           WHERE analysis_id = ? AND status = ? ORDER BY created_at, rowid",
     )
     .bind(analysis_id)
@@ -357,42 +364,51 @@ pub async fn overlay(
     .fetch_all(&state.db)
     .await?;
 
-    for (key, index, after_json) in rows {
+    for (id, key, index, after_json) in rows {
+        // 복원이 재생 구간을 자른 뒤의 편집은 이력에 남되 문서에는 서지 않는다(0014).
+        if !standing.contains(&id) {
+            continue;
+        }
         let Ok(after) = serde_json::from_str::<Vec<Sentences>>(&after_json) else {
             continue;
         };
-        let Some(features) = doc.get_mut("features").and_then(Value::as_array_mut) else {
-            return Ok(());
-        };
-        let Some(feature) = features
-            .iter_mut()
-            .find(|f| f.get("key").and_then(Value::as_str) == Some(key.as_str()))
-        else {
-            continue;
-        };
-        let Some(list) = feature.get_mut("scenarios").and_then(Value::as_array_mut) else {
-            continue;
-        };
-        let at = index as usize;
-        if at >= list.len() {
-            continue;
-        }
-        // 출처·근거는 그 자리에 있던 값을 물려준다 — 사람이 고친 것은 문장이지,
-        // 그 문장이 어느 코드에서 왔는지가 아니다.
-        let template = list[at].clone();
-        let replacement: Vec<Value> = after
-            .iter()
-            .map(|sentences| {
-                let mut scenario = template.clone();
-                scenario["given"] = json!(sentences.given);
-                scenario["when"] = json!(sentences.when);
-                scenario["then"] = json!(sentences.then);
-                scenario
-            })
-            .collect();
-        list.splice(at..at + 1, replacement);
+        splice(doc, &key, index as usize, &after);
     }
     Ok(())
+}
+
+/// 한 자리의 시나리오를 주어진 문장(들)로 바꾼다 — 겹쳐 읽기와 임의 시점 재생이 같은
+/// 규칙을 써야 「그 시점의 상태」와 「그때 화면에 섰던 것」이 갈리지 않는다.
+pub(crate) fn splice(doc: &mut Value, key: &str, at: usize, after: &[Sentences]) {
+    let Some(features) = doc.get_mut("features").and_then(Value::as_array_mut) else {
+        return;
+    };
+    let Some(feature) = features
+        .iter_mut()
+        .find(|f| f.get("key").and_then(Value::as_str) == Some(key))
+    else {
+        return;
+    };
+    let Some(list) = feature.get_mut("scenarios").and_then(Value::as_array_mut) else {
+        return;
+    };
+    if at >= list.len() {
+        return;
+    }
+    // 출처·근거는 그 자리에 있던 값을 물려준다 — 사람이 고친 것은 문장이지,
+    // 그 문장이 어느 코드에서 왔는지가 아니다.
+    let template = list[at].clone();
+    let replacement: Vec<Value> = after
+        .iter()
+        .map(|sentences| {
+            let mut scenario = template.clone();
+            scenario["given"] = json!(sentences.given);
+            scenario["when"] = json!(sentences.when);
+            scenario["then"] = json!(sentences.then);
+            scenario
+        })
+        .collect();
+    list.splice(at..at + 1, replacement);
 }
 
 pub(crate) async fn rejections(
@@ -430,7 +446,9 @@ pub(crate) fn avoid_list(rejected: &[(String, String)]) -> Vec<String> {
         .collect()
 }
 
-pub(crate) async fn document_of(state: &AppState, analysis_id: &str) -> Result<Value, AppError> {
+/// 편집을 얹기 **전**의 문서 — 자동 산출물 위에 확정된 추가가 겹치고 열린 삭제가 가린 것.
+/// 이력의 자동 기준선이자, 임의 시점 재생이 매번 출발하는 자리다.
+pub(crate) async fn base_document(state: &AppState, analysis_id: &str) -> Result<Value, AppError> {
     let row: Option<(String,)> = sqlx::query_as(
         "SELECT content FROM analysis_documents WHERE analysis_id = ? AND kind = ?",
     )
@@ -445,6 +463,11 @@ pub(crate) async fn document_of(state: &AppState, analysis_id: &str) -> Result<V
     // 고칠 대상도, 그 위에 얹을 제안도 **사람이 지금 보는 문장** 기준이어야 한다.
     crate::feature_add::overlay(state, analysis_id, &mut doc).await?;
     crate::feature_delete::overlay(state, analysis_id, &mut doc).await?;
+    Ok(doc)
+}
+
+pub(crate) async fn document_of(state: &AppState, analysis_id: &str) -> Result<Value, AppError> {
+    let mut doc = base_document(state, analysis_id).await?;
     overlay(state, analysis_id, &mut doc).await?;
     Ok(doc)
 }
