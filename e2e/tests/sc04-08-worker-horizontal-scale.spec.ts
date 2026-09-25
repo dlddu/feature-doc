@@ -88,7 +88,7 @@ test.describe('시나리오 8: 워커의 수평 확장', () => {
           {
             message: '2 queued analyses should drain once 2 workers run',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe(burst.length);

@@ -26,6 +26,7 @@
 // 임대 창 안에서만 실재한다(setWorkerEnv: scale 0 뒤 set, finally에서 unset).
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers, setWorkerEnv } from '../support/cluster';
+import { afterSecond } from '../support/clock';
 import { installApp } from '../support/github-app';
 
 /** Stage keys seeded at enqueue, in pipeline order (backend/src/pipeline.rs). */
@@ -90,13 +91,13 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       await expect
         .poll(() => analysisOf(page, good).then((a) => a.status), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('awaiting_pipeline');
       await expect
         .poll(() => analysisOf(page, failing).then((a) => a.status), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('failed');
 
@@ -111,6 +112,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       const beforeRetry = await stageOf(page, failing, 'fetch');
       expect(beforeRetry.startedAt).not.toBeNull();
 
+      await afterSecond(beforeRetry.startedAt ?? 0);
       await failedStage.getByTestId('retry').click();
 
       // The reset is observed through the API rather than the DOM on purpose: a
@@ -133,7 +135,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
           {
             message: 'the retried stage should run again and fail on the same cause',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe('failed (reran)');
@@ -183,7 +185,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       await expect
         .poll(() => analysisOf(page, llmFailing).then((a) => a.status), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('awaiting_pipeline');
 
@@ -215,7 +217,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
           {
             message: 'stage 4 should fail on the LLM failure trigger',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe('failed: LLM rejected the request (429)');
@@ -231,6 +233,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       const beforeRetry = await stageOf(page, llmFailing, 'feature_candidates');
       expect(beforeRetry.startedAt).not.toBeNull();
 
+      await afterSecond(beforeRetry.startedAt ?? 0);
       await failedStage.getByTestId('retry').click();
       await expect
         .poll(
@@ -242,7 +245,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
           {
             message: 'the retried stage should run again and fail on the same cause',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe('failed (reran)');

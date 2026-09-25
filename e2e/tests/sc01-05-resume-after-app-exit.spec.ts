@@ -63,7 +63,7 @@ test.describe('AC1.5: 비동기 진행 가시성과 복귀', () => {
 
       await scaleWorkers(1);
       await expect
-        .poll(() => statusOf(page, good), { timeout: 120_000, intervals: [1_000] })
+        .poll(() => statusOf(page, good), { timeout: 120_000, intervals: [250] })
         .toBe('awaiting_pipeline');
 
       await page.goto(`/#/analyses/${good}`);

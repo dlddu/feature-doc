@@ -1,6 +1,7 @@
 // 검증 시나리오: 01-analysis-pipeline.md#시나리오 8
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
+import { afterSecond } from '../support/clock';
 import { installApp } from '../support/github-app';
 
 type StageRow = {
@@ -61,7 +62,7 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
       await expect
         .poll(() => analysisOf(page, id).then((a) => a.status), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('awaiting_pipeline');
 
@@ -75,7 +76,7 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
             const s4 = a.stages.find((s) => s.key === 'feature_candidates')?.status;
             return `${a.status} / ${s4}`;
           },
-          { timeout: 120_000, intervals: [1_000] },
+          { timeout: 120_000, intervals: [250] },
         )
         .toBe('awaiting_pipeline / succeeded');
 
@@ -92,6 +93,7 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
       const strategyStage = page.locator('[data-stage="discovery_strategy"]');
       await expect(strategyStage.getByTestId('rerun')).toBeVisible();
       await expect(strategyStage.getByTestId('rerun')).toHaveText('이 단계 다시 실행');
+      await afterSecond(before.startedAt ?? 0);
       await strategyStage.getByTestId('rerun').click();
 
       // A *new* attempt: `startedAt` is cleared by the reset, so only a value that is
@@ -106,14 +108,14 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
           {
             message: 'the re-run stage should run again and succeed',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe('succeeded (reran)');
       await expect
         .poll(() => analysisOf(page, id).then((a) => a.status), {
           timeout: 60_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('awaiting_pipeline');
 

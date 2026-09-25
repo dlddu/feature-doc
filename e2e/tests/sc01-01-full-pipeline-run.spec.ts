@@ -104,7 +104,7 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
 
       await scaleWorkers(1);
       await expect
-        .poll(() => statusOf(page, id!), { timeout: 120_000, intervals: [1_000] })
+        .poll(() => statusOf(page, id!), { timeout: 120_000, intervals: [250] })
         .toBe('awaiting_pipeline');
       // 진행은 서버 상태지만 화면이 자동 갱신하지는 않는다 — 다시 진입해 관측한다.
       await page.goto(`/#/analyses/${id}`);
@@ -162,7 +162,7 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       await expect
         .poll(() => candidatesOf(page, id!).then((l) => l.extracted), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe(true);
 

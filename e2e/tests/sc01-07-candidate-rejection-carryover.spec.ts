@@ -54,7 +54,7 @@ async function candidatesOf(page: Page, id: string): Promise<CandidateList> {
 async function runToCandidates(page: Page, repo: string): Promise<string> {
   const id = await enqueue(page, repo);
   await expect
-    .poll(() => statusOf(page, id), { timeout: 120_000, intervals: [1_000] })
+    .poll(() => statusOf(page, id), { timeout: 120_000, intervals: [250] })
     .toBe('awaiting_pipeline');
   // Reading materialises the reviewable strategy, then approving re-queues the job.
   expect((await page.request.get(`/api/analyses/${id}/discovery-strategy`)).ok()).toBeTruthy();
@@ -63,7 +63,7 @@ async function runToCandidates(page: Page, repo: string): Promise<string> {
   await expect
     .poll(() => candidatesOf(page, id).then((l) => l.extracted), {
       timeout: 120_000,
-      intervals: [1_000],
+      intervals: [250],
     })
     .toBe(true);
   return id;
@@ -97,7 +97,7 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
 
       await scaleWorkers(1);
       await expect
-        .poll(() => statusOf(page, first), { timeout: 120_000, intervals: [1_000] })
+        .poll(() => statusOf(page, first), { timeout: 120_000, intervals: [250] })
         .toBe('awaiting_pipeline');
 
       // 승인 전에는 4단계가 열리지 않는다 — 큐가 그 단계를 내주지 않으므로 잡을 아무리
@@ -111,7 +111,7 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
       await expect
         .poll(() => candidatesOf(page, first).then((l) => l.extracted), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe(true);
 
