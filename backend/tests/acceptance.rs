@@ -517,9 +517,6 @@ async fn stage_statuses(state: &AppState, id: &str) -> Vec<(String, String)> {
         .unwrap()
 }
 
-/// AC1.5 / test/01 시나리오 8: re-running a stage that already succeeded offers that
-/// stage — and nothing behind it — to the next claim. Later stages keep their
-/// output and the reviewer keeps their decisions.
 #[tokio::test]
 async fn rerunning_a_succeeded_stage_offers_that_stage_alone() {
     let (state, path) = stub_state().await;
@@ -533,8 +530,6 @@ async fn rerunning_a_succeeded_stage_offers_that_stage_alone() {
     run_stage_five(&state, &id, &job).await;
     assert!(stage_statuses(&state, &id).await.iter().all(|(_, s)| s == "succeeded"));
 
-    // `fetch` is offered on every claim (it produces the path list), so each expected
-    // list starts with it; what matters is that only the re-run stage joins it.
     let cases: [(&str, &[&str]); 5] = [
         ("fetch", &["fetch"]),
         ("cross_cutting", &["fetch", "cross_cutting"]),
@@ -553,7 +548,6 @@ async fn rerunning_a_succeeded_stage_offers_that_stage_alone() {
         let job = claim(&state).await;
         assert_eq!(offered(&job), expected, "re-running {key}");
         if key == "discovery_strategy" {
-            // Stage 3 plans over the stored landscape instead of re-running stage 2.
             assert_eq!(job["crossCuttingDocument"], json!({ "categories": [] }));
         } else {
             assert!(job["crossCuttingDocument"].is_null(), "{key}: {job}");
@@ -568,7 +562,6 @@ async fn rerunning_a_succeeded_stage_offers_that_stage_alone() {
         assert_eq!(status_of(&state, &id).await, "awaiting_pipeline", "{key}");
     }
 
-    // The reviewer's decision survived every re-run, stage 4's included.
     let list = candidates(&state, &session, &id).await;
     let approved = list["candidates"]
         .as_array()

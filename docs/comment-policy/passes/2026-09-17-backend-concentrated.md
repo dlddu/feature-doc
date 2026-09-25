@@ -462,3 +462,50 @@ flake 를 덮는다 … 테스트 수정이 따라붙는 **별개 작업**이다
 `check-scenario-e2e.py` · `check-mockup-render.py` · `check-journey-mockup.py` rc=0 — 새 `passes/*.md` 를
 만들지 않았으므로 허브 R9(`docs/index.html` 의 `Documents` 수·링크 집합)은 건드리지 않았다.
 
+
+## 증분 재판정 ⑫ — #121 이 `analysis.rs`·`worker_api.rs` 에 연 +26행 · 2026-09-25
+
+reconciler task `rct_20260925-0002`. 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝난 단계도 그 단계만 다시 실행)이
+이 행의 두 파일에 **추가 39행 · 제거 13행(순 +26)** 을 들여왔다. 20차 패스(#124)는 머지 직전 착지라 줄 수·지문만
+재고정하고 판정을 넘겼고(원장 1행의 「자매 착지 재실측」), 22차 패스(#130)도 「미판정 증분 33행」으로 이어
+넘겼다. 이 패스가 그것을 받는다. **순 제거 13행 · 유지 13행.**
+
+⚠️ **25차 패스(#147)는 이 몫이 자기가 닫은 33행이라고 적었다 — 아니다.** 그 패스가 닫은 것은 원장 행 12 의
+증분 14행과 행 밖 잔여 17행(합 31행)이고, 「미판정 증분 33행」은 행 1 의 26행과 행 4 의 7행이었다. 그 트리
+(`39ee044`)에서 **행 1 은 여전히 629 / `39b8ea03…` 로 재현되고 #121 의 주석 39행이 파일에 그대로 있다**
+(실측 — `grep -c 'Later stages are deliberately' backend/src/analysis.rs` = 1). 두 수가 겹쳐 보인 것은
+**지문 재현을 판정의 증거로 읽었기 때문**이다. 원장의 「읽는 법」이 적은 대로 재현은 *그 줄이 판정을 받았음*을
+뜻하지 않으며, 이 행이 다섯 트리에 걸쳐 초록인 채 열려 있었던 것이 그 증거다. 원장 합계 문단의 해당 문장은
+지우지 않고 **실측에 맞춰 정정**했다(발견 기록을 지우면 다음 감지가 같은 오독을 처음부터 다시 한다).
+
+> **유입량은 순증이 아니라 추가분으로 센다.** 원장이 적은 +26 은 **순증**이고, 판정 표면은 #121 이 **새로 쓴
+> 39행**이다(제거된 13행은 이미 사라졌다). 아래 표는 그 39행을 자리별로 판정한 것이고, 「순 제거 13행」은
+> 그 결과를 순증 축으로 환산한 값이다.
+
+| 자리 | 판정 | 근거 |
+|---|---|---|
+| `analysis.rs` 모듈 머리 `//!` 라우트 목록 2행 (「`POST /api/analyses/{id}/stages/{key}/retry` — re-run one *finished* stage and / only that one (시나리오 6·8).」) | **유지 2** | 제자리 수정분이라 새 명제가 아니다. 같은 목록의 형제 항목 여섯 개를 앞선 패스들이 모두 유지로 닫았고(바로 위 `GET /api/analyses/{id}` 항목의 `(test/01 시나리오 5)` 꼬리표까지 포함), 이 한 칸만 걷으면 라우트 목록 자체가 깨진다 |
+| `retry_stage` 요약 2행 → 1행 재작성 | **순 제거 1** | AC 조항 축자 인용 `"실패했거나 완료된 단계는 그 단계만 다시 실행할 수 있다"` 는 `docs/prd/01-analysis-pipeline.md` AC1.5 설명의 축자(②)이고, **같은 파일 271행의 오류 문자열** `"실패했거나 완료된 단계만 다시 실행할 수 있습니다."` 가 사용자에게 그대로 말한다(① — 정책 본문 「오류 문자열이 이미 말하는 것」). `test/01 시나리오 6·8` 은 꼬리표(②). 첫 절(「Re-runs one finished stage — failed *or* succeeded — and nothing else」)은 doc 요약 1줄로 남겼다 |
+| `analysis.rs` 「Later stages are deliberately **not** invalidated …」 4행 + 딸린 `///` 1행 | **제거 5** | **세 벌째**다: ⑴ 같은 doc 세 줄 위 224–225행이 「Sibling stage rows are not touched, which is what keeps already-finished work (and its measured detail) intact」로 이미 말하고, ⑵ 본문 SQL 이 `WHERE analysis_id = ? AND key = ?` 로 한 행만 되돌리며(①), ⑶ PRD AC1.5 **검증 방법**이 「끝난 단계도 그 단계만 다시 실행할 수 있으며, 이때 **뒤 단계의 결과와 사용자가 내린 승인·결정은 그대로 유지된다**」로 축자에 가깝게 적는다(②) |
+| `worker_api.rs` `cross_cutting_document` 필드 doc 3행 → 1행 | **순 제거 2** | 「carrying it is what lets the re-run leave stage 2 untouched」 는 `offered_stages` doc 의 「When the document is stored the claim carries it instead (`crossCuttingDocument`), which is what lets re-running stage 3 leave stage 2 untouched」 와 **같은 명제의 두 벌째**다. `(AC1.5)` 는 꼬리표(②) |
+| `worker_api.rs` `Gates` 필드 doc 4행 | **제거 4** | 네 필드 이름(`strategy_approved`·`candidates_approved`·`acceptance_pending`·`landscape_stored`)이 각 문장의 술어를 그대로 담고(①), 「stage 4's gate」·「stage 5's gate」는 `offered_stages` 본문의 `if gates.strategy_approved && !done(FEATURE_CANDIDATES)` 류가 축자로 말한다(①). `(AC1.3)` 은 AC 꼬리표(②), `([`acceptance_pending`])` 는 **rustdoc 링크만의 교차 참조**(증분 재판정 ③·④ 의 선례). `pub struct Gates` 자신의 요약 1행은 유지 |
+| `worker_api.rs` `stored_landscape` 요약 1행 | **제거 1** | 비공개 fn 이름 `stored_landscape` 와 반환 타입 `Result<Option<serde_json::Value>>` 가 「Stage 2's stored document, when there is one」을 축자로 말한다(①). doc 주석 유지 규칙은 `pub` 항목에만 걸린다 |
+| `worker_api.rs` `offered_stages` 규칙 doc 15행 (규칙 진술 4 · `cross_cutting` 5 · Stage 5 6) | **유지 15** | 이 자리가 **정본**이다 — 같은 파일 `executable_stages` doc 이 「The rule is spelled out in [`offered_stages`]」로 독자를 여기로 보내고, 위 두 제거가 성립하는 근거가 바로 이 정본의 존재다. 담은 것도 복원 경로 밖이다: 「끝난 단계가 `pending` 으로 돌아오는 것은 사람이 다시 실행을 요청했을 때뿐」은 `analysis.rs::retry_stage` 와 이 함수 **사이의** 계약이라 어느 한쪽 코드로도 복원되지 않고, 「stage-2 문서가 없으면 3단계가 계획할 대상 없이 도착해 조용히 아무것도 안 한다」는 **실패 모드의 함정**, 「`pending`, not "not succeeded" — 실패한 5단계는 남이 요청한 재실행에 얹혀 가지 않는다」는 **동시성 계약**이다(정책 본문 유지 대상). 「애매하면 남긴다」의 비대칭 비용 조항을 적용했다 |
+
+**정본을 어디에 둘 것인가** — 증분 재판정 ⑤·⑨·⑪ 의 잣대(「복제된 명제는 **강제하는 코드 옆** 한 벌만」)를
+그대로 적용했다. 이번 창의 중복 셋은 모두 「규칙을 *정하는* 자리」와 「그 규칙을 *쓰는* 자리」의 쌍이었고,
+정본은 언제나 정하는 쪽(`offered_stages`)이다. 쓰는 쪽(필드 doc·핸들러 doc·테스트)이 같은 문장을 다시 적으면
+규칙이 바뀔 때 그쪽만 낡는다.
+
+**「애매하면 남긴다」와의 관계** — 제거한 13행이 담은 명제는 모두 남긴 자리(정본 15행 · 요약 1행 · 라우트 목록
+2행)의 **부분집합**이라, 지워서 어디에도 남지 않게 되는 지식이 0이다.
+
+줄 수·지문: `analysis.rs` 249 → 243 · `worker_api.rs` 174 → 167. 행 1 전체는
+**629/`39b8ea03…` → 616/`df4a5627c1acc0ae760914c1362c336a461e0a3670e050917ed36c59352a7696`** (순 제거 13).
+603 판정 완료 + 유지 13 = **616 전건 판정 완료**, 이 행의 미판정 증분은 **0** 이 됐다.
+
+**검증** — 세 파일 모두 주석 줄을 걷어낸 나머지를 부모 `39ee044` 과 md5 비교해 **IDENTICAL**
+(`analysis.rs` `288aae8bec5423951e40cf52630383e2` · `worker_api.rs` `221faecd0dcccd31062aff4f4def4962`).
+크레이트 어디에도 `missing_docs` 가 없고(`grep -rn missing_docs backend/` 0건 — `Gates` 의 `pub` 필드 doc 을
+걷어도 경고가 없다), 이 세 파일에 doctest(```` ``` ```` 펜스)가 **0건**이라 `cargo test --release` 의 대상
+집합이 바뀌지 않는다. CI 의 `cargo` job 은 `cargo test --profile ci` 하나이고 clippy·rustdoc 게이트는 없다.

@@ -352,3 +352,32 @@ reconciler task `rct_20260922-0005`. **전건 제거 4행.**
 
 줄 수·지문이 **#114 이전 값 142 / `2ff8f6ff…` 로 바이트 동일 복귀**했다.
 맥락 [2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md).
+
+## 증분 재판정 ④ — #121 이 `backend/tests/acceptance.rs` 에 연 +7행 · 2026-09-25
+
+reconciler task `rct_20260925-0002`. 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝난 단계도 그 단계만 다시 실행)이
+새 테스트 `rerunning_a_succeeded_stage_offers_that_stage_alone` 과 함께 이 행에 **추가 7행 · 제거 0행** 을
+들여왔다. 20차 패스(#124)가 줄 수·지문만 재고정하고, 22차 패스(#130)가 「미판정 증분」으로 이어 넘긴 몫이다.
+**전건 제거 7행 · 유지 0행.**
+
+| 자리 | 판정 | 근거 |
+|---|---|---|
+| 테스트 doc 3행 (「AC1.5 / test/01 시나리오 8: re-running a stage that already succeeded offers that / stage — and nothing behind it — to the next claim. Later stages keep their / output and the reviewer keeps their decisions.」) | **제거 3** | 세 겹으로 복원된다: ⑴ fn 이름 `rerunning_a_succeeded_stage_offers_that_stage_alone` 이 첫 절을 축자로 담고(①), ⑵ 「Later stages keep their output and the reviewer keeps their decisions」는 PRD AC1.5 **검증 방법**의 「뒤 단계의 결과와 사용자가 내린 승인·결정은 그대로 유지된다」의 번역(②), ⑶ `AC1.5 / test/01 시나리오 8` 은 AC·시나리오 꼬리표(②③). 비공개 테스트 fn 이라 `pub` 항목 doc 요약 유지 규칙의 대상이 아니고, 기계 판독 규약 `// 검증 시나리오:`(e2e spec 의 것 · DIRECTIVE 로 지문·판정 모두에서 제외) 와도 형태가 다르다 |
+| `// \`fetch\` is offered on every claim (it produces the path list), so each expected / list starts with it; what matters is that only the re-run stage joins it.` 2행 | **제거 2** | `worker_api.rs::offered_stages` doc 의 「`fetch` is always offered. It is the only non-LLM stage, it is what produces the path list every later stage reads」가 **정본**이고 이것은 두 벌째다. 게다가 바로 아래 `cases` 리터럴의 기대 목록 다섯 개가 전부 `"fetch"` 로 시작하는 것이 「매 claim 에 제공된다」를 축자로 보인다(①) |
+| `// Stage 3 plans over the stored landscape instead of re-running stage 2.` 1행 | **제거 1** | 바로 아래 `if key == "discovery_strategy"` 분기와 `assert_eq!(job["crossCuttingDocument"], json!({ "categories": [] }))` 가 그대로 말하고(①), 규칙의 정본은 `offered_stages` doc 이다(같은 창에서 유지) |
+| `// The reviewer's decision survived every re-run, stage 4's included.` 1행 | **제거 1** | 바로 아래 세 줄이 `decision == "approved"` 를 세어 `assert_eq!(approved, 1)` 로 단정한다 — 단언 재진술(①)이고, 명제 자체는 PRD AC1.5 검증 방법(②) |
+
+**이 행의 제거가 전건인 이유** — 이 축은 18차 패스의 「단언 재진술 · 이름 재진술」과 증분 재판정 ①·③ 에서
+이미 같은 형태로 닫혀 온 자리다. 테스트 주석은 **바로 아래 단언**이 정본이라, 단언이 말하는 것을 다시 적으면
+단언이 바뀔 때 주석만 낡는다. 이번 7행은 모두 그 유형이고, 복원 경로 밖의 지식(상류 거부 조건·동시성 계약·
+충실도 경계)을 담은 줄이 하나도 없어 「애매하면 남긴다」가 걸리는 자리가 없었다.
+
+줄 수·지문: **149 → 142 / `2ff8f6ff8251699d1571004d3ebb518ebcc373bed06bf175d5f8a40e17dba5d3`** —
+#121 이전 값으로 **바이트 동일 복귀**다(증분 재판정 ③ 이 #114 에 대해 같은 형태로 닫은 것과 같다). #121 이
+이 행에 더한 주석이 이 7행뿐이고 제거분이 0이었으므로, 전건 제거는 주석 집합을 #121 직전 상태로 정확히
+되돌린다 — 이 복귀 자체가 「빠뜨린 줄도, 더 걷은 줄도 없다」의 기계적 증거다.
+
+**검증** — `backend/tests/acceptance.rs` 의 주석 줄을 걷어낸 나머지가 부모 `39ee044` 과 md5 동일
+(`8db37bcfa5c50de8db43c05cbaa1a8b1`). 이 파일에 doctest 펜스 0건, 크레이트에 `missing_docs` 0건이라
+`cargo test` 의 대상 집합이 바뀌지 않는다(제거한 것은 `#[tokio::test]` **위의** doc 주석뿐이고 속성·fn 은
+무접촉).
