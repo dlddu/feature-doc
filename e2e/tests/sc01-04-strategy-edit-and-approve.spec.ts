@@ -68,7 +68,7 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
 
       await scaleWorkers(1);
       await expect
-        .poll(() => statusOf(page, first), { timeout: 120_000, intervals: [1_000] })
+        .poll(() => statusOf(page, first), { timeout: 120_000, intervals: [250] })
         .toBe('awaiting_pipeline');
 
       const proposal = (await (
@@ -145,7 +145,7 @@ test.describe('AC1.3: feature 탐색 전략 생성·검토·수정·승인', () 
 
       const second = await enqueue(page, 'payments-api');
       await expect
-        .poll(() => statusOf(page, second), { timeout: 120_000, intervals: [1_000] })
+        .poll(() => statusOf(page, second), { timeout: 120_000, intervals: [250] })
         .toBe('awaiting_pipeline');
 
       const carried = await strategyOf(page, second);

@@ -90,13 +90,13 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       await expect
         .poll(() => analysisOf(page, good).then((a) => a.status), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('awaiting_pipeline');
       await expect
         .poll(() => analysisOf(page, failing).then((a) => a.status), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('failed');
 
@@ -133,7 +133,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
           {
             message: 'the retried stage should run again and fail on the same cause',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe('failed (reran)');
@@ -183,7 +183,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
       await expect
         .poll(() => analysisOf(page, llmFailing).then((a) => a.status), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('awaiting_pipeline');
 
@@ -215,7 +215,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
           {
             message: 'stage 4 should fail on the LLM failure trigger',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe('failed: LLM rejected the request (429)');
@@ -242,7 +242,7 @@ test.describe('시나리오 6: 특정 단계 실패 후 부분 재시도', () =>
           {
             message: 'the retried stage should run again and fail on the same cause',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe('failed (reran)');

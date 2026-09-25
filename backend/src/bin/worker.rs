@@ -25,6 +25,9 @@ use serde::Deserialize;
 use serde_json::json;
 use tokio::signal::unix::{signal, SignalKind};
 
+/// Default pause after an empty claim. `FEATUREDOC_WORKER_IDLE_POLL_MS` overrides
+/// it — the e2e overlay lowers it because every queue hand-off in a spec otherwise
+/// waits out up to this long.
 const IDLE_POLL: Duration = Duration::from_secs(2);
 /// Back-off when the API is unreachable, so a restarting API is not hammered.
 const ERROR_BACKOFF: Duration = Duration::from_secs(5);
@@ -141,6 +144,7 @@ async fn main() -> anyhow::Result<()> {
     // a worker that never saw it, and abandoning a job strands its lease for
     // LEASE_SECONDS. So the current job runs on — to its end, or to the grace
     // period's SIGKILL, which the lease still covers — and nothing new is claimed.
+    let idle_poll = idle_poll();
     loop {
         let pause = match worker.claim().await {
             Ok(Some(job)) => {
@@ -149,7 +153,7 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Duration::ZERO
             }
-            Ok(None) => IDLE_POLL,
+            Ok(None) => idle_poll,
             Err(e) => {
                 tracing::warn!("claim failed: {e}");
                 ERROR_BACKOFF
@@ -756,6 +760,20 @@ impl Worker {
         } else {
             anyhow::bail!("{what} rejected ({})", resp.status().as_u16())
         }
+    }
+}
+
+fn idle_poll() -> Duration {
+    const KEY: &str = "FEATUREDOC_WORKER_IDLE_POLL_MS";
+    match std::env::var(KEY) {
+        Err(_) => IDLE_POLL,
+        Ok(raw) => match raw.parse::<u64>() {
+            Ok(ms) if ms > 0 => Duration::from_millis(ms),
+            _ => {
+                tracing::warn!("{KEY}={raw:?} is not a positive integer; using the default");
+                IDLE_POLL
+            }
+        },
     }
 }
 

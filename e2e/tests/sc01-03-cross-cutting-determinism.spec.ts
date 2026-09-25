@@ -75,7 +75,7 @@ test.describe('AC1.2: 횡단 관심사 자동 추출 및 문서화', () => {
 
       await scaleWorkers(1);
       await expect
-        .poll(() => statusOf(page, first), { timeout: 120_000, intervals: [1_000] })
+        .poll(() => statusOf(page, first), { timeout: 120_000, intervals: [250] })
         .toBe('awaiting_pipeline');
 
       const doc = await documentOf(page, first);
@@ -112,7 +112,7 @@ test.describe('AC1.2: 횡단 관심사 자동 추출 및 문서화', () => {
 
       const second = await enqueue(page, 'payments-api');
       await expect
-        .poll(() => statusOf(page, second), { timeout: 120_000, intervals: [1_000] })
+        .poll(() => statusOf(page, second), { timeout: 120_000, intervals: [250] })
         .toBe('awaiting_pipeline');
 
       const rerun = await documentOf(page, second);

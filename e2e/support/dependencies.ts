@@ -58,7 +58,7 @@ export async function traced(page: Page, id: string, key: string): Promise<Depen
   await expect
     .poll(() => dependenciesOf(page, id, key).then((d) => d.status), {
       timeout: 120_000,
-      intervals: [1_000],
+      intervals: [250],
     })
     .toBe('succeeded');
   return flatten(await dependenciesOf(page, id, key));

@@ -70,7 +70,7 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
       await expect
         .poll(() => analysisOf(page, id).then((a) => a.status), {
           timeout: 120_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('awaiting_pipeline');
 
@@ -85,7 +85,7 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
             const s4 = a.stages.find((s) => s.key === 'feature_candidates')?.status;
             return `${a.status} / ${s4}`;
           },
-          { timeout: 120_000, intervals: [1_000] },
+          { timeout: 120_000, intervals: [250] },
         )
         .toBe('awaiting_pipeline / succeeded');
 
@@ -116,14 +116,14 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
           {
             message: 'the re-run stage should run again and succeed',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe('succeeded (reran)');
       await expect
         .poll(() => analysisOf(page, id).then((a) => a.status), {
           timeout: 60_000,
-          intervals: [1_000],
+          intervals: [250],
         })
         .toBe('awaiting_pipeline');
 

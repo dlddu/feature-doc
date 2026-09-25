@@ -33,7 +33,7 @@ async function reanalyseToCandidates(page: Page, repo: string): Promise<string> 
   expect(created.status(), `enqueue ${repo}`).toBe(201);
   const id = (await created.json()).id as string;
   await expect
-    .poll(() => statusOf(page, id), { timeout: 120_000, intervals: [1_000] })
+    .poll(() => statusOf(page, id), { timeout: 120_000, intervals: [250] })
     .toBe('awaiting_pipeline');
   expect((await page.request.get(`/api/analyses/${id}/discovery-strategy`)).ok()).toBeTruthy();
   expect(
@@ -43,7 +43,7 @@ async function reanalyseToCandidates(page: Page, repo: string): Promise<string> 
   await expect
     .poll(() => candidatesOf(page, id).then((c) => c.length), {
       timeout: 120_000,
-      intervals: [1_000],
+      intervals: [250],
     })
     .toBeGreaterThan(0);
   return id;

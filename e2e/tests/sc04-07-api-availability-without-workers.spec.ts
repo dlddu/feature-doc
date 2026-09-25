@@ -102,7 +102,7 @@ test.describe('AC4.5: API 워크로드와 분석 워커 워크로드의 분리',
           {
             message: 'queued analyses should drain once the worker recovers',
             timeout: 120_000,
-            intervals: [1_000],
+            intervals: [250],
           },
         )
         .toBe(queuedIds.length);
