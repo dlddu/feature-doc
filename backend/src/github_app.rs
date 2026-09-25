@@ -330,9 +330,7 @@ pub async fn list_user_installations(
 /// The Setup URL's `installation_id` is attacker-controlled (GitHub does not sign
 /// it), so it must be confirmed against the user's own installations. The stub has
 /// no GitHub to ask, so it confirms against the only id its own install flow ever
-/// hands out — [`stub_installation_id`] of this user. Returning `Ok(())` for every
-/// id would accept what real rejects, which the mocking policy counts as a fidelity
-/// defect regardless of registration (docs/e2e-mocking-policy.md, 충실도 보증).
+/// hands out — [`stub_installation_id`] of this user.
 pub async fn verify_user_owns_installation(
     state: &AppState,
     user: &User,

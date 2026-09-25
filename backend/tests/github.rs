@@ -137,9 +137,6 @@ async fn setup_round_trip_marks_connection_installed() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// The Setup URL's `installation_id` is attacker-controlled, and the stub must
-/// refuse another user's the way real does — a stub that accepts every id would be
-/// more permissive than real (docs/e2e-mocking-policy.md, 충실도 보증).
 #[tokio::test]
 async fn a_setup_callback_for_someone_elses_installation_is_refused() {
     let (state, path) = stub_state().await;
@@ -164,8 +161,7 @@ async fn a_setup_callback_for_someone_elses_installation_is_refused() {
         .to_string();
     let setup_state = cookie_value(&set_cookie, "fd_setup_state").unwrap();
 
-    // bob 에게 발급됐을 id 를 alice 의 세션으로 가져온다 — real 이라면 alice 의 설치
-    // 목록에 없어 Forbidden 이다.
+    // real 이라면 alice 의 설치 목록에 없어 Forbidden 이다.
     let bob = github_app::stub_installation_id(2);
     assert_ne!(bob, github_app::stub_installation_id(1));
     let resp = build_router(state.clone())
@@ -185,7 +181,6 @@ async fn a_setup_callback_for_someone_elses_installation_is_refused() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
 
-    // 거부된 설치가 연결로 남지 않는다.
     let resp = build_router(state)
         .oneshot(
             Request::builder()

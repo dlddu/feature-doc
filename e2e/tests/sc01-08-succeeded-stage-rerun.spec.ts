@@ -1,13 +1,4 @@
 // 검증 시나리오: 01-analysis-pipeline.md#시나리오 8
-//
-// 사전 조건(1~4단계 완료, 분석 멈춤)은 제품 표면만으로 만든다: 분석을 걸고, 전략을
-// 읽어 실체화한 뒤 승인하면 4단계가 돈다 — sc01-06 의 두 번째 arc 와 같은 길이다.
-// 전략 검토 화면 자체의 검증은 sc01-04 가, 후보 화면은 sc01-07 이 소유하므로 여기서는
-// API 로 걷는다(setup).
-//
-// Isolation: this spec *leases* the analysis worker (see `e2e/support/cluster.ts`).
-// It scales the Deployment to 1 inside its own block and returns it to 0 in
-// `finally`; every assertion is about the job this spec created.
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
 import { installApp } from '../support/github-app';
@@ -74,7 +65,6 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
         })
         .toBe('awaiting_pipeline');
 
-      // 사전 조건: 전략 승인 → 4단계까지 완료.
       expect(await strategyApproved(page, id)).toBe(false);
       const approved = await page.request.post(`/api/analyses/${id}/discovery-strategy/approve`);
       expect(approved.ok(), 'strategy approval opens stage 4').toBeTruthy();
@@ -127,7 +117,6 @@ test.describe('시나리오 8: 끝난 단계의 단독 재실행', () => {
         })
         .toBe('awaiting_pipeline');
 
-      // 앞(입력)도 뒤(후보·승인)도 건드리지 않았다.
       for (const k of ['cross_cutting', 'feature_candidates']) {
         const s = await stageOf(page, id, k);
         expect(s.status, `${k} stays succeeded`).toBe('succeeded');
