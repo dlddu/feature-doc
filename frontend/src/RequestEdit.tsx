@@ -113,7 +113,7 @@ export function RequestEdit({
       </div>
 
       {context !== null && context.rejectedCount > 0 && (
-        <div className="notice on" style={{ marginTop: 12 }} data-testid="rejected-note">
+        <div className="notice info on" style={{ marginTop: 12 }} data-testid="rejected-note">
           <span>지난번에 거부하신 제안이 </span>
           <strong data-testid="rejected-count">{context.rejectedCount}</strong>
           <span>건 있어요. 같은 방향은 다시 제안하지 않습니다 — </span>

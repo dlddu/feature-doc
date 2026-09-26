@@ -369,7 +369,7 @@ export function HomeRepositories({
       </div>
 
       {estimate && !estimate.hasAccess && (
-        <div className="notice err" style={{ marginTop: 12 }} data-testid="no-access">
+        <div className="notice err" style={{ marginTop: 12 }} data-testid="repo-outside">
           이 저장소에는 접근할 수 없어요 — App 설치 범위 밖입니다.
           <button
             className="btn btn-secondary"

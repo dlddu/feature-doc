@@ -29,6 +29,9 @@
 #                   `appbar-sub`·`btn-link` 중 하나를 클래스로 가진 요소다. 원장 행의
 #                   「목업이 표현하는 것」 칸에 `(앱바 구조)` 마커가 있는 화면은 뺀다 —
 #                   `(단계 전체)` 와 같은 방식의 명시적 면제다.
+#  M10 짝의 동일성·클래스  공유 키의 두 요소가 **같은 상태**를 그리는지(자기 카피가 겹치는지)
+#                   먼저 확인하고, 같은 자리로 확정된 쌍의 **클래스 집합**이 같은지 대조한다.
+#                   태그 이름이 다른 쌍은 애초에 같은 요소가 아니라 제외한다(`sift-cost`).
 #  M9 인라인 선언   목업 `id` ↔ 구현 `data-testid` 로 짝지어지고 **클래스 집합이 같은**
 #                   요소 쌍마다, 인라인 style 의 선언 집합이 같다. 표기 차이는 환산하고
 #                   (`margin-top:16px` ↔ `marginTop: 16`), 프로토타입 전용 장치
@@ -45,9 +48,11 @@
 #    M9 도 같은 자리다 — 목업이 준 인라인 색·간격을 구현이 빠뜨려도 카피는 한 글자도 줄지 않아
 #    `#home-empty` 의 색 이탈이 7연속 task 동안 새어 나갔다(2026-09-26). 넣기 전 실측: 목업에 없는
 #    인라인 색을 구현에 주입해도 게이트가 **rc=0 · 11개 규칙 카운터 바이트 불변**으로 통과했다.
-#  * **클래스 축의 이탈은 M9 가 보지 않는다.** M9 는 클래스 집합이 같은 쌍만 대조 단위로 보므로,
-#    클래스가 어긋난 쌍은 위반이 아니라 **제외**로 샌다. 이 축을 규칙으로 바꾸려면 「같은 자리인가」를
-#    클래스 말고 다른 것으로 정해야 한다 — 아직 그 단위가 없다.
+#  * **M10 의 짝 동일성은 카피로만 판정한다.** 양쪽이 자기 literal 카피를 가질 때만 「같은 상태인가」를
+#    물을 수 있고, 한쪽 문면이 JSX 식이면(`{error}`) 비교할 것이 없어 **보류**로 센다. 그래서 키 충돌
+#    중 「구현 쪽이 식인」 경우는 여전히 사람 몫이다 — 2026-09-26 실측으로 `request-error` 가 정확히
+#    그 모양이었다(목업은 빈 요청 검증 문면, 구현은 서버 오류 `{error}`). 보류 건수를 요약에 찍는
+#    이유가 그것이다: 0 이 아니면 그만큼이 기계 대조 밖이다.
 #  * **상태 블록이 서는 조건**(구현이 대응 목업 단계에 없는 조건으로 `notice`·`badge` 를 렌더하는 것)은
 #    세지 않는다. 문면이 JSX 식으로 오면 M3B 의 카피 집합에 애초에 들어오지 않아, 같은 자리를 한국어
 #    리터럴로 바꾸면 M3B 가 미등재 1건으로 붉히는 표면이 식일 때는 영원히 초록이다(2026-09-25, AC4.1
@@ -523,6 +528,61 @@ def impl_inline(tag: str) -> tuple[dict[str, str], set[str]]:
     return decls, dynamic
 
 
+TAG_NAME = re.compile(r"<\s*([A-Za-z][A-Za-z0-9]*)")
+
+
+def tag_name(tag: str) -> str:
+    found = TAG_NAME.match(tag)
+    return found.group(1).lower() if found else "?"
+
+
+def element_body(src: str, tag: str, at: int) -> str:
+    """`at` 을 품은 요소의 **자기 본문**(여는 태그 다음부터 짝이 맞는 닫는 태그까지)을
+    돌려준다. 같은 이름의 자손이 있으므로 깊이를 센다 — 첫 `</name>` 에서 끊으면
+    중첩된 요소의 문면을 놓친다."""
+    name = tag_name(tag)
+    start = src.find(tag, max(0, at - len(tag))) + len(tag)
+    if start <= len(tag) - 1 or tag.endswith("/>"):
+        return ""
+    depth, i = 1, start
+    opener = re.compile(rf"<\s*{name}\b", re.I)
+    closer = re.compile(rf"</\s*{name}\s*>", re.I)
+    while i < len(src) and depth:
+        o, c = opener.search(src, i), closer.search(src, i)
+        if not c:
+            return src[start:]
+        if o and o.start() < c.start():
+            depth += 1
+            i = o.end()
+        else:
+            depth -= 1
+            if not depth:
+                return src[start:c.start()]
+            i = c.end()
+    return src[start:]
+
+
+def own_copy(body: str, jsx: bool) -> list[str]:
+    """요소 본문의 한국어 literal 카피 덩어리를 돌려준다. 구현의 JSX 식(`{error}`)은
+    문면을 확정하지 않으므로 애초에 걸리지 않고, 그래서 한쪽이 빈 목록이면 이 쌍은
+    「같은 상태인가」를 물을 수 없다(= 보류)."""
+    if jsx:
+        chunks = jsx_text_nodes(strip_comments(body))
+    else:
+        chunks = [norm(html.unescape(t)) for t in re.findall(r">([^<>]+)<", f">{body}<")]
+    return [c for c in chunks if c and is_copy(c) and HANGUL.search(c)]
+
+
+def same_state(mockup: list[str], impl: list[str]) -> bool:
+    """같은 상태를 그리는가. **임의 임계를 쓰지 않는다** — ⑴ 카피 덩어리가 하나라도
+    똑같거나 ⑵ 한쪽 문면 전체가 다른 쪽에 담기면(구현이 한 문장을 여러 span 으로
+    쪼개는 경우) 같은 자리로 본다. 둘 다 아니면 키가 서로 다른 상태에 붙어 있다."""
+    if set(mockup) & set(impl):
+        return True
+    joined_m, joined_i = " ".join(mockup), " ".join(impl)
+    return joined_m in joined_i or joined_i in joined_m
+
+
 def keyed_elements(paths: list[Path], attr: str) -> dict[str, tuple[str, int, str]]:
     found: dict[str, tuple[str, int, str]] = {}
     for path in paths:
@@ -530,9 +590,13 @@ def keyed_elements(paths: list[Path], attr: str) -> dict[str, tuple[str, int, st
         for m in re.finditer(rf'{attr}="([A-Za-z0-9_-]+)"', src):
             key = m.group(1)
             if key not in found:
-                found[key] = (path.name, src[:m.start()].count("\n") + 1,
-                              open_tag(src, m.start()))
+                tag = open_tag(src, m.start())
+                found[key] = (path.name, src[:m.start()].count("\n") + 1, tag)
+                BODIES[(attr, key)] = element_body(src, tag, m.start())
     return found
+
+
+BODIES: dict[tuple[str, str], str] = {}
 
 def main() -> int:
     doc = TRACKER.read_text(encoding="utf-8")
@@ -818,6 +882,44 @@ def main() -> int:
         print(f"M9 인라인 선언 — 공유 키 {len(shared)}건 · 대조 {len(matched)}쌍 · "
               f"클래스 불일치로 제외 {len(unmatched)}건 · 식이라 제외한 속성 {skipped}건")
 
+    # ── M10 짝의 동일성 · 클래스 축 ──────────────────────────────────────
+    # M9 는 「클래스가 같은가」를 대조 단위의 *전제* 로 쓰므로 클래스 축을 스스로 볼 수
+    # 없다. 그 전제를 여기서 클래스 밖의 두 증거로 다시 세운다 — 태그 이름과 자기 카피.
+    # 순서가 중요하다: 먼저 「같은 상태인가」를 확정하고, 확정된 쌍에만 클래스를 묻는다.
+    # 거꾸로 하면 키가 충돌한 쌍의 클래스 차이를 이탈로 오진한다(2026-09-26 실측:
+    # `no-access` · `request-error` 가 정확히 그 모양이었다).
+    placed, pending, tag_diff = [], [], []
+    for key in shared:
+        m_file, m_line, m_tag = mockup_keyed[key]
+        i_file, i_line, i_tag = impl_keyed[key]
+        if tag_name(m_tag) != tag_name(i_tag):
+            tag_diff.append(key)
+            continue
+        m_copy = own_copy(BODIES[("id", key)], jsx=False)
+        i_copy = own_copy(BODIES[("data-testid", key)], jsx=True)
+        if m_copy and i_copy:
+            if not same_state(m_copy, i_copy):
+                fail("M10", f"`#{key}` 가 서로 다른 상태에 붙어 있다 — "
+                            f"목업 「{m_copy[0]}」({m_file}:{m_line}) ↔ "
+                            f"구현 「{i_copy[0]}」({i_file}:{i_line}). 같은 키가 다른 "
+                            f"요소를 가리키면 M9 의 대조 단위가 거짓이 된다 — 훅 이름을 "
+                            f"그 요소가 실제로 그리는 상태에 맞출 것")
+                continue
+        else:
+            pending.append(key)
+        placed.append(key)
+        m_cls, i_cls = set(tag_classes(m_tag)), set(tag_classes(i_tag))
+        if m_cls != i_cls:
+            fail("M10", f"`#{key}` 클래스 집합이 목업과 다르다 — "
+                        f"목업 `{' '.join(sorted(m_cls)) or '없음'}`({m_file}:{m_line}) ↔ "
+                        f"구현 `{' '.join(sorted(i_cls)) or '없음'}`({i_file}:{i_line})")
+    if not placed:
+        fail("M10", f"같은 자리로 확정된 쌍이 하나도 없다(공유 키 {len(shared)}건) "
+                    f"— 규칙이 공전한다")
+    else:
+        print(f"M10 짝의 동일성·클래스 축 — 공유 키 {len(shared)}건 · 같은 자리 {len(placed)}쌍"
+              f"(카피로 확정 {len(placed) - len(pending)} · 식이라 보류 {len(pending)}) · "
+              f"태그 달라 제외 {len(tag_diff)}건")
 
     report()
     return 1 if failures else 0

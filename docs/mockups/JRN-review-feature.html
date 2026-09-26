@@ -1220,7 +1220,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
           <label for="in-request">이렇게 고쳐 주세요</label>
           <textarea id="in-request" rows="3" placeholder="예: 왜 저장이 안 되는지 한 문장으로 더 분명하게"></textarea>
         </div>
-        <div id="request-error" class="notice warn" style="margin-top:10px">
+        <div id="request-empty" class="notice warn" style="margin-top:10px">
           무엇을 고칠지 한 줄은 있어야 요청을 보낼 수 있어요.
         </div>
       </div>
@@ -1608,7 +1608,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
   function syncRequest() {
     var v = $('in-request').value.trim();
     $('btn-send-request').disabled = v.length === 0;
-    toggle($('request-error'), v.length === 0);
+    toggle($('request-empty'), v.length === 0);
     toggle($('rejected-note'), state.rejected > 0);
     $('rejected-count').textContent = String(state.rejected);
     if (state.rejectedPattern) $('rejected-pattern').textContent = state.rejectedPattern;
