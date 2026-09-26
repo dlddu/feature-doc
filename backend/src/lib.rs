@@ -92,3 +92,4 @@ pub fn init_tracing() {
         .with_ansi(ansi)
         .init();
 }
+// exp: head-only change (behind-main test, never merged)
