@@ -1186,7 +1186,29 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
         <button class="btn-link" id="btn-logout" data-goto="STP-sign-in">로그아웃</button>
       </header>
 
+      <!-- test/04 시나리오 9 의 기대 결과는 「작업별·전체별 호출 횟수와 추정 비용이
+           표시된다」이다. 작업별은 분석 진행 화면의 그리드가 그리고, 전체별이 설 자리는
+           여기 하나다 — 홈이 이 사용자의 분석 전부를 한자리에 두는 유일한 화면이라
+           여정(4위)이 자리를 못 박지 않아도 놓을 곳이 갈리지 않는다. -->
       <div class="section-title" style="margin-top:16px">
+        <span>누적 사용량</span>
+      </div>
+      <div class="metric-grid" style="margin-top:10px">
+        <div class="cell">
+          <div class="k">LLM Calls</div>
+          <div class="v" id="usage-calls">41</div>
+        </div>
+        <div class="cell">
+          <div class="k">Tokens</div>
+          <div class="v" id="usage-tokens">213,904</div>
+        </div>
+        <div class="cell">
+          <div class="k">Total spend</div>
+          <div class="v" id="usage-cost">$0.93</div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:22px">
         <span>연결된 저장소</span><span class="count" id="home-count">0</span>
       </div>
       <!-- 홈 목록 항목은 정적 HTML 이 열거하고 script 는 보이고 감추기만 한다 —

@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAnalysis, retryStage } from './api';
 import type { AnalysisDetail, Stage } from './api';
-import { formatCost, formatDuration } from './format';
+import { formatCost, formatCount, formatDuration } from './format';
 import { useWideViewport } from './viewport';
 
 const POLL_MS = 2_000;
@@ -154,6 +154,18 @@ export function AnalysisProgress({
           <div className="k">Progress</div>
           <div className="v" data-testid="progress-percent">
             {percent}%
+          </div>
+        </div>
+        <div className="cell">
+          <div className="k">LLM Calls</div>
+          <div className="v" data-testid="llm-calls">
+            {formatCount(analysis.spend.llmCalls)}
+          </div>
+        </div>
+        <div className="cell">
+          <div className="k">Tokens</div>
+          <div className="v" data-testid="tokens-used">
+            {formatCount(analysis.spend.inputTokens + analysis.spend.outputTokens)}
           </div>
         </div>
         <div className="cell">

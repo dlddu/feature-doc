@@ -6,13 +6,14 @@ import { useEffect, useState } from 'react';
 import {
   createAnalysis,
   getInstallUrl,
+  getUsage,
   listAnalyses,
   listRepositories,
   logout,
   preflightAnalysis,
 } from './api';
-import type { Analysis, Preflight, Repository } from './api';
-import { formatAgo, formatCost, formatSize } from './format';
+import type { Analysis, Preflight, Repository, Usage } from './api';
+import { formatAgo, formatCost, formatCount, formatSize } from './format';
 
 const STATUS_BADGE: Record<string, { tone: string; label: string }> = {
   queued: { tone: 'info', label: 'Queued' },
@@ -99,6 +100,7 @@ export function HomeRepositories({
   const [branch, setBranch] = useState('');
   const [estimate, setEstimate] = useState<Preflight | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
+  const [usage, setUsage] = useState<Usage | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -111,6 +113,13 @@ export function HomeRepositories({
         setError(messageOf(e));
       }
     })();
+  }, []);
+
+  // 누적 사용량은 저장소 목록과 다른 주소에서 오고, 없어도 홈이 하는 일(저장소를 고르고
+  // 분석을 거는 것)은 그대로 선다 — 그래서 위 로드와 묶지 않고 실패를 삼킨다. 묶으면
+  // `/api/usage` 한 곳의 장애가 목록까지 비운다.
+  useEffect(() => {
+    void getUsage().then(setUsage, () => setUsage(null));
   }, []);
 
   const rows = buildRows(repos ?? [], analyses);
@@ -192,7 +201,35 @@ export function HomeRepositories({
         </button>
       </header>
 
-      <div className="section-title" style={{ marginTop: 16 }}>
+      {usage !== null && (
+        <>
+          <div className="section-title" style={{ marginTop: 16 }}>
+            <span>누적 사용량</span>
+          </div>
+          <div className="metric-grid" style={{ marginTop: 10 }}>
+            <div className="cell">
+              <div className="k">LLM Calls</div>
+              <div className="v" data-testid="usage-calls">
+                {formatCount(usage.total.llmCalls)}
+              </div>
+            </div>
+            <div className="cell">
+              <div className="k">Tokens</div>
+              <div className="v" data-testid="usage-tokens">
+                {formatCount(usage.total.inputTokens + usage.total.outputTokens)}
+              </div>
+            </div>
+            <div className="cell">
+              <div className="k">Total spend</div>
+              <div className="v" data-testid="usage-cost">
+                {formatCost(usage.total.costCents)}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="section-title" style={{ marginTop: 22 }}>
         <span>연결된 저장소</span>
         <span className="count">{rows.length}</span>
       </div>
