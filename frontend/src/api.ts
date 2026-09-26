@@ -48,6 +48,8 @@ async function errorMessage(res: Response): Promise<string> {
   return `요청에 실패했어요 (${res.status})`;
 }
 
+export class NotVisibleError extends Error {}
+
 export async function getMe(): Promise<User | null> {
   const res = await fetch('/api/me', { credentials: 'same-origin' });
   if (res.status === 401) return null;
@@ -243,6 +245,7 @@ export async function getAnalysis(id: string): Promise<AnalysisDetail> {
   const res = await fetch(`/api/analyses/${encodeURIComponent(id)}`, {
     credentials: 'same-origin',
   });
+  if (res.status === 404) throw new NotVisibleError(await errorMessage(res));
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as AnalysisDetail;
 }

@@ -76,6 +76,15 @@ test('AC4.7: 다른 사용자의 분석·자격증명은 id 를 알고 직접 �
     const revoked = await pageA.request.delete(`/api/llm-keys/${keyB}`);
     expect(revoked.status(), 'A 가 B 의 키를 폐기할 수 없다').toBe(404);
 
+    await pageA.goto(`/#/analyses/${idB}`);
+    const notice = pageA.getByTestId('no-access');
+    await expect(notice, 'A 는 볼 수 없는 저장소 안내를 본다').toBeVisible();
+    expect(await notice.textContent()).toContain('이 저장소는 아직 볼 수 없어요');
+    await expect(
+      pageA.getByTestId('progress-error'),
+      '사유 없는 오류 뱃지로 떨어지지 않는다',
+    ).toHaveCount(0);
+
     // 위의 404 가 "없는 자원"이 아니라 "남의 자원"이라는 것을 이 한 줄이 못박는다.
     const stillThere = await pageB.request.get(`/api/analyses/${idB}`);
     expect(stillThere.status(), 'B 에게는 그대로 있다').toBe(200);
