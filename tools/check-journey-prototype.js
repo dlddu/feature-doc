@@ -503,7 +503,7 @@ const PRODUCT_PATHS = {
       } },
     { name: '큐 등록 실패', run: (win, doc) => {
         const btn = [...doc.querySelectorAll('[data-scenario="queuefail"]')][0];
-        click(win, btn);                       // 사용자가 일으킬 수 없는 상태를 장전
+        click(win, btn);
         click(win, doc.getElementById('btn-start'));
         const failed = visible(doc.getElementById('queue-failed'));
         const stayed = active(doc);
@@ -536,7 +536,7 @@ const PRODUCT_PATHS = {
         const failed = visible(doc.getElementById('stage-failed'));
         const onlyThisStage = doc.getElementById('stage-3').classList.contains('todo') &&
                               doc.getElementById('stage-1').classList.contains('done');
-        click(win, doc.getElementById('btn-retry-stage'));   // 그 단계만 다시
+        click(win, doc.getElementById('btn-retry-stage'));
         const cleared = !visible(doc.getElementById('stage-failed')) &&
                         doc.getElementById('stage-3').classList.contains('active');
         return { landed: active(doc), evidence: failed && onlyThisStage && cleared };
@@ -544,7 +544,7 @@ const PRODUCT_PATHS = {
     { name: '끝난 단계의 결과가 미덥지 않음', run: (win, doc) => {
         click(win, doc.querySelector('[data-scenario="rerun"]'));
         const offered = visible(doc.getElementById('btn-rerun-stage'));
-        click(win, doc.getElementById('btn-rerun-stage'));    // 끝난 그 단계만 다시
+        click(win, doc.getElementById('btn-rerun-stage'));
         const onlyThisStage = doc.getElementById('stage-2').classList.contains('active') &&
                               doc.getElementById('stage-1').classList.contains('done');
         const closed = !visible(doc.getElementById('btn-rerun-stage'));
@@ -553,9 +553,9 @@ const PRODUCT_PATHS = {
     { name: '앱 종료 후 복귀', run: (win, doc) => {
         const pct = doc.getElementById('prog-pct').textContent;
         const cost = doc.getElementById('cost-now').textContent;
-        click(win, doc.getElementById('btn-leave'));         // 앱을 닫는다
+        click(win, doc.getElementById('btn-leave'));
         const away = doc.getElementById('leave-card').style.display === 'block';
-        click(win, doc.getElementById('btn-reopen'));        // 알림 받고 복귀
+        click(win, doc.getElementById('btn-reopen'));
         const restored = doc.getElementById('prog-pct').textContent === pct &&
                          doc.getElementById('cost-now').textContent === cost &&
                          doc.getElementById('leave-card').style.display === 'none';
@@ -705,7 +705,7 @@ const PRODUCT_PATHS = {
         const failed = visible(doc.getElementById('stage-failed'));
         const onlyThisStage = doc.getElementById('stage-3').classList.contains('todo') &&
                               doc.getElementById('stage-1').classList.contains('done');
-        click(win, doc.getElementById('btn-retry-stage'));   // 그 단계만 다시
+        click(win, doc.getElementById('btn-retry-stage'));
         const cleared = !visible(doc.getElementById('stage-failed')) &&
                         doc.getElementById('stage-3').classList.contains('active') &&
                         doc.getElementById('stage-1').classList.contains('done');
@@ -725,7 +725,7 @@ const PRODUCT_PATHS = {
     { name: 'P2의 제안이 P1 편집과 겹침', run: (win, doc) => {
         const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
         at('#STP-flag-ambiguity');
-        change(win, doc.getElementById('in-target'), 's3');   // 지우 님이 고치고 있는 자리
+        change(win, doc.getElementById('in-target'), 's3');
         type(win, doc.getElementById('in-note'), '몇 번까지 다시 시도하는지 모르겠어요');
         click(win, doc.getElementById('btn-preview'));
         // 부딪힌다는 사실이 화면에 뜨고, 그 사이 어느 것도 문서에 반영되지 않는다.
@@ -888,7 +888,7 @@ for (const file of pages) {
     window.close();
 
     for (let i = 0; i < Math.min(btns.length, jr.branches.length); i += 1) {
-      const to = jr.branches[i].to;                      // ← 기대값은 여정 문서에서
+      const to = jr.branches[i].to;
       const w = load(pagePath).window;
       const d = w.document;
       const want = expectedTarget(d, jid, to);
@@ -907,7 +907,7 @@ for (const file of pages) {
        `${file}: 등록된 제품 경로 ${paths.length}개가 여정 문서 §4 의 ${jr.branches.length}행과 다르다`);
     for (let i = 0; i < Math.min(paths.length, jr.branches.length); i += 1) {
       const w = load(pagePath).window;
-      const want = expectedTarget(w.document, jid, jr.branches[i].to);  // ← 여기서도 문서가 기대값
+      const want = expectedTarget(w.document, jid, jr.branches[i].to);
       const r = paths[i].run(w, w.document);
       ok(r.landed === want, 'P4',
          `${file}: 제품 경로 "${paths[i].name}" 이 ${want} 로 가지 않고 ${r.landed} 로 갔다`);
