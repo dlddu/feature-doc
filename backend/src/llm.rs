@@ -122,14 +122,11 @@ impl Ask<'_> {
     }
 }
 
-/// What a call produced. Token counts and `calls` are the measured side of the
-/// cost accounting AC4.6 surfaces — the numbers a screen reports come from here
-/// and never from the pre-flight estimate.
+/// What a call produced.
 ///
-/// `calls` is 1 for every answer a provider hands back. It is a field rather than
-/// a constant because a stage may merge several answers into one (see
-/// [`crate::acceptance::derive`]), and the merged answer is what gets stored — so
-/// the count has to travel with it or the row loses one call.
+/// `calls` is a field rather than a constant because a stage may merge several
+/// answers into one ([`crate::acceptance::derive`]) and only the merged answer is
+/// stored — a constant 1 would silently lose that call.
 #[derive(Debug, Clone)]
 pub struct Answer {
     pub content: Value,

@@ -30,10 +30,6 @@
 //!    re-analysis either reproduce deterministically *or* state the difference;
 //!    comparing the stored content hash is what turns that into something the
 //!    screen can show rather than something the reader has to take on trust.
-//!
-//! Two costs travel on these views and they are not the same number: `est_*` is
-//! the pre-flight estimate the user decided on before any call, and `spend` is
-//! what the calls actually reported (AC4.6, [`crate::usage`]).
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
@@ -158,10 +154,8 @@ struct AnalysisDetailView {
     started_at: Option<i64>,
     finished_at: Option<i64>,
     stages: Vec<StageView>,
-    /// What this analysis has actually cost so far (AC4.6), as opposed to the
-    /// `est_*` fields above, which were guessed from repository size before the
-    /// first call. The screen shows this one; the estimate stays for the
-    /// pre-flight decision that produced it.
+    /// Measured — not the `est_*` fields above, which were guessed from repository
+    /// size before any call was made.
     spend: crate::usage::Spend,
 }
 
@@ -685,8 +679,7 @@ fn parse_repo(input: &str) -> Result<(String, String), AppError> {
 
 /// Deterministic pre-flight heuristic (AC1.1: show the expected scale before the user
 /// triggers). Derived only from the repo's reported size — an order-of-magnitude the
-/// user sees on Connect Repository, never a hard cost — and never revised afterwards:
-/// what was actually spent is measured separately ([`crate::usage`]).
+/// user sees on Connect Repository, never a hard cost, and never revised afterwards.
 struct Estimate {
     files: i64,
     llm_calls: i64,

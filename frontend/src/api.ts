@@ -156,15 +156,11 @@ export type Stage = {
   finishedAt: number | null;
 };
 
-/**
- * Measured spend (AC4.6) — what the calls this analysis made actually reported,
- * not the pre-flight `est*` guess the Connect Repository screen showed.
- */
+/** Measured — not the `est*` pre-flight guess that sits beside it. */
 export type Spend = {
   llmCalls: number;
   inputTokens: number;
   outputTokens: number;
-  /** Estimated from the measured tokens; the provider's invoice is its own. */
   costCents: number;
 };
 
@@ -181,7 +177,6 @@ export type AnalysisDetail = Analysis & {
   spend: Spend;
 };
 
-/** 작업별과 전체별을 한 번에 — `/api/usage` (test/04 시나리오 9). */
 export type Usage = {
   total: Spend;
   analyses: (Spend & {

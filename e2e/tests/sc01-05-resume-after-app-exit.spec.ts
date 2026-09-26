@@ -73,8 +73,6 @@ test.describe('AC1.5: 비동기 진행 가시성과 복귀', () => {
       // the number is the worker's measurement, not a fixture in this file.
       await expect(page.locator('[data-stage="fetch"]')).toContainText('766 files · 2.2 MB');
       await expect(page.getByTestId('awaiting-pipeline')).toBeVisible();
-      // 화면이 말하는 비용은 측정된 것이다(AC4.6) — 세 단계가 돌았으니 0 이 아니다.
-      // 얼마인지는 `sc04-09` 가 재고, 여기서는 「진행과 비용이 같은 서버 상태」만 본다.
       await expect(page.getByTestId('cost-so-far')).not.toHaveText('$0.00');
 
       await page.reload();

@@ -722,8 +722,7 @@ struct DocumentReq {
     worker_id: String,
     content: serde_json::Value,
     model: String,
-    /// How many provider calls this document cost. Defaults to 1 so a worker that
-    /// predates the field still reports the common case rather than zero.
+    /// Defaults to 1 so a worker predating the field counts one call, not zero.
     #[serde(default = "one_call")]
     calls: i64,
     #[serde(default)]
@@ -780,8 +779,6 @@ async fn submit_document(
     .execute(&state.db)
     .await?;
 
-    // 운영자가 보는 자리 — 단계별 호출·토큰이 로그에도 남는다(AC4.6). 화면은 집계를
-    // 읽지만 그때는 이미 합쳐진 뒤라, 어느 단계가 얼마를 썼는지는 여기서만 보인다.
     tracing::info!(
         analysis_id = %id,
         stage = %kind,
