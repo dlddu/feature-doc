@@ -8,8 +8,7 @@ KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 SKIP_PLAYWRIGHT_INSTALL="${SKIP_PLAYWRIGHT_INSTALL:-0}"
-# e.g. "1/2" — run only that Playwright shard against this cluster (CI runs one kind
-# cluster per shard). Empty runs the whole suite.
+# e.g. "1/2" — run only that Playwright shard against this cluster.
 PLAYWRIGHT_SHARD="${PLAYWRIGHT_SHARD:-}"
 
 PF_PID=""

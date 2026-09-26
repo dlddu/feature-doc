@@ -100,8 +100,6 @@ async fn claim(state: &AppState) {
     assert_eq!(resp.status(), StatusCode::OK, "queue should hold a job");
 }
 
-/// Submits one stage document. `calls` is what the merged-answer stage reports —
-/// see `acceptance::derive`.
 async fn submit_doc(state: &AppState, id: &str, kind: &str, calls: i64, input: i64, output: i64) {
     let mut body = json!({
         "workerId": WORKER,
@@ -141,8 +139,6 @@ async fn detail(state: &AppState, session: &str, id: &str) -> serde_json::Value 
     json_body(resp).await
 }
 
-/// 작업별과 전체별이 같은 행에서 나오고 서로 맞는다 — 화면이 두 숫자를 나란히
-/// 보여주는데 출처가 갈리면 언젠가 어긋난다.
 #[tokio::test]
 async fn per_analysis_and_total_spend_add_up() {
     let (state, _path) = stub_state().await;
@@ -183,7 +179,6 @@ async fn per_analysis_and_total_spend_add_up() {
     assert!(by_id(&second) > by_id(&first));
 }
 
-/// 한 행이 두 호출을 대표할 수 있다(`acceptance::derive`). 행을 세면 하나를 잃는다.
 #[tokio::test]
 async fn a_merged_stage_row_counts_both_of_its_calls() {
     let (state, _path) = stub_state().await;
@@ -201,7 +196,6 @@ async fn a_merged_stage_row_counts_both_of_its_calls() {
     assert_eq!(detail(&state, &token, &id).await["spend"]["llmCalls"], 1);
 }
 
-/// 필드를 모르는(옛) 워커가 보고해도 호출은 0 이 아니라 1 로 센다.
 #[tokio::test]
 async fn a_report_without_a_call_count_still_counts_one_call() {
     let (state, _path) = stub_state().await;
@@ -216,7 +210,6 @@ async fn a_report_without_a_call_count_still_counts_one_call() {
     assert_eq!(spend["inputTokens"], 7);
 }
 
-/// 비용 가시성은 본인 것만 본다 — AC4.7 의 격리가 이 화면에도 적용된다.
 #[tokio::test]
 async fn one_users_spend_never_appears_in_anothers() {
     let (state, _path) = stub_state().await;
@@ -235,7 +228,6 @@ async fn one_users_spend_never_appears_in_anothers() {
     assert_eq!(usage(&state, &mine).await["total"]["llmCalls"], 1);
 }
 
-/// 호출이 없으면 0 이다 — 빈 값이 아니라 답이다.
 #[tokio::test]
 async fn an_analysis_that_called_no_one_spends_nothing() {
     let (state, _path) = stub_state().await;
@@ -248,7 +240,6 @@ async fn an_analysis_that_called_no_one_spends_nothing() {
     assert_eq!(spend["costCents"], 0);
 }
 
-/// 미인증은 비용을 못 본다.
 #[tokio::test]
 async fn usage_is_closed_to_anonymous_requests() {
     let (state, _path) = stub_state().await;

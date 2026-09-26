@@ -51,8 +51,7 @@ export function FeatureCandidates({ id, onBack, onFinish }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
-  // 여기까지 쌓인 실제 비용(AC4.6). 목록과 따로 읽는다 — 후보를 고르는 동안 비용이
-  // 더 늘지는 않으므로 결정마다 다시 읽을 이유가 없고, 못 읽어도 결정은 막지 않는다.
+  // 목록과 따로 읽는다 — 결정마다 다시 읽을 이유가 없고, 못 읽어도 결정을 막지 않는다.
   const [spentCents, setSpentCents] = useState<number | null>(null);
 
   useEffect(() => {

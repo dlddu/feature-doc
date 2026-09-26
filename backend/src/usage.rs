@@ -1,23 +1,8 @@
 //! Measured LLM usage and what it cost (AC4.6).
 //!
-//! Every call that a user's money paid for already leaves a row: the pipeline's
-//! stage documents (`analysis_documents`), the per-feature dependency traces
-//! (`feature_dependency_requests`), the assisted edits (`feature_doc_edits`), and
-//! the feature drafts (`feature_additions`). Each of those rows carries the model
-//! and the token counts the provider reported. What was missing was a place that
-//! adds them up and an address that answers with the sum — this module is both.
-//!
 //! The sum is deliberately *derived* rather than kept in a counter column. A
 //! counter has to be right at every write site and stays wrong once it drifts;
-//! a sum over the rows that already exist cannot disagree with them. It also
-//! means the figures are retroactive: analyses that ran before this slice report
-//! their real spend, not zero.
-//!
-//! **Estimate, not an invoice.** Providers bill on their own schedule and on rates
-//! that differ per model and change over time. The tokens here are measured, the
-//! money is inferred from them at the rates below — which is exactly what AC4.6
-//! asks for ("추정 비용") and what the pre-flight estimate on Connect Repository
-//! never was: that one is a guess from repository size, made before any call.
+//! a sum over the rows that already exist cannot disagree with them.
 
 use axum::extract::State;
 use axum::routing::get;
@@ -29,19 +14,14 @@ use crate::auth::CurrentUser;
 use crate::error::AppError;
 use crate::state::AppState;
 
-/// Cents per one million tokens. One pair of rates for every model rather than a
-/// table keyed by model name: a per-model table would have to be kept in step with
-/// providers' price changes to stay true, and a stale table reads as fact while a
-/// single documented rate reads as the estimate it is. The pair is the order of
-/// magnitude of a mid-tier frontier model, output priced above input as providers
-/// price it.
+/// One pair of rates for every model rather than a table keyed by model name: a
+/// per-model table would have to be kept in step with providers' price changes to
+/// stay true, and a stale table reads as fact while a single documented rate reads
+/// as the estimate it is.
 const INPUT_CENTS_PER_MTOK: i64 = 300;
 const OUTPUT_CENTS_PER_MTOK: i64 = 1_500;
 
-/// What has actually been spent, measured. `cost_cents` rounds *up*, so any usage
-/// at all shows as at least one cent — a screen that reports `$0.00` next to a
-/// non-zero call count would read as "free", which is the one thing this number
-/// must never say. No usage still costs nothing.
+/// What has actually been spent, measured.
 #[derive(Debug, Clone, Copy, Default, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Spend {
@@ -62,7 +42,6 @@ impl Spend {
     }
 }
 
-/// Ceiling division of the rate product by a million — see [`Spend`].
 fn cost_cents(input_tokens: i64, output_tokens: i64) -> i64 {
     let micros = input_tokens.max(0) * INPUT_CENTS_PER_MTOK
         + output_tokens.max(0) * OUTPUT_CENTS_PER_MTOK;
@@ -72,12 +51,8 @@ fn cost_cents(input_tokens: i64, output_tokens: i64) -> i64 {
     (micros + 999_999) / 1_000_000
 }
 
-/// Every row that represents LLM calls, flattened to (analysis, calls, tokens).
-///
-/// `analysis_documents` carries its own call count because one stage merges two
-/// provider calls into one row (migration `0015`). The other three are one call per
-/// row, and a NULL `model` is a row no call has landed in yet — a queued dependency
-/// trace, a directly-edited scenario — so it contributes nothing.
+/// A NULL `model` is a row no call has landed in yet — a queued dependency trace, a
+/// directly-edited scenario — so it contributes nothing.
 const CALL_ROWS: &str = "SELECT analysis_id, calls, input_tokens, output_tokens \
        FROM analysis_documents \
      UNION ALL \
@@ -90,8 +65,6 @@ const CALL_ROWS: &str = "SELECT analysis_id, calls, input_tokens, output_tokens 
      SELECT analysis_id, 1, input_tokens, output_tokens \
        FROM feature_additions WHERE model IS NOT NULL";
 
-/// One analysis's measured spend. Zero for an analysis that has not called anyone
-/// yet, which is a real answer rather than a missing one.
 pub async fn of_analysis(db: &SqlitePool, analysis_id: &str) -> Result<Spend, sqlx::Error> {
     let row: (i64, i64, i64) = sqlx::query_as(&format!(
         "SELECT COALESCE(SUM(calls), 0), COALESCE(SUM(input_tokens), 0), \
@@ -122,14 +95,6 @@ struct AnalysisSpendView {
     cost_cents: i64,
 }
 
-/// `작업별` and `전체별` in one answer (test/04 시나리오 9): the per-analysis rows and
-/// the total across them, for the signed-in user and no one else.
-///
-/// This is also the operator's address. There is no separate operator role in this
-/// product — the same figures, per analysis and per stage, are reachable here and on
-/// `/api/analyses/{id}`, and the per-stage breakdown behind them is in the log line
-/// `llm usage recorded` (`worker_api::submit_document`). A second, privileged copy of
-/// the same numbers would be a second thing that can disagree with the rows.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UsageView {
@@ -168,9 +133,8 @@ async fn read(
         total.input_tokens += row.input_tokens;
         total.output_tokens += row.output_tokens;
     }
-    // The total is costed from the summed tokens, not from the sum of the rows'
-    // costs: rounding each row up first and adding would charge the ceiling once
-    // per analysis. 전체별 is one figure about one pile of tokens.
+    // Costed from the summed tokens, not from the sum of the rows' costs: rounding
+    // each row up first and adding would charge the ceiling once per analysis.
     total.cost_cents = cost_cents(total.input_tokens, total.output_tokens);
 
     Ok(Json(UsageView { total, analyses }))
@@ -208,8 +172,6 @@ mod tests {
 
     #[test]
     fn summing_tokens_then_costing_is_not_the_same_as_costing_each_row() {
-        // Two analyses that each round up would report 2 cents between them; the
-        // total is costed once, from the tokens.
         let each = cost_cents(1, 0) + cost_cents(1, 0);
         assert_eq!(each, 2);
         assert_eq!(cost_cents(2, 0), 1);

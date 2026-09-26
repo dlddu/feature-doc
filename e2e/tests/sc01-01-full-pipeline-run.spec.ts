@@ -95,8 +95,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       await expect(page.getByTestId('repo-card').filter({ hasText: 'stub-account/payments-api' }))
         .toBeVisible();
 
-      // 이 분석의 id를 잡는다 — 사용자 격리(AC4.7)가 미구현이라 목록은 전역이므로,
-      // 카드의 사용자 경로(open-progress)로 진입해 주소에서 확정한다.
       const card = page.getByTestId('repo-card').filter({ hasText: 'stub-account/payments-api' });
       await card.getByTestId('open-progress').click();
       const id = page.url().match(/#\/analyses\/([^/?#]+)/)?.[1];
