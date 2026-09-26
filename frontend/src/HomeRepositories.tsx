@@ -115,9 +115,7 @@ export function HomeRepositories({
     })();
   }, []);
 
-  // 누적 사용량은 저장소 목록과 다른 주소에서 오고, 없어도 홈이 하는 일(저장소를 고르고
-  // 분석을 거는 것)은 그대로 선다 — 그래서 위 로드와 묶지 않고 실패를 삼킨다. 묶으면
-  // `/api/usage` 한 곳의 장애가 목록까지 비운다.
+  // 위 로드와 묶지 않는다 — 묶으면 `/api/usage` 한 곳의 장애가 저장소 목록까지 비운다.
   useEffect(() => {
     void getUsage().then(setUsage, () => setUsage(null));
   }, []);

@@ -156,7 +156,6 @@ export type Stage = {
   error: string | null;
   startedAt: number | null;
   finishedAt: number | null;
-  /** This stage's own share of the measured spend (AC4.6) — zero for a stage that made no call. */
   spend: Spend;
 };
 
