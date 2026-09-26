@@ -16,8 +16,8 @@ concurrency:
 
 jobs:
   # cargo test 와 kind e2e 는 서로를 기다릴 이유가 없어 두 job 으로 나란히 돈다.
-  # 이미지 push 는 e2e job 의 마지막 단계다 — e2e 가 테스트한 바로 그 이미지를
-  # 다시 빌드하지 않고 올리고, cargo 까지 그린일 때만 올린다.
+  # 이미지 push 는 e2e 1/2 샤드의 마지막 단계다 — e2e 가 테스트한 바로 그 이미지를
+  # 다시 빌드하지 않고 올리고, cargo 와 e2e 2/2 샤드까지 그린일 때만 올린다.
   #
   # PR 의 필수 상태 체크는 맨 아래 `ci-gate` 하나뿐이다. 새 검사를 추가할 때는
   # branch protection 을 건드리지 말고 그 job 의 needs 에만 넣는다.
@@ -94,12 +94,27 @@ jobs:
       - name: Test backend (cargo test)
         run: cargo test --manifest-path backend/Cargo.toml --profile ci
 
+  # Playwright 를 두 샤드로 나눈다. 스펙이 워커 replica 를 리스하는 규칙(workers: 1,
+  # e2e/support/cluster.ts)은 「한 클러스터 안에서 한 번에 한 파일」이라, 샤드마다 제
+  # 러너에서 kind 를 따로 띄우면 규칙을 건드리지 않고 병렬이 된다. 대가는 러너 시간
+  # 한 job 분량(빌드·kind 기동이 두 번).
+  #
+  # Playwright 는 파일 순서대로 「테스트 개수」를 반으로 자른다(소요 시간이 아니다).
+  # 지금은 sc01-01..sc03-03 / sc03-04..sc04-14 로 갈려 약 89s / 70s — 긴 쪽이 1/2 다.
+  # push 를 1/2 에 둔 것도 그래서다: 2/2 는 보통 먼저 끝나 있어 대기가 없다.
+  #
+  # fail-fast 를 끄는 이유: 한 샤드가 깨졌다고 다른 샤드를 취소하면 그쪽 결과(같은 원인인지
+  # 별개 실패인지)를 잃는다. 어느 쪽이 실패해도 needs.e2e.result 는 failure 라 ci-gate 가 막는다.
   e2e:
-    name: test (kind e2e)
+    name: test (kind e2e ${{ matrix.shard }}/2)
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       # 테스트는 cargo·docs 와 같은 merge ref(PR + 그 시점 main)로 한다. 브랜치가
       # main 보다 뒤처져 있어도 합쳐졌을 때의 결과를 e2e 가 보게 하려는 것이다.
@@ -171,7 +186,8 @@ jobs:
             type=raw,value=${{ github.event.pull_request.head.sha }}
 
       # image.yml(main)과 같은 GHA 캐시를 쓴다 — 평범한 `docker build` 는 이 캐시에
-      # 닿지 못해 매번 처음부터 빌드했다.
+      # 닿지 못해 매번 처음부터 빌드했다. 캐시 저장은 1/2 샤드만 한다 — 두 샤드가 같은
+      # 레이어를 같은 스코프에 동시에 쓰면 예약 충돌만 날 뿐 얻는 것이 없다.
       - name: Build e2e image (featuredoc:dev)
         uses: docker/build-push-action@v6
         with:
@@ -182,7 +198,7 @@ jobs:
           # 로컬 docker 에 load 만 하는 이미지라 provenance attestation 이 필요 없다.
           provenance: false
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: ${{ matrix.shard == 1 && 'type=gha,mode=max' || '' }}
 
       # 브라우저는 main 에서 cache-warm.yml 이 저장한 것을 읽기만 한다(rust-cache 와
       # 같은 이유로 PR 에서는 저장하지 않는다). 적중하면 다운로드를 건너뛰고 시스템
@@ -206,39 +222,52 @@ jobs:
             npx playwright install --with-deps chromium
           fi
 
-      - name: e2e (kind → smoke + playwright)
+      - name: e2e (kind → smoke + playwright ${{ matrix.shard }}/2)
         env:
           IMAGE: featuredoc:dev
           SKIP_BUILD: '1'
           SKIP_PLAYWRIGHT_INSTALL: '1'
+          PLAYWRIGHT_SHARD: ${{ matrix.shard }}/2
         run: bash scripts/e2e.sh
 
       # ── push ─────────────────────────────────────────────────────────────────
       # 예전에는 별도 push job(image.yml 호출)이 head SHA 를 다시 체크아웃해 이미지를
       # 새로 빌드했다(merge ref 로 빌드한 e2e 와 캐시가 어긋나 매번 ~76초). 이제
       # 트리가 같으면 e2e 가 통과시킨 바로 그 빌드를 올리고, 다를 때만 head 를 빌드한다.
-      # 「cargo 도 그린일 때만」 규칙은 유지한다: cargo 는 보통 먼저 끝나 있으므로
-      # 이 대기는 사실상 즉시 지나간다.
-      - name: Wait for cargo job
-        id: cargo
+      # push 는 1/2 샤드만 한다. 「cargo 와 다른 샤드도 그린일 때만」: 둘 다 보통 먼저
+      # 끝나 있으므로 이 대기는 사실상 즉시 지나간다.
+      - name: Wait for cargo job + e2e 2/2
+        if: matrix.shard == 1
+        id: peers
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_URL: repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?filter=latest
+          RUN_URL: repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?filter=latest&per_page=100
         run: |
+          # 기다릴 job 과 통과로 치는 결론. cargo 의 skipped = backend 를 건드리지 않아 changes 가
+          # 거른 것(main 의 cargo 결과 그대로). e2e 2/2 는 이 job 과 같은 조건으로 돌므로
+          # success 만 통과다. 목록에 아직 없는 job 은 pending 으로 쳐서 대기가 통과로 새지 않게 한다.
+          targets='{"test (cargo)": ["success", "skipped"], "test (kind e2e 2/2)": ["success"]}'
           for _ in $(seq 1 120); do
-            state=$(gh api "$RUN_URL" --jq '.jobs[] | select(.name == "test (cargo)") | "\(.status) \(.conclusion)"')
-            case "$state" in
-              # skipped = backend 를 건드리지 않아 changes 가 거른 것(main 의 cargo 결과 그대로).
-              "completed success"|"completed skipped") echo "ok=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
-              completed*) echo "::notice::cargo job 이 ${state#completed } — 이미지를 올리지 않는다(ci-gate 가 실패로 판정)."
-                          echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            jobs=$(gh api "$RUN_URL") || { sleep 10; continue; }
+            verdict=$(jq -r --argjson t "$targets" '
+              ([.jobs[] | {key: .name, value: (if .status == "completed" then .conclusion else "pending" end)}]
+               | from_entries) as $s
+              | [$t | to_entries[] | {name: .key, state: ($s[.key] // "pending"), ok: .value}]
+              | (map(select(.state != "pending" and (.state as $c | any(.ok[]; . == $c) | not)))) as $bad
+              | if ($bad | length) > 0 then "fail " + ($bad | map("\(.name) = \(.state)") | join(", "))
+                elif any(.[]; .state == "pending") then "wait"
+                else "ok" end' <<< "$jobs")
+            case "$verdict" in
+              ok) echo "ok=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+              fail*) echo "::notice::${verdict#fail } — 이미지를 올리지 않는다(ci-gate 가 실패로 판정)."
+                     echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0 ;;
             esac
             sleep 10
           done
-          echo "::error::cargo job 이 20분 안에 끝나지 않았다."; exit 1
+          echo "::error::cargo · e2e 2/2 가 20분 안에 끝나지 않았다."; exit 1
 
       - name: Log in to GHCR
-        if: steps.cargo.outputs.ok == 'true'
+        if: steps.peers.outputs.ok == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -249,7 +278,7 @@ jobs:
       # 덮어써도 된다. 이 경로의 이미지는 예전 push job 과 마찬가지로 e2e 를 직접
       # 거치지 않은 head 빌드다.
       - name: Check out head (tree differs)
-        if: steps.cargo.outputs.ok == 'true' && steps.tree.outputs.same != 'true'
+        if: steps.peers.outputs.ok == 'true' && steps.tree.outputs.same != 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -257,7 +286,7 @@ jobs:
       # 트리가 같으면 위 e2e 빌드와 입력이 같아 모든 레이어가 builder 의 로컬 캐시에서
       # 나온다 — 재컴파일 없이 export·업로드만. 다르면 GHA 캐시로 head 를 빌드한다.
       - name: Push image (ghcr, <head sha>)
-        if: steps.cargo.outputs.ok == 'true'
+        if: steps.peers.outputs.ok == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
