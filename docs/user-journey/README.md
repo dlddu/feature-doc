@@ -119,7 +119,7 @@ JRN-follow-code-change ──(자동 갱신이 틀렸을 때)──> JRN-restore
 | [`JRN-connect-repo`](./JRN-connect-repo.md) | V1, V3, V6, V8 | AC1.1, AC4.1, AC4.2, AC4.3, AC4.6, AC4.8, AC4.9 |
 | [`JRN-discover-features`](./JRN-discover-features.md) | V1, V2, V4, V8 | AC1.2, AC1.3, AC1.4, AC1.5, AC3.2, AC4.6 |
 | [`JRN-review-feature`](./JRN-review-feature.md) | V3, V4, V5, V7 | AC2.1, AC2.2, AC2.3, AC2.4, AC2.5, AC3.1, AC3.4, AC4.4 |
-| [`JRN-understand-feature`](./JRN-understand-feature.md) | V3, V5, V7 | AC2.3, AC2.4, AC3.1, AC3.4, AC4.7, AC4.8 |
+| [`JRN-understand-feature`](./JRN-understand-feature.md) | V3, V5, V7 | AC2.3, AC2.4, AC3.1, AC3.4, AC4.7, AC4.8, AC4.10 |
 | [`JRN-follow-code-change`](./JRN-follow-code-change.md) | V4, V5, V7 | AC1.4, AC2.6, AC3.3, AC3.5 |
 | [`JRN-restore-history`](./JRN-restore-history.md) | V4, V7 | AC3.4 |
 
@@ -128,7 +128,7 @@ JRN-follow-code-change ──(자동 갱신이 틀렸을 때)──> JRN-restore
 **커버리지 점검**
 
 - 가치 8개 중 등장: **8개** ✅ (V1~V8)
-- AC 25개 중 등장: **24개**. 미등장 1개는 **AC4.5**(k8s 배포·워크로드 분리) — 사용자에게 보이지 않는 운영 배경이라 어느 행동에도 붙지 않습니다. AC4.4(모바일 우선)는 모든 여정에 깔리는 횡단 약속이지만, 3탭 룰이라는 관찰 가능한 형태로 `STP-decide-diff`에 앵커했습니다
+- AC 26개 중 등장: **25개**. 미등장 1개는 **AC4.5**(k8s 배포·워크로드 분리) — 사용자에게 보이지 않는 운영 배경이라 어느 행동에도 붙지 않습니다. AC4.4(모바일 우선)는 모든 여정에 깔리는 횡단 약속이지만, 3탭 룰이라는 관찰 가능한 형태로 `STP-decide-diff`에 앵커했습니다
 - **시각화 공백 1건**: `JRN-restore-history` 전체 (이력 화면 미제작). [`doc-tracker/`](../doc-tracker/index.md)에 수용된 위험으로 등재되어 있습니다. `JRN-connect-repo` / `STP-sign-in`의 미인증 상태는 여정 페이지가 실제 로그인 화면을 가지면서 해소됐습니다
 - **목업 연결 5건**: 판정 대상 여정 5개가 각각 목업 페이지 하나(`mockups/JRN-<슬러그>.html`)를 갖습니다. `JRN-restore-history`는 위 공백 1건으로 예외 등재. 매핑의 단일 소스는 [`mockups/README.md`](../mockups/README.md)입니다
 
