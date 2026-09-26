@@ -37,10 +37,14 @@
 #                   (`margin-top:16px` ↔ `marginTop: 16`), 프로토타입 전용 장치
 #                   (`display` · `.on`)와 값이 식인 속성은 대조에서 뺀다 — 식은 목업의
 #                   예시값과 비교할 수 없으므로 `data-sample` 과 같은 이유로 빠진다.
+#  M11 상태 블록 소유  목업에 짝이 없고 문면이 **전부 식**인 구현 `.notice` 요소는 M3B 의
+#                   카피 집합에도 M9·M10 의 공유 키에도 들어오지 않는다. 그 요소는 편차
+#                   원장 행의 「현재 구현」 칸이 이름으로 들고 있어야 한다.
 #
 # ── 이 게이트가 보지 않는 것(의도적) ─────────────────────────────────────
 #  * 규칙 5(구조·수치) 중 **자동화된 것은 앱바 슬롯 수(M7) · 접힘 affordance 폭(M8) · 짝지어진 요소의
-#    인라인 선언(M9) 셋**이다. 규칙 CSS(클래스 선언 자체)의 px·색 대조는 여전히 사람 몫이다.
+#    인라인 선언(M9) · 짝의 동일성과 클래스 집합(M10) · 구현 전용 상태 블록의 원장 소유(M11)
+#    다섯**이다. 규칙 CSS(클래스 선언 자체)의 px·색 대조는 여전히 사람 몫이다.
 #    M7 을 넣은 이유는 그 한 조각이 카피 게이트의
 #    사각지대에 정확히 들어앉기 때문이다 — 슬롯이 통째로 빠져도 카피는 한 글자도 줄지
 #    않아 M3 가 영원히 초록이다(2026-09-18, 우측 자리표시자 부재 3건이 그렇게 숨어 있었다).
@@ -56,9 +60,10 @@
 #  * **상태 블록이 서는 조건**(구현이 대응 목업 단계에 없는 조건으로 `notice`·`badge` 를 렌더하는 것)은
 #    세지 않는다. 문면이 JSX 식으로 오면 M3B 의 카피 집합에 애초에 들어오지 않아, 같은 자리를 한국어
 #    리터럴로 바꾸면 M3B 가 미등재 1건으로 붉히는 표면이 식일 때는 영원히 초록이다(2026-09-25, AC4.1
-#    접근 해제 통지가 그렇게 숨었다 — 원장 등재로 닫았다). M7·M8 처럼 규칙으로 바꾸려면 대조 단위가
-#    있어야 하는데 아직 없다 — 세려면 먼저 「어느 조건의 렌더인가」를 선언하는 표기가 목업 쪽에
-#    있어야 한다.
+#    접근 해제 통지가 그렇게 숨었다 — 원장 등재로 닫았다). **요소 축은 2026-09-26 에 M11 이 닫았다** —
+#    목업에 짝이 없고 문면이 전부 식인 `.notice` 는 원장이 이름으로 들고 있어야 한다. 닫히지 않은
+#    것은 **조건 축**이다: 한 요소가 목업에 없는 *조건*으로 서는지는 여전히 세지 않고, 세려면 먼저
+#    「어느 조건의 렌더인가」를 선언하는 표기가 목업 쪽에 있어야 한다.
 #  * 실행 스크린샷 픽셀 비교는 모델 정의상 범위 밖이다.
 #  * 구현측 카피 추출(M3B)은 모듈 상수 테이블에 영문으로만 적힌 라벨(예: `STATUS_BADGE`
 #    의 `Queued`)을 잡지 못한다 — 그런 라벨을 가진 화면은 「대조 보류」에 있어야 하고,
@@ -465,6 +470,7 @@ def root_tokens(text: str) -> dict[str, str]:
     }
 
 
+STATE_CLASSES = {"notice"}  # 상태 블록의 클래스. `index.css` 가 규칙을 가진 것은 이 하나다.
 PROTO_CLASSES = {"on"}      # 목업 전용 가시성 토글(`.stp.on`·`.notice.on` = `display:block`).
                             # 구현은 조건부 렌더라 `.on` 규칙 자체가 없다 — 무력한 클래스다.
 PROTO_PROPS = {"display"}   # 목업이 숨긴 변이를 정적 HTML 에 열거하는 장치(`display:none`).
@@ -567,7 +573,10 @@ def own_copy(body: str, jsx: bool) -> list[str]:
     문면을 확정하지 않으므로 애초에 걸리지 않고, 그래서 한쪽이 빈 목록이면 이 쌍은
     「같은 상태인가」를 물을 수 없다(= 보류)."""
     if jsx:
-        chunks = jsx_text_nodes(strip_comments(body))
+        # 본문은 감싸는 태그가 벗겨진 상태로 오므로 아래 html 분기처럼 `>`…`<` 로 다시
+        # 감싼다. 감싸지 않으면 자식 요소가 없는 **순수 텍스트 본문**(`notice` 한 줄
+        # 안내가 전부 그 모양이다)이 빈 목록으로 와서 「문면이 식이다」로 잘못 센다.
+        chunks = jsx_text_nodes(strip_comments(f">{body}<"))
     else:
         chunks = [norm(html.unescape(t)) for t in re.findall(r">([^<>]+)<", f">{body}<")]
     return [c for c in chunks if c and is_copy(c) and HANGUL.search(c)]
@@ -920,6 +929,36 @@ def main() -> int:
         print(f"M10 짝의 동일성·클래스 축 — 공유 키 {len(shared)}건 · 같은 자리 {len(placed)}쌍"
               f"(카피로 확정 {len(placed) - len(pending)} · 식이라 보류 {len(pending)}) · "
               f"태그 달라 제외 {len(tag_diff)}건")
+
+    # ── M11 구현 전용 상태 통지의 원장 소유 ──────────────────────────────
+    # M3B 는 파일의 한국어 literal 을 카피로 세므로, 문면이 **전부 런타임 값**인 요소
+    # (`{error}`)는 그 요소로는 카피 집합에 들어오지 않는다. 목업에 짝까지 없으면 공유
+    # 키가 아니라 M9·M10 의 대조 단위도 아니다 — 세 규칙이 같은 요소에서 동시에 눈이
+    # 먼다. 그래서 이 사각은 「원장이 그 요소를 이름으로 들고 있는가」로만 닫힌다: 들고
+    # 있으면 M4 가 공전(대상 파일에서 사라진 이름)을, M5 가 되돌리기를 막는다.
+    # **조건 축 일반은 여기서 닫히지 않는다** — 세는 것은 요소(키)이고 그 요소가 서는
+    # 조건이 아니다. 대조 단위를 요소로 잡을 수 있는 이유는 원장의 「현재 구현」 칸이
+    # 이미 이름으로 기계 대조되는 칸이기 때문이다(M4).
+    owned = {token for _, _, impl_cell, _, _, _ in ledger_rows
+             for token in ticked(impl_cell)}
+    blind: list[tuple[str, str, int]] = []
+    for key in sorted(set(impl_keyed) - set(shared)):
+        i_file, i_line, i_tag = impl_keyed[key]
+        if not set(tag_classes(i_tag)) & STATE_CLASSES:
+            continue
+        if own_copy(BODIES[("data-testid", key)], jsx=True):
+            continue
+        blind.append((key, i_file, i_line))
+    if not blind:
+        fail("M11", "문면이 전부 식인 구현 전용 상태 블록이 하나도 없다 — 규칙이 공전한다")
+    else:
+        missing = [item for item in blind if item[0] not in owned]
+        for key, i_file, i_line in missing:
+            fail("M11", f"`{key}`({i_file}:{i_line}) 는 목업에 짝이 없고 문면이 전부 식이라 "
+                        f"M3B·M9·M10 어디에도 들어오지 않는다 — 편차 원장 행의 "
+                        f"「현재 구현」 칸이 이 이름을 들고 있어야 한다")
+        print(f"M11 구현 전용 상태 블록 — 사각 {len(blind)}건 · 원장 소유 "
+              f"{len(blind) - len(missing)}건 · 미등재 {len(missing)}건")
 
     report()
     return 1 if failures else 0
