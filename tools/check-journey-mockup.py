@@ -57,10 +57,7 @@ def read(p):
 
 
 def marked(text, name, rule="R0"):
-    """<!-- name:begin --> ... <!-- name:end --> 사이를 돌려준다.
-
-    산문이 파서의 입력이 되지 않도록 경계를 마커로만 잡는다.
-    """
+    """산문이 파서의 입력이 되지 않도록 경계를 마커로만 잡는다."""
     m = re.search(r"<!-- %s:begin -->\n(.*?)<!-- %s:end -->" % (re.escape(name), re.escape(name)), text, re.S)
     if not m:
         fail(rule, "docs/mockups/README.md 에 `%s` 마커 구간이 없거나 닫히지 않았다" % name)
@@ -69,7 +66,6 @@ def marked(text, name, rule="R0"):
 
 
 def norm_text(x):
-    """마크다운 셀과 HTML 조각을 비교 가능한 평문으로 맞춘다."""
     x = re.sub(r"<[^>]+>", "", x)
     x = html_mod.unescape(x)
     x = x.replace("`", "").replace("**", "").replace("*", "")
@@ -86,7 +82,7 @@ def table_rows(block):
         if all(set(c) <= set("-: ") for c in cells):
             continue
         rows.append(cells)
-    return rows[1:] if rows else []  # 헤더 제외
+    return rows[1:] if rows else []
 
 
 def parse_journeys():
@@ -260,11 +256,11 @@ for name, pg in sorted(PAGES.items()):
 for name in journey_files:
     pg = PAGES[name]
     if len(pg["journeys"]) != 1:
-        continue  # R2 가 이미 보고
+        continue
     jid = pg["journeys"][0]
     jr = JOURNEYS.get(jid)
     if jr is None:
-        continue  # R1 이 이미 보고
+        continue
 
     page_steps = pg["steps"]
     if len(page_steps) != len(set(page_steps)):

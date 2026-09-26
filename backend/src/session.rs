@@ -8,7 +8,7 @@ use crate::util::{now_unix, random_token};
 
 pub const SESSION_COOKIE: &str = "fd_session";
 
-const SESSION_TTL_SECS: i64 = 60 * 60 * 24 * 30; // 30 days
+const SESSION_TTL_SECS: i64 = 60 * 60 * 24 * 30;
 
 pub async fn create(db: &SqlitePool, user_id: &str) -> Result<String, AppError> {
     let token = random_token();
