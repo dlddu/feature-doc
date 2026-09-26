@@ -2,11 +2,7 @@ export function formatCost(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-/**
- * 천 단위 구분자만 넣는다 — `toLocaleString` 을 쓰지 않는 이유는 그 출력이 실행 환경의
- * ICU 데이터에 걸려, 같은 값을 Node 에서 만들어 대조하는 e2e 단정이 브라우저와 어긋날 수
- * 있기 때문이다. 여기서 나오는 문자열은 어디서 만들어도 같다.
- */
+/** `toLocaleString` 은 쓰지 않는다 — ICU 가 갈리는 환경에서 `sc04-09` 의 `count` 단정과 조용히 어긋난다. */
 export function formatCount(n: number): string {
   return String(Math.max(0, Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
