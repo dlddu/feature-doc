@@ -9,8 +9,13 @@
 // 「운영자 화면에서도 동일한 데이터에 접근 가능」은 같은 주소(`/api/usage`)로
 // 닫는다. 이 제품에는 운영자 역할도 운영자 여정도 없고(여정 6개가 전부 최종
 // 사용자용이다), 같은 숫자의 두 번째 사본은 원본과 어긋날 수 있는 두 번째
-// 자리일 뿐이다. 단계별 내역은 `worker_api::submit_document` 의
-// `llm usage recorded` 로그가 남긴다.
+// 자리일 뿐이다.
+//
+// **사용자 쪽은 같은 이유로 닫히지 않는다.** 시나리오 9 의 동사는 「접근 가능」이
+// 아니라 「확인」·「표시된다」이고, AC4.6 도 「노출된다」라고 쓴다 — 도달만으로는
+// 모자라고 화면이 그려야 한다. 그래서 작업별(분석 진행)과 전체별(홈) 두 자리를
+// 화면 단정으로 잰다. 단계별 내역은 아직 `worker_api::submit_document` 의
+// `llm usage recorded` 로그에만 있다(AC4.6 검증 방법의 「단계별 비용」 — 후속).
 //
 // Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 import { expect, test, type Page } from '@playwright/test';
@@ -47,6 +52,13 @@ async function spendOf(page: Page, id: string): Promise<Spend> {
   const res = await page.request.get(`/api/analyses/${id}`);
   expect(res.ok()).toBeTruthy();
   return (await res.json()).spend as Spend;
+}
+
+// 화면이 그리는 문자열을 그대로 다시 만든다. `frontend/src/format.ts` 의 `formatCount` 와
+// 같은 규칙이고, `toLocaleString` 이 아닌 이유도 같다 — Node 와 브라우저의 ICU 가 달라도
+// 이 단정은 흔들리지 않아야 한다.
+function count(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 async function usageOf(page: Page): Promise<Usage> {
@@ -100,9 +112,17 @@ test.describe('AC4.6: 사용자별 비용 가시성', () => {
       await page.goto(`/#/analyses/${first}`);
       const shown = `$${(firstSpend.costCents / 100).toFixed(2)}`;
       await expect(page.getByTestId('cost-so-far')).toHaveText(shown);
+      // 시나리오 9 의 실행 단계는 「사용자 화면에서 누적 LLM 호출 횟수와 토큰 사용량 확인」이다.
+      // 값이 `/api/analyses/{id}` 에 실려 있다는 것으로는 그 단계가 닫히지 않는다 — 화면이
+      // 그려야 닫힌다. 그래서 여기서 재는 것은 응답이 아니라 그리드의 두 칸이다.
+      await expect(page.getByTestId('llm-calls')).toHaveText(count(firstSpend.llmCalls));
+      await expect(page.getByTestId('tokens-used')).toHaveText(
+        count(firstSpend.inputTokens + firstSpend.outputTokens),
+      );
       // 새로고침해도 같다 — 비용도 진행과 같은 서버 상태다.
       await page.reload();
       await expect(page.getByTestId('cost-so-far')).toHaveText(shown);
+      await expect(page.getByTestId('llm-calls')).toHaveText(count(firstSpend.llmCalls));
 
       // 전체별 — 작업별의 합과 같아야 한다. 두 숫자가 다른 곳에서 나오면 언젠가
       // 어긋나므로 등식으로 잰다.
@@ -116,6 +136,27 @@ test.describe('AC4.6: 사용자별 비용 가시성', () => {
 
       // 델타가 곧 「이 숫자는 실제 호출에서 왔다」의 증거다.
       expect(after.total.llmCalls).toBeGreaterThan(before.total.llmCalls);
+
+      // 「작업별·전체별 … 이 표시된다」의 전체별 쪽. 이 사용자의 분석 전부가 한자리에
+      // 모이는 화면은 홈뿐이라, 합계가 설 자리도 거기 하나다.
+      //
+      // 셋업을 API 로 끝냈어도 로드는 자격증명 화면에서 시작한다 — 라우팅이 서버 게이트가
+      // 아니라 상태 머신(`App.tsx` 의 `screen`)이고 홈에는 주소가 없다. 그래서 `goto('/')`
+      // 하나로는 홈이 서지 않는다. 진입 두 줄은 sc01-01·sc01-05 와 같다.
+      await page.goto('/');
+      const enterHome = page.getByTestId('register-key');
+      await expect(enterHome).toBeEnabled();
+      await enterHome.click();
+      // 홈이 섰는지를 먼저 잰다 — 이 줄이 없으면 아래 세 칸의 `element(s) not found` 가
+      // 「홈에 못 왔다」와 「누적 사용량이 안 그려졌다」를 구분하지 못한다.
+      await expect(page.getByTestId('repo-card').first()).toBeVisible();
+      await expect(page.getByTestId('usage-calls')).toHaveText(count(after.total.llmCalls));
+      await expect(page.getByTestId('usage-tokens')).toHaveText(
+        count(after.total.inputTokens + after.total.outputTokens),
+      );
+      await expect(page.getByTestId('usage-cost')).toHaveText(
+        `$${(after.total.costCents / 100).toFixed(2)}`,
+      );
 
       const mine = rows.find((r) => r.analysisId === first)!;
       expect(mine.llmCalls, '작업별 행이 상세와 같은 값을 말한다').toBe(firstSpend.llmCalls);

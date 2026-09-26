@@ -991,10 +991,22 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
         <p class="body sm grow" style="color:var(--text-secondary)">앱을 닫아도 분석은 계속 돌아요. 단계가 끝날 때마다 알림을 보내 드립니다.</p>
       </div>
 
+      <!-- AC4.6 은 「사용자에게도 본인 작업 기준의 누적 호출/추정 비용이 노출된다」고 쓰고
+           test/04 시나리오 9 는 「사용자 화면에서 누적 LLM 호출 횟수와 토큰 사용량 확인」을
+           실행 단계로 둔다 — 비용 한 칸만으로는 그 둘을 읽을 수 없어 호출·토큰을 같은
+           그리드에 세운다(문서 권위 순서: PRD 2위 · 테스트 3위가 목업 5위 위다). -->
       <div class="metric-grid" style="margin-top:16px">
         <div class="cell">
           <div class="k">Progress</div>
           <div class="v" id="prog-pct">62%</div>
+        </div>
+        <div class="cell">
+          <div class="k">LLM Calls</div>
+          <div class="v" id="llm-calls">18</div>
+        </div>
+        <div class="cell">
+          <div class="k">Tokens</div>
+          <div class="v" id="tokens-used">94,187</div>
         </div>
         <div class="cell">
           <div class="k">Cost so far</div>
