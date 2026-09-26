@@ -396,3 +396,33 @@ const IDLE_POLL: Duration = Duration::from_secs(2);
 
 > 같은 창(`#148`)이 들여온 신설 파일 `e2e/support/clock.ts` 9행은 이 행이 아니라 **행 밖 잔여**이며
 > [2026-09-25-e2e-clock-helper.md](2026-09-25-e2e-clock-helper.md) 가 **전건 유지**로 판정했다.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 5 — `backend/src/bin/worker.rs` · `deploy/e2e/kustomization.yaml` · `deploy/k8s/deployment.yaml` · `deploy/k8s/secret.yaml.example` · `deploy/k8s/worker-deployment.yaml` · `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (워커 · 더블 배선 축 비경합 7파일)
+
+**증분 재판정 ②**(2026-09-21): #92가 `deploy/e2e/kustomization.yaml` 의 API env 에 더한 2행(「편집 제안은 워커가 아니라 이 프로세스가 부른다」 — doc-tracker·PR #92 재진술)을 **전건 제거** · 줄 수·지문은 #92 이전 값으로 복귀 — [passes/2026-09-18-worker-double-axis.md](2026-09-18-worker-double-axis.md) 「증분 재판정 ②」
+
+### 원장 행 5 — `backend/src/bin/worker.rs` · `deploy/e2e/kustomization.yaml` · `deploy/k8s/deployment.yaml` · `deploy/k8s/secret.yaml.example` · `deploy/k8s/worker-deployment.yaml` · `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (워커 · 더블 배선 축 비경합 7파일)
+
+**증분 재판정 ③**(2026-09-21): #107 이 같은 파일의 API env 에 더한 2행(`FEATUREDOC_DOUBLE_REPO_SCAN` 위 — doc-tracker 6b 행 · PR #107 · e2e-mocking-policy 배선 표 재진술)을 **전건 제거** · 줄 수·지문은 #107 이전 값으로 복귀 — [passes/2026-09-18-worker-double-axis.md](2026-09-18-worker-double-axis.md) 「증분 재판정 ③」
+
+### 원장 행 5 — `backend/src/bin/worker.rs` · `deploy/e2e/kustomization.yaml` · `deploy/k8s/deployment.yaml` · `deploy/k8s/secret.yaml.example` · `deploy/k8s/worker-deployment.yaml` · `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (워커 · 더블 배선 축 비경합 7파일)
+
+**증분 재판정 ④**(2026-09-22): #108 이 `bin/worker.rs` 에 더한 7행(`Claim.llm_language` 필드 doc 2 — 스냅숏·일곱 벌 두 명제의 사본 · `language_for` doc 5 — 본문이 `job.llm_language` 를 읽고, 바로 위 `provider_for` doc 이 같은 이유를 이미 말한다)을 **전건 제거** · 줄 수·지문은 #108 이전 값 190/`632b0475…` 로 바이트 동일 복귀 — [passes/2026-09-18-worker-double-axis.md](2026-09-18-worker-double-axis.md) 「증분 재판정 ④」 · 맥락 [passes/2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md)  · **자매 착지 재실측**(2026-09-22 · #121): 20차 패스의 머지 직전에 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝난 단계만 다시 실행)이 착지해 이 행에 **순 +3행**(`backend/src/bin/worker.rs` +3)을 열었다. 판정이 아니라 **머지 시점 트리에서의 줄 수·지문 재고정**이고(「행 지문을 재현하는 법」 — 개행 포함 해시), 값은 190/`632b0475…` → **193/`d086c236228b02d1086ce4ca03eb43d693c1b97c7e9540140f9155f30367ed45`** 다. 그 3행은 **판정하지 않고 다음 감지에 넘긴다** — **해소됨**(2026-09-24 · `rct_20260924-0001` · 아래 증분 재판정 ⑤).
+
+### 원장 행 5 — `backend/src/bin/worker.rs` · `deploy/e2e/kustomization.yaml` · `deploy/k8s/deployment.yaml` · `deploy/k8s/secret.yaml.example` · `deploy/k8s/worker-deployment.yaml` · `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (워커 · 더블 배선 축 비경합 7파일)
+
+**증분 재판정 ⑤**(2026-09-24 · `rct_20260924-0001`): 위 등재분 **#121 3행**과 그 뒤 착지한 **#137**(`fd6cdad`)의 **2행**, 합 **5행**(전부 `backend/src/bin/worker.rs`)을 판정해 **순 제거 3행** — 「Seeded from the claim when stage 3 re-runs without stage 2 (AC1.5)」 2행은 **같은 PR 이 `Claim` 에 더한 필드 doc 의 두 벌째**이고(정본은 와이어 계약이 사는 필드 쪽) `(AC1.5)` 는 AC 꼬리표다 · 임대 갱신 2행은 뒤 절이 **626행 `// The model call is the long one in this job; renew before it as `fetch` does.` 의 두 벌째**라 **왜 한 번 더 갱신하는가**만 남겨 1행으로 재작성했다 · **유지 2행**(필드 doc 1행 — 자매 필드 셋이 같은 모양으로 살아 있는 「언제 채워지는가」 규약 · 임대 재작성 1행 — 정책 본문이 유지 대상으로 명시 열거한 동시성 계약이라 ③ 과 갈려도 「애매하면 남긴다」). 195(#137 착지 후) → **192 / `b36ee596e5bf5353de6ca3cb8ea3dac138ca58ec2370c5d0ca493a4968e2dcc3`**. **이 행에 미판정 증분 없음** — [passes/2026-09-18-worker-double-axis.md](2026-09-18-worker-double-axis.md) 「증분 재판정 ⑤」
+
+### 원장 행 5 — `backend/src/bin/worker.rs` · `deploy/e2e/kustomization.yaml` · `deploy/k8s/deployment.yaml` · `deploy/k8s/secret.yaml.example` · `deploy/k8s/worker-deployment.yaml` · `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (워커 · 더블 배선 축 비경합 7파일)
+
+**증분 재판정 ⑥**(2026-09-25 · `rct_20260925-0013`): **#148**(`67c15ad`, e2e 폴링 단축)이 연 **5행**(`backend/src/bin/worker.rs` 3 — 비공개 `const IDLE_POLL` 위 `///` · `deploy/e2e/kustomization.yaml` 2 — 새 env 위 `#`)을 **전건 제거**. 앞 3행의 명제는 ①(이름 `IDLE_POLL` · `Ok(None) => idle_poll` · 같은 파일 아래 신설 `fn idle_poll()` 이 그 env 를 읽는 코드 자체 · overlay 가 값 `200` 까지 보인다)과 ③(PR #148 본문 §변경 1·2항)으로 이중 복원되고, 뒤 2행은 그 **두 벌째**로 **②·③ 와 같은 파일·같은 자리의 세 번째 재발**이다. `IDLE_POLL` 은 **비공개 const** 라 「`pub` 항목 요약 1줄 유지」 조항 대상이 아니고, 바로 아래 `ERROR_BACKOFF` 의 `///` 1행을 유지한 선례와도 어긋나지 않는다(그 줄의 「왜」는 네 경로 어디에도 없고 이쪽의 「왜」는 ③ 본문에 축자로 있다 — 같은 규칙에 술어 값만 다르다). 줄 수·지문은 #148 이전 값 190/`80748ab3…` 로 **바이트 동일 복귀**(195 → 190) — [passes/2026-09-18-worker-double-axis.md](2026-09-18-worker-double-axis.md) 「증분 재판정 ⑥」
+

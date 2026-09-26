@@ -319,3 +319,25 @@ feature drafts), so their prose matches the document it lands in」. 같은 자�
 `d0a019a9654ce08249f6d7b03a831aeadd0f4167dab23b090151d075e5b6bec3`**(판정 후).
 `sc03-01` 은 주석 줄을 걷어낸 잔여가 부모와 **바이트 동일**(비주석 diff 0줄) · 단언 건수 불변 ·
 기계 판독 `// 검증 시나리오:` 1개 보존. `check-scenario-e2e.py` rc=0.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 17 — `backend/src/doc_edit.rs` · `backend/tests/doc_edit.rs` · `e2e/tests/sc03-01-llm-assisted-edit.spec.ts` · `e2e/tests/sc03-02-rejected-suggestion-avoided.spec.ts` · `frontend/src/DecideDiff.tsx` · `frontend/src/RequestEdit.tsx` (문서 편집 축 — 슬라이스 6a #92 가 들여온 새 파일 6개)
+
+**증분 재판정 ①**(2026-09-21): #107 이 `doc_edit.rs` `document_of` 의 인라인 주석에 덧붙인 1행(「사람이 직접 더한 feature(AC3.2)까지 포함해서」 — 바로 아래 `feature_add::overlay` 호출과 그 doc 이 정본)을 **제거** · 줄 수·지문은 #107 이전 값 56/`b9e6778d…` 으로 바이트 동일 복귀 — [passes/2026-09-21-doc-edit-axis.md](2026-09-21-doc-edit-axis.md) 「증분 재판정 ①」
+
+### 원장 행 17 — `backend/src/doc_edit.rs` · `backend/tests/doc_edit.rs` · `e2e/tests/sc03-01-llm-assisted-edit.spec.ts` · `e2e/tests/sc03-02-rejected-suggestion-avoided.spec.ts` · `frontend/src/DecideDiff.tsx` · `frontend/src/RequestEdit.tsx` (문서 편집 축 — 슬라이스 6a #92 가 들여온 새 파일 6개)
+
+**증분 재판정 ②**(2026-09-22): #108 이 `doc_edit.rs::propose` 에 더한 1행(「고친 문장은 문서의 나머지와 같은 언어 — 사용자의 지금 설정이 아니라 분석의 언어」 — 호출하는 `settings::analysis_language` 의 이름과 그 doc 이 정본)을 **제거** · 줄 수·지문은 #108 이전 값 56/`b9e6778d…` 으로 바이트 동일 복귀 — [passes/2026-09-21-doc-edit-axis.md](2026-09-21-doc-edit-axis.md) 「증분 재판정 ②」 · 맥락 [passes/2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md)
+
+### 원장 행 17 — `backend/src/doc_edit.rs` · `backend/tests/doc_edit.rs` · `e2e/tests/sc03-01-llm-assisted-edit.spec.ts` · `e2e/tests/sc03-02-rejected-suggestion-avoided.spec.ts` · `frontend/src/DecideDiff.tsx` · `frontend/src/RequestEdit.tsx` (문서 편집 축 — 슬라이스 6a #92 가 들여온 새 파일 6개)
+
+**증분 재판정 ④**(2026-09-25, 30차 패스): #152 가 `sc03-01` 「탭 3」 뒤에 연 3행을 판정해 **순 제거 2 · 유지 1(재작성)** — 「390px 에서는 AC4.4 에 따라 인수 시나리오 절이 접힌 채 서므로 목록을 보려면 요약을 한 번 펼쳐야 한다」는 AC4.4 재진술(②)이고 바로 아래 `scenarios-disclosure` → `summary` 클릭이 그 문장 자체(①) · 「세는 탭 셋(`request-edit`·`send-request`·`approve-diff`)은 위에서 이미 끝났다」는 위 세 `── 탭 N ──` 표식과 같은 testid 열거라 ① · **유지 1행**은 파일 머리의 유지된 정본(「결과 확인만 저장된 문서를 읽는다」)과 승인 **뒤에** 버튼을 누르는 이 블록을 화해시키는 「탭 계수 밖」 한 문장이다 — 그것이 없으면 다음 편집자가 이 클릭을 네 번째 탭으로 세거나 「탭 3」 위로 올려 단정의 의미를 조용히 깬다 — [passes/2026-09-21-doc-edit-axis.md](2026-09-21-doc-edit-axis.md) 「증분 재판정 ④」
+

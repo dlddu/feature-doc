@@ -313,3 +313,17 @@ diff 0줄」 검사는 주석 재작성에 딸려 사라진 선언을 놓치므�
 `// mock-exception: EXT-02 — …` 인데, 표기 주석은 DIRECTIVE 로 이 모델의 지문·판정 **양쪽에서 제외**되고
 이 패스는 그 줄을 건드리지 않았다(`grep -c 'mock-exception:' backend/src/github_app.rs` 불변).
 충실도 보증의 **원본**인 `docs/e2e-mocking-policy.md` 도 0줄 변화다 — 지운 것은 그 문서의 **사본** 쪽이다.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 12 — `backend/src/github_app.rs` · `backend/src/github.rs` · `backend/src/github_api.rs` · `backend/src/github_tokens.rs` · `backend/src/auth.rs` · `backend/src/session.rs` · `backend/src/cookies.rs` · `backend/src/installations.rs` · `backend/src/users.rs` · `backend/tests/github.rs` · `backend/tests/auth.rs` · `e2e/tests/sc04-01-app-install-and-scope.spec.ts` · `e2e/tests/sc04-11-unauthenticated-block-and-signin.spec.ts` · `e2e/tests/sc04-12-logout-session-invalidation.spec.ts` (GitHub App · 인증 경계 축 14파일)
+
+**증분 재판정 ⑫(25차 패스)**: #141 이 연 +14행(85행)을 판정해 **순 제거 7행**(정책 규칙 재진술 2 — 주석 스스로 `docs/e2e-mocking-policy.md, 충실도 보증` 을 인용한다 · 테스트 이름이 그대로 말하는 `///` 3 · 절 제목 1 · 바로 아래 두 줄이 말하는 절 1) · 유지 78행 · **판단이 갈려 남긴 것 2건**(`stub_installation_id` 의 배치 사유 · `real 이라면 … Forbidden` 의 충실도 경계) — [같은 파일의 「증분 재판정 ⑫」 절](2026-09-20-github-app-auth-axis.md)
+

@@ -532,3 +532,57 @@ reconciler task `rct_20260922-0009`. **순 제거 1행 · 유지 1행**(판단 �
 `*/` 닫는 줄은 지문 패턴(`\*` 뒤 공백·줄끝)에 걸리지 않으므로 **물리 7행 제거 / 지문 4행 제거**다.
 
 **순 제거 4행 · 유지 1행** · 줄 수·지문 96 → **97 / `e497d739…`**
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 3 — `e2e/tests/sc01-01-full-pipeline-run.spec.ts` · `e2e/tests/sc01-06-partial-retry.spec.ts` · `e2e/support/cluster.ts` · `e2e/smoke.sh` · `e2e/playwright.config.ts` (e2e 하네스 비경합 5파일)
+
+**증분 재판정 ②**(2026-09-20): #83 이 `sc01-01` 에 연 순증 2행을 판정해 **순 제거 2행**(슬라이스 번호를 단 작업 흔적 · 화면 전이 서술 · 교차 참조 `(선례: sc01-05)`) · 유지 2행(「셋업을 API 로 끝내도 로드는 자격증명 화면에서 시작한다」는 상태 머신 함정) · 범위는 144행 → 142행이지만 **지문은 `0e5c3d31…` 가 아니라 `93be69ea…`** 다 — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md)
+
+### 원장 행 9 — `backend/src/pipeline.rs` · `backend/src/cross_cutting.rs` · `backend/tests/documents.rs` · `backend/tests/progress.rs` · `frontend/src/CrossCuttingConcerns.tsx` · `e2e/tests/sc01-02-repo-out-of-scope.spec.ts` · `e2e/tests/sc01-03-cross-cutting-determinism.spec.ts` · `e2e/tests/sc01-05-resume-after-app-exit.spec.ts` · `e2e/tests/sc02-03-contradiction-separation.spec.ts` (파이프라인 · 횡단 관심사 축 비경합 9파일)
+
+**증분 재판정 ①**(2026-09-20): #83 이 `sc01-02`(+1) · `sc01-05`(+2) 에 연 순증 3행을 판정해 **순 제거 2행**(목업 카피 인용 · 슬라이스 ⑦ 작업 흔적) · 유지 2행(같은 버튼을 연달아 두 번 누르는 코드가 복사 실수로 읽히지 않게 하는 한 줄씩) · 139행이 아니라 **140행**으로 내려온다 — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md)
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ②**(2026-09-21): #91(`3567755`, 반응형 레이아웃)이 `index.css` 의 반응형 블록에 연 순증 5행(물리 9줄)을 판정해 **순 제거 4행**(절 제목 겸 §3.4 축자 재진술 블록 1 — 물리 6줄 · 선택자 재진술 1 · §4.7 축자 1 · §3.4 불릿 축자 1 — 전부 같은 커밋이 신설한 `docs/design-system.md` §3.4·§4.7·§5.4 로 복원) · **유지 1행**(`.screen > .tabbar { animation: none }` 위의 함정 — 진입 애니메이션 `rise` 의 `transform` 이 탭바의 `translateX(-50%)` 를 덮어쓴다; PR #91 본문에도 있으나 「실패 모드의 함정」이라 판단이 갈려 남긴 것 **13건째**) · 유지분이 남아 줄 수·지문은 #91 이전 값(80 / `641e9457…`)으로 **돌아가지 않는다**(81 / `af9fbb9d…`) · 비주석 코드 무접촉(빌드 CSS 산출물 sha256 부모와 동일) — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 — 원장 10행에 #91 이 연 +5행」 · **미판정 증분 없음**
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ③**(2026-09-21): #92가 `api.ts` 에 더한 5행 · `App.tsx` 에 더한 2행을 판정해 **순 제거 5행**(타입·필드 JSDoc 3 — `doc_edit.rs` 의 `Sentences` 요약·`lines()` doc·0009 가 정본 · `App.tsx` 라우트 필드 2 — 0-based 자리 계약과 「서버가 들고 있는 제안」의 사본) · 유지 2행(`proposeEdit`·`decideEdit` 의 export 함수 JSDoc 요약 1줄) · 줄 수·지문은 88/`4346a888…` → **83/`ec54e678…`** — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ③」
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ④**(2026-09-21): #107 이 `api.ts` 에 더한 7행을 판정해 **순 제거 5행**(타입·필드 JSDoc 5 — 0010 `source`·`key` 문단 · `feature_add.rs` 의 같은 문장(함께 제거) · `AddFeature.tsx` 의 조건 렌더가 정본) · 유지 2행(`draftAddition`·`decideAddition` 의 export 함수 JSDoc 요약 1줄 — ③ 과 같은 모양) · 줄 수·지문은 83/`ec54e678…` → 90/`d88323c6…`(트리거) → **85/`89959a07…`** — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ④」
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑤**(2026-09-21): #112 가 `api.ts` 에 더한 2행(`previouslyDeleted` 필드 JSDoc — `feature_delete::previous_deletion` pub doc 이 정본 · `FeatureDeletion` 타입 JSDoc — 필드 `restoreUntil`·`restorable` 과 0011 머리)을 **전건 제거** · 줄 수·지문은 #112 이전 값 85/`89959a07…` 로 바이트 동일 복귀(export 함수 JSDoc 요약은 #112 가 더하지 않았다) — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ⑤」 · **미판정 증분 없음**
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑥**(2026-09-22): #108 이 `api.ts` 2 · `RegisterLlmKey.tsx` 4 = 6행을 들여와 **제거 3 · 유지 3** — 제거는 `LlmLanguage` 타입 JSDoc(선언이 목록을 그대로 적는다) · `Analysis.llmLanguage` JSDoc(두 명제의 사본) · `LANGUAGES` 위 1행(순서·라벨을 리터럴이 말한다), 유지는 「저장은 키 등록 폼과 독립」 2행과 「`null` until the stored value arrives」 1행 — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ⑥」 · 맥락 [passes/2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md)
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑦**(2026-09-22): #119 가 `RegisterLlmKey.tsx` 의 유지 1행을 `button`→`option` 으로 **고쳐 쓰기만** 해 **전건 유지 · 순 제거 0 · 88행 불변**, 지문만 `fd84aea8…` → `7e6915aa…` 로 이동 — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ⑦」
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑨**(2026-09-24 · `rct_20260922-0009`): #132 가 `index.css` 에 더한 2행을 판정해 **순 제거 1행** — `.ev` 이관 블록은 네 겹으로 복원된다: 「목업 `.ev` 를 옮긴다」는 ②(목업)와 ③(PR #132 「근거 줄을 목업 `.ev`/`.ename`/`.esrc` 구조로 이관」) · 「목업은 경로를 하나만 그리지만 구현은 근거 경로를 전부 그린다」는 `frontend/src/CrossCuttingConcerns.tsx` 머리의 **유지된 정본**(「an item renders *every* path it cites where the mockup draws one」)의 두 벌째 · 「이름 칸은 최소 42%」는 바로 아래 `.ev .esrc { max-width: 58% }` 의 산술 여집합이라 리터럴 재진술(①) · 「`.ename`·`.esrc` 는 `.ev` 아래로 한정한다」는 같은 파일 위쪽 `.dep` 스코프 주석의 두 벌째이고 그 주석이 이유까지 적는다 · **유지 1행**은 `-webkit-text-size-adjust` 위의 iOS Safari 텍스트 자동 확대 — 상류 브라우저의 **문서화되지 않은 동작**으로, `docs/design-system.md` §5.3 은 선언 두 줄만 옮겨 적어 *이유* 를 복원하지 않고(② 는 반쪽), PR #132 본문은 한 스크린샷의 증상으로만 적는다 ⇒ 정책 본문 「애매하면 남긴다」의 비대칭 비용이 그대로 걸리는 자리라 **판단 갈림 1건**으로 남긴다 · 기재 88(트리거 `27d9b81` 에서 바이트 일치) → 유입 후 90 → 판정 후 **89 / `39baa2ff0e02877a92978a28d415bf7c128f75fc4dfd1fbf396948b781f8c5d6`** — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ⑨」 · **미판정으로 남는 것**: 열린 PR #126 이 `api.ts`·`App.tsx` 에 들일 주석 — 착지 뒤 다음 감지의 몫이다.
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑪**(2026-09-25, 30차 패스): #152 가 `index.css` 에 연 `.disclosure` 머리 주석(지문 1행 · 물리 3행)을 **제자리 재작성해 물리 2행 제거** — 「긴 결과의 요약 → 상세 단계 노출(AC4.4)」은 PRD AC4.4 축자(②)이고 「Compact 에서는 제목 줄만 남기고 접히고 첫 확장 브레이크포인트부터 펼쳐진다」는 `docs/doc-tracker/2026-09.md` 편차 표 세 행(`AnalysisProgress`·`CrossCuttingConcerns`·`FeatureAcceptance`)의 축자다(②) · **유지 1행**은 「여는 주체는 화면이 넘기는 `open` — CSS 로 펼치면 DOM 상태와 보이는 상태가 갈리므로 표식만 그린다」로, 정책이 유지 대상으로 이름 붙인 「무엇을 넣지 말라」이고 이 파일에 `display` 를 더하는 것이 **조용히 깨지는 유일한 경로**다 · 지문 줄 수는 91 → **92**(줄머리 필터에 continuation 2행이 보이지 않는다 — 본문 「지문과 사각지대」) — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ⑪」
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑭**(2026-09-26, 37차 패스, `rct_20260926-0002`): #166 이 `frontend/src/api.ts` 에 연 **5행**을 판정해 **순 제거 4행**(지문) · **물리 7행**(JSDoc 닫는 `*/` 는 지문 패턴에 안 걸린다) · 유지 1행 — 제거는 `Spend` JSDoc 의 「Connect Repository 화면이 보여 준」 경위·AC 꼬리표 2 · `costCents` 필드 JSDoc 1(「추정이지 청구서가 아니다」의 **정본은 `backend/src/usage.rs` 의 단가 상수 doc** — 단가를 고치는 사람이 읽는 자리다) · `Usage` JSDoc 1(① `{ total, analyses }` + ② 문서 이름 지목 `test/04 시나리오 9`) · 유지는 `Spend` 요약 1줄 — 프런트가 **어느 숫자를 그릴지 고르는 자리**이고 `AnalysisDetail` 안에 `spend` 와 `est*` 가 나란히 있어 바꿔 써도 타입이 같다 — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ⑭」
+

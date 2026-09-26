@@ -221,3 +221,37 @@ cannot recover a revoked access, so the stage-level retry affordances stand down
   21/`d4414d5f…`) 이 트리에서 다시 계산했다 — 재현이 안 되는 행을 고치는 사고를 막는다.
 - 파일 9개의 live 주석 수를 부모·tip·이 트리에서 각각 세어 **유입 124 = 제거 53 + 유지 71** 을
   확인했다.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑬**(2026-09-25, 34차 패스, `rct_20260925-0012`): #158(슬라이스 7c)이 `analysis.rs` 에 22행 · `worker_api.rs` 에 18행을 열었다 — **제거 30행 · 유지 10행**. `still_granted` doc 10 → 2(요약은 **함수 이름·시그니처가 그 문장 자체**(①) · 「설치 없음과 범위 축소를 한 호출로」·「아무것도 push 하지 않는다」는 #158 본문 축자(③)이고 `accessible_repos` 본문이 보인다(①)) · `ACCESS_REVOKED` doc 7 → 4(「화면에 다시 적지 않고 원인 옆에 둔다」는 #158 본문 축자(③)) · `access_revoked` 필드 doc 5 → 2(「화면이 문장을 대조하지 않는다」·「재시도는 복구 경로가 아니다」는 각각 `api.ts`·`AnalysisProgress.tsx` 의 두 벌째이고 doc-tracker 121행이 ②로 소유) · `worker_api` doc 11 → 2 와 인라인 블록 4·3행 **전건 제거**(두 블록의 명제는 `backend/tests/worker.rs` 의 **두 테스트 이름이 그 문장 자체**라 그 doc 2벌을 **정본으로 지정해 유지**했다 — 행 14) · **유지 10행은 전부 가드** — 「upstream failure is *not* revocation」 2(없으면 `Err` 를 `false` 로 접어 장애를 해제로 오독한다) · 「두 번째 열이 아니라 저장된 사유에서 파생 — 둘이 갈릴 수 없다」 2 · 「It names no installation id, repository or token」 **부재 단정** 2(복원 경로 넷 어디에도 없다) · 요약 2 · 「정책은 *어디서 부르는가* 로 지켜진다 — 두 호출부가 리스 경계에 있다」 2 · 613 → **623** — [passes/2026-09-25-revocation-axis.md](2026-09-25-revocation-axis.md) 「증분 재판정 ⑬」
+
+### 원장 행 3 — `e2e/tests/sc01-01-full-pipeline-run.spec.ts` · `e2e/tests/sc01-06-partial-retry.spec.ts` · `e2e/support/cluster.ts` · `e2e/smoke.sh` · `e2e/playwright.config.ts` (e2e 하네스 비경합 5파일)
+
+**증분 재판정 ⑤**(2026-09-25, 34차 패스, `rct_20260925-0012`): #158 이 `e2e/support/cluster.ts` 에 29행(API 쪽 헬퍼 네 블록)을 열었다 — **전건 유지 · 제거 0행**. 새 블록마다 **부모 `b632577` 에서 이미 판정을 받고 유지된 워커 쪽 쌍둥이가 같은 파일에 있다**: `apiPods` doc ↔ `workerPods` doc(`worker`↔`API` 말고 **바이트 동일**) · `apiGeneration` doc ↔ `desiredWorkerReplicas` doc(한 줄 요약 + 상류 k8s 동작) · `waitForApi` doc ↔ `scaleWorkers` doc(**가드 + 그렇게 해서 깨졌던 실사례**가 한 덩어리인 형태까지 같다) · `setApiEnv` doc ↔ `setWorkerEnv` doc(요약/리스 규약/쓰는 spec 의 절 구성이 같다). 걷을 것을 고르려면 **부모의 유지 판정을 같이 뒤집어야 하는데 그 논거가 이 창에 없다** — 공유 사본 불변식(한 벌만 고치면 그 자체가 첫 이탈) · `// A no-op edit …` 3행도 유지(`apiGeneration()` 비교가 **왜 있는가**) · 145 → **174**(재측정만, 판정은 전건 유지) — [passes/2026-09-25-revocation-axis.md](2026-09-25-revocation-axis.md) 「증분 재판정 ⑤」
+
+### 원장 행 7 — `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일)
+
+**증분 재판정 ⑥**(2026-09-25, 34차 패스, `rct_20260925-0012`): #158 이 `frontend/src/AnalysisProgress.tsx` 에 3행을 열었다 — **제거 1행 · 유지 2행**. 「AC4.1: the job was stopped because the App no longer grants access」·「the server's reason is what the user reads」는 `docs/doc-tracker/2026-09.md` 121행(②)과 `api.ts` 정본(행 10)이 소유 · **유지 2행은 「Re-running a stage cannot recover a revoked access, so the stage-level retry affordances stand down」** — 재시도 버튼을 되살리면 사용자가 **거짓 안내**를 받는다는, 이 JSX 분기가 존재하는 유일한 이유다 · 149 → **151** — [passes/2026-09-25-revocation-axis.md](2026-09-25-revocation-axis.md) 「증분 재판정 ⑥」
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑬**(2026-09-25, 34차 패스, `rct_20260925-0012`): #158 이 `frontend/src/api.ts` 의 `accessRevoked` 필드에 JSDoc 3행을 열었다 — **전건 유지 · 제거 0행**. 「서버가 저장한 사유에서 판정하므로 화면은 그 문장 자체를 대조하지 않는다」는 ③ 히트지만, **이 명제의 정본을 여기로 지정**했다 — 문장 대조 코드를 쓸 사람이 읽는 자리가 화면 쪽이기 때문이다. 그래서 `analysis.rs`(행 1)·`backend/tests/worker.rs`(행 14)의 두 벌째를 걷고 이 3행을 남겼다 · 93 → **96**(재측정만) — [passes/2026-09-25-revocation-axis.md](2026-09-25-revocation-axis.md) 「증분 재판정 ⑬」
+
+### 원장 행 12 — `backend/src/github_app.rs` · `backend/src/github.rs` · `backend/src/github_api.rs` · `backend/src/github_tokens.rs` · `backend/src/auth.rs` · `backend/src/session.rs` · `backend/src/cookies.rs` · `backend/src/installations.rs` · `backend/src/users.rs` · `backend/tests/github.rs` · `backend/tests/auth.rs` · `e2e/tests/sc04-01-app-install-and-scope.spec.ts` · `e2e/tests/sc04-11-unauthenticated-block-and-signin.spec.ts` · `e2e/tests/sc04-12-logout-session-invalidation.spec.ts` (GitHub App · 인증 경계 축 14파일)
+
+**증분 재판정 ⑬**(2026-09-25, 34차 패스, `rct_20260925-0012`): #158 이 `backend/src/github_app.rs` 에 9행을 열었다 — **제거 3행 · 유지 6행**. `stub_granted_names` doc 7 → 4(요약 2 → 1 — 「so a test can take repository access away the way a user does on GitHub」은 호출부 `sc04-02` 가 보인다(①) · 「값은 쉼표로 이은 목록이고 빈 값은 아무것도 주지 않는다」 3행은 파싱 코드가 그 문장이다(①)) · **유지는 「Unset is the full stub installation … keeps the three repositories every other spec relies on」**(기본값 불변식 — #158 본문의 음성 프로브가 바로 이 줄이 지키는 것을 실측했다: 「미설정 → `sc04-01` 의 `3 repositories` 단정 불변」)**과 「one narrowing, two answers that cannot drift apart」**(두 답이 갈리지 않아야 한다) · 78 → **84** — [passes/2026-09-25-revocation-axis.md](2026-09-25-revocation-axis.md) 「증분 재판정 ⑬」
+
+### 원장 행 14 — `backend/tests/worker.rs` · `backend/tests/common/mod.rs` · `backend/tests/analyses.rs` · `scripts/e2e.sh` · `e2e/tests/sc02-02-acceptance-from-tests.spec.ts` (테스트 하네스 축 5파일)
+
+**증분 재판정 ⑩**(2026-09-25, 34차 패스, `rct_20260925-0012`): #158 이 `backend/tests/worker.rs` 에 12행 · `scripts/e2e.sh` 에 9행을 열었다 — **제거 7행 · 유지 14행**. **`worker.rs` 두 테스트의 `///` 6행은 정본으로 지정해 유지** — 그 이름이 곧 `worker_api.rs` 인라인 블록 두 개(7행)의 명제라서, 정본을 세워야 그 7행을 걷어도 명제가 트리에서 사라지지 않는다(행 1) · 헬퍼 doc 4 → 2(「설치 행이 먼저 읽히니 지우면 아무것도 남지 않는다」는 코드 두 줄(①) · 「범위 축소 모양은 `sc04-02` 가 end-to-end 로 몬다」는 doc-tracker 121행(②) — **유지는 「프로세스 전역 stub 스위치를 건드리지 않는다: 같은 바이너리의 형제 테스트가 그것을 본다」**(격리 함정)) · `// Closed, not merely skipped …` 1(바로 아래 단정이 그 문장 — ①) · `// The screen reads the flag, not the sentence.` 1(`api.ts` 정본의 두 벌째) · `e2e.sh` 7 → 4 — **정본 지정 3갈래**: 「포워드가 pod 하나에 묶여 죽으니 감시하며 재기동한다」는 **`e2e.sh`**(그 코드가 여기 있다) · 「그래서 `setApiEnv` 가 `await` 로 그 창을 덮는다」는 **`cluster.ts`** · 「API 가 `strategy: Recreate` 인 이유」는 **`deploy/k8s/deployment.yaml`** 의 「SQLite on a ReadWriteOnce volume: never let two pods mount it at once」(①). 뒤 두 칸만 뗐다 · `# kind e2e only ever runs in CI …` 2행 유지(이 `printf` 를 지울 사람에게 거는 제약) · 21 → **35** — [passes/2026-09-25-revocation-axis.md](2026-09-25-revocation-axis.md) 「증분 재판정 ⑩」
+

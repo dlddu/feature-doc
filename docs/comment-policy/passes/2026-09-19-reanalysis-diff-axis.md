@@ -371,3 +371,29 @@ a live lease」는 #121 PR 본문(「분석이 `running` 이면 여전히 409」
 판정 15행 · **순 제거 12행 · 유지 3행**(`repo_scan.rs` −11 · `AnalysisProgress.tsx` −1).
 160(#137 착지 후) → **148 / `d55bd63e1adc1672800636757f49c4ef9e406ea6e6f9b17b0117f743feac6481`**.
 이 행에 **미판정 증분은 남지 않는다.**
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ④**(2026-09-19): #71이 `analysis.rs`에 더한 36행과 #75가 더한 24행, 합 **60행**을 판정해 **순 제거 29행**(절 제목 · AC 조항 재진술 6 · 여정·목업 인용 · 선언 재진술 · 라우트 테이블과 핸들러 doc 의 두 벌 중 한 벌) · 유지 31행(`(created_at, rowid)` 정렬 이유 · 「묻지 않은 것 ≠ 없던 것」과 0008 의 두 테이블 분리 · 재큐잉 없는 요청은 아무도 돌리지 않는다는 한 트랜잭션 계약 · 실패 후 재요청이 행을 `queued` 로 되돌린다) — [passes/2026-09-19-reanalysis-diff-axis.md](2026-09-19-reanalysis-diff-axis.md)
+
+### 원장 행 7 — `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일)
+
+**증분 재판정 ①**(2026-09-21): #99(`899800e`)가 `AnalysisProgress.tsx` 에 더한 4행을 판정해 **순 제거 3행**(`subOf` 머리의 「서버 사유를 그리지 않는다」 3행 — doc-tracker 변경 이력 ⑿ · PR #99 계획 3 · 바로 아래 `return '실패했어요'` 와 `stage-failed` 안내의 삼중) · 유지 1행(「한 번에 실패하는 단계는 하나 — 파이프라인이 거기서 멈춘다」 — `stages.find` 의 전제인 백엔드 불변식인데 `docs/` · `pipeline.rs` 어디에도 문장으로 없다, 판단이 갈려 남김) · 지문 밖 JSX 블록 연속행 3행(「Stage 3 is deliberately not one of them …」 — doc-tracker ⒃ · PR 계획 2 축자)도 함께 제거 · 132행 → 133행(판정 시점 `4aa7a8eb…`) — [passes/2026-09-19-reanalysis-diff-axis.md](2026-09-19-reanalysis-diff-axis.md) 「증분 재판정 ①」
+
+### 원장 행 7 — `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일)
+
+**증분 재판정 ②**(2026-09-21): #101(`3d147d6`, 슬라이스 ⑪)이 증분 재판정 ①의 머지 직전에 `STAGE_TITLES` 머리에 더한 2행을 명제 단위로 판정해 **순 제거 2행**(「wire `key` 로 고른다 · 서버 `title` 은 fallback」 — 바로 아래 `STAGE_TITLES[stage.key] ?? stage.title` 그 자체 · 「시드 `title` 은 enqueue 때 영속돼 카피를 바꿔도 옛 행은 옛 문구」 — doc-tracker 슬라이스 ⑪ 문단 두 벌 + PR #101 본문 축자 · 「화면이 카피를 소유한다」 — 같은 문단·PR 제목·커밋 제목) · 유지 0행(유일한 「저장소 제약의 함정」 명제가 docs 에 문장째로 있어 ①의 유지 1행과 같은 기준·반대 결론) · 비주석 코드 무접촉(스트립 잔여 md5 부모와 동일) · 줄 수·지문이 **증분 재판정 ① 시점 값으로 되돌아왔다**(135 / `47fdf929…` → 133 / `4aa7a8eb…`) — [passes/2026-09-19-reanalysis-diff-axis.md](2026-09-19-reanalysis-diff-axis.md) 「증분 재판정 ②」 · **미판정 증분 없음**
+
+### 원장 행 7 — `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일)
+
+**증분 재판정 ④**(2026-09-24 · `rct_20260924-0001`): 위 등재분 **#121 1행**과 **#137**(`fd6cdad`)이 `backend/src/repo_scan.rs` 에 연 **14행**, 합 **15행**을 판정해 **순 제거 12행** — `stub_read` 의 충실도 경계 doc 3행은 **`docs/e2e-mocking-policy.md` 39~40행이 세 절을 모두 적는다**(②, 같은 PR 이 넣은 등재의 사본이고 그 문서가 정본) · `read_files` doc **본문** 5행은 #137 PR 본문 「개별 파일 실패(404·5xx)는 건너뛰고 경로만으로 진행, 토큰 없음은 기존 스캔과 같은 오류」(③)와 코드(①)가 복원하며 끝 문장은 rustdoc 링크만의 교차 참조다(**요약 1줄은 남긴다** — 같은 파일 `scan` 의 생존 규약) · `excerpt` doc 2행은 바로 아래 `is_char_boundary` 루프가 말하고(①) **뒤 절은 사실과도 어긋난다**(`from_utf8_lossy` 가 이미 돌아 비경계 슬라이스는 대체문자가 아니라 패닉이다) · `AnalysisProgress.tsx` 3행은 AC 조항 재진술(②)·#121 PR 본문(③)·바로 다음 줄 가드 `!ACTIVE.has(analysis.status)`(①)가 네 절을 모두 복원해 전건 제거 · `truncated` 필드 doc 은 **왜 알려야 하는가**만 남겨 2행 → 1행 재작성 · **유지 3행**. 160(#137 착지 후) → **148 / `d55bd63e1adc1672800636757f49c4ef9e406ea6e6f9b17b0117f743feac6481`**. **이 행에 미판정 증분 없음** — [passes/2026-09-19-reanalysis-diff-axis.md](2026-09-19-reanalysis-diff-axis.md) 「증분 재판정 ④」
+

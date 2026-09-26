@@ -313,3 +313,29 @@ DiscoveryStrategy 6,755 — 셋 다 ==). 빈 `catch {` `}` 의 두 줄 형태는
 | `FeatureCandidates.tsx` `spentCents` 위 2 → 1 | 「여기까지 쌓인 실제 비용(AC4.6). 목록과 따로 읽는다 — 후보를 고르는 동안 비용이 더 늘지는 않으므로 결정마다 다시 읽을 이유가 없고, 못 읽어도 결정은 막지 않는다」 | **제거 1 · 유지 1** | 제거: 첫 문장은 상태 이름(`spentCents`)과 AC 꼬리표 재진술 · ② `doc-tracker:128` 「후보 화면의 `누적 비용`」. 유지: 「따로 읽는다 · 못 읽어도 막지 않는다」는 두 fetch 를 하나로 합치거나 실패를 블로킹 에러로 「고치려는」 사람의 편집 지점이고, 어느 쪽도 **테스트를 붉히지 않는다** |
 
 **순 제거 1행 · 유지 1행** · 줄 수·지문 141 → **142 / `b2991073…`**
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 8 — `backend/src/discovery_strategy.rs` · `backend/src/feature_candidates.rs` · `backend/tests/strategy.rs` · `backend/tests/candidates.rs` · `frontend/src/DiscoveryStrategy.tsx` · `frontend/src/FeatureCandidates.tsx` · `e2e/tests/sc01-04-strategy-edit-and-approve.spec.ts` · `e2e/tests/sc01-07-candidate-rejection-carryover.spec.ts` (후보·전략 축 비경합 8파일)
+
+**증분 재판정 ①**(2026-09-21): #93이 `feature_candidates.rs`에 더한 2행(「required-but-nullable — OpenAI `strict` 는 `required` 누락을 400 으로 거부」)은 같은 명제의 정본이 `llm.rs::assert_strict_schema` 옆에 있고(1행 재판정 ⑤) 같은 파일의 테스트 `schema_is_accepted_by_openai_strict_mode` 가 이름으로 그 자리를 가리키므로 **제거 2행**(12차 패스의 「복제된 명제는 강제하는 코드 옆 한 벌만」) — [passes/2026-09-19-candidate-strategy-axis.md](2026-09-19-candidate-strategy-axis.md) 「증분 재판정 ①」
+
+### 원장 행 8 — `backend/src/discovery_strategy.rs` · `backend/src/feature_candidates.rs` · `backend/tests/strategy.rs` · `backend/tests/candidates.rs` · `frontend/src/DiscoveryStrategy.tsx` · `frontend/src/FeatureCandidates.tsx` · `e2e/tests/sc01-04-strategy-edit-and-approve.spec.ts` · `e2e/tests/sc01-07-candidate-rejection-carryover.spec.ts` (후보·전략 축 비경합 8파일)
+
+**증분 재판정 ②**(2026-09-21): #99(`899800e`)가 `sc01-04`(+5) · `sc01-07`(+1) · `DiscoveryStrategy.tsx`(+5) 에 더한 11행을 판정해 **순 제거 10행**(원장 번호 ⑼⒃ 를 현재형으로 인용하는 작업 흔적 · 바로 아래 세 단정이 그 문장 자체인 것 · doc-tracker 변경 이력 ⑼ 를 축자로 옮긴 JSX 머리 · 빈 `catch` + `setInterval` 이 그 문장 자체 · `POLL_MS` 이름·값만의 교차 참조 · 「승인이 4단계를 재큐잉한다」 — diff 기준 11행 삭제 · 1행 재작성) · 유지 1행(폴링을 택한 이유 — `docs/` 어디에도 「왜 한 번 읽지 않고 폴링하는가」 가 없다, 재작성한 1행) · 지문 밖 JSX 블록 연속행 3행도 함께 제거 · 151행 → **141행** — [passes/2026-09-19-candidate-strategy-axis.md](2026-09-19-candidate-strategy-axis.md) 「증분 재판정 ②」
+
+### 원장 행 8 — `backend/src/discovery_strategy.rs` · `backend/src/feature_candidates.rs` · `backend/tests/strategy.rs` · `backend/tests/candidates.rs` · `frontend/src/DiscoveryStrategy.tsx` · `frontend/src/FeatureCandidates.tsx` · `e2e/tests/sc01-04-strategy-edit-and-approve.spec.ts` · `e2e/tests/sc01-07-candidate-rejection-carryover.spec.ts` (후보·전략 축 비경합 8파일)
+
+**증분 재판정 ③**(2026-09-21): #107 이 `FeatureCandidates.tsx` 의 `onFinish` prop 에 더한 JSDoc 1행을 **제거**(`disabled={list.undecided !== 0}` 과 버튼 카피 「결정 끝 — 빠진 기능 확인」이 그 문장 · doc-tracker 6b 행) · 줄 수·지문은 #107 이전 값 141/`a431e905…` 로 복귀 — [passes/2026-09-19-candidate-strategy-axis.md](2026-09-19-candidate-strategy-axis.md) 「증분 재판정 ③」
+
+### 원장 행 8 — `backend/src/discovery_strategy.rs` · `backend/src/feature_candidates.rs` · `backend/tests/strategy.rs` · `backend/tests/candidates.rs` · `frontend/src/DiscoveryStrategy.tsx` · `frontend/src/FeatureCandidates.tsx` · `e2e/tests/sc01-04-strategy-edit-and-approve.spec.ts` · `e2e/tests/sc01-07-candidate-rejection-carryover.spec.ts` (후보·전략 축 비경합 8파일)
+
+**증분 재판정 ④**(2026-09-21): #112 가 `FeatureCandidates.tsx` 의 내부 fn `quotedDeletion` 에 더한 JSDoc 1행을 **제거**(`prev.reason === null ? '(' + when + ')' : …` 과 `reason: string
+
