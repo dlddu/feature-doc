@@ -126,7 +126,6 @@ def measure():
                 pat = cre
                 break
         else:
-            # 확장자로 못 가른 텍스트 파일: shebang 이 있으면 # 언어군, 없으면 미분류.
             with open(os.path.join(ROOT, f), "rb") as fh:
                 if fh.read(2) == b"#!":
                     pat = GROUPS[1][1]

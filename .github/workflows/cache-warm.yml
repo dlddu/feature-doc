@@ -1,16 +1,8 @@
 name: Cache warm
 
-# PR 이 읽는 캐시를 main 스코프에 저장하는 전용 워크플로.
-#
-# GitHub Actions 캐시는 PR 스코프에 저장하면 그 PR 만 읽을 수 있고, 다른 PR 은
-# main(기본 브랜치) 스코프 캐시만 읽는다. 그런데 ci.yml 은 PR 에서만 돌아서 main 에
-# 저장할 기회가 없었다 — 지금까지는 옛 캐시가 맞아 괜찮았지만 Cargo.lock 이 바뀌는
-# 순간부터 PR 마다 계속 콜드가 된다. 그래서 저장은 여기서만, 읽기는 ci.yml 에서만.
-#
-# 각 job 은 먼저 정확히 같은 키가 이미 있는지만 본다(다운로드 없이). 있으면 바로
-# 끝나고, 없을 때(= 의존성·브라우저 버전이 바뀐 커밋)만 빌드해서 저장한다.
-# 키는 ci.yml 쪽과 반드시 같아야 한다: rust-cache 는 shared-key·프로필,
-# Playwright 는 path·key 식.
+# GitHub Actions 캐시는 PR 스코프에 저장하면 그 PR 만 읽을 수 있고, 다른 PR 은 main(기본
+# 브랜치) 스코프 캐시만 읽는다. 키는 ci.yml 쪽과 반드시 같아야 한다: rust-cache 는
+# shared-key·프로필, Playwright 는 path·key 식.
 on:
   push:
     branches: [main]
@@ -39,7 +31,6 @@ jobs:
           lookup-only: true
 
       # 테스트 바이너리까지 빌드해야 dev-dependencies 도 캐시에 들어간다.
-      # 실행은 하지 않는다 — 검증은 PR 에서 이미 끝났다.
       - name: Build test deps (cargo test --no-run)
         if: steps.rust-cache.outputs.cache-hit != 'true'
         run: cargo test --manifest-path backend/Cargo.toml --profile ci --no-run
@@ -64,8 +55,6 @@ jobs:
         with:
           node-version: '22'
 
-      # 브라우저 바이너리만 받으면 된다. 시스템 의존성(apt)은 캐시 대상이 아니라
-      # ci.yml 이 매번 `playwright install-deps` 로 깐다.
       - name: Download chromium
         if: steps.pw-cache.outputs.cache-hit != 'true'
         working-directory: e2e
