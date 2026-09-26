@@ -365,6 +365,7 @@ pub async fn derive(
     Ok(llm::Answer {
         content: document(&validated),
         model: answer.model,
+        calls: answer.calls,
         input_tokens: answer.input_tokens,
         output_tokens: answer.output_tokens,
     })

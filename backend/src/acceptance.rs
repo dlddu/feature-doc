@@ -431,6 +431,10 @@ pub async fn derive(
     Ok(llm::Answer {
         content,
         model: logic.model.clone(),
+        // Two provider calls when the repository has test files, one when it does
+        // not — the merged answer is stored as a single row, so it carries the count
+        // the row cannot otherwise show (AC4.6).
+        calls: logic.calls + tests.as_ref().map_or(0, |a| a.calls),
         input_tokens: logic.input_tokens + tests.as_ref().map_or(0, |a| a.input_tokens),
         output_tokens: logic.output_tokens + tests.as_ref().map_or(0, |a| a.output_tokens),
     })

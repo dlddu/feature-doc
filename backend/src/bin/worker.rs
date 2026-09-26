@@ -690,6 +690,7 @@ impl Worker {
             "workerId": self.worker_id,
             "content": answer.content,
             "model": answer.model,
+            "calls": answer.calls,
             "inputTokens": answer.input_tokens,
             "outputTokens": answer.output_tokens,
         });

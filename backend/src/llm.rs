@@ -122,13 +122,19 @@ impl Ask<'_> {
     }
 }
 
-/// What a call produced. Token counts are recorded for the cost accounting the
-/// roadmap places in a later slice (AC4.6) — persisted now so the numbers exist
-/// when the screen for them lands.
+/// What a call produced. Token counts and `calls` are the measured side of the
+/// cost accounting AC4.6 surfaces — the numbers a screen reports come from here
+/// and never from the pre-flight estimate.
+///
+/// `calls` is 1 for every answer a provider hands back. It is a field rather than
+/// a constant because a stage may merge several answers into one (see
+/// [`crate::acceptance::derive`]), and the merged answer is what gets stored — so
+/// the count has to travel with it or the row loses one call.
 #[derive(Debug, Clone)]
 pub struct Answer {
     pub content: Value,
     pub model: String,
+    pub calls: i64,
     pub input_tokens: i64,
     pub output_tokens: i64,
 }
@@ -327,6 +333,7 @@ async fn anthropic(http: &reqwest::Client, key: &str, ask: Ask<'_>) -> Result<An
         } else {
             parsed.model
         },
+        calls: 1,
         input_tokens: parsed.usage.input_tokens,
         output_tokens: parsed.usage.output_tokens,
     })
@@ -455,6 +462,7 @@ fn openai_answer(parsed: OpenAiResponse) -> Result<Answer, String> {
         } else {
             parsed.model
         },
+        calls: 1,
         input_tokens: parsed.usage.input_tokens,
         output_tokens: parsed.usage.output_tokens,
     })
@@ -520,6 +528,7 @@ fn stub_answer(ask: &Ask<'_>) -> Result<Answer, String> {
     Ok(Answer {
         content: ask.stub.clone(),
         model: STUB_MODEL.to_string(),
+        calls: 1,
         input_tokens: (ask.system_turn().len() + ask.user.len()) as i64 / 4,
         output_tokens: 256,
     })

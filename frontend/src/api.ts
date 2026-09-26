@@ -156,6 +156,18 @@ export type Stage = {
   finishedAt: number | null;
 };
 
+/**
+ * Measured spend (AC4.6) — what the calls this analysis made actually reported,
+ * not the pre-flight `est*` guess the Connect Repository screen showed.
+ */
+export type Spend = {
+  llmCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  /** Estimated from the measured tokens; the provider's invoice is its own. */
+  costCents: number;
+};
+
 export type AnalysisDetail = Analysis & {
   error: string | null;
   /**
@@ -166,7 +178,27 @@ export type AnalysisDetail = Analysis & {
   startedAt: number | null;
   finishedAt: number | null;
   stages: Stage[];
+  spend: Spend;
 };
+
+/** 작업별과 전체별을 한 번에 — `/api/usage` (test/04 시나리오 9). */
+export type Usage = {
+  total: Spend;
+  analyses: (Spend & {
+    analysisId: string;
+    repoOwner: string;
+    repoName: string;
+    branch: string;
+    status: string;
+    createdAt: number;
+  })[];
+};
+
+export async function getUsage(): Promise<Usage> {
+  const res = await fetch('/api/usage', { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as Usage;
+}
 
 /**
  * `hasAccess: false` is not an error — it is the answer, and the screen renders a
