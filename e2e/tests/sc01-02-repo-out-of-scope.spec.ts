@@ -33,7 +33,7 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
 
   await page.getByTestId('repo-url').fill('github.com/someone-else/private-repo');
   await page.getByTestId('check-access').click();
-  const noAccess = page.getByTestId('no-access');
+  const noAccess = page.getByTestId('repo-outside');
   await expect(noAccess).toBeVisible();
   await expect(noAccess).toContainText('App 설치 범위 밖입니다');
   await expect(page.getByTestId('manage-install')).toBeVisible();
@@ -44,7 +44,7 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
 
   await cards.filter({ hasText: 'stub-account/payments-api' }).click();
   await expect(page.getByTestId('repo-url')).toHaveValue('github.com/stub-account/payments-api');
-  await expect(page.getByTestId('no-access')).toHaveCount(0);
+  await expect(page.getByTestId('repo-outside')).toHaveCount(0);
   await page.getByTestId('check-access').click();
   const estimate = page.getByTestId('estimate');
   await expect(estimate).toBeVisible();

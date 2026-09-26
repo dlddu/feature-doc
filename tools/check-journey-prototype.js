@@ -283,7 +283,7 @@ const INPUT_PROBE = {
     if (!req) return;
     ok(doc.getElementById('btn-send-request').disabled === true, 'P3',
        `요청이 비었는데 보내기 버튼이 살아 있다 (입력 검증이 죽어 있다)`);
-    ok(visible(doc.getElementById('request-error')), 'P3',
+    ok(visible(doc.getElementById('request-empty')), 'P3',
        `빈 요청에 대한 검증 표시가 나타나지 않는다`);
     type(win, req, '왜 저장이 안 되는지 한 문장으로 더 분명하게');
     ok(req.value === '왜 저장이 안 되는지 한 문장으로 더 분명하게', 'P3',
