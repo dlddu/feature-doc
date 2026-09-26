@@ -397,3 +397,19 @@ a live lease」는 #121 PR 본문(「분석이 `running` 이면 여전히 409」
 
 **증분 재판정 ④**(2026-09-24 · `rct_20260924-0001`): 위 등재분 **#121 1행**과 **#137**(`fd6cdad`)이 `backend/src/repo_scan.rs` 에 연 **14행**, 합 **15행**을 판정해 **순 제거 12행** — `stub_read` 의 충실도 경계 doc 3행은 **`docs/e2e-mocking-policy.md` 39~40행이 세 절을 모두 적는다**(②, 같은 PR 이 넣은 등재의 사본이고 그 문서가 정본) · `read_files` doc **본문** 5행은 #137 PR 본문 「개별 파일 실패(404·5xx)는 건너뛰고 경로만으로 진행, 토큰 없음은 기존 스캔과 같은 오류」(③)와 코드(①)가 복원하며 끝 문장은 rustdoc 링크만의 교차 참조다(**요약 1줄은 남긴다** — 같은 파일 `scan` 의 생존 규약) · `excerpt` doc 2행은 바로 아래 `is_char_boundary` 루프가 말하고(①) **뒤 절은 사실과도 어긋난다**(`from_utf8_lossy` 가 이미 돌아 비경계 슬라이스는 대체문자가 아니라 패닉이다) · `AnalysisProgress.tsx` 3행은 AC 조항 재진술(②)·#121 PR 본문(③)·바로 다음 줄 가드 `!ACTIVE.has(analysis.status)`(①)가 네 절을 모두 복원해 전건 제거 · `truncated` 필드 doc 은 **왜 알려야 하는가**만 남겨 2행 → 1행 재작성 · **유지 3행**. 160(#137 착지 후) → **148 / `d55bd63e1adc1672800636757f49c4ef9e406ea6e6f9b17b0117f743feac6481`**. **이 행에 미판정 증분 없음** — [passes/2026-09-19-reanalysis-diff-axis.md](2026-09-19-reanalysis-diff-axis.md) 「증분 재판정 ④」
 
+
+### 원장 행 7 — `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일)
+
+**증분 재판정 ⑦**(2026-09-26, 40차 패스, `rct_20260926-0006`): #179 가 `frontend/src/AnalysisProgress.tsx` 의 단계 행에 비용 칸을 세우며 연 **+1행**(지문 기준 — JSX 블록 주석은 언어군 패턴이 행 시작을 보므로 `{/*` 첫 줄만 계수된다. **소스는 4행**)을 판정해 **순 제거 1행(소스 4행) · 유지 0**.
+
+문면: `AC4.6 검증 방법의 「단계별 비용」. 위 그리드의 \`Cost so far\` 가 이 작업의 합이고 이 칸들은 그 합의 단계별 분해지만, 둘이 더해서 같아지지 않는 것이 정상이다 — 파이프라인 밖 지출(의존성 추적·문서 수정·feature 추가)은 어느 단계에도 속하지 않고, 값은 버킷마다 센트로 올림된다.`
+
+- **머리의 AC 꼬리표** — **②** `docs/prd/04-platform.md:46` 축자(「**검증 방법**: 임의 사용자의 임의 분석 작업의 단계별 비용을 운영자/사용자 모두가 추적 가능.」) · **④** 커밋 제목.
+- **「위 그리드의 `Cost so far` 가 이 작업의 합」** — **①** 같은 파일 위쪽의 `data-testid="cost-so-far"` 와 이 칸의 `data-testid="stage-spend"` 가 그 관계다.
+- **비-항등 명제** — **②** `docs/doc-tracker/2026-09.md:738`(「**비용 축의 등식은 세우지 않았다** — `cost_cents` 가 버킷마다 올림이라 단계 합이 총비용을 넘을 수 있고, 파이프라인 밖 지출 세 테이블은 어느 단계에도 속하지 않아 작을 수도 있다」) · **③** PR #179 ⑷ 축자(세 테이블 이름까지 열거한다).
+
+**정본 지정.** PR #179 자신이 「그 비-항등은 `usage.rs`·`AnalysisProgress.tsx`·목업 주석에 적었다」고 **세 벌임을 밝힌다**. 정본은 `backend/src/usage.rs` 의 `by_stage` doc ¶3 — 단가·올림 규칙을 고치려는 사람이 읽는 자리이고, 이 패스가 그 5행을 **유지**했다(원장 `backend/src/usage.rs` 행 증분 재판정 ①). 화면 쪽 사본은 렌더 코드를 고치는 사람에게 같은 금지를 다시 말할 뿐이다.
+
+**기계 검산**: 이 1행을 걷으면 행 지문이 #178 head 값 **`3f1e6691…` 으로 바이트 복귀**한다(151 / `3f1e66915ec4…`) — #179 유입분만 정확히 걷었다는 뜻이고, 이 행의 다른 6파일은 무접촉이다.
+
+**④ 축 실측 0건**(squash 머지 · 제목뿐). 152 → **151 / `3f1e66915ec4…`**. 비주석·비공백 diff **0줄**(JSX 블록 주석의 2~4행은 주석 시작 패턴이 없어 필터에 남지만, 걷은 4행이 한 `{/* … */}` 블록임은 위 문면으로 확인된다). **이 행에 미판정 증분 없음** — [passes/2026-09-19-reanalysis-diff-axis.md](2026-09-19-reanalysis-diff-axis.md) 「증분 재판정 ⑦」

@@ -135,10 +135,6 @@ struct StageView {
     error: Option<String>,
     started_at: Option<i64>,
     finished_at: Option<i64>,
-    /// What this stage spent (AC4.6). Filled after the query from
-    /// [`crate::usage::by_stage`] rather than joined in: the stage rows and the
-    /// document rows are a 1:1 axis but not a 1:1 join (a stage that wrote no
-    /// document has no row there, and must read 0 rather than vanish).
     #[sqlx(skip)]
     spend: crate::usage::Spend,
 }
