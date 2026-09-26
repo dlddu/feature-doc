@@ -145,3 +145,29 @@ reconciler task `rct_20260922-0005`(모델 `tbm_feature-doc-comment-redundancy`)
 - `python3 tools/check-data-format-change.py --base main --head HEAD --verbose` → **`✅ 변경 없음`**(rc=0).
 - `cargo test --manifest-path backend/Cargo.toml --release` **전건 통과**(실패 0) ·
   `check-scenario-e2e.py` · `check-mockup-render.py` · `check-journey-mockup.py` **rc=0**.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑩**(2026-09-22): #114(슬라이스 6d)가 `worker_api.rs` `submit_document` 에 더한 2행을 판정해 **순 제거 1행** — 앞머리 「인수 문서가 서는 순간이 직전 분석의 편집을 이어받을 자리다(AC3.5)」는 doc-tracker 6d 행이 「재분석 문서가 저장되는 자리(`worker_api::submit_document`)에서 … 재생한다」로 축자에 가깝게 적고(②) AC 꼬리표는 ③ 이라 걷었고, **유지 1행**은 「저장과 같은 요청 안에서 이어받아야 워커가 5단계를 `succeeded` 로 보고하기 전에 충돌이 서 있다」 — 호출 **순서**가 만드는 동시성 계약이라 어느 복원 경로에도 없다(정책 본문 「동시성 계약」) · 2행 → 1행 재작성 — [passes/2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md) 「증분」 · **자매 착지 재실측**(2026-09-22): 이 패스의 머지 직전에 #123(`77158c2` — `llm.rs` 의 `stub_answer` env 레이스 해소)이 먼저 착지해 이 행에 **순 +4행**(더한 6 · 지운 2)을 열었다. 판정이 아니라 **머지 시점 트리에서의 줄 수·지문 재고정**이고(「행 지문을 재현하는 법」 — 개행 포함 해시), 값은 602/`87c1c5cd…` → **606/`6c3ba120…`** 이다. 그 4행은 아래 **증분 재판정 ⑪** 이 닫았다.
+
+### 원장 행 4 — `backend/src/acceptance.rs` · `backend/tests/acceptance.rs` · `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` · `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx` (인수 축 비경합 6파일)
+
+**증분 재판정 ③**(2026-09-22): #114 가 `acceptance.rs` 에 더한 4행을 **전건 제거** — 스텁 리비전 3 의 재현 의도 2행은 doc-tracker 6d 행(「스텁 트리에 리비전 3 … 을 두어 첫 문장을 다르게 읽는 코드 변경을 결정적으로 재현했다」)의 사본이고, `stub_logic` 의 2행은 `02#시나리오 8` 을 인용한 제품 문서 재진술이다(같은 doc-tracker 행이 「리비전 2 의 문장 불변은 단위 테스트가 지킨다 — 02#8 의 단정 보호」로 다시 적는다) · 리비전 어휘의 **정본은 `repo_scan::Revision` 의 variant doc** 으로 두었다(같은 패스에서 유지) · 줄 수·지문이 #114 이전 값 **142 / `2ff8f6ff…` 로 바이트 동일 복귀** — [passes/2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md) 「증분」  · **자매 착지 재실측**(2026-09-22 · #121): 20차 패스의 머지 직전에 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝난 단계만 다시 실행)이 착지해 이 행에 **순 +7행**(`backend/tests/acceptance.rs` +7)을 열었다. 판정이 아니라 **머지 시점 트리에서의 줄 수·지문 재고정**이고(「행 지문을 재현하는 법」 — 개행 포함 해시), 값은 142/`2ff8f6ff…` → **149/`a459c9173ce41a9f347923a75257319978c4f02338cac2d5a9cc2d7695393fd9`** 다. 그 7행은 **판정하지 않고 다음 감지에 넘긴다** — **해소됨**(2026-09-25 · `rct_20260925-0002` · 아래 증분 재판정 ④).
+
+### 원장 행 7 — `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일)
+
+**증분 재판정 ③**(2026-09-22): #114 가 `repo_scan.rs` 에 +14 −5(제자리 재작성 — 같은 명제 5행이 한국어에서 영어로 다시 쓰였다) · `AnalysisDiff.tsx` 에 +6 을 열어 **15행 증분**을 판정해 **순 제거 3행** — `repo_scan.rs` 의 variant doc 2행(「The tree every first analysis sees.」 · 「Paths this revision adds on top of the previous one.」)은 variant·필드 이름이 그대로 말하는 ① 선언 재진술이고, `AnalysisDiff.tsx` 의 `onResolve` prop JSDoc 1행은 이름과 화살표 카피의 재진술 · **유지 12행** — 「리비전은 더하기만 한다(지우거나 이름을 바꾸면 그 위에 세워진 feature 키가 함께 움직여 「같은 feature 의 표현이 갱신됐다」를 관측할 수 없다)」 4행은 **스텁 충실도의 불변식**이고 리비전 2·3 의 variant doc 5행은 이 축의 **정본**(원장 4행의 사본 2건을 이 판정이 걷었다) · 「한 곳을 읽어야 넘어간다」 표시의 수명 4행과 「배너가 세는 것은 충돌 행이 아니라 **기능**이다」 1행은 화면 불변식이라 유지 — [passes/2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md) 「증분」  · **자매 착지 재실측**(2026-09-22 · #121): 20차 패스의 머지 직전에 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝난 단계만 다시 실행)이 착지해 이 행에 **순 +1행**(`frontend/src/AnalysisProgress.tsx` +1)을 열었다. 판정이 아니라 **머지 시점 트리에서의 줄 수·지문 재고정**이고(「행 지문을 재현하는 법」 — 개행 포함 해시), 값은 145/`2e366521…` → **146/`db03aa4ae962896e95d567dcc8eeacc77d43a73088fc3f6d65bc611832aebfc4`** 다. 그 1행은 **판정하지 않고 다음 감지에 넘긴다** — **해소됨**(2026-09-24 · `rct_20260924-0001` · 아래 증분 재판정 ④).
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑧**(2026-09-22): #114 가 `api.ts` 에 더한 3행(`DocConflict` 타입 JSDoc · `decideConflict` · `proposeMerge` 의 함수 JSDoc)을 **전건 제거** — 셋 다 **전송 경계의 재진술**이고 정본은 `doc_conflict.rs` 쪽이다(⑥ 의 「한 명제의 일곱 벌」과 같은 잣대) · AC3.5 꼬리표는 ③ · 줄 수·지문이 #114 이전 값 **88 / `7e6915aa…` 로 바이트 동일 복귀** — [passes/2026-09-22-conflict-axis.md](2026-09-22-conflict-axis.md) 「증분」
+

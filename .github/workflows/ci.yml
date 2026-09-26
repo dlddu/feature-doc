@@ -398,6 +398,19 @@ jobs:
   docs-scenario-e2e:
     uses: ./.github/workflows/docs-scenario-e2e.yml
 
+  # 주석 판정 원장의 불변식. changes 필터를 걸지 않는 이유: 원장이 강제하는 것은
+  # 「판정 대상 주석을 가진 파일은 정확히 한 행에 속한다」는 전수 불변식이라, 원장을
+  # 건드리지 않은 PR 이 주석을 한 줄 더하기만 해도 깨진다. 즉 깨뜨릴 수 있는 PR 집합이
+  # docs/comment-policy 접촉과 일치하지 않으므로 모든 PR 에서 돈다.
+  comment-ledger:
+    name: comment-ledger
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: check comment ledger invariants
+        run: python3 scripts/check-comment-ledger.py
+
   # 유일한 필수 상태 체크. `always()` 인 이유: 앞 job 이 실패해 이 job 이 skipped 가
   # 되면 GitHub 은 skipped 필수 체크를 통과로 친다. 그래서 항상 돌면서 needs 전부가
   # success 인지 직접 판정한다(failure·cancelled 는 실패).
@@ -408,7 +421,8 @@ jobs:
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [changes, cargo, e2e, image, docs-journey-mockup, docs-mockup-render, docs-scenario-e2e]
+    needs: [changes, cargo, e2e, image, docs-journey-mockup, docs-mockup-render, docs-scenario-e2e,
+            comment-ledger]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 2
     steps:

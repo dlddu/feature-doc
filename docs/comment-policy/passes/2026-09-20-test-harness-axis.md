@@ -411,3 +411,29 @@ python3 tools/check-data-format-change.py --base <main tip> --head <probe> --ver
 | `PLAYWRIGHT_SHARD` 위 2 → 1 | 「예: "1/2" — 이 클러스터에 그 Playwright 샤드만 돌린다(CI 는 샤드마다 kind 클러스터 하나를 쓴다). 비우면 전체 스위트」 | **제거 1 · 유지 1** | 유지: `"1/2"` 라는 **값의 형식**은 이 파일의 다른 env 변수 어디에도 없고 변수 이름에서 복원되지 않는다. 제거: 「CI 는 샤드마다 클러스터 하나」는 `e2e/playwright.config.ts`·`e2e/support/cluster.ts`(원장 행 3)에 이미 두 벌 있어 **세 번째 벌**이고, 「비우면 전체 스위트」는 ① `${PLAYWRIGHT_SHARD:-}` 와 아래 분기가 그대로 말한다 |
 
 **순 제거 1행 · 유지 1행** · 줄 수·지문 35 → **36 / `11c3a7d9…`**
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 14 — `backend/tests/worker.rs` · `backend/tests/common/mod.rs` · `backend/tests/analyses.rs` · `scripts/e2e.sh` · `e2e/tests/sc02-02-acceptance-from-tests.spec.ts` (테스트 하네스 축 5파일)
+
+**원장 정정: 후보 ① `tools/check-data-format-change.py` 는 D6 로, `deploy/k8s/pvc.yaml` 은 D5 로 경로 매칭돼 무인 머지 경로가 없다**(음성 대조 실측) — [passes/2026-09-20-test-harness-axis.md](2026-09-20-test-harness-axis.md) · **지문 정정**(2026-09-22): 기록돼 있던 `8b8764df…` 는 **등재 커밋 `445ec57`(#96) 에서부터 한 번도 재현되지 않았다**(그 시점에도 현재 값 `e8a9deb5…`). 13행과 같은 등재 시점 계산 오류다. 줄 수 20 과 판정 결과는 처음부터 맞았다. **판정 결과 무수정, 핀만 정정.** · **사유 정정**(2026-09-24 · `rct_20260924-0003`): 13행과 「같은 부류」가 맞지만, 그 부류는 계산 오류가 아니라 **규약 혼동**이다. `8b8764df…` 는 이 파일 「행 지문을 재현하는 법」이 명시한 **전역 규약**(`printf '%s'`)으로 계산한 값이고, 등재 커밋 `445ec57` 에서 **바이트 일치로 재현된다**(같은 줄 집합 20행 — 행 규약 `e8a9deb5…` / 전역 규약 `8b8764df…`). 당시 패스 문서가 적은 값이 그것이다([passes/2026-09-20-test-harness-axis.md](2026-09-20-test-harness-axis.md) 「집계」). **재현이 안 맞을 때 이 파일이 먼저 의심하라고 적어 둔 개행을, 그 정정 자신이 의심하지 않았다.** 현재 핀(행 규약)은 그대로 둔다 — 정정되는 것은 **사유뿐**이다.
+
+### 원장 행 14 — `backend/tests/worker.rs` · `backend/tests/common/mod.rs` · `backend/tests/analyses.rs` · `scripts/e2e.sh` · `e2e/tests/sc02-02-acceptance-from-tests.spec.ts` (테스트 하네스 축 5파일)
+
+**증분 재판정 ①**(2026-09-24 · `rct_20260924-0003`): #142(`82be2f4`, e2e 이미지 재사용 · 브라우저 캐시)가 `scripts/e2e.sh` 에 더한 1행(「CI 는 e2e 의존성과 Playwright 브라우저를 앞 단계에서 (캐시와 함께) 설치해 둔다.」)을 **전건 제거** — 복원 경로 셋이 동시에 서 있다: ① `.github/workflows/ci.yml` 138~161행이 브라우저 캐시 복원 스텝과 `SKIP_PLAYWRIGHT_INSTALL: '1'` 을 그대로 적고 그 파일 자신의 137행 주석이 같은 문장을 담는다 · ② `README.md` 179행이 **같은 커밋에서** 「Playwright chromium(main 이 저장한 브라우저 캐시를 복원, 적중 시 apt 의존성만 설치) → `SKIP_BUILD=1 SKIP_PLAYWRIGHT_INSTALL=1 scripts/e2e.sh`」로 갱신됐다 · ③ PR #142 본문 §4 가 축자로 서술한다. 플래그가 *무엇을* 하는지는 바로 아래 선언과 `if [ "${SKIP_PLAYWRIGHT_INSTALL}" != "1" ]` 블록이 이미 말한다(유형 ① 선언 재진술 + ② 문서 재진술). 같은 파일 60·61행의 `kubectl rollout` 조기 반환 주석은 「실패 모드의 함정」이라 유지가 맞고, 이번 줄은 그 성격이 없어 「애매하면 남긴다」의 보호 대상이 아니다 · **줄 수·지문은 칸 무변경** — 제거하면 부모 `6e6478a` 값으로 **바이트 동일 복귀**한다(21/`5f016e49…` → 20/`e8a9deb5…`, 전역 규약도 `8b8764df…` 로 동시 복귀). 재고정이 아니라 **원복**이라 핀 칸을 손대지 않았다 — [passes/2026-09-20-test-harness-axis.md](2026-09-20-test-harness-axis.md) 「증분 재판정 ①」
+
+### 원장 행 14 — `backend/tests/worker.rs` · `backend/tests/common/mod.rs` · `backend/tests/analyses.rs` · `scripts/e2e.sh` · `e2e/tests/sc02-02-acceptance-from-tests.spec.ts` (테스트 하네스 축 5파일)
+
+**증분 재판정 ②**(2026-09-25 · `rct_20260925-0009`): #155(`9c01489`, 슬라이스 7b — AC4.7 분석 작업의 격리)가 `backend/tests/worker.rs` 에 더한 **22행**(gross == net — 이 창에서 제거 0행)을 **명제 단위로** 판정해 **순 제거 21행 · 유지 1행** — ⑴ 비공개 헬퍼 doc 4행(`login_installed_with` 2 는 시그니처의 `installation_id: i64` 와 유일 호출부의 `11_001`·`11_002` 가 축자이고(①) #155 본문 §1 이 「위임만 바꿔 호출부 동작이 불변」을 적는다(③) · `register_key` 2 는 이름·본문의 `POST /api/llm-keys`·단정 메시지 `register {provider} key` 가 그 문장 자체이며(①) 자매 헬퍼 `set_language` 는 애초에 무주석이다) — **비공개 fn 이라 「`pub` 항목 요약 1줄 유지」 조항 대상이 아니다**(행 4 증분 재판정 ④ 선례) · ⑵ 새 테스트의 `///` **12행 전건 제거**(AC 꼬리표 + `04-platform.md#시나리오 10` 기대 결과 두 번째 문장 축자 2행(②)과 fn 이름 `one_worker_claiming_two_users_jobs_never_mixes_their_context`(①) · 「이 단정이 왜 claim 층에 있나」 6행은 **`docs/doc-tracker/2026-09.md` 매핑 행의 「자동화 밖 잔여」 칸과 변경 이력 행이 축자에 가깝게 소유**하고(②) #155 본문 §1 의 *「워커 프로세스를 두 번 돌리지 않는 이유」* 절이 다시 적으며(③), 「워커는 영속을 하나도 소유하지 않는다」는 **주석 스스로 `worker_api` 모듈 주석을 정본으로 지목**하고 실측으로 그 자리에 있다(「So the worker owns *no* persistence」) — 「왜 이렇게 만들었나」는 정책 본문이 ③ 의 자리로 둔 **경위**다 · 관측 가능하게 만드는 두 값 2행은 doc-tracker 두 자리가 `ghs_stub_<installation_id>_…` 를 축자로 적고(②) `a_token.starts_with("ghs_stub_11001_")` 와 그 FAIL 문면이 그 말 자체다(①) · 딸린 빈 `///` 2행) · ⑶ 인라인 5행 제거(언어 스냅숏 1 — 바로 아래 `set_language(&state, &bob, "en")` 가 bob 만이고(①) 스냅숏 계약의 **정본은 행 1 증분 재판정 ⑨ 가 지정한 `analysis.rs` 의 복사 지점**이다 · 「같은 worker id 로 두 번 · job id 로 되찾는다」 1 — `claim(&state, "w1")` 두 번과 `by_id.get(&alice_job)` 가 축자 · 절 제목 ⑴⑶⑷ 3 — 네 단정의 FAIL 문면 「alice 의 job 에 alice 의 키」·「alice 의 설치로 발급되지 않았다」·「bob 이 고른 언어」/「alice 는 고른 적이 없다」가 그 문장 자체) · **유지 1행**(⑵ 의 「값 비교만으로는 "둘 다 실렸다"를 못 잡는다」 — ②③ 히트는 있으나 이 두 `assert!` 를 빼면 위 등식 단정만 남아 테스트가 **조용히 약해지는** 편집 지점 가드다(정책 본문 「애매하면 남긴다」의 비용 비대칭) · 절 제목만 떼고 **제자리 재작성**) · **주석 제거 후 코드 md5 부모와 동일 1/1** · 비주석 diff **0줄** · `assert` 62 == 62 · `;` 168 == 168 · 20 → 42(#155 착지) → **21 / `d4414d5fc3a243b00181ac2ad4c75e7408e31491730fc5a86723881f09d35c97`** — [passes/2026-09-20-test-harness-axis.md](2026-09-20-test-harness-axis.md) 「증분 재판정 ②」
+
+### 원장 행 14 — `backend/tests/worker.rs` · `backend/tests/common/mod.rs` · `backend/tests/analyses.rs` · `scripts/e2e.sh` · `e2e/tests/sc02-02-acceptance-from-tests.spec.ts` (테스트 하네스 축 5파일)
+
+**증분 재판정 ⑪**(2026-09-26, 37차 패스, `rct_20260926-0002`): #169·#170(Playwright 샤딩)이 `scripts/e2e.sh` 에 연 **2행**을 판정해 **순 제거 1행 · 유지 1행** — 유지는 `"1/2"` 라는 **값의 형식**(이 파일의 다른 env 변수 어디에도 없고 변수 이름에서 복원되지 않는다), 제거는 「CI 는 샤드마다 kind 클러스터 하나」(`playwright.config.ts`·`cluster.ts` 에 이미 두 벌 — **세 번째 벌**)와 「비우면 전체 스위트」(① `${PLAYWRIGHT_SHARD:-}` 와 아래 분기) — [passes/2026-09-20-test-harness-axis.md](2026-09-20-test-harness-axis.md) 「증분 재판정 ⑪」
+

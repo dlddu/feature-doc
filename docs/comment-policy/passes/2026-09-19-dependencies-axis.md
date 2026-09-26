@@ -266,3 +266,25 @@ sc02-05의 `// ── 누르기 전 ───…` · `// ── 누른 뒤 ─�
 결과: 이 범위의 줄 수·지문이 #93 이전 값 **112 / `e2ff313a…`** 으로 되돌아왔다. 비주석 코드 무접촉
 (스트립 잔여 450 == 450). 같은 커밋이 이 파일의 프롬프트 문자열(`set evidence to null`)을 바꿨지만
 그것은 주석이 아니라 코드다 — 판정 표면 밖.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ③**(2026-09-19): #71이 `worker_api.rs`에 더한 37행을 판정해 **순 제거 18행**(라우트 선택 근거의 세 벌째 · AC 꼬리표 · 함수 이름 재진술 · SQL이 이미 말하는 「승인된 후보만」 · rustdoc 링크만의 교차 참조) · 유지 19행(요청 행이 곧 게이트 · 실패는 재시도되지 않음 · 같은 트랜잭션에서 행 교체) — [passes/2026-09-19-dependencies-axis.md](2026-09-19-dependencies-axis.md)
+
+### 원장 행 5 — `backend/src/bin/worker.rs` · `deploy/e2e/kustomization.yaml` · `deploy/k8s/deployment.yaml` · `deploy/k8s/secret.yaml.example` · `deploy/k8s/worker-deployment.yaml` · `e2e/tests/sc04-07-api-availability-without-workers.spec.ts` · `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts` (워커 · 더블 배선 축 비경합 7파일)
+
+**증분 재판정 ①**(2026-09-19): #71이 `bin/worker.rs`에 더한 12행을 판정해 **순 제거 7행**(같은 문장의 네 번째 벌 · AC 꼬리표 · 라우트 선택 근거) · 유지 5행(한 feature 의 실패가 잡을 죽이지 않는다는 격리 계약) — [passes/2026-09-19-dependencies-axis.md](2026-09-19-dependencies-axis.md)
+
+### 원장 행 6 — `backend/src/dependencies.rs` · `backend/tests/dependencies.rs` · `frontend/src/FeatureDependencies.tsx` · `e2e/support/dependencies.ts` · `e2e/tests/sc02-05-dependency-extraction.spec.ts` · `e2e/tests/sc02-06-dependency-reverse-query.spec.ts` · `e2e/tests/sc02-07-dependency-export.spec.ts` (의존성 축 비경합 7파일)
+
+**증분 재판정 ①**(2026-09-21): #93이 `dependencies.rs`에 더한 1행(4행과 같은 문장의 두 번째 벌)은 같은 근거로 **제거 1행** — 줄 수·지문이 #93 이전 값(112 / `e2ff313a…`)으로 되돌아왔다 — [passes/2026-09-19-dependencies-axis.md](2026-09-19-dependencies-axis.md) 「증분 재판정 ①」 · **미판정 증분 없음**
+

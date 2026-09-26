@@ -113,3 +113,33 @@ e2e spec **14개**에 있다. 과거 패스들이 줄인 것은 **4행짜리 옛
   마이그레이션이 1건씩 들어오므로 이 풀은 **구조적으로 재충전된다**.
 - **D6** `tools/check-data-format-change.py` **36행** — `SELF_PATHS`(소스 44-47행). 고치는 것이
   곧 접촉이라 우회 불가. 사람 게이트 전용 PR 로만 다룰 수 있다.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 4 — `backend/src/acceptance.rs` · `backend/tests/acceptance.rs` · `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` · `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx` (인수 축 비경합 6파일)
+
+**증분 재판정 ⑤**(2026-09-25, 28차 패스): #126 이 `FeatureAcceptance.tsx` 에 연 1행(이력 진입점의 사유 — 여정 `JRN-restore-history` 「이력 진입점이 검수 화면 깊숙이 있으면 이 여정 자체가 시작되지 않는다」의 축자(②)이고 PR #126 본문도 같은 문장을 적는다(③))을 **제거** · 줄 수·지문은 #126 이전 값 142/`2ff8f6ff…` 로 **바이트 동일 복귀** — [passes/2026-09-25-history-restore-axis.md](2026-09-25-history-restore-axis.md) 「증분 재판정 ⑤」
+
+### 원장 행 7 — `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일)
+
+**증분 재판정 ⑤**(2026-09-25, 28차 패스): #126 이 `diff.rs::scenario_of` doc 에 연 2행 중 1행(「저장된 문서에서 읽을 때(`scenarios_of`)와 같은 규칙」 — 그 호출 관계는 코드가 말한다(①))을 **제거** · 유지 1행(요약) — [passes/2026-09-25-history-restore-axis.md](2026-09-25-history-restore-axis.md) 「증분 재판정 ⑤」
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑩**(2026-09-25, 28차 패스): #126 이 `api.ts` 에 연 5행 중 3행(`carriedFrom` 의 「두 번 세지 않게 한다」 — `doc_history.rs` 같은 문장의 **두 벌째** · `standing` 과 「복원은 재생 구간을 자른다」 — doc-tracker 2026-09 슬라이스 6e 절의 축자(②))을 **제거** · 유지 2행(`HistoryEntry`·`PreviewView` 의 export 요약 1줄씩) — [passes/2026-09-25-history-restore-axis.md](2026-09-25-history-restore-axis.md) 「증분 재판정 ⑩」
+
+### 원장 행 17 — `backend/src/doc_edit.rs` · `backend/tests/doc_edit.rs` · `e2e/tests/sc03-01-llm-assisted-edit.spec.ts` · `e2e/tests/sc03-02-rejected-suggestion-avoided.spec.ts` · `frontend/src/DecideDiff.tsx` · `frontend/src/RequestEdit.tsx` (문서 편집 축 — 슬라이스 6a #92 가 들여온 새 파일 6개)
+
+**증분 재판정 ③**(2026-09-25, 28차 패스): #126 이 `doc_edit.rs` 에 연 9행(순증 7) 중 5행(`SOURCE_AUTO` doc 의 AC3.4 어휘 재진술 · `propose`·`overlay` 의 0014 세대 서술 2 — PR #126 본문 「순서는 시각이 아니라 세대로 엮는다」의 축자(③) · `splice`·`base_document` doc 의 둘째 줄 2 — doc-tracker 슬라이스 6e 절(②))을 **제거** · 유지 4행 — [passes/2026-09-25-history-restore-axis.md](2026-09-25-history-restore-axis.md) 「증분 재판정 ③」
+
+### 원장 행 23 — `backend/src/doc_conflict.rs` · `backend/tests/doc_conflict.rs` · `frontend/src/ResolveConflict.tsx` · `e2e/tests/sc03-07-auto-vs-user-edit-conflict.spec.ts` (충돌 해소 축 — 슬라이스 6d #114 가 들여온 새 파일 4개 — `backend/migrations/0013_feature_doc_conflicts.sql` 는 **D1 사람 게이트 풀**로 보류 (— **해소됨(2026-09-25, 27차 패스, `rct_20260925-0003`)**: 새 행 25 로 판정 — 유지))
+
+**증분 재판정 ①**(2026-09-25, 28차 패스): #126 이 연 5행 중 4행(`inherit` 의 「되살아나면 복원이 한 분석짜리 거짓말이 된다」 2 — PR #126 본문의 축자(③) · `after_restore` 의 NULL 서술 1 — 바인딩이 말한다(①) · `tests/doc_conflict.rs` 의 의도 주석 1 — fn 이름과 단정(①))을 **제거** · 유지 1행 — [passes/2026-09-25-history-restore-axis.md](2026-09-25-history-restore-axis.md) 「증분 재판정 ①」
+

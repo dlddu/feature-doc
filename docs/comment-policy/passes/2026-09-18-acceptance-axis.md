@@ -395,3 +395,29 @@ reconciler task `rct_20260925-0002`. 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝
 **순 제거 3행** · 줄 수 142 → **142**(유입 3 − 제거 3) · 지문 **`2ff8f6ff8251…` 로 바이트 동일 복귀** —
 칸 값이 둘 다 불변이므로 원장 표의 이 행은 결과 칸만 갱신한다. 등식·지문 어느 쪽도 이 행이 판정을
 받았다는 사실을 드러내지 않으므로(「산술이 전부 초록이어도 어긋날 수 있다」의 거울상), 기록은 이 절이다.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 4 — `backend/src/acceptance.rs` · `backend/tests/acceptance.rs` · `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` · `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx` (인수 축 비경합 6파일)
+
+**증분 재판정 ①**(2026-09-21): #93이 `acceptance.rs`에 더한 1행(`// Required-but-nullable; see feature_candidates::schema.`)은 두 줄 위 `required` 배열과 바로 아래 `["string","null"]` 이 축자로 말하는 것(①) + 교차 참조뿐이라 **제거 1행** — 줄 수·지문이 #93 이전 값(141 / `e38dcf20…`)으로 되돌아왔다 — [passes/2026-09-18-acceptance-axis.md](2026-09-18-acceptance-axis.md) 「증분 재판정 ①」
+
+### 원장 행 4 — `backend/src/acceptance.rs` · `backend/tests/acceptance.rs` · `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` · `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx` (인수 축 비경합 6파일)
+
+**증분 재판정 ②**(2026-09-21): #112 가 `FeatureAcceptance.tsx` 에 더한 5행을 판정해 **순 제거 4행**(AC3.3 꼬리표 「가려질 뿐 보관소에 남는다」 · `reload` JSDoc — 파일 머리의 화면 불변식이 정본 · 「보관소만 있는 상태」 — PR #112 · 내부 fn `Archive` JSDoc — JSX 카피와 `disabled={… !restorable}`) · **유지 1행**(「문서와 함께 읽어 두 목록이 같은 시점의 서버 상태를 그린다」 — `Promise.all` 을 고른 이유, 판단이 갈려 남긴 것 5건째) · 줄 수·지문은 141/`e38dcf20…` → 146/`655305bc…`(트리거) → **142/`2ff8f6ff…`** — [passes/2026-09-18-acceptance-axis.md](2026-09-18-acceptance-axis.md) 「증분 재판정 ②」 · **미판정 증분 없음**
+
+### 원장 행 4 — `backend/src/acceptance.rs` · `backend/tests/acceptance.rs` · `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` · `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx` (인수 축 비경합 6파일)
+
+**증분 재판정 ④**(2026-09-25 · `rct_20260925-0002`): 그 7행을 **전건 제거** — 테스트 doc 3행은 fn 이름 `rerunning_a_succeeded_stage_offers_that_stage_alone` 이 첫 절을 축자로 담고(①) 「Later stages keep their output and the reviewer keeps their decisions」가 PRD AC1.5 **검증 방법**의 번역이며(②) `AC1.5 / test/01 시나리오 8` 은 꼬리표다(②③ — 비공개 테스트 fn 이라 `pub` doc 요약 유지 규칙 대상이 아니고 기계 판독 `// 검증 시나리오:` 규약과도 형태가 다르다) · `fetch` 2행은 `offered_stages` doc 의 「`fetch` is always offered…」와 두 벌째이고 아래 `cases` 리터럴 다섯 개가 전부 `"fetch"` 로 시작하는 것이 축자(①) · `Stage 3 plans over the stored landscape` 1행은 바로 아래 `if key == "discovery_strategy"` 분기와 `crossCuttingDocument` 단언이(①) · 검토자 결정 1행은 바로 아래 `assert_eq!(approved, 1)` 이(①) 말한다 · 줄 수·지문이 #121 이전 값 **142 / `2ff8f6ff…` 로 바이트 동일 복귀**다(증분 재판정 ③ 이 #114 에 대해 닫은 것과 같은 형태) — [passes/2026-09-18-acceptance-axis.md](2026-09-18-acceptance-axis.md) 「증분 재판정 ④」
+
+### 원장 행 4 — `backend/src/acceptance.rs` · `backend/tests/acceptance.rs` · `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` · `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx` (인수 축 비경합 6파일)
+
+**증분 재판정 ⑥**(2026-09-26, 37차 패스, `rct_20260926-0002`): #166 이 `acceptance.rs` 의 `derive` 에 연 **3행 전건 제거** — 「테스트 파일이 있으면 두 번, 없으면 한 번」은 ① 바로 아래 `calls: logic.calls + tests.as_ref().map_or(0, |a| a.calls)` 가 **식으로** 말하고 ③ #166 본문이 **축자**로 갖는다(「인수 시나리오 단계는 논리 호출과 테스트 호출 둘을 한 문서로 합쳐 한 행만 남기고(`acceptance::derive`)…」). 이 명제의 **정본은 `llm.rs` 의 `Answer.calls` doc**(행 1 증분 ⑭). ⚠️ **줄 수 142 와 지문 `2ff8f6ff…` 둘 다 1차 판정값으로 바이트 동일 복귀**했으므로(유입 3 − 제거 3) **산술도 지문도 이 행이 판정을 받았음을 드러내지 않는다** — 기록은 패스 절뿐이다 — [passes/2026-09-18-acceptance-axis.md](2026-09-18-acceptance-axis.md) 「증분 재판정 ⑥」
+

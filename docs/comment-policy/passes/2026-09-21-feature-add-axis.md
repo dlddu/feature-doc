@@ -274,3 +274,17 @@ directly (edit proposals, manual feature drafts), so their prose matches the doc
 
 지문: **46행 `3fb54093…` → 45행 `b596e7392db0110e03721163ee6946ca87d58b58aba894f6a556f9ec481294a7`** —
 **이 패스 직전 원장 값으로 바이트 그대로 복귀**했다.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 20 — `backend/src/feature_add.rs` · `backend/tests/feature_add.rs` · `e2e/tests/sc03-03-manual-feature-add-with-evidence.spec.ts` · `e2e/tests/sc03-04-manual-feature-add-no-evidence.spec.ts` · `frontend/src/AddFeature.tsx` (빠진 feature 직접 추가 축 — 슬라이스 6b 새 파일 5개)
+
+**증분 재판정 ①**(2026-09-22): #108 이 `feature_add.rs::draft` 에 더한 1행(「초안은 이 분석의 목록에 들어가므로 목록의 나머지와 같은 언어로」 — 호출하는 `settings::analysis_language` 의 이름과 그 doc 이 정본)을 **제거** · 줄 수·지문은 #108 이전 값 45/`b596e739…` 로 바이트 동일 복귀 — [passes/2026-09-21-feature-add-axis.md](2026-09-21-feature-add-axis.md) 「증분 재판정 ①」 · 맥락 [passes/2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md)
+

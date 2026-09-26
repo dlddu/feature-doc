@@ -293,3 +293,29 @@ P1~P7 각각을 이미 한 줄씩 정의하고, 각 블록의 `ok(cond, 'P6', �
 결과: 2행의 줄 수·지문이 **140 / `ddacce0b…`** → **141 / `f9af32ef…`** 로 움직였다(트리 `1289a7f` 재계산 —
 범위 지문은 후행 개행 **포함** `echo "$HITS" | sha256sum`). 소스는 한 줄도 편집하지 않았으므로 전역 지문은
 `lines=2553 files=129` / `4402bff9…` 그대로다. 이 재판정으로 원장의 미판정 증분이 1행 → **0행**이 된다.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 2 — `tools/check-journey-prototype.js` · `backend/src/config.rs` (열린 통합 PR 무접촉 2파일)
+
+**증분 재판정 ①**(2026-09-18): #60이 `config.rs`에 `Mode`·`Doubles` doc으로 더한 23행을 판정해 **순 제거 13행**(variant·시그니처 재진술 · 경계 식별자 필드 doc 6 · 정책 문서 인용 2) · 유지 10행(경계별 선택 불변식 · 안전 기본값)
+
+### 원장 행 2 — `tools/check-journey-prototype.js` · `backend/src/config.rs` (열린 통합 PR 무접촉 2파일)
+
+**증분 재판정 ②**(2026-09-21): #92가 `Doubles.llm` 필드에 더한 doc 2행을 **전건 제거**(바로 위 `Doubles` doc 의 「the analysis worker holds its own set」 재진술 · 필드 이름) · 줄 수·지문은 #92 이전 값으로 복귀 — [passes/2026-09-18-uncontested-harness-config.md](2026-09-18-uncontested-harness-config.md) 「증분 재판정 ②」
+
+### 원장 행 2 — `tools/check-journey-prototype.js` · `backend/src/config.rs` (열린 통합 PR 무접촉 2파일)
+
+**증분 재판정 ③**(2026-09-21): #107 이 `Doubles.repo_scan` 필드에 더한 doc 3행을 **전건 제거**(② 와 같은 형 — `Doubles` doc 의 경계별 선택 불변식 · doc-tracker 6b 행 · `docs/e2e-mocking-policy.md` EXT-03 배선 표) · 줄 수·지문은 #107 이전 값으로 복귀 — [passes/2026-09-18-uncontested-harness-config.md](2026-09-18-uncontested-harness-config.md) 「증분 재판정 ③」
+
+### 원장 행 2 — `tools/check-journey-prototype.js` · `backend/src/config.rs` (열린 통합 PR 무접촉 2파일)
+
+**증분 재판정 ④**(2026-09-22): #115 가 `check-journey-prototype.js` 에 더한 4행 블록 주석을 판정해 **전건 유지 · 순 제거 0**(사고 기록 · 검사가 존재하는 이유 · 뮤테이션 내성 근거 — 복원 경로 ③(PR #115 본문)은 **실재하나**, 같은 잣대가 이 파일의 유지 선례 13행을 함께 뒤집으므로 17행 묶음 재판정의 몫이다) · 지문에 들어오는 것은 `/*` 여는 1행뿐이라 140 → **141** — [passes/2026-09-18-uncontested-harness-config.md](2026-09-18-uncontested-harness-config.md) 「증분 재판정 ④」
+

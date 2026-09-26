@@ -601,3 +601,53 @@ reconciler task `rct_20260925-0002`. 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝
 | `worker_api.rs` 로그 앞 인라인 2 | 「운영자가 보는 자리 — 단계별 호출·토큰이 로그에도 남는다(AC4.6). 화면은 합쳐진 뒤를 읽으므로 어느 단계가 얼마를 썼는지는 여기서만 보인다」 | **제거 2** | ② `docs/doc-tracker/2026-09.md:128` 「단계별 내역은 `worker_api::submit_document` 의 `llm usage recorded` 로그가 남긴다」 축자 · ③ #166 같은 문장 · ① 바로 아래 `tracing::info!` 의 `stage`·`calls`·`model` 필드 |
 
 **순 제거 13행**(gross 21 중 8행 유지) · 줄 수·지문 623 → **625 / `6f7c80da…`**
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ①**(2026-09-18): #55가 더한 `llm.rs` 21행은 stub↔real 충실도 경계라 **전건 유지**, 제거 후보 3행(테스트 case 라벨)은 `llm.rs`가 #49와 경합이라 보류 — **해소됨**(2026-09-25 · 31차 패스 · `rct_20260925-0008`): #49 가 `2026-09-18T15:40:05Z` 에 머지돼 경합이 소멸했으므로 그 3행을 **집행 제거**했다(판정은 18차 패스의 「중복 유형 ④」를 그대로 쓴다 — 재판정 아님) · 616/`df4a5627…` → **613/`666abdf8…`** — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「보류분 집행」
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ②**(2026-09-18): #43이 `analysis.rs`·`worker_api.rs`에 더한 40행을 판정해 **순 제거 10행**(AC 조항 재진술 · 호출자·구조체 본문 재진술 · rustdoc 링크만의 교차 참조) · 유지 30행(리스 계약 · 게이트는 큐의 성질 · `acceptance_pending`의 술어 함정 · `work_remains`의 경합)
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑤**(2026-09-21): #93이 `llm.rs`에 더한 `assert_strict_schema` doc 5행을 **명제 단위로** 판정해 **순 제거 2행**(함수 본문의 두 `assert` 재진술 · 단정 메시지가 이미 말하는 「optional 대신 nullable」과 스키마 리터럴 `["string","null"]` 재진술 — 5행 → 3행 재작성) · 유지 3행(`pub(crate)` 요약 1줄 · 「`required` 누락은 모델 실행 전 400」의 상류 거부 조건 · stub 은 스키마를 어디에도 보내지 않는다는 충실도 경계). **이 자리가 「required-but-nullable」 명제의 정본이다** — 강제하는 코드 `assert_strict_schema` 옆(4·6·8행의 같은 명제 사본 4행은 그래서 걷었다) — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) · **미판정 증분 없음**
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑥**(2026-09-21): #92가 `analysis.rs` `document()` 에 더한 4행(승인 편집의 겹쳐 읽기와 `content_hash` 불변의 이유 — 0009 머리·doc-tracker·PR #92 의 **네 벌째**)을 **전건 제거** · 줄 수·지문은 #92 이전 값으로 바이트 동일 복귀 — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑥」
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑦**(2026-09-21): #107 이 `analysis.rs` 에 더한 2행(`document()` 의 추가 겹침 호출 위 1행 — `feature_add::overlay` doc 의 순서 계약이 정본 · `approved_candidate_name` doc 에 덧붙인 1행 — 함수 본문의 두 질의와 `confirmed_name` 요약)을 **전건 제거** · 줄 수·지문은 #107 이전 값으로 바이트 동일 복귀 — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑦」
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑧**(2026-09-21): #112 가 `analysis.rs` 에 더한 5행(`document()` 의 삭제 겹침 호출 위 1행 — 순서 계약을 `feature_delete::overlay` doc 으로 옮겨 정본화 · `CandidateView.previously_deleted` 의 AC3.3 PRD 축자 인용 4행 — `previous_deletion` pub doc·테스트 fn 이름·doc-tracker 6c 행의 사본)을 **전건 제거** · 줄 수·지문은 #112 이전 값 590/`9757b6b5…` 로 바이트 동일 복귀 — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑧」
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑨**(2026-09-22): 사람 PR #108(AC4.9 출력 언어)이 `analysis.rs` 5 · `llm.rs` 18 · `worker_api.rs` 3 = **26행**을 들여와 **제거 15 · 유지 11** — 한 명제의 일곱 벌 복제를 「정본을 어디에 둘 것인가」로 판정(스냅숏 계약의 정본 = `analysis.rs::create` 의 복사 지점 3행 **유지**, 「`None` = 설정 이전에 시작된 분석」의 정본 = `settings.rs::analysis_language`) · rustdoc 링크 전용 교차 참조 2행(`anthropic_body` → `openai_body`) · 단정·선언 재진술 · 판단 갈림 2건 유지(조인이 깨진다 4행 · 「언어가 user turn 에 새어 들면 안 된다」 1행) — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑨」 · 맥락 [passes/2026-09-22-output-language-axis.md](2026-09-22-output-language-axis.md)
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑪**(2026-09-22 · `rct_20260922-0006`): 그 4행(추가 6 · 제거 2)을 명제 단위로 판정해 **순 제거 3행** — 테스트 본문의 `//` 3행(「The needle is deliberately unlike any other prompt in this binary … `an_ask()` is shared with the sibling tests」)은 열 줄 위 `///` doc 의 마지막 절과 **같은 명제의 두 벌째**이고, 남는 사실(`an_ask()` 가 공유 픽스처)은 같은 `mod tests` 의 네 테스트가 그것을 부르는 코드가 복원하며(①) 경위는 PR #123 본문 4항이 축자에 가깝게 다시 적는다(③) — 증분 재판정 ⑤·⑨ 의 「복제된 명제는 강제하는 코드 옆 한 벌만」에서 **정본을 `///` doc** 으로 골랐다 (두 자리가 같은 함수 안 열 줄 거리라 「코드 옆」은 둘 다 참이고, `///` 만이 *왜* 고유해야 하는지를 말한다) · **유지 3행**은 그 `///` 의 재작성분(2행 → 3행) — 프로세스 전역 env 를 `stub_answer` 가 **모든 Stub 모드 ask 에서** 읽는다는 **동시성 계약**이자 **실패 모드의 함정**(정책 본문의 유지 대상 두 항목)이고, #123 이 거짓이던 두 절을 정정한 자리다 · 유지분(순 +1)이 남아 #123 이전 값 602/`87c1c5cd…` 로는 돌아가지 않는다 · 606/`6c3ba120…` → **603/`1e39fbe5dc8715e585a1517d395aba3ca1f5be09b65c81faee52ea05ae514f7f`** — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑪」  · **자매 착지 재실측**(2026-09-22 · #121): 20차 패스의 머지 직전에 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝난 단계만 다시 실행)이 착지해 이 행에 **순 +26행**(`analysis.rs` +5 · `worker_api.rs` +21)을 열었다. 판정이 아니라 **머지 시점 트리에서의 줄 수·지문 재고정**이고(「행 지문을 재현하는 법」 — 개행 포함 해시), 값은 603/`1e39fbe5…`(증분 재판정 ⑪ 직후) → **629/`39b8ea030947a0fcf65b26057198a392c7dd8ec308857ce92c4c3c3f82ca7ba8`** 다. 그 26행은 **판정하지 않고 다음 감지에 넘긴다** — **해소됨**(2026-09-25 · `rct_20260925-0002` · 아래 증분 재판정 ⑫).
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑫**(2026-09-25 · `rct_20260925-0002`): 그 26행(#121 이 **새로 쓴 39행** · 제거 13행)을 **명제 단위로** 판정해 **순 제거 13행 · 유지 13행** — `analysis.rs` 6(AC1.5 조항 축자 인용과 `test/01 시나리오` 꼬리표를 걷어 요약 2행 → 1행 · 「뒤 단계는 무효화되지 않는다」 4행과 딸린 `///` 은 **세 벌째**라 전건 제거: 같은 doc 세 줄 위의 「Sibling stage rows are not touched…」 · 본문 SQL 의 `AND key = ?` · PRD AC1.5 **검증 방법**의 「뒤 단계의 결과와 사용자가 내린 승인·결정은 그대로 유지된다」) · `worker_api.rs` 7(`Gates` 네 필드 doc 은 필드 이름과 `offered_stages` 본문의 `if` 가 축자로 말하는 위에 `(AC1.3)` 꼬리표와 **rustdoc 링크만의 교차 참조**가 얹혀 제거 4 · `cross_cutting_document` 필드 doc 3행 → 1행 은 `offered_stages` doc 과 같은 명제의 두 벌째 · 비공개 `stored_landscape` 요약 1행은 이름과 `Option` 반환 타입이 축자) · **유지 13행** — `offered_stages` 의 규칙 doc 15행이 파일 전체가 가리키는 **정본**이고(같은 파일 `executable_stages` doc 의 「The rule is spelled out in [`offered_stages`]」), 「끝난 단계가 `pending` 으로 돌아오는 것은 사람이 다시 실행을 요청했을 때뿐」은 `retry_stage` 와 이 함수 **사이의** 계약이라 어느 한쪽 코드로도 복원되지 않으며, 「stage-2 문서가 없으면 3단계가 계획할 대상 없이 도착해 조용히 아무것도 안 한다」와 「`pending`, not "not succeeded"」는 정책 본문의 **실패 모드의 함정**·**동시성 계약**이다(「애매하면 남긴다」) · 모듈 머리 `//!` 라우트 목록 2행도 형제 항목 여섯 개가 모두 유지로 닫힌 목록의 한 칸이라 유지 · 603 판정 완료 + 유지 13 = **616 전건 판정 완료**(이 행의 미판정 증분 0) · 629/`39b8ea03…` → **616/`df4a5627c1acc0ae760914c1362c336a461e0a3670e050917ed36c59352a7696`** — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑫」
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑭**(2026-09-26, 37차 패스, `rct_20260926-0002`): #166(슬라이스 7d — AC4.6)이 연 **gross 21 / net 15** 행을 판정해 **순 제거 13행** · 유지 8행 — 제거는 `analysis.rs` 의 **「두 비용이 실린다」 모듈 doc 3 + 딸린 빈 `//!` 1**(같은 파일에 모듈 doc·`spend` 필드 doc·`Estimate` doc **세 벌**이고 정본은 값을 고르는 필드 쪽 · 빈 주석 행은 이 행 1차 판정이 이미 닫은 유형) · `spend` 필드 doc 의 「화면은 이쪽을 띄운다」 2 · `Estimate` doc 의 **rustdoc 링크만을 위한 문장** 1 · `llm.rs` `Answer` doc 의 「화면이 보고하는 숫자는 여기서 온다」 3(네 번째 벌) · `worker_api.rs` 의 필드 이름 재진술 1 + **로그 앞 인라인 2**(② `doc-tracker/2026-09.md:128` 「단계별 내역은 `worker_api::submit_document` 의 `llm usage recorded` 로그가 남긴다」 축자 · ③ #166 같은 문장 · ① 바로 아래 `tracing::info!` 의 `stage`·`calls`) · **유지**는 `spend`/`est_*` 판별식 2(한 구조체 안에서 바꿔 써도 타입이 같아 조용히 틀린다) · `Estimate` 의 「never revised」 1 · **`llm.rs` `Answer.calls` 5 — 「한 행이 두 호출을 대표한다」 명제의 정본**(상수 1 로 접으면 병합 stage 가 호출을 조용히 잃는다) · `worker_api.rs` 의 옛 워커 기본값 계약 1 · **비주석 diff 0줄** — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑭」
+

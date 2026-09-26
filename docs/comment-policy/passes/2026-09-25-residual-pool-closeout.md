@@ -197,3 +197,17 @@ PR 이다. 판정 패스 PR(이 패스를 포함해 원장을 고치는 PR)이 �
 
 `e2e` 실측 실행은 kind 클러스터가 필요해 CI 의 몫이다 — 이 패스는 `.spec.ts` 의 **주석 줄만**
 건드렸고 비주석 diff 가 0 이므로 `test (kind e2e)` 의 입력은 부모와 같다.
+
+---
+
+## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
+
+아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
+것이다. 형식 이전(템플릿 「원장 형식」)이 원장에 표와 「읽는 법」만 두기로 하면서, 각 행의
+경위는 그 행의 패스 파일로 돌아왔다. 옮기면서 한 글자도 고치지 않았고 판정을 새로 하지
+않았다 — 행을 가리키는 순번도 당시 표기 그대로다.
+
+### 원장 행 10 — `frontend/src/api.ts` · `frontend/src/App.tsx` · `frontend/src/RegisterLlmKey.tsx` · `frontend/src/GrantRepoAccess.tsx` · `frontend/src/HomeRepositories.tsx` · `frontend/src/SignIn.tsx` · `frontend/src/index.css` · `frontend/src/format.ts` (프런트 데이터·셸 축 — `frontend/src` 잔여 전량 8파일)
+
+**증분 재판정 ⑫**(2026-09-25, 32차 패스): #156 이 `index.css` 의 `@media (min-width: 600px)` 블록 머리에 연 주석(지문 1행 · 물리 4행)을 **제자리 재작성해 물리 2행 제거** — 「목업은 같은 줄을 정적인 `div.section-title` 로 그린다」는 `tools/check-mockup-render.py` M8 의 `fail()` 문면 축자(①)이고 「AC4.4 의 검증 방법도 「데스크톱은 동일 화면을 확장 적용한다」다」는 `docs/prd/04-platform.md:36` 축자(②)인데, **같은 날 같은 문장이 `sc04-06` 에서 「제거 2행」 판정을 이미 받았다**([passes/2026-09-25-residual-pool-closeout.md](2026-09-25-residual-pool-closeout.md) 행 `:110-111`) — ⑪ 이 이 블록의 AC4.4 축자를 지운 자리에 #156 이 다른 문장으로 되살린 것이다 · **유지 1행**은 「이 블록은 위 규칙들보다 **뒤**에 서 있어야 한다 — 앞으로 옮기면 같은 명세도라 조용히 무력해진다」로, ⑪ 의 유지 1행과 같은 「이 순서를 바꾸면 무엇이 조용히 깨지는가」형 가드다(`docs/doc-tracker/2026-09.md:716` ⓓ 가 더 길게 적지만 **그 문서는 편집 지점에서 읽히지 않는다** — 같은 날 `sc04-06 :53` 이 ② 축자임에도 같은 사유로 유지된 선례) · 지문 줄 수는 92 → **93**(#156 의 +1 이 들어온 채 제자리 수정이라 되돌아가지 않는다) · 비주석 CSS 선언 **부모와 바이트 동일**(md5 `e50755cb…`) — [passes/2026-09-20-frontend-shell-axis.md](2026-09-20-frontend-shell-axis.md) 「증분 재판정 ⑫」
+
