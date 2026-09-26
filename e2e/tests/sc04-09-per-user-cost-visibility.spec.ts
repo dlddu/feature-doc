@@ -139,7 +139,17 @@ test.describe('AC4.6: 사용자별 비용 가시성', () => {
 
       // 「작업별·전체별 … 이 표시된다」의 전체별 쪽. 이 사용자의 분석 전부가 한자리에
       // 모이는 화면은 홈뿐이라, 합계가 설 자리도 거기 하나다.
+      //
+      // 셋업을 API 로 끝냈어도 로드는 자격증명 화면에서 시작한다 — 라우팅이 서버 게이트가
+      // 아니라 상태 머신(`App.tsx` 의 `screen`)이고 홈에는 주소가 없다. 그래서 `goto('/')`
+      // 하나로는 홈이 서지 않는다. 진입 두 줄은 sc01-01·sc01-05 와 같다.
       await page.goto('/');
+      const enterHome = page.getByTestId('register-key');
+      await expect(enterHome).toBeEnabled();
+      await enterHome.click();
+      // 홈이 섰는지를 먼저 잰다 — 이 줄이 없으면 아래 세 칸의 `element(s) not found` 가
+      // 「홈에 못 왔다」와 「누적 사용량이 안 그려졌다」를 구분하지 못한다.
+      await expect(page.getByTestId('repo-card').first()).toBeVisible();
       await expect(page.getByTestId('usage-calls')).toHaveText(count(after.total.llmCalls));
       await expect(page.getByTestId('usage-tokens')).toHaveText(
         count(after.total.inputTokens + after.total.outputTokens),
