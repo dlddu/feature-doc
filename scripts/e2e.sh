@@ -8,6 +8,9 @@ KEEP_CLUSTER="${KEEP_CLUSTER:-0}"
 LOCAL_PORT="${LOCAL_PORT:-8080}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 SKIP_PLAYWRIGHT_INSTALL="${SKIP_PLAYWRIGHT_INSTALL:-0}"
+# e.g. "1/2" — run only that Playwright shard against this cluster (CI runs one kind
+# cluster per shard). Empty runs the whole suite.
+PLAYWRIGHT_SHARD="${PLAYWRIGHT_SHARD:-}"
 
 PF_PID=""
 PF_LOG="${PF_LOG:-/tmp/featuredoc-pf.log}"
@@ -102,7 +105,7 @@ BASE_URL="http://localhost:${LOCAL_PORT}" bash "${ROOT}/e2e/smoke.sh"
     if [ ! -d node_modules ]; then npm install; fi
     npx playwright install --with-deps chromium >/dev/null
   fi
-  BASE_URL="http://localhost:${LOCAL_PORT}" npm test
+  BASE_URL="http://localhost:${LOCAL_PORT}" npm test -- ${PLAYWRIGHT_SHARD:+"--shard=${PLAYWRIGHT_SHARD}"}
 )
 
 echo "all green."

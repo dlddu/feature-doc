@@ -6,7 +6,8 @@
 // queue within seconds. It is therefore **leased, not owned**: `deploy/e2e/` keeps
 // it at 0 at rest, a spec that needs it scales it up inside its own block and puts
 // it back to 0 in `finally`, and `playwright.config.ts` pins `workers: 1` so no
-// sibling spec file is ever in flight while it is up. The residual effect a lessee
+// sibling spec file is ever in flight while it is up (per cluster — CI's Playwright
+// shards each get their own kind cluster). The residual effect a lessee
 // must accept: while the worker runs it drains *every* queued job, including ones
 // other specs left behind — so no spec may assert on a job it did not create.
 

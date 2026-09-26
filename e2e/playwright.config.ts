@@ -10,6 +10,8 @@ export default defineConfig({
   // the analysis worker Deployment, which is state no per-user handle can isolate,
   // so overlapping files would see each other's queue drain. The suite is seconds
   // long — determinism is worth more than the concurrency here.
+  // The rule is per cluster, not per run: CI gets its concurrency by giving each
+  // `--shard` its own kind cluster (ci.yml `e2e` matrix), never by raising this.
   workers: 1,
   reporter: [['list']],
   use: {
