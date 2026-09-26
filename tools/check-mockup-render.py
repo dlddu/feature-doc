@@ -46,11 +46,8 @@
 #    `#home-empty` 의 색 이탈이 7연속 task 동안 새어 나갔다(2026-09-26). 넣기 전 실측: 목업에 없는
 #    인라인 색을 구현에 주입해도 게이트가 **rc=0 · 11개 규칙 카운터 바이트 불변**으로 통과했다.
 #  * **클래스 축의 이탈은 M9 가 보지 않는다.** M9 는 클래스 집합이 같은 쌍만 대조 단위로 보므로,
-#    클래스가 어긋난 쌍은 위반이 아니라 **제외**로 샌다. 2026-09-26 실측으로 공유 키 21건 중 4건이
-#    그렇게 빠졌고 그중 셋은 실재하는 이탈이다 — `no-access`(목업 `notice warn` ↔ 구현 `notice err`) ·
-#    `request-error`(`notice warn` ↔ `notice err`) · `rejected-note`(`notice info` ↔ `notice`).
-#    나머지 하나 `sift-cost` 는 키가 서로 다른 요소에 붙은 경우라 이탈이 아니다. 이 축을 규칙으로
-#    바꾸려면 「같은 자리인가」를 클래스 말고 다른 것으로 정해야 한다 — 아직 그 단위가 없다.
+#    클래스가 어긋난 쌍은 위반이 아니라 **제외**로 샌다. 이 축을 규칙으로 바꾸려면 「같은 자리인가」를
+#    클래스 말고 다른 것으로 정해야 한다 — 아직 그 단위가 없다.
 #  * **상태 블록이 서는 조건**(구현이 대응 목업 단계에 없는 조건으로 `notice`·`badge` 를 렌더하는 것)은
 #    세지 않는다. 문면이 JSX 식으로 오면 M3B 의 카피 집합에 애초에 들어오지 않아, 같은 자리를 한국어
 #    리터럴로 바꾸면 M3B 가 미등재 1건으로 붉히는 표면이 식일 때는 영원히 초록이다(2026-09-25, AC4.1
@@ -463,14 +460,6 @@ def root_tokens(text: str) -> dict[str, str]:
     }
 
 
-
-# ── M9 인라인 선언 대조 ──────────────────────────────────────────────────
-# 목업 `id` ↔ 구현 `data-testid` 는 같은 자리를 가리키는 훅이다(프로토타입 훅 대 구현
-# 훅의 관행 차이). 그 공유 키 중 **클래스 집합이 같은** 쌍만 같은 대조 단위로 보고,
-# 인라인 style 의 선언 집합을 대조한다. 클래스가 다른 쌍은 애초에 같은 요소가 아니거나
-# (`sift-cost` — 목업은 안쪽 `span.metric`, 구현은 바깥 `div.card row between`) 클래스
-# 축의 이탈이라(`no-access` — 목업 `notice warn` ↔ 구현 `notice err`) 이 규칙이 아니라
-# **클래스 축**이 답해야 한다. 그 축은 아직 규칙이 없고, 위 「보지 않는 것」에 적는다.
 PROTO_CLASSES = {"on"}      # 목업 전용 가시성 토글(`.stp.on`·`.notice.on` = `display:block`).
                             # 구현은 조건부 렌더라 `.on` 규칙 자체가 없다 — 무력한 클래스다.
 PROTO_PROPS = {"display"}   # 목업이 숨긴 변이를 정적 HTML 에 열거하는 장치(`display:none`).
@@ -481,8 +470,7 @@ def _kebab(prop: str) -> str:
 
 
 def open_tag(src: str, at: int) -> str:
-    """`at` 을 품은 여는 태그를 통째로 돌려준다. JSX 는 중괄호 식 안에 `>` 가 들어갈 수
-    있으므로(화살표 함수) 깊이를 세어 닫는 `>` 를 찾는다 — 정규식 하나로는 못 자른다."""
+    """JSX 는 중괄호 식 안에 `>` 가 들어갈 수 있으므로(화살표 함수) 깊이를 세어 닫는 `>` 를 찾는다."""
     start = src.rfind("<", 0, at)
     depth = 0
     for i in range(start, len(src)):
@@ -515,9 +503,6 @@ def mockup_inline(tag: str) -> dict[str, str]:
 
 
 def impl_inline(tag: str) -> tuple[dict[str, str], set[str]]:
-    """구현의 `style={{...}}` 를 목업 표기로 환산한다. 값이 식이면 목업의 정적 값과
-    비교할 수 없으므로 그 속성을 대조에서 빼고(`dynamic`) 건수를 돌려준다 — 예시값을
-    대조에서 빼는 `data-sample` 규약과 같은 이유다."""
     found = re.search(r"style=\{\{(.*?)\}\}", tag, flags=re.S)
     decls: dict[str, str] = {}
     dynamic: set[str] = set()
@@ -539,7 +524,6 @@ def impl_inline(tag: str) -> tuple[dict[str, str], set[str]]:
 
 
 def keyed_elements(paths: list[Path], attr: str) -> dict[str, tuple[str, int, str]]:
-    """`attr="<키>"` 를 가진 요소를 키 → (파일명, 줄, 여는 태그) 로 모은다."""
     found: dict[str, tuple[str, int, str]] = {}
     for path in paths:
         src = path.read_text(encoding="utf-8")
