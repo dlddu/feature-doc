@@ -196,6 +196,8 @@ body {
 .card.pickable { cursor: pointer; }
 .card.pickable:hover { background: var(--bg-hover); }
 .card.pickable:focus-visible { outline: none; border-color: var(--border-strong); }
+.end-card { text-align: center; padding: 30px 18px; }
+.end-card .em { font-size: 26px; }
 
 .input {
   background: var(--bg-input);
