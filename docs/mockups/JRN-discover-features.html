@@ -1016,17 +1016,25 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
 
       <div class="progress" style="margin-top:12px"><i id="prog-bar" style="width:62%"></i></div>
 
+      <!-- AC4.6 검증 방법은 「임의 사용자의 임의 분석 작업의 **단계별** 비용을 운영자/사용자
+           모두가 추적 가능」이라고 쓴다 — 위 그리드는 작업 전체의 합이라 그 절을 읽을 수 없어
+           단계 행마다 그 단계가 쓴 값을 함께 세운다. 1단계는 LLM 없이 도는 단계라(파이프라인의
+           유일한 비-LLM 단계) 끝나고도 `$0.00` 이고, 그것이 「합을 행마다 복사한 것이 아니다」를
+           읽는 자리다. 단계 값의 합은 위 `Cost so far` 와 같아지지 않는다 — 파이프라인 밖
+           지출은 어느 단계에도 속하지 않고 값은 단계마다 센트로 올림된다. -->
       <div class="stack" style="margin-top:22px">
         <span class="caps">Pipeline</span>
         <div class="step done" id="stage-1">
           <span class="ic">✓</span>
           <span class="body-col"><span class="label">저장소 내려받기</span><span class="sub" data-sample>847 files · 2.3 MB</span></span>
           <span class="time" data-sample>1m 04s</span>
+          <span class="time" data-sample>$0.00</span>
         </div>
         <div class="step done" id="stage-2">
           <span class="ic">✓</span>
           <span class="body-col"><span class="label">횡단 관심사 추출</span><span class="sub" data-sample>12 items</span></span>
           <span class="time" data-sample>3m 51s</span>
+          <span class="time" data-sample>$0.18</span>
         </div>
         <!-- 끝난 단계도 그 단계만 다시 돌릴 수 있다(AC1.5 · test/01 시나리오 8). 뒤 단계의
              결과와 사람의 결정은 그대로 둔다 — 분석이 멈춰 있을 때만 보인다. -->
@@ -1035,16 +1043,19 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
           <span class="ic"></span>
           <span class="body-col"><span class="label" id="stage-3-label">탐색 전략 생성</span><span class="sub" id="stage-3-sub">진행 중</span></span>
           <span class="time" data-sample>2m 12s</span>
+          <span class="time" data-sample>$0.23</span>
         </div>
         <div class="step todo" id="stage-4">
           <span class="ic"></span>
           <span class="body-col"><span class="label">feature 후보 추출</span><span class="sub">대기 중</span></span>
           <span class="time">—</span>
+          <span class="time" data-sample>$0.00</span>
         </div>
         <div class="step todo" id="stage-5">
           <span class="ic"></span>
           <span class="body-col"><span class="label">인수 시나리오 생성</span><span class="sub">대기 중</span></span>
           <span class="time">—</span>
+          <span class="time" data-sample>$0.00</span>
         </div>
       </div>
 

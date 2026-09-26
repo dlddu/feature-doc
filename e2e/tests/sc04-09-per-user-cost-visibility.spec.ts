@@ -14,8 +14,15 @@
 // **사용자 쪽은 같은 이유로 닫히지 않는다.** 시나리오 9 의 동사는 「접근 가능」이
 // 아니라 「확인」·「표시된다」이고, AC4.6 도 「노출된다」라고 쓴다 — 도달만으로는
 // 모자라고 화면이 그려야 한다. 그래서 작업별(분석 진행)과 전체별(홈) 두 자리를
-// 화면 단정으로 잰다. 단계별 내역은 아직 `worker_api::submit_document` 의
-// `llm usage recorded` 로그에만 있다(AC4.6 검증 방법의 「단계별 비용」 — 후속).
+// 화면 단정으로 잰다.
+//
+// AC4.6 **검증 방법**의 「단계별 비용」은 응답(`stages[].spend`)과 화면(단계 행의 비용
+// 칸) 두 자리에서 함께 잰다. 그 절만이 단계별을 사용자에게까지 요구하고 동사가
+// 「추적 가능」이라 도달로 닫히지만, 같은 AC 에서 도달 논거가 한 번 번복된 자리라
+// 화면도 함께 단정한다. 가르는 단정은 **끝난 단계 둘이 서로 다른 값을 말하는가**다 —
+// 1단계는 LLM 없이 도는 유일한 단계라 `succeeded` 인데도 0 이고, 총합을 행마다
+// 복사했다면 그 줄이 먼저 깨진다. 비용 축의 등식은 묻지 않는다(단계마다 센트로
+// 올림되므로 단계 합이 총비용을 넘을 수 있다) — 등식은 호출·토큰 축의 부등식이다.
 //
 // Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 import { expect, test, type Page } from '@playwright/test';
@@ -33,6 +40,8 @@ type Usage = {
   total: Spend;
   analyses: (Spend & { analysisId: string; repoName: string })[];
 };
+
+type StageRow = { key: string; status: string; spend: Spend };
 
 async function enqueue(page: Page, repo: string): Promise<string> {
   const res = await page.request.post('/api/analyses', {
@@ -52,6 +61,16 @@ async function spendOf(page: Page, id: string): Promise<Spend> {
   const res = await page.request.get(`/api/analyses/${id}`);
   expect(res.ok()).toBeTruthy();
   return (await res.json()).spend as Spend;
+}
+
+async function stagesOf(page: Page, id: string): Promise<StageRow[]> {
+  const res = await page.request.get(`/api/analyses/${id}`);
+  expect(res.ok()).toBeTruthy();
+  return (await res.json()).stages as StageRow[];
+}
+
+function money(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 // 화면이 그리는 문자열을 그대로 다시 만든다. `frontend/src/format.ts` 의 `formatCount` 와
@@ -123,6 +142,36 @@ test.describe('AC4.6: 사용자별 비용 가시성', () => {
       await page.reload();
       await expect(page.getByTestId('cost-so-far')).toHaveText(shown);
       await expect(page.getByTestId('llm-calls')).toHaveText(count(firstSpend.llmCalls));
+
+      // 단계별 — AC4.6 검증 방법의 「단계별 비용」. 작업 합은 위에서 이미 쟀으므로 여기서
+      // 재는 것은 **그 합이 단계로 쪼개져 도달하는가**다.
+      const stages = await stagesOf(page, first);
+      const stage = (key: string): StageRow => {
+        const found = stages.find((s) => s.key === key);
+        expect(found, `단계 ${key} 가 응답에 있다`).toBeTruthy();
+        return found!;
+      };
+      expect(stage('fetch').status, '3단계까지 돌았으면 1단계는 끝나 있다').toBe('succeeded');
+      // LLM 없이 도는 유일한 단계 — 끝나고도 0 이다. 이 두 줄이 「총합을 행마다 복사한
+      // 것이 아니다」의 음성 대조이고, 아래 3단계 값과 쌍으로만 의미가 있다.
+      expect(stage('fetch').spend.llmCalls).toBe(0);
+      expect(stage('fetch').spend.costCents).toBe(0);
+      expect(stage('cross_cutting').spend.llmCalls).toBeGreaterThan(0);
+      expect(stage('cross_cutting').spend.costCents).toBeGreaterThan(0);
+      // 호출 축의 부등식. 비용 축으로 물으면 단계마다의 올림 때문에 참인 구현에서도 깨진다.
+      const stageCalls = stages.reduce((n, s) => n + s.spend.llmCalls, 0);
+      expect(stageCalls).toBeGreaterThan(0);
+      expect(stageCalls, '단계 합은 작업 합을 넘지 않는다').toBeLessThanOrEqual(
+        firstSpend.llmCalls,
+      );
+
+      // 화면 쪽 — 같은 값이 그 단계의 행에 그려진다.
+      const stageSpend = (key: string) =>
+        page.locator(`[data-stage="${key}"] [data-testid="stage-spend"]`);
+      await expect(stageSpend('cross_cutting')).toHaveText(
+        money(stage('cross_cutting').spend.costCents),
+      );
+      await expect(stageSpend('fetch')).toHaveText('$0.00');
 
       // 전체별 — 작업별의 합과 같아야 한다. 두 숫자가 다른 곳에서 나오면 언젠가
       // 어긋나므로 등식으로 잰다.

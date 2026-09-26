@@ -135,6 +135,12 @@ struct StageView {
     error: Option<String>,
     started_at: Option<i64>,
     finished_at: Option<i64>,
+    /// What this stage spent (AC4.6). Filled after the query from
+    /// [`crate::usage::by_stage`] rather than joined in: the stage rows and the
+    /// document rows are a 1:1 axis but not a 1:1 join (a stage that wrote no
+    /// document has no row there, and must read 0 rather than vanish).
+    #[sqlx(skip)]
+    spend: crate::usage::Spend,
 }
 
 /// The Analysis Progress payload: the job, its stages, and the run's own timestamps.
@@ -599,13 +605,22 @@ async fn load_detail(
     .fetch_one(&state.db)
     .await?;
 
-    let stages = sqlx::query_as::<_, StageView>(
+    let mut stages = sqlx::query_as::<_, StageView>(
         "SELECT seq, key, title, status, detail, error, started_at, finished_at \
            FROM analysis_stages WHERE analysis_id = ? ORDER BY seq",
     )
     .bind(id)
     .fetch_all(&state.db)
     .await?;
+
+    // One read for the whole pipeline, not one per stage: there are five stages, and
+    // a stage with nothing charged to it keeps the zero it was built with.
+    let per_stage = crate::usage::by_stage(&state.db, id).await?;
+    for stage in &mut stages {
+        if let Some(charged) = per_stage.get(&stage.key) {
+            stage.spend = *charged;
+        }
+    }
 
     let spend = crate::usage::of_analysis(&state.db, id).await?;
 
