@@ -3,8 +3,6 @@ name = "featuredoc"
 version = "0.1.0"
 edition = "2021"
 
-# Two binaries out of one crate: the API server and the analysis worker (AC4.5).
-# They ship in the same image; the worker Deployment only overrides the command.
 [[bin]]
 name = "featuredoc"
 path = "src/main.rs"
@@ -40,18 +38,11 @@ http-body-util = "0.1"
 
 [profile.release]
 strip = true
-# 크로스 크레이트 LTO 를 끄고 codegen-units 는 기본값(16)으로 둔다. thin LTO +
-# codegen-units = 1 이던 때는 lib 최적화가 한 스레드로 돌고, 이어서 두 바이너리가
-# 각자 프로그램 전체를 다시 LTO 해 크레이트만 다시 빌드해도 ~54초가 걸렸다
-# (arm64 4코어 실측). 둘 중 하나만 바꾸면 줄지 않는다 — CGU 만 늘리면 쪼갠 만큼
-# 바이너리의 LTO 가 늘어난다. 둘 다 바꾸면 ~24초. 대가는 바이너리 ~20% 증가와
-# CPU 위주 코드의 몇 % 수준 차이인데, 이 서비스는 I/O·LLM 대기가 대부분이다.
+# LTO 와 codegen-units 는 둘 다 바꿔야 줄어든다 — CGU 만 늘리면 쪼갠 만큼 바이너리의
+# LTO 가 늘어 합계가 같다.
 lto = false
 
-# CI 의 `cargo test` 전용 프로필. release 최적화는 배포 바이너리(Dockerfile)를
-# 위한 것이라, 테스트 바이너리 20여 개마다 반복할 이유가 없다. 테스트 실행
-# 자체는 무시할 만큼 짧으니 dev 를 기반으로 하고, 링크를 가볍게 하려 디버그
-# 정보는 줄 번호만 남긴다(실패 시 backtrace 의 파일:줄은 그대로 보인다).
+# 디버그 정보를 줄 번호만 남겨도 실패 시 backtrace 의 파일:줄은 그대로 보인다.
 [profile.ci]
 inherits = "dev"
 debug = "line-tables-only"

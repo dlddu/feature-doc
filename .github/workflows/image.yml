@@ -1,20 +1,7 @@
 name: Image
 
-# 이미지 빌드·push(ghcr) → 운영 매니페스트 pin(`deploy` 브랜치로 발행).
-#
-# 운영(Flux)은 main 이 아니라 deploy 브랜치를 추적한다. deploy = main@SHA +
-# 「두 Deployment 이미지를 그 SHA 로 고정」 커밋 하나. main 은 ruleset(ci-gate)으로
-# 보호되어 봇이 되커밋할 수 없고, 그 우회용 장기 크레덴셜도 두지 않는다.
-#
-# main push 전용. 테스트는 PR(ci.yml)에서 이미 통과했다는 전제로 바로 빌드하고
-# pin 까지 간다. PR 의 <head sha> 이미지는 여기가 아니라 ci.yml 의 e2e job 이
-# 테스트한 빌드를 그대로 올린다(같은 이미지를 두 번 빌드하지 않도록).
-#
-# main push 에 경로 조건을 건다. 운영 이미지(frontend·backend)와 운영 매니페스트(deploy/k8s)에
-# 닿지 않는 머지는 새 SHA 태그만 만들어 운영 파드를 재시작시킬 뿐이라 건너뛴다. 건너뛴 커밋은
-# deploy 브랜치에 반영되지 않는다 — 운영 커밋은 deploy 끝 커밋의 Source-Commit 트레일러가 말한다.
-# 제외 목록 방식이라 새 디렉터리는 기본으로 돈다. 제외를 늘리려면 Dockerfile 이 COPY 하지 않고
-# Flux 가 적용하지도 않는 경로인지 먼저 확인할 것.
+# 제외 목록에 경로를 더하려면 Dockerfile 이 COPY 하지 않고 Flux 가 적용하지도 않는
+# 경로인지 먼저 확인할 것.
 on:
   push:
     branches: [main]
@@ -68,8 +55,6 @@ jobs:
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/featuredoc
           tags: |
-            # 커밋 SHA 하나뿐. `latest`도, 브랜치 롤링 태그도 만들지 않는다.
-            # 운영이 가리키는 태그는 아래 pin job이 커밋으로 옮긴다.
             type=raw,value=${{ github.sha }}
 
       - name: Build & push image
@@ -91,10 +76,8 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
     permissions:
-      # 이 job만 deploy 브랜치에 push 한다. 워크플로 전체 기본값은 contents: read 유지.
       contents: write
     steps:
-      # main 의 HEAD 가 아니라 방금 빌드한 커밋 그대로를 deploy 의 부모로 삼는다.
       # 전체 히스토리는 아래 「더 새 커밋이 이미 발행됐는가」 조상 판정에 쓴다.
       - uses: actions/checkout@v4
         with:
@@ -116,18 +99,11 @@ jobs:
             [ "$n" = "1" ] || { echo "::error::$f: expected 1 pinned image line, got $n"; exit 1; }
           done
 
-          # ── deploy 브랜치로 발행 ─────────────────────────────────────────────
-          # main 은 ruleset(required status check)으로 보호되어 봇이 직접 커밋할 수 없고,
-          # 그러려고 장기 크레덴셜(App 키)을 두지도 않는다. 대신 「main@SHA + 고정 커밋
-          # 하나」를 deploy 브랜치로 force-push 하고, Flux 는 deploy 를 추적한다.
           # 기본 GITHUB_TOKEN 의 push 는 새 워크플로를 트리거하지 않고, 어떤 워크플로도
           # deploy 푸시에 걸려 있지 않으므로 재귀가 없다.
           git fetch --no-tags origin +refs/heads/deploy:refs/remotes/origin/deploy 2>/dev/null || true
           old=$(git rev-parse -q --verify refs/remotes/origin/deploy || true)
 
-          # 늦게 끝난 옛 실행이 더 새 배포를 덮지 않게 한다. deploy 끝 커밋의
-          # Source-Commit 트레일러가 이 SHA 의 후손이면 이미 앞서 있으니 건너뛴다.
-          # (롤백은 main 에 revert PR 을 올리는 것 — 그 머지가 새 SHA 로 다시 여기를 탄다.)
           if [ -n "$old" ]; then
             cur=$(git log -1 --format='%(trailers:key=Source-Commit,valueonly)' "$old" | tr -d '[:space:]')
             if [ -n "$cur" ] && [ "$cur" != "$SHA" ] && git merge-base --is-ancestor "$SHA" "$cur" 2>/dev/null; then
