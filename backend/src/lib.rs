@@ -1,6 +1,7 @@
 //! FeatureDoc backend library: configuration, persistence, and the HTTP router.
 
 pub mod acceptance;
+pub mod access_request;
 pub mod analysis;
 pub mod audit;
 pub mod auth;
@@ -64,6 +65,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(audit::routes())
         .merge(usage::routes())
         .merge(analysis::routes())
+        .merge(access_request::routes())
         .merge(doc_edit::routes())
         .merge(doc_conflict::routes())
         .merge(doc_history::routes())

@@ -251,6 +251,21 @@ export async function getAnalysis(id: string): Promise<AnalysisDetail> {
 }
 
 /**
+ * Ask the owner to share a repository this user cannot see (AC4.10).
+ *
+ * The reply is the same constant whether the id belongs to someone else or to
+ * nobody, so there is nothing here worth reading back — the caller only needs to
+ * know the request was accepted.
+ */
+export async function requestAccess(id: string): Promise<void> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/access-request`, {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+}
+
+/**
  * The job returns to the queue, so the answer already carries the reset progress —
  * the caller does not refetch.
  */
