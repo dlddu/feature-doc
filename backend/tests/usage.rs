@@ -196,6 +196,78 @@ async fn a_merged_stage_row_counts_both_of_its_calls() {
     assert_eq!(detail(&state, &token, &id).await["spend"]["llmCalls"], 1);
 }
 
+/// AC4.6 의 검증 방법은 「단계별 비용」을 요구한다 — 그래서 재는 것은 「단계마다 숫자가
+/// 있다」가 아니라 **그 숫자가 그 단계의 것인가**다. 총합을 각 행에 복사해도 「숫자가
+/// 있다」는 초록이 되므로, 값이 서로 다른 두 단계와 한 번도 부르지 않은 세 단계를 같은
+/// 응답에서 함께 읽는다.
+#[tokio::test]
+async fn per_stage_spend_is_attributed_to_the_stage_that_spent_it() {
+    let (state, _path) = stub_state().await;
+    let token = login_installed(&state, 9007, "per-stage-user").await;
+
+    let id = enqueue(&state, &token, "payments-api").await;
+    claim(&state).await;
+    submit_doc(&state, &id, "cross_cutting", 1, 1_000_000, 0).await;
+    submit_doc(&state, &id, "acceptance_dependencies", 2, 0, 1_000_000).await;
+
+    let seen = detail(&state, &token, &id).await;
+    let bucket = |seen: &serde_json::Value, key: &str| -> serde_json::Value {
+        seen["stages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["key"] == key)
+            .unwrap_or_else(|| panic!("단계 {key} 가 응답에 없다"))["spend"]
+            .clone()
+    };
+
+    let two = bucket(&seen, "cross_cutting");
+    assert_eq!(two["llmCalls"], 1);
+    assert_eq!(two["inputTokens"], 1_000_000);
+    assert_eq!(two["outputTokens"], 0);
+
+    let five = bucket(&seen, "acceptance_dependencies");
+    assert_eq!(five["llmCalls"], 2);
+    assert_eq!(five["inputTokens"], 0);
+    assert_eq!(five["outputTokens"], 1_000_000);
+
+    // 두 버킷은 토큰 수가 같고 방향만 다르다 — 값이 뒤섞이지 않았다면 출력 쪽이 더 비싸다.
+    assert!(
+        five["costCents"].as_i64().unwrap() > two["costCents"].as_i64().unwrap(),
+        "단계마다 자기 토큰으로 값이 매겨진다"
+    );
+
+    // 부르지 않은 단계는 0 이다. `fetch` 는 LLM 없이 도는 단계라(`pipeline::FETCH`)
+    // **끝나고도** 0 이고, 이 셋이 곧 「총합을 각 행에 복사하지 않았다」의 음성 대조다.
+    for key in ["fetch", "discovery_strategy", "feature_candidates"] {
+        let idle = bucket(&seen, key);
+        assert_eq!(idle["llmCalls"], 0, "{key} 는 아무것도 부르지 않았다");
+        assert_eq!(idle["costCents"], 0, "{key} 는 아무것도 쓰지 않았다");
+    }
+
+    // 단계 합 ≤ 작업 합. **호출·토큰 축에서만** 등식을 물을 수 있다 — 비용은 버킷마다
+    // 올림이라(`usage::cost_cents`, 그리고 그 사실을 재는 단위 테스트가 그 모듈에 있다)
+    // 단계별 비용의 합이 총비용보다 **클 수도** 있다. 이 분석에는 파이프라인 밖 지출이
+    // 없으므로 호출 축에서는 등호가 성립한다.
+    let summed: i64 = seen["stages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["spend"]["llmCalls"].as_i64().unwrap())
+        .sum();
+    let total = seen["spend"]["llmCalls"].as_i64().unwrap();
+    assert!(summed <= total, "단계 합은 작업 합을 넘지 않는다");
+    assert_eq!(summed, 3);
+    assert_eq!(total, 3);
+
+    // 음성 프로브: 한 단계의 제출값을 바꾸면 **그 버킷만** 움직인다. 이 두 줄이 없으면
+    // 위의 값들이 실제로 읽힌 것인지 상수로 맞아떨어진 것인지 가릴 수 없다.
+    submit_doc(&state, &id, "cross_cutting", 5, 1_000_000, 0).await;
+    let again = detail(&state, &token, &id).await;
+    assert_eq!(bucket(&again, "cross_cutting")["llmCalls"], 5);
+    assert_eq!(bucket(&again, "acceptance_dependencies")["llmCalls"], 2);
+}
+
 #[tokio::test]
 async fn a_report_without_a_call_count_still_counts_one_call() {
     let (state, _path) = stub_state().await;

@@ -4,6 +4,8 @@
 //! counter has to be right at every write site and stays wrong once it drifts;
 //! a sum over the rows that already exist cannot disagree with them.
 
+use std::collections::HashMap;
+
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
@@ -75,6 +77,42 @@ pub async fn of_analysis(db: &SqlitePool, analysis_id: &str) -> Result<Spend, sq
     .fetch_one(db)
     .await?;
     Ok(Spend::new(row.0, row.1, row.2))
+}
+
+/// What each pipeline stage spent, keyed by [`crate::pipeline`] stage key (AC4.6's
+/// 검증 방법: 단계별 비용).
+///
+/// Only `analysis_documents` is read here, and that is why the stage axis needs no
+/// mapping table: `worker_api::submit_document` rejects a `kind` that is not a stage
+/// key, so the column *is* that axis. The other three tables in [`CALL_ROWS`] hold
+/// calls a person asked for after the pipeline ran — a dependency trace, an LLM doc
+/// edit, a feature addition — and belong to no stage. Attributing them to one would
+/// invent an attribution the rows do not carry.
+///
+/// Two consequences a caller must not paper over. On calls and tokens these buckets
+/// sum to *at most* [`of_analysis`]'s total, never more, because the rows here are a
+/// subset of the ones it reads. On money they can sum to **more** than it:
+/// [`cost_cents`] rounds every bucket up to the cent, which is the same reason
+/// [`read`] costs a summed total rather than adding up costed rows.
+pub async fn by_stage(
+    db: &SqlitePool,
+    analysis_id: &str,
+) -> Result<HashMap<String, Spend>, sqlx::Error> {
+    // Grouped rather than leaning on `UNIQUE(analysis_id, kind)` (migration 0005):
+    // if a second row for one stage ever lands, a sum still answers correctly where
+    // building the map row by row would silently keep whichever came last.
+    let rows: Vec<(String, i64, i64, i64)> = sqlx::query_as(
+        "SELECT kind, COALESCE(SUM(calls), 0), COALESCE(SUM(input_tokens), 0), \
+                COALESCE(SUM(output_tokens), 0) \
+           FROM analysis_documents WHERE analysis_id = ? GROUP BY kind",
+    )
+    .bind(analysis_id)
+    .fetch_all(db)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|(kind, calls, input, output)| (kind, Spend::new(calls, input, output)))
+        .collect())
 }
 
 #[derive(Serialize, sqlx::FromRow)]
