@@ -36,6 +36,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       app: ${{ steps.filter.outputs.app }}
+      same: ${{ steps.tree.outputs.same }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,6 +69,28 @@ jobs:
           echo "$files"
           echo "backend=$backend app=$app"
           { echo "backend=$backend"; echo "app=$app"; } >> "$GITHUB_OUTPUT"
+
+      # 이미지 태그는 <head sha> 인데 빌드는 merge ref 로 한다. 둘이 같은 이미지가
+      # 되는 조건: 머지 커밋의 트리가 head 의 트리와 같을 때(= 브랜치가 이미 main 을
+      # 포함해 합칠 것이 없을 때). 트리 해시는 파일 내용만으로 정해지므로, 같으면
+      # Docker 빌드 입력이 바이트 단위로 같다 — 테스트한 빌드를 head 태그로 올려도
+      # 태그와 내용이 어긋나지 않는다. 다르면 head 를 따로 빌드해야 한다(head-image job).
+      - name: Compare merge tree with head tree
+        id: tree
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          merge_tree=$(git rev-parse 'HEAD^{tree}')
+          parent2=$(git rev-parse 'HEAD^2' 2>/dev/null || true)
+          head_tree=$(git rev-parse "${HEAD_SHA}^{tree}" 2>/dev/null || true)
+          # HEAD^2 가 이 이벤트의 head 가 아니면(있을 수 없어야 하지만) 다른 것으로 친다.
+          if [ "$parent2" = "$HEAD_SHA" ] && [ -n "$head_tree" ] && [ "$merge_tree" = "$head_tree" ]; then
+            echo "same=true" >> "$GITHUB_OUTPUT"
+            echo "merge ref 트리 = head 트리 ($head_tree) — 테스트한 빌드를 그대로 push 한다."
+          else
+            echo "same=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::브랜치가 main 보다 뒤처져 merge ref 와 head 의 트리가 다르다 — head 는 head-image job 이 미리 빌드한다."
+          fi
 
   cargo:
     name: test (cargo)
@@ -118,33 +141,7 @@ jobs:
     steps:
       # 테스트는 cargo·docs 와 같은 merge ref(PR + 그 시점 main)로 한다. 브랜치가
       # main 보다 뒤처져 있어도 합쳐졌을 때의 결과를 e2e 가 보게 하려는 것이다.
-      # fetch-depth: 2 — 머지 커밋의 두 부모(main, PR head)까지 받아 아래 트리
-      # 비교에 쓴다.
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      # 이미지 태그는 <head sha> 인데 빌드는 merge ref 로 한다. 둘이 같은 이미지가
-      # 되는 조건: 머지 커밋의 트리가 head 의 트리와 같을 때(= 브랜치가 이미 main 을
-      # 포함해 합칠 것이 없을 때). 트리 해시는 파일 내용만으로 정해지므로, 같으면
-      # Docker 빌드 입력이 바이트 단위로 같다 — 테스트한 빌드를 head 태그로 올려도
-      # 태그와 내용이 어긋나지 않는다. 다르면 push 단계에서 head 를 따로 빌드한다.
-      - name: Compare merge tree with head tree
-        id: tree
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          merge_tree=$(git rev-parse 'HEAD^{tree}')
-          parent2=$(git rev-parse 'HEAD^2' 2>/dev/null || true)
-          head_tree=$(git rev-parse "${HEAD_SHA}^{tree}" 2>/dev/null || true)
-          # HEAD^2 가 이 이벤트의 head 가 아니면(있을 수 없어야 하지만) 다른 것으로 친다.
-          if [ "$parent2" = "$HEAD_SHA" ] && [ -n "$head_tree" ] && [ "$merge_tree" = "$head_tree" ]; then
-            echo "same=true" >> "$GITHUB_OUTPUT"
-            echo "merge ref 트리 = head 트리 ($head_tree) — 테스트한 빌드를 그대로 push 한다."
-          else
-            echo "same=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::브랜치가 main 보다 뒤처져 merge ref 와 head 의 트리가 다르다 — push 때 head 를 따로 빌드한다."
-          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -166,6 +163,15 @@ jobs:
           curl -fsSLo /tmp/kubectl "https://dl.k8s.io/release/${KVER}/bin/linux/arm64/kubectl"
           sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
           kubectl version --client
+
+      # 클러스터 생성(노드 Ready 까지)을 이미지 빌드·Playwright 준비와 겹친다. e2e.sh 는
+      # 같은 이름의 클러스터가 있으면 생성을 건너뛴다. 서브셸의 표준 입출력을 끊지 않으면
+      # 러너가 이 스텝의 출력이 닫히기를 기다리며 멈춘다.
+      - name: Start kind cluster in background
+        run: |
+          mkdir -p /tmp/bg
+          ( kind create cluster --name featuredoc --config deploy/e2e/kind-cluster.yaml --wait 120s \
+              >/tmp/bg/kind-create.log 2>&1; echo $? >/tmp/bg/kind-create.rc ) </dev/null >/dev/null 2>&1 &
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -221,6 +227,12 @@ jobs:
           else
             npx playwright install --with-deps chromium
           fi
+
+      - name: Wait for kind cluster
+        run: |
+          timeout 300 bash -c 'until [ -f /tmp/bg/kind-create.rc ]; do sleep 1; done'
+          cat /tmp/bg/kind-create.log
+          exit "$(cat /tmp/bg/kind-create.rc)"
 
       - name: e2e (kind → smoke + playwright ${{ matrix.shard }}/2)
         env:
@@ -278,13 +290,15 @@ jobs:
       # 덮어써도 된다. 이 경로의 이미지는 예전 push job 과 마찬가지로 e2e 를 직접
       # 거치지 않은 head 빌드다.
       - name: Check out head (tree differs)
-        if: steps.peers.outputs.ok == 'true' && steps.tree.outputs.same != 'true'
+        if: steps.peers.outputs.ok == 'true' && needs.changes.outputs.same != 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       # 트리가 같으면 위 e2e 빌드와 입력이 같아 모든 레이어가 builder 의 로컬 캐시에서
-      # 나온다 — 재컴파일 없이 export·업로드만. 다르면 GHA 캐시로 head 를 빌드한다.
+      # 나온다 — 재컴파일 없이 export·업로드만. 다르면 head-image job 이 채운 scope=head
+      # 캐시를 먼저 읽는다(그 job 이 아직 안 끝났거나 실패했으면 기본 scope 로 빌드한다).
+      # 빈 줄은 build-push-action 이 버린다.
       - name: Push image (ghcr, <head sha>)
         if: steps.peers.outputs.ok == 'true'
         uses: docker/build-push-action@v6
@@ -293,7 +307,40 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: ${{ steps.tree.outputs.same != 'true' && 'type=gha' || '' }}
+          cache-from: |
+            ${{ needs.changes.outputs.same != 'true' && 'type=gha,scope=head' || '' }}
+            ${{ needs.changes.outputs.same != 'true' && 'type=gha' || '' }}
+
+  # 브랜치가 main 보다 뒤처지면 e2e 가 테스트한 merge 빌드를 head 태그로 올릴 수 없어
+  # push 단계가 head 를 새로 빌드해야 한다. 그 빌드를 테스트와 겹쳐 미리 해 두고 결과는
+  # 캐시에만 남긴다 — 테스트를 통과하기 전에는 레지스트리에 아무것도 올리지 않는다.
+  # scope 를 따로 두는 이유: 같은 실행의 e2e 빌드가 기본 scope 의 캐시 인덱스를 나중에
+  # 저장하면 head 의 레이어를 가리키는 인덱스가 가려진다.
+  # 실패해도 push 단계가 직접 빌드하므로 필수 체크에 넣지 않는다.
+  head-image:
+    name: prebuild head image (behind main)
+    needs: changes
+    if: needs.changes.outputs.app == 'true' && needs.changes.outputs.same == 'false'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build head image into GHA cache (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          outputs: type=cacheonly
+          cache-from: |
+            type=gha,scope=head
+            type=gha
+          cache-to: type=gha,scope=head,mode=max
 
   # e2e 가 걸러진 PR(= 이미지 입력이 main 과 같다)에도 preview 환경은 <head sha> 태그를
   # 찾는다. 그 태그를 여기서 올린다 — 소스가 main 과 같으니 GHA 캐시가 통째로 맞는다.
