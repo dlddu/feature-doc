@@ -196,10 +196,6 @@ async fn a_merged_stage_row_counts_both_of_its_calls() {
     assert_eq!(detail(&state, &token, &id).await["spend"]["llmCalls"], 1);
 }
 
-/// AC4.6 의 검증 방법은 「단계별 비용」을 요구한다 — 그래서 재는 것은 「단계마다 숫자가
-/// 있다」가 아니라 **그 숫자가 그 단계의 것인가**다. 총합을 각 행에 복사해도 「숫자가
-/// 있다」는 초록이 되므로, 값이 서로 다른 두 단계와 한 번도 부르지 않은 세 단계를 같은
-/// 응답에서 함께 읽는다.
 #[tokio::test]
 async fn per_stage_spend_is_attributed_to_the_stage_that_spent_it() {
     let (state, _path) = stub_state().await;
@@ -245,10 +241,6 @@ async fn per_stage_spend_is_attributed_to_the_stage_that_spent_it() {
         assert_eq!(idle["costCents"], 0, "{key} 는 아무것도 쓰지 않았다");
     }
 
-    // 단계 합 ≤ 작업 합. **호출·토큰 축에서만** 등식을 물을 수 있다 — 비용은 버킷마다
-    // 올림이라(`usage::cost_cents`, 그리고 그 사실을 재는 단위 테스트가 그 모듈에 있다)
-    // 단계별 비용의 합이 총비용보다 **클 수도** 있다. 이 분석에는 파이프라인 밖 지출이
-    // 없으므로 호출 축에서는 등호가 성립한다.
     let summed: i64 = seen["stages"]
         .as_array()
         .unwrap()

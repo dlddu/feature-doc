@@ -79,15 +79,7 @@ pub async fn of_analysis(db: &SqlitePool, analysis_id: &str) -> Result<Spend, sq
     Ok(Spend::new(row.0, row.1, row.2))
 }
 
-/// What each pipeline stage spent, keyed by [`crate::pipeline`] stage key (AC4.6's
-/// 검증 방법: 단계별 비용).
-///
-/// Only `analysis_documents` is read here, and that is why the stage axis needs no
-/// mapping table: `worker_api::submit_document` rejects a `kind` that is not a stage
-/// key, so the column *is* that axis. The other three tables in [`CALL_ROWS`] hold
-/// calls a person asked for after the pipeline ran — a dependency trace, an LLM doc
-/// edit, a feature addition — and belong to no stage. Attributing them to one would
-/// invent an attribution the rows do not carry.
+/// What each pipeline stage spent, keyed by [`crate::pipeline`] stage key.
 ///
 /// Two consequences a caller must not paper over. On calls and tokens these buckets
 /// sum to *at most* [`of_analysis`]'s total, never more, because the rows here are a

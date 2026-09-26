@@ -651,3 +651,17 @@ reconciler task `rct_20260925-0002`. 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝
 
 **증분 재판정 ⑭**(2026-09-26, 37차 패스, `rct_20260926-0002`): #166(슬라이스 7d — AC4.6)이 연 **gross 21 / net 15** 행을 판정해 **순 제거 13행** · 유지 8행 — 제거는 `analysis.rs` 의 **「두 비용이 실린다」 모듈 doc 3 + 딸린 빈 `//!` 1**(같은 파일에 모듈 doc·`spend` 필드 doc·`Estimate` doc **세 벌**이고 정본은 값을 고르는 필드 쪽 · 빈 주석 행은 이 행 1차 판정이 이미 닫은 유형) · `spend` 필드 doc 의 「화면은 이쪽을 띄운다」 2 · `Estimate` doc 의 **rustdoc 링크만을 위한 문장** 1 · `llm.rs` `Answer` doc 의 「화면이 보고하는 숫자는 여기서 온다」 3(네 번째 벌) · `worker_api.rs` 의 필드 이름 재진술 1 + **로그 앞 인라인 2**(② `doc-tracker/2026-09.md:128` 「단계별 내역은 `worker_api::submit_document` 의 `llm usage recorded` 로그가 남긴다」 축자 · ③ #166 같은 문장 · ① 바로 아래 `tracing::info!` 의 `stage`·`calls`) · **유지**는 `spend`/`est_*` 판별식 2(한 구조체 안에서 바꿔 써도 타입이 같아 조용히 틀린다) · `Estimate` 의 「never revised」 1 · **`llm.rs` `Answer.calls` 5 — 「한 행이 두 호출을 대표한다」 명제의 정본**(상수 1 로 접으면 병합 stage 가 호출을 조용히 잃는다) · `worker_api.rs` 의 옛 워커 기본값 계약 1 · **비주석 diff 0줄** — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑭」
 
+
+### 원장 행 1 — `backend/src/analysis.rs` · `backend/src/llm.rs` · `backend/src/worker_api.rs` · `backend/src/llmkey.rs` (backend 집중 4파일)
+
+**증분 재판정 ⑮**(2026-09-26, 40차 패스, `rct_20260926-0006`): #179(`9a32b76`, 슬라이스 7f)가 `StageView` 에 `spend` 필드를 실으며 연 **+6행**(gross 6 · net 6)을 판정해 **순 제거 4행 · 유지 2행**.
+
+**제거 4 — `spend` 필드 doc.** ⑴ `What this stage spent (AC4.6).` 의 앞부분은 ① 필드 이름 `spend` 와 타입 `crate::usage::Spend` 의 재진술이고 `(AC4.6)` 꼬리표는 **③** PR #179 본문 머리(`**task**: rct_20260926-0004 … 슬라이스 **7f**` · `## gap — AC4.6 검증 방법의 「단계별 비용」`)이자 **④** 커밋 제목(`AC4.6 검증 방법의 「단계별 비용」 — … (슬라이스 7f, rct_20260926-0004) (#179)`) 축자다. ⑵ `Filled after the query from [\`crate::usage::by_stage\`] rather than joined in` 은 **①** — 바로 아래 줄이 `#[sqlx(skip)]` 이고 `load_detail` 이 쿼리 뒤에 `for stage in &mut stages { … }` 로 채운다. ⑶ `the stage rows and the document rows are a 1:1 axis but not a 1:1 join (a stage that wrote no document has no row there, and must read 0 rather than vanish)` 는 **②** `docs/doc-tracker/2026-09.md:738` 이 축자로 소유한다 — 「`StageView` 에 `#[sqlx(skip)]` 로 채워 문서 없는 단계는 0 을 읽는다(조인으로 묶으면 그 단계가 사라진다)」. **③** 도 같다(#179 ⑵ 「조인이 아니라 `#[sqlx(skip)]` + 쿼리 뒤 채움이다: 문서를 쓰지 않은 단계는 조인에서 **사라지는** 대신 0 을 읽어야 한다」).
+
+「조인으로 바꾸지 말라」는 금지형이지만 **가드가 아니다** — 판별식(어겼을 때 조용히 깨지는가)에 걸어 보면 조인으로 바꾸는 순간 `backend/tests/usage.rs` 의 `per_stage_spend_is_attributed_to_the_stage_that_spent_it` 이 `fetch`·`discovery_strategy`·`feature_candidates` 를 `bucket()` 으로 찾다 `panic!("단계 {key} 가 응답에 없다")` 로 **즉시 붉어진다**. 조용하지 않으므로 서사 쪽이다(37차 패스가 세운 세 갈래).
+
+**유지 2(판단 갈림)** — `// One read for the whole pipeline, not one per stage: there are five stages, and / // a stage with nothing charged to it keeps the zero it was built with.` 는 같은 판별식에서 반대 결론이 난다: 단계마다 한 번씩 질의하도록 바꿔도 **어떤 테스트도 붉지 않는다**(값이 같다). ③ 히트(#179 ⑵ 「단계는 다섯이라 N+1 이 아니다」)가 있지만 **PR 본문은 편집 지점에서 읽히지 않는다** — 37차 패스가 `usage.rs` 모듈 doc ¶3(「카운터 열로 두지 않는다」)을 같은 근거로 유지한 선례를 그대로 적용한다. 「there are five stages」는 그 자체로는 ① (`pipeline::STAGES`)이지만 N+1 논거의 전제라 떼면 가드가 근거를 잃으므로 함께 남긴다.
+
+**④ 축 실측**(이 증분에 대해): 이 레포는 squash 머지라 최근 101커밋 중 `Co-authored-by` 외 본문이 있는 것이 **0건**이고, `9a32b76` 도 제목뿐이다 ⇒ ④ 로 복원되는 것은 제목의 AC·슬라이스 꼬리표뿐이며 **유지 2행에 대한 ④ 히트는 0건**이다.
+
+**값**: 625(#178 head) → 631(#179 유입) → **627 / `f2842208d3ea…`**. 비주석·비공백 diff **0줄**. **이 행에 미판정 증분 없음** — [passes/2026-09-17-backend-concentrated.md](2026-09-17-backend-concentrated.md) 「증분 재판정 ⑮」

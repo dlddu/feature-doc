@@ -215,10 +215,6 @@ export function AnalysisProgress({
                   </div>
                 </div>
                 <span className="time">{elapsedOf(stage, now)}</span>
-                {/* AC4.6 검증 방법의 「단계별 비용」. 위 그리드의 `Cost so far` 가 이
-                    작업의 합이고 이 칸들은 그 합의 단계별 분해지만, 둘이 더해서 같아지지
-                    않는 것이 정상이다 — 파이프라인 밖 지출(의존성 추적·문서 수정·feature
-                    추가)은 어느 단계에도 속하지 않고, 값은 버킷마다 센트로 올림된다. */}
                 <span className="time" data-testid="stage-spend">
                   {formatCost(stage.spend.costCents)}
                 </span>
