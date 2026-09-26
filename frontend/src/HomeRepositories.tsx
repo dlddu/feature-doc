@@ -215,7 +215,11 @@ export function HomeRepositories({
         )}
 
         {repos !== null && !error && rows.length === 0 && (
-          <p className="body sm" data-testid="home-empty">
+          <p
+            className="body sm"
+            style={{ marginTop: 10, color: 'var(--text-tertiary)' }}
+            data-testid="home-empty"
+          >
             아직 분석한 저장소가 없어요. 아래에서 첫 저장소를 연결해 보세요.
           </p>
         )}

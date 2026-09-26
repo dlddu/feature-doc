@@ -29,13 +29,28 @@
 #                   `appbar-sub`·`btn-link` 중 하나를 클래스로 가진 요소다. 원장 행의
 #                   「목업이 표현하는 것」 칸에 `(앱바 구조)` 마커가 있는 화면은 뺀다 —
 #                   `(단계 전체)` 와 같은 방식의 명시적 면제다.
+#  M9 인라인 선언   목업 `id` ↔ 구현 `data-testid` 로 짝지어지고 **클래스 집합이 같은**
+#                   요소 쌍마다, 인라인 style 의 선언 집합이 같다. 표기 차이는 환산하고
+#                   (`margin-top:16px` ↔ `marginTop: 16`), 프로토타입 전용 장치
+#                   (`display` · `.on`)와 값이 식인 속성은 대조에서 뺀다 — 식은 목업의
+#                   예시값과 비교할 수 없으므로 `data-sample` 과 같은 이유로 빠진다.
 #
 # ── 이 게이트가 보지 않는 것(의도적) ─────────────────────────────────────
-#  * 규칙 5(구조·수치) 중 **자동화된 것은 앱바 슬롯 수(M7)와 접힘 affordance 폭(M8) 둘뿐**이다. 나머지 CSS
-#    클래스·px 대조는 여전히 사람 몫이다. M7 을 넣은 이유는 그 한 조각이 카피 게이트의
+#  * 규칙 5(구조·수치) 중 **자동화된 것은 앱바 슬롯 수(M7) · 접힘 affordance 폭(M8) · 짝지어진 요소의
+#    인라인 선언(M9) 셋**이다. 규칙 CSS(클래스 선언 자체)의 px·색 대조는 여전히 사람 몫이다.
+#    M7 을 넣은 이유는 그 한 조각이 카피 게이트의
 #    사각지대에 정확히 들어앉기 때문이다 — 슬롯이 통째로 빠져도 카피는 한 글자도 줄지
 #    않아 M3 가 영원히 초록이다(2026-09-18, 우측 자리표시자 부재 3건이 그렇게 숨어 있었다).
 #    M8 도 같은 자리다 — 표식 `▴` 가 목업에 없는 폭에 그려져도 카피는 한 글자도 줄지 않는다(2026-09-25).
+#    M9 도 같은 자리다 — 목업이 준 인라인 색·간격을 구현이 빠뜨려도 카피는 한 글자도 줄지 않아
+#    `#home-empty` 의 색 이탈이 7연속 task 동안 새어 나갔다(2026-09-26). 넣기 전 실측: 목업에 없는
+#    인라인 색을 구현에 주입해도 게이트가 **rc=0 · 11개 규칙 카운터 바이트 불변**으로 통과했다.
+#  * **클래스 축의 이탈은 M9 가 보지 않는다.** M9 는 클래스 집합이 같은 쌍만 대조 단위로 보므로,
+#    클래스가 어긋난 쌍은 위반이 아니라 **제외**로 샌다. 2026-09-26 실측으로 공유 키 21건 중 4건이
+#    그렇게 빠졌고 그중 셋은 실재하는 이탈이다 — `no-access`(목업 `notice warn` ↔ 구현 `notice err`) ·
+#    `request-error`(`notice warn` ↔ `notice err`) · `rejected-note`(`notice info` ↔ `notice`).
+#    나머지 하나 `sift-cost` 는 키가 서로 다른 요소에 붙은 경우라 이탈이 아니다. 이 축을 규칙으로
+#    바꾸려면 「같은 자리인가」를 클래스 말고 다른 것으로 정해야 한다 — 아직 그 단위가 없다.
 #  * **상태 블록이 서는 조건**(구현이 대응 목업 단계에 없는 조건으로 `notice`·`badge` 를 렌더하는 것)은
 #    세지 않는다. 문면이 JSX 식으로 오면 M3B 의 카피 집합에 애초에 들어오지 않아, 같은 자리를 한국어
 #    리터럴로 바꾸면 M3B 가 미등재 1건으로 붉히는 표면이 식일 때는 영원히 초록이다(2026-09-25, AC4.1
@@ -448,6 +463,93 @@ def root_tokens(text: str) -> dict[str, str]:
     }
 
 
+
+# ── M9 인라인 선언 대조 ──────────────────────────────────────────────────
+# 목업 `id` ↔ 구현 `data-testid` 는 같은 자리를 가리키는 훅이다(프로토타입 훅 대 구현
+# 훅의 관행 차이). 그 공유 키 중 **클래스 집합이 같은** 쌍만 같은 대조 단위로 보고,
+# 인라인 style 의 선언 집합을 대조한다. 클래스가 다른 쌍은 애초에 같은 요소가 아니거나
+# (`sift-cost` — 목업은 안쪽 `span.metric`, 구현은 바깥 `div.card row between`) 클래스
+# 축의 이탈이라(`no-access` — 목업 `notice warn` ↔ 구현 `notice err`) 이 규칙이 아니라
+# **클래스 축**이 답해야 한다. 그 축은 아직 규칙이 없고, 위 「보지 않는 것」에 적는다.
+PROTO_CLASSES = {"on"}      # 목업 전용 가시성 토글(`.stp.on`·`.notice.on` = `display:block`).
+                            # 구현은 조건부 렌더라 `.on` 규칙 자체가 없다 — 무력한 클래스다.
+PROTO_PROPS = {"display"}   # 목업이 숨긴 변이를 정적 HTML 에 열거하는 장치(`display:none`).
+
+
+def _kebab(prop: str) -> str:
+    return re.sub(r"([A-Z])", lambda m: "-" + m.group(1).lower(), prop)
+
+
+def open_tag(src: str, at: int) -> str:
+    """`at` 을 품은 여는 태그를 통째로 돌려준다. JSX 는 중괄호 식 안에 `>` 가 들어갈 수
+    있으므로(화살표 함수) 깊이를 세어 닫는 `>` 를 찾는다 — 정규식 하나로는 못 자른다."""
+    start = src.rfind("<", 0, at)
+    depth = 0
+    for i in range(start, len(src)):
+        ch = src[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+        elif ch == ">" and depth == 0:
+            return src[start:i + 1]
+    return src[start:at]
+
+
+def tag_classes(tag: str) -> list[str]:
+    found = CLASS_ATTR.search(tag)
+    return [c for c in (found.group(1).split() if found else []) if c not in PROTO_CLASSES]
+
+
+def mockup_inline(tag: str) -> dict[str, str]:
+    found = re.search(r'style="([^"]*)"', tag)
+    decls: dict[str, str] = {}
+    for decl in (found.group(1).split(";") if found else []):
+        if ":" not in decl:
+            continue
+        prop, value = decl.split(":", 1)
+        prop = prop.strip().lower()
+        if prop not in PROTO_PROPS:
+            decls[prop] = norm(value)
+    return decls
+
+
+def impl_inline(tag: str) -> tuple[dict[str, str], set[str]]:
+    """구현의 `style={{...}}` 를 목업 표기로 환산한다. 값이 식이면 목업의 정적 값과
+    비교할 수 없으므로 그 속성을 대조에서 빼고(`dynamic`) 건수를 돌려준다 — 예시값을
+    대조에서 빼는 `data-sample` 규약과 같은 이유다."""
+    found = re.search(r"style=\{\{(.*?)\}\}", tag, flags=re.S)
+    decls: dict[str, str] = {}
+    dynamic: set[str] = set()
+    for decl in re.split(r",(?![^(]*\))", found.group(1) if found else ""):
+        if ":" not in decl:
+            continue
+        prop, value = decl.split(":", 1)
+        prop = _kebab(prop.strip().strip("'\""))
+        value = value.strip()
+        if prop in PROTO_PROPS:
+            continue
+        if re.fullmatch(r"\d+", value):
+            decls[prop] = f"{value}px"
+        elif re.fullmatch(r"'[^']*'|\"[^\"]*\"", value):
+            decls[prop] = norm(value[1:-1])
+        else:
+            dynamic.add(prop)
+    return decls, dynamic
+
+
+def keyed_elements(paths: list[Path], attr: str) -> dict[str, tuple[str, int, str]]:
+    """`attr="<키>"` 를 가진 요소를 키 → (파일명, 줄, 여는 태그) 로 모은다."""
+    found: dict[str, tuple[str, int, str]] = {}
+    for path in paths:
+        src = path.read_text(encoding="utf-8")
+        for m in re.finditer(rf'{attr}="([A-Za-z0-9_-]+)"', src):
+            key = m.group(1)
+            if key not in found:
+                found[key] = (path.name, src[:m.start()].count("\n") + 1,
+                              open_tag(src, m.start()))
+    return found
+
 def main() -> int:
     doc = TRACKER.read_text(encoding="utf-8")
 
@@ -703,6 +805,35 @@ def main() -> int:
                        f"그 폭의 목업은 정적인 `div.section-title` 다")
         print(f"M8 접힘 affordance 폭 — 접힘 {folds}건 · `.disclosure` 선언 {disclosure_rules}개 · "
               f"{wide}px 잔존 affordance {len(live)}건")
+
+    mockup_keyed = keyed_elements(sorted(MOCKUP_DIR.glob("*.html")), "id")
+    impl_keyed = keyed_elements(sorted(SRC_DIR.glob("*.tsx")), "data-testid")
+    shared = sorted(set(mockup_keyed) & set(impl_keyed))
+    matched, unmatched, skipped = [], [], 0
+    for key in shared:
+        m_file, m_line, m_tag = mockup_keyed[key]
+        i_file, i_line, i_tag = impl_keyed[key]
+        if tag_classes(m_tag) != tag_classes(i_tag):
+            unmatched.append(key)
+            continue
+        matched.append(key)
+        want = mockup_inline(m_tag)
+        got, dynamic = impl_inline(i_tag)
+        skipped += len(dynamic)
+        want = {p: v for p, v in want.items() if p not in dynamic}
+        for prop in sorted(set(want) | set(got)):
+            if want.get(prop) == got.get(prop):
+                continue
+            fail("M9", f"`#{key}` 인라인 선언이 목업과 다르다 — `{prop}`: "
+                       f"목업 `{want.get(prop, '없음')}`({m_file}:{m_line}) ↔ "
+                       f"구현 `{got.get(prop, '없음')}`({i_file}:{i_line})")
+    if not matched:
+        fail("M9", f"대조 단위가 하나도 없다(공유 키 {len(shared)}건 · 클래스 일치 0건) "
+                   f"— 규칙이 공전한다")
+    else:
+        print(f"M9 인라인 선언 — 공유 키 {len(shared)}건 · 대조 {len(matched)}쌍 · "
+              f"클래스 불일치로 제외 {len(unmatched)}건 · 식이라 제외한 속성 {skipped}건")
+
 
     report()
     return 1 if failures else 0
