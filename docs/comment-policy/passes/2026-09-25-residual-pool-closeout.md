@@ -267,3 +267,77 @@ docstring 1행이 미판정 등재로 들어왔고, 42차 패스가 그 행을 �
 **유지 18 · 제거 후보 9행(이월)은 그대로 승계한다** — ④ 가 새 근거를 주지 않으므로 31차 패스의
 줄 단위 판정을 모집단째 다시 세지 않고 판정만 승계했다. 집행은 27차 패스가 등재한 `0009`~`0013`
 세 자리, 44차 패스가 등재한 `0001`~`0008` 아홉 자리·`0015` 두 자리와 **한 repair 창**에 묶인다.
+
+## 집행 — D6 전용 PR (2026-09-26 · `rct_20260926-0013`, 46차 패스)
+
+29차 패스(이 문서 「행 28」)와 42차 패스(「D 표면 첫 판정」)는 `tools/check-data-format-change.py`
+를 **판정만** 하고 제거를 이월했다. 이월 사유는 하나였다 — 이 파일은 `SELF_PATHS` 라 한 바이트만
+고쳐도 D6 이 발화해 필수 status `review/manual-approval` 이 **아예 붙지 않으므로**, 다른 주석
+정리와 섞으면 그 PR 전체가 사람 벽 뒤로 간다. 그래서 「집행은 전용 PR 로 분리」였다.
+
+**이 패스가 그 전용 PR 이다.** 사유는 소멸한 것이 아니라 충족됐다: 이 PR 은 `SELF_PATHS` 한 파일
+(+ `docs/` 판정 기록)만 담고, `review/manual-approval` 은 사람이 붙인다.
+
+### 무인 경로는 없다 — 재실측
+
+29차·42차 판정문의 이월 사유를 그대로 승계하지 않고 소스에서 다시 쟀다. 착각하기 쉬운 자리다:
+「필수 status 가 걸리지 않는다」는 **자유로워진다**는 뜻으로 읽히지만 실제로는 그 반대다.
+
+| 무엇 | 실측 |
+|---|---|
+| ruleset `rules/branches/main` 필수 status | **둘** — `ci-gate`(App `15368`) · `review/manual-approval` |
+| `review/manual-approval` 을 붙이는 주체 | `.github/workflows/data-format-review.yml` 의 `set commit status` 스텝, `if: needs_review == 'false'` 일 때만 |
+| 이 PR 의 `needs_review` | `classify()` 가 D6(`f in SELF_PATHS`)에 히트 ⇒ **`true`** |
+| 따라서 | status 는 **붙지 않는다**. 실패(red)가 아니라 **부재**라서 체크 목록에 아무 표시도 나지 않고, 필수 status 미충족으로 머지만 막힌다 |
+
+⇒ 이 슬라이스는 무인으로 닫히지 않는다. 사람이 head sha 에 `review/manual-approval` = success 를
+직접 붙여야 하고, 그것이 이 파일의 주석이 지키라고 말하는 불변식 자신(`:5-8`, 유지)이다.
+
+### 줄 단위 — 제거 16행 (등재 후보 12 + 딸린 빈 주석 4)
+
+| 자리 | 줄 | 근거(29차 판정 승계) |
+|---|---|---|
+| `:2` | 1 | ① 파일·워크플로 이름이 곧 한 줄 요약 |
+| `:4-9` | 6 | ① 워크플로 헤더 `:1-3` 이 「아무 status 도 붙이지 않는다 … 적극적 확인」을 축자로 소유(status 를 실제로 붙이는 쪽이 정본) · 종료 코드는 `return 2` / `return 0` |
+| `:11` | 1 | ① import 5줄 전부 stdlib |
+| `:33-36` | 4 | ① argparse 선언 · `$GITHUB_OUTPUT`·`$GITHUB_STEP_SUMMARY` 쓰기 두 블록 |
+| `:3`·`:10`·`:12`·`:32` | 4 | 위 덩어리에 **딸린 빈 주석 행** — 27차 패스가 `.sql` 축에서 「절 제목 + 딸린 빈 주석 행」을 한 단위로 센 규약과 같다 |
+| `classify` docstring | 1 (D 표면) | ① 규칙명 키·반환과 `needs_review = bool(hits)` |
+
+**유지 20행** = 29차 판정의 유지 19행(`:13-19` 규칙 D1·D6 의 *왜* · `:21-31` 의도적으로 보지 않는
+다섯 가지 · `:77` `--no-renames` 의 효과) + 두 블록 사이 **절 구분 빈 주석 1행**. 다섯 개의 빈 주석
+행 중 이 하나만 남은 이유는 그것이 유일하게 **무언가를 가르고** 있기 때문이다 — 나머지 넷은 걷어낸
+덩어리의 일부였다.
+
+### 판정 근거가 낡았는지 — 갈라서 확인
+
+D 행의 ① 근거 두 갈래 중 하나가 「파일 머리 `:4-9` 가 정본을 갖는다」였고, 그 `:4-9` 를 같은 커밋이
+제거한다. 자기 무효화처럼 보이지만 아니다: `:4-9` 는 **정본이 아니라 L 행이 ① 로 판정한 사본**이고,
+정본은 처음부터 `.github/workflows/data-format-review.yml:1-3` 이다(축자 일치). 남은 ① 근거
+(규칙명 키·반환·`bool(hits)`)는 코드에 그대로 있다. ⇒ 번복 없음, 근거 축만 사본에서 정본으로 옮겨
+적었다.
+
+### 실측
+
+- 기준 커밋: `eaad646b`(45차 패스 #191 착지 직후의 main tip)
+- 원장 행: **신설 0** — L 행(`tools/check-data-format-change.py`)과 D 행의 결과 칸만 갱신했다.
+  같은 범위이므로 새 패스 파일을 만들지 않고 이 문서에 절을 더한다(본문 판정 절차 3항).
+- **AST 대조**: `ast.dump` 에서 module·function docstring 을 걷어낸 트리가 부모와 **동일**
+  (주석 제거가 동작을 바꾸지 않았다는 증거 — `git diff` 의 줄머리 필터보다 강하다).
+- `git diff --numstat`: **0 insertions / 17 deletions** — 재작성 0, 순 제거만.
+- 지문: L `9b5b5b79…` → `c9f0ace0…`(36 → 20행) · D `8a58a29c…` → `01ba4719…`(1 → 0행, 빈 집합)
+- 전역 지문: `lines=2987 files=159` → `lines=2971 files=159` · `docstring=60/4` → `docstring=59/3`
+- 게이트 5종 rc=0: `scripts/check-comment-ledger.py` · `tools/check-journey-mockup.py` ·
+  `tools/check-mockup-render.py` · `tools/check-scenario-e2e.py` · `tools/check-journey-prototype.js`
+- `tools/check-data-format-change.py --base main --head HEAD` → **`⚠️ 사람 리뷰 필요 (status 미부여)`
+  · D6 판정기 자신 1건**. 이 축의 기대값이고, 곧 `review/manual-approval` 이 자동으로 붙지 않는다는
+  예고다.
+
+### 범위 밖 — 남은 이월분은 마이그레이션 repair 창의 몫
+
+`backend/migrations/**` 의 제거 후보는 이 PR 에 **섞지 않는다**(본문 「적용된 마이그레이션의 주석」
+2항 = 전용 PR). 그 몫은 네 행에 걸쳐 있다 — `0001`~`0008` 아홉 자리(35행) · `0009`~`0013` 세 자리
+(기대 6~8행) · `0014` 아홉 자리(9행) · `0015` 두 자리(10행) — 그리고 본문 1항이 「한 패스에서
+마이그레이션 판정을 끝까지 모아 한 번의 repair 로 끝낸다」고 못박으므로 **네 행을 한 repair 창에
+묶어야** 한다. 열린 PR `#187` 이 `backend/migrations/0016_access_requests.sql` 을 들여오는 중이라
+그 풀은 아직 자라고 있다 — repair 창은 `#187` 착지 뒤에 열어야 같은 창을 두 번 열지 않는다.

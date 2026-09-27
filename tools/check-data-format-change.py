@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-# 데이터 저장 형식 변경 판정기 — PR 에 사람 리뷰가 필요한지 가르는 1차 필터.
-#
-# PR 의 변경(merge-base..head)에서 **변경된 파일 경로**만 보고, 사람 리뷰가 꼭 필요한 두
-# 경우에 닿았는지 판정한다. 닿지 않았으면 워크플로 `review — data format` 이 head 커밋에
-# commit status `review/manual-approval` = success 를 붙이고, 닿았으면 **아무 status 도 붙이지
-# 않는다**. 즉 이 status 는 "그 관점의 사람 리뷰는 생략해도 된다"는 **적극적 확인**이고,
-# 없다고 해서 실패는 아니다. 판정이 불가능하면(git 실패 등) 종료 코드 2 로 끝나고 status 는
-# 붙지 않는다.
-#
-# 의존성 0 (python3 stdlib). 형제 체커 `check-*.py` 와 같은 방침이다.
-#
 # ── 규칙 ──────────────────────────────────────────────────────────────────
 #  D1 마이그레이션    `backend/migrations/**` 의 **모든** 변경. 주석·공백 한 글자도 sqlx
 #                     체크섬을 바꿔 부팅을 깨뜨린다(`backend/migrations/README.md`).
@@ -29,11 +18,6 @@
 #    * 분석 문서 등 DB 에 JSON 으로 저장되는 구조체의 모양 변경
 #    * sqlx·libsqlite3-sys 등 저장 크레이트의 메이저 업그레이드
 #    * `deploy/` 의 PVC·DB 경로·replica·배포 전략(SQLite 단일 writer 전제)
-#
-# 사용:
-#   python3 tools/check-data-format-change.py --base <sha> --head <sha> [--verbose]
-#   CI 에서는 $GITHUB_OUTPUT 에 needs_review=true|false, $GITHUB_STEP_SUMMARY 에 근거를 쓴다.
-# 종료 코드: 0 = 판정 완료(결과는 출력으로), 2 = 판정 불가.
 
 import argparse
 import os
@@ -55,7 +39,6 @@ def git(*args):
 
 
 def classify(files):
-    """규칙별 근거 목록. 비어 있으면 사람 리뷰 불필요."""
     hits = defaultdict(list)
     for f in files:
         if f in SELF_PATHS:
