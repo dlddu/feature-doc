@@ -1,9 +1,7 @@
 // 검증 시나리오: 04-platform.md#시나리오 15
 //
-// 시나리오가 요구하는 대비군이 이 spec 의 구조다 — 실재하는 남의 분석 id 와 한 번도 존재한
-// 적 없는 id 를 **같은 절차**에 통과시키고, 두 축이 돌려준 것을 값으로 비교한다. 칸을 하나씩
-// 골라 비교하면 나중에 생긴 칸이 검사 없이 새므로, 응답은 (status, body) 쌍으로 화면은
-// textContent 전체로 비교한다.
+// 칸을 하나씩 골라 비교하면 나중에 생긴 칸이 검사 없이 새므로, 응답은 (status, body) 쌍으로
+// 화면은 textContent 전체로 비교한다.
 import { expect, test } from '@playwright/test';
 import type { APIResponse, Page } from '@playwright/test';
 
