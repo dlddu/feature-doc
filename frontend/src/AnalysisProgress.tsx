@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { NotVisibleError, getAnalysis, retryStage } from './api';
 import type { AnalysisDetail, Stage } from './api';
-import { NoAccess } from './NoAccess';
+import { AccessRequested, NoAccess } from './NoAccess';
 import { formatCost, formatCount, formatDuration } from './format';
 import { useWideViewport } from './viewport';
 
@@ -70,6 +70,7 @@ export function AnalysisProgress({
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notVisible, setNotVisible] = useState(false);
+  const [accessRequested, setAccessRequested] = useState(false);
   const [retrying, setRetrying] = useState<string | null>(null);
   // Re-rendered on the poll tick so a running step's elapsed time keeps moving.
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -114,8 +115,14 @@ export function AnalysisProgress({
   if (notVisible && analysis === null) {
     return (
       <main className="screen">
-        <Appbar title="Analysis" sub="" onBack={onBack} />
-        <NoAccess />
+        {accessRequested ? (
+          <AccessRequested onOpenAnother={onBack} />
+        ) : (
+          <>
+            <Appbar title="Analysis" sub="" onBack={onBack} />
+            <NoAccess analysisId={id} onRequested={() => setAccessRequested(true)} />
+          </>
+        )}
       </main>
     );
   }

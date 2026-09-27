@@ -249,6 +249,14 @@ export async function getAnalysis(id: string): Promise<AnalysisDetail> {
   return (await res.json()) as AnalysisDetail;
 }
 
+export async function requestAccess(id: string): Promise<void> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/access-request`, {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+}
+
 /**
  * The job returns to the queue, so the answer already carries the reset progress —
  * the caller does not refetch.
