@@ -1,7 +1,3 @@
--- The worker never opens this database. It claims and reports over the API's
--- `/internal/*` routes, so the API stays the single writer and the SQLite
--- invariant that rests on it (one pod, one mount, `Recreate`) survives untouched.
-
 -- `claimed_by` is a worker identity (pod name), kept for operator visibility;
 -- `lease_expires_at` is what makes a dead worker's job reclaimable by the next claim.
 ALTER TABLE analyses ADD COLUMN claimed_by       TEXT;
