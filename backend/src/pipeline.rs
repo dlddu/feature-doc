@@ -54,6 +54,7 @@ pub mod status {
     pub const AWAITING_PIPELINE: &str = "awaiting_pipeline";
     /// A stage failed; `analyses.error` carries the operator-facing reason.
     pub const FAILED: &str = "failed";
+    pub const CANCELLED: &str = "cancelled";
 }
 
 /// Values that live in `analysis_stages.status`.

@@ -271,6 +271,15 @@ export async function retryStage(id: string, stageKey: string): Promise<Analysis
   return (await res.json()) as AnalysisDetail;
 }
 
+export async function cancelAnalysis(id: string): Promise<AnalysisDetail> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/cancel`, {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as AnalysisDetail;
+}
+
 /** An out-of-scope target is rejected without ever being queued. */
 export async function createAnalysis(repoUrl: string, branch: string): Promise<Analysis> {
   const res = await fetch('/api/analyses', {

@@ -56,6 +56,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/analyses/preflight", post(preflight))
         .route("/api/analyses/{id}", get(detail))
         .route("/api/analyses/{id}/stages/{key}/retry", post(retry_stage))
+        .route("/api/analyses/{id}/cancel", post(cancel))
         .route("/api/analyses/{id}/documents/{kind}", get(document))
         .route("/api/analyses/{id}/discovery-strategy", get(strategy))
         .route(
@@ -289,6 +290,50 @@ async fn retry_stage(
     tx.commit().await?;
 
     crate::audit::record(&state.db, Some(&user.id), "analysis.stage_retry", Some(&key)).await;
+
+    Ok(Json(load_detail(&state, &user.id, &id).await?))
+}
+
+async fn cancel(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<AnalysisDetailView>, AppError> {
+    owned_analysis(&state, &user.id, &id).await?;
+
+    let now = now_unix();
+    let mut tx = state.db.begin().await?;
+    let stopped = sqlx::query(
+        "UPDATE analyses \
+            SET status = ?, finished_at = ?, lease_expires_at = NULL, claimed_by = NULL \
+          WHERE id = ? AND status IN (?, ?)",
+    )
+    .bind(pipeline::status::CANCELLED)
+    .bind(now)
+    .bind(&id)
+    .bind(pipeline::status::QUEUED)
+    .bind(pipeline::status::RUNNING)
+    .execute(&mut *tx)
+    .await?;
+    if stopped.rows_affected() == 0 {
+        return Err(AppError::Conflict(
+            "대기 중이거나 실행 중인 분석만 중단할 수 있습니다.".into(),
+        ));
+    }
+
+    sqlx::query(
+        "UPDATE analysis_stages \
+            SET status = ?, detail = NULL, error = NULL, started_at = NULL, finished_at = NULL \
+          WHERE analysis_id = ? AND status = ?",
+    )
+    .bind(pipeline::stage_status::PENDING)
+    .bind(&id)
+    .bind(pipeline::stage_status::RUNNING)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+
+    crate::audit::record(&state.db, Some(&user.id), "analysis.cancel", None).await;
 
     Ok(Json(load_detail(&state, &user.id, &id).await?))
 }
