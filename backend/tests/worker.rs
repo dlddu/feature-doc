@@ -406,6 +406,7 @@ async fn revoking_access_mid_run_stops_the_job_at_the_next_lease_boundary() {
     assert_eq!(detail.status(), StatusCode::OK);
     let body = json_body(detail).await;
     assert_eq!(body["accessRevoked"], true);
+    assert_eq!(body["reauthRequired"], false);
     assert_eq!(body["error"], featuredoc::analysis::ACCESS_REVOKED);
 }
 

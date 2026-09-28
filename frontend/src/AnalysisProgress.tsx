@@ -5,7 +5,14 @@
 // same server state.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NotVisibleError, getAnalysis, getAnalysisDiff, listConflicts, retryStage } from './api';
+import {
+  LOGIN_URL,
+  NotVisibleError,
+  getAnalysis,
+  getAnalysisDiff,
+  listConflicts,
+  retryStage,
+} from './api';
 import type { AnalysisDetail, Stage } from './api';
 import { AccessRequested, NoAccess } from './NoAccess';
 import { formatCost, formatCount, formatDuration } from './format';
@@ -349,6 +356,18 @@ export function AnalysisProgress({
       {revoked && analysis.error !== null && (
         <div className="notice err" style={{ marginTop: 16 }} data-testid="access-revoked">
           {analysis.error}
+          {analysis.reauthRequired && (
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => {
+                window.location.href = LOGIN_URL;
+              }}
+              data-testid="relogin"
+            >
+              다시 로그인하기
+            </button>
+          )}
         </div>
       )}
 
