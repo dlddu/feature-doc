@@ -142,6 +142,7 @@ export type Analysis = {
   estCostCents: number;
   createdAt: number;
   llmLanguage: LlmLanguage | null;
+  undecidedCandidates: number;
   /** Denormalized onto the list row so a card can show progress without a second fetch. */
   stagesDone: number;
   stagesTotal: number;

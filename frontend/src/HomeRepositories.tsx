@@ -314,6 +314,13 @@ export function HomeRepositories({
                   </button>
                 </div>
               )}
+              {row.latest && row.latest.undecidedCandidates > 0 && (
+                <div className="meta" style={{ marginTop: 8 }} data-testid="undecided-remaining">
+                  <span>아직 결정하지 않은 후보 </span>
+                  <span>{row.latest.undecidedCandidates}</span>
+                  <span>개 — 이어서 결정할 수 있어요</span>
+                </div>
+              )}
               {!row.accessible && (
                 <div className="meta" style={{ marginTop: 8 }}>
                   App 설치 범위 밖 — 다시 분석하려면 설치 범위에 추가해 주세요.

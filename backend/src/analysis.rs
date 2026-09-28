@@ -116,6 +116,7 @@ struct AnalysisView {
     est_cost_cents: i64,
     created_at: i64,
     llm_language: Option<String>,
+    undecided_candidates: i64,
     /// Pipeline progress as a fraction, so the Home card can read "step 2 of 5"
     /// without one request per row (AC1.5). The stages themselves belong to Analysis Progress —
     /// see [`detail`].
@@ -179,8 +180,12 @@ fn analysis_columns() -> String {
          a.est_llm_calls, a.est_cost_cents, a.created_at, a.llm_language, \
          (SELECT COUNT(*) FROM analysis_stages s WHERE s.analysis_id = a.id) AS stages_total, \
          (SELECT COUNT(*) FROM analysis_stages s \
-           WHERE s.analysis_id = a.id AND s.status = '{done}') AS stages_done",
-        done = pipeline::stage_status::SUCCEEDED
+           WHERE s.analysis_id = a.id AND s.status = '{done}') AS stages_done, \
+         (SELECT COUNT(*) FROM feature_candidates c \
+           WHERE c.analysis_id = a.id AND c.decision = '{undecided}' \
+             AND c.merged_into IS NULL) AS undecided_candidates",
+        done = pipeline::stage_status::SUCCEEDED,
+        undecided = DECISION_UNDECIDED
     )
 }
 
@@ -573,6 +578,7 @@ async fn create(
             est_cost_cents: est.cost_cents,
             created_at: now,
             llm_language: Some(language.as_str().to_string()),
+            undecided_candidates: 0,
             stages_total: pipeline::STAGES.len() as i64,
             stages_done: 0,
         }),
