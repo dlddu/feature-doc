@@ -1,3 +1,5 @@
+// docs/mockups/JRN-review-feature.html#STP-verify-evidence 의 구현.
+
 import { useEffect, useState } from 'react';
 import { getAcceptance, getEvidence } from './api';
 import type { EvidenceExcerpt, FeatureAcceptance as Doc } from './api';
