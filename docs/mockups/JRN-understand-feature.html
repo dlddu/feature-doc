@@ -1277,14 +1277,14 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
 <section id="END-no-access" class="stp">
   <div class="frame">
     <div class="screen">
-      <div class="card end-card" style="margin-top:170px">
+      <div class="card end-card" id="access-requested" style="margin-top:170px">
         <div class="em">◌</div>
         <h1 class="h-display" style="margin-top:14px">아직 볼 수 없는 저장소예요</h1>
         <p class="h-display-sub" style="margin-top:8px">소유자에게 공유 요청을 보냈어요. 허락이 오면 알림이 갑니다 — 그때까지 목록에도 상세에도 나오지 않아요.</p>
         <span class="badge warn" style="margin-top:16px"><span class="dot"></span>공유 요청 보냄</span>
       </div>
       <div class="stack" style="margin-top:26px">
-        <button class="btn btn-secondary block" data-goto="STP-open-shared">다른 링크 열어보기</button>
+        <button class="btn btn-secondary block" id="btn-open-another" data-goto="STP-open-shared">다른 링크 열어보기</button>
       </div>
     </div>
   </div>
