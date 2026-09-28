@@ -4,12 +4,6 @@
 -- second axis of versioning here would make "which document do we show"
 -- ambiguous.
 --
--- `content_hash` is what makes the determinism requirement observable — that
--- re-analyzing an unchanged repository reproduces the same result. Re-analyzing
--- writes a new analysis with its own row; comparing this hash
--- against the previous analysis's row for the same target answers "did the result
--- reproduce, or did it change" without diffing the documents in the client.
---
 -- `model`, `input_tokens`, `output_tokens` are the per-call cost accounting. The
 -- stage that produced the row writes them whether or not anything reads them back.
 CREATE TABLE analysis_documents (
