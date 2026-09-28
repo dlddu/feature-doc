@@ -1,11 +1,11 @@
 // Analysis in Progress — the real, stateful screen behind
-// docs/mockups/JRN-discover-features.html#STP-leave-and-return.
+// docs/mockups/JRN-discover-features.html#STP-leave-and-return — 재분석이면 같은 화면이 docs/mockups/JRN-follow-code-change.html#STP-notice-change 다.
 //
 // The component holds no progress of its own: a reload is just another read of the
 // same server state.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NotVisibleError, getAnalysis, retryStage } from './api';
+import { NotVisibleError, getAnalysis, getAnalysisDiff, listConflicts, retryStage } from './api';
 import type { AnalysisDetail, Stage } from './api';
 import { AccessRequested, NoAccess } from './NoAccess';
 import { formatCost, formatCount, formatDuration } from './format';
@@ -47,6 +47,12 @@ function subOf(stage: Stage): string {
   return '대기 중';
 }
 
+type Rerun = { changed: number; conflicts: number };
+
+function diffReady(stages: Stage[]): boolean {
+  return stages.some((s) => s.key === 'acceptance_dependencies' && s.status === 'succeeded');
+}
+
 function elapsedOf(stage: Stage, nowSeconds: number): string {
   if (stage.startedAt === null) return '';
   const end = stage.finishedAt ?? nowSeconds;
@@ -72,6 +78,7 @@ export function AnalysisProgress({
   const [notVisible, setNotVisible] = useState(false);
   const [accessRequested, setAccessRequested] = useState(false);
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [rerun, setRerun] = useState<Rerun | null>(null);
   // Re-rendered on the poll tick so a running step's elapsed time keeps moving.
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const wide = useWideViewport();
@@ -99,6 +106,26 @@ export function AnalysisProgress({
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [load]);
+
+  const ready = analysis !== null && diffReady(analysis.stages);
+
+  useEffect(() => {
+    if (!ready) return;
+    let active = true;
+    Promise.all([getAnalysisDiff(id), listConflicts(id)])
+      .then(([diff, conflicts]) => {
+        if (!active) return;
+        setRerun(
+          diff.comparedTo === null
+            ? null
+            : { changed: diff.features.length, conflicts: conflicts.open },
+        );
+      })
+      .catch(() => active && setRerun(null));
+    return () => {
+      active = false;
+    };
+  }, [id, ready]);
 
   async function retry(stageKey: string) {
     setRetrying(stageKey);
@@ -169,6 +196,19 @@ export function AnalysisProgress({
         onBack={onBack}
       />
 
+      {rerun !== null && rerun.changed > 0 && (
+        <div className="card row top" style={{ marginTop: 16, gap: 12 }} data-testid="rerun-notice">
+          <p className="body sm grow">
+            <strong data-testid="rerun-headline">
+              <span>{rerun.changed}</span>개 기능의 표현이 갱신됐어요
+            </strong>
+            <br />
+            부딪히는 편집이 <span data-testid="rerun-conflicts">{rerun.conflicts}</span>
+            건 있습니다. 바뀐 것만 모아 두었어요.
+          </p>
+        </div>
+      )}
+
       <div className="metric-grid" style={{ marginTop: 16 }}>
         <div className="cell">
           <div className="k">Progress</div>
@@ -194,6 +234,22 @@ export function AnalysisProgress({
             {formatCost(analysis.spend.costCents)}
           </div>
         </div>
+        {rerun !== null && (
+          <>
+            <div className="cell">
+              <div className="k">Changed</div>
+              <div className="v" data-testid="rerun-changed">
+                {formatCount(rerun.changed)}
+              </div>
+            </div>
+            <div className="cell">
+              <div className="k">Conflicts</div>
+              <div className="v" data-testid="rerun-conflict-count">
+                {formatCount(rerun.conflicts)}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="progress" style={{ marginTop: 12 }}>
@@ -202,7 +258,7 @@ export function AnalysisProgress({
 
       <details className="disclosure" open={wide} data-testid="pipeline-disclosure">
         <summary className="section-title" style={{ marginTop: 34 }}>
-          <span>Pipeline</span>
+          {rerun === null ? <span>Pipeline</span> : <span>Re-analysis</span>}
           <span className="count" data-testid="pipeline-count">
             {stagesDone} of {stagesTotal}
           </span>
@@ -323,6 +379,12 @@ export function AnalysisProgress({
       <p className="legend" style={{ marginTop: 24 }}>
         <span className="mk">↳</span> 실패했거나 끝난 단계는 그 단계만 다시 돌립니다 · 누적 비용은 항상 표시
       </p>
+
+      {rerun !== null && (
+        <p className="legend" style={{ marginTop: 8 }} data-testid="rerun-legend">
+          <span className="mk">↳</span> 바뀌지 않은 기능은 손대지 않고 표시도 하지 않아요
+        </p>
+      )}
     </main>
   );
 }

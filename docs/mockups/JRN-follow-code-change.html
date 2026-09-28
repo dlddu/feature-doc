@@ -992,7 +992,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     <div class="screen">
       <header class="appbar">
         <button class="icon-btn ghost" aria-hidden="true"></button>
-        <span class="appbar-title">dlddu/payments-api</span>
+        <span class="appbar-title" data-sample>dlddu/payments-api</span>
         <button class="icon-btn ghost" aria-hidden="true"></button>
       </header>
 
@@ -1003,14 +1003,14 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
             <path d="M5.6 12.1a1.5 1.5 0 0 0 2.8 0" stroke="currentColor" stroke-width="1.1"/>
           </svg>
         </span>
-        <p class="body sm grow" style="color:var(--text-secondary)"><strong id="notice-headline">3개 기능의 표현이 갱신됐어요</strong><br>부딪히는 편집이 <span id="conflict-count">1</span>건 있습니다. 바뀐 것만 모아 두었어요.</p>
+        <p class="body sm grow" style="color:var(--text-secondary)"><strong id="notice-headline"><span data-sample>3</span>개 기능의 표현이 갱신됐어요</strong><br>부딪히는 편집이 <span id="conflict-count">1</span>건 있습니다. 바뀐 것만 모아 두었어요.</p>
       </div>
 
       <div class="field" style="margin-top:16px">
         <label for="in-run">재분석</label>
         <select id="in-run">
-          <option value="r2">오늘 09:12 · main 3 commits</option>
-          <option value="r1">어제 18:40 · main 1 commit</option>
+          <option value="r2" data-sample>오늘 09:12 · main 3 commits</option>
+          <option value="r1" data-sample>어제 18:40 · main 1 commit</option>
         </select>
       </div>
 
@@ -1031,23 +1031,23 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
         <span class="caps">Re-analysis</span>
         <div class="step done" id="stage-1">
           <span class="ic">✓</span>
-          <span class="body-col"><span class="label">바뀐 코드 모으기</span><span class="sub">3 commits · 18 files</span></span>
-          <span class="time">0m 21s</span>
+          <span class="body-col"><span class="label">바뀐 코드 모으기</span><span class="sub" data-sample>3 commits · 18 files</span></span>
+          <span class="time" data-sample>0m 21s</span>
         </div>
         <div class="step done" id="stage-2">
           <span class="ic">✓</span>
-          <span class="body-col"><span class="label">영향받은 기능 추리기</span><span class="sub" id="stage-2-sub">3 features</span></span>
-          <span class="time">1m 12s</span>
+          <span class="body-col"><span class="label">영향받은 기능 추리기</span><span class="sub" id="stage-2-sub"><span data-sample>3 features</span></span></span>
+          <span class="time" data-sample>1m 12s</span>
         </div>
         <div class="step done" id="stage-3">
           <span class="ic">✓</span>
-          <span class="body-col"><span class="label" id="stage-3-label">시나리오 다시 쓰기</span><span class="sub" id="stage-3-sub">7 scenarios</span></span>
-          <span class="time" id="stage-3-time">2m 40s</span>
+          <span class="body-col"><span class="label" id="stage-3-label">시나리오 다시 쓰기</span><span class="sub" id="stage-3-sub"><span data-sample>7 scenarios</span></span></span>
+          <span class="time" id="stage-3-time"><span data-sample>2m 40s</span></span>
         </div>
         <div class="step done" id="stage-4">
           <span class="ic">✓</span>
-          <span class="body-col"><span class="label">내 편집과 부딪히는지 보기</span><span class="sub" id="stage-4-sub">1 conflict</span></span>
-          <span class="time">0m 09s</span>
+          <span class="body-col"><span class="label">내 편집과 부딪히는지 보기</span><span class="sub" id="stage-4-sub"><span data-sample>1 conflict</span></span></span>
+          <span class="time" data-sample>0m 09s</span>
         </div>
       </div>
 
