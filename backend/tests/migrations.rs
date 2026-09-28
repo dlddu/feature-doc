@@ -82,7 +82,7 @@ const APPLIED: [(&str, &str); 16] = [
     ("0013_feature_doc_conflicts.sql", "25e2ce3d0e95473cfaa20f4d805e8a0617b6815b1377a83912fefe350be5bde3"),
     ("0014_feature_doc_restores.sql", "2d0a65161a5370d4f9c77fe6fddb1a82f0c454a7e7e19abf44a48c4691448b20"),
     ("0015_llm_call_usage.sql", "fe83da97a819586bd1f33316e710ca6de9a680dde6b4080f4c22eeb6833bf8d3"),
-    ("0016_access_requests.sql", "16b33b54a62a7b0583e2fd1b5b4bdcd7b0d4729c1b080e4c42ab33d7a1dd6046"),
+    ("0016_access_requests.sql", "d332e2812f8550b62c58082abc6bd17544605471de365911d6043cf5f0aabedc"),
 ];
 
 fn migrations_dir() -> std::path::PathBuf {
