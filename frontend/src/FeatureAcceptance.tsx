@@ -4,7 +4,7 @@
 // the same document, and why there is no local draft to lose.
 
 import { useEffect, useState } from 'react';
-import { deleteFeature, getAcceptance, listDeletions, restoreFeature } from './api';
+import { deleteFeature, getAcceptance, listDeletions, listReviewed, restoreFeature } from './api';
 import type {
   AcceptanceContradiction,
   AcceptanceScenario,
@@ -47,6 +47,7 @@ export function FeatureAcceptance({
   const [features, setFeatures] = useState<Doc[] | null>(null);
   // 문서와 함께 읽어 두 목록이 같은 시점의 서버 상태를 그린다.
   const [archive, setArchive] = useState<FeatureDeletion[]>([]);
+  const [reviewed, setReviewed] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [notAFeature, setNotAFeature] = useState(false);
@@ -60,11 +61,12 @@ export function FeatureAcceptance({
 
   useEffect(() => {
     let active = true;
-    Promise.all([getAcceptance(id), listDeletions(id)])
-      .then(([doc, deletions]) => {
+    Promise.all([getAcceptance(id), listDeletions(id), listReviewed(id)])
+      .then(([doc, deletions, reviewedFeatures]) => {
         if (!active) return;
         setFeatures(doc === null ? [] : doc.content.features);
         setArchive(deletions.deletions);
+        setReviewed(reviewedFeatures.reviewed);
       })
       .catch((e: unknown) => active && setError(messageOf(e)));
     return () => {
@@ -135,6 +137,7 @@ export function FeatureAcceptance({
   }
 
   const current = features.find((f) => f.key === selected) ?? features[0];
+  const unreviewedCount = features.filter((f) => !reviewed.includes(f.key)).length;
   const resumed = resume === null ? undefined : features.find((f) => f.key === resume.featureKey);
 
   const leaveMidway = () => {
@@ -185,6 +188,14 @@ export function FeatureAcceptance({
           ))}
         </select>
       </div>
+
+      <p className="meta" style={{ marginTop: 8 }}>
+        <span>확정 </span>
+        <span data-testid="confirmed-count">{features.length}</span>
+        <span>개 중 </span>
+        <strong data-testid="unreviewed-count">{unreviewedCount}</strong>
+        <span>개가 아직 검수 전이에요. 한 번에 하나씩, 나가도 이어서 볼 수 있어요.</span>
+      </p>
 
       <div style={{ marginTop: 18 }}>
         <h1 className="h-display" data-testid="feature-title">

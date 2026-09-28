@@ -824,6 +824,18 @@ export async function listDeletions(id: string): Promise<FeatureDeletionList> {
   return (await res.json()) as FeatureDeletionList;
 }
 
+export type ReviewedFeatures = {
+  reviewed: string[];
+};
+
+export async function listReviewed(id: string): Promise<ReviewedFeatures> {
+  const res = await fetch(`/api/analyses/${encodeURIComponent(id)}/features/reviewed`, {
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as ReviewedFeatures;
+}
+
 export async function deleteFeature(
   id: string,
   key: string,
