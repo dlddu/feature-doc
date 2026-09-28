@@ -11,6 +11,7 @@ import type {
   FeatureAcceptance as Doc,
   FeatureDeletion,
 } from './api';
+import { clearReviewPosition, markReviewPosition, readReviewPosition } from './reviewPosition';
 import { useWideViewport } from './viewport';
 
 function messageOf(e: unknown): string {
@@ -55,6 +56,7 @@ export function FeatureAcceptance({
   const [actionError, setActionError] = useState<string | null>(null);
   const wide = useWideViewport();
   const [generation, setGeneration] = useState(0);
+  const [resume, setResume] = useState(() => readReviewPosition(id));
 
   useEffect(() => {
     let active = true;
@@ -133,10 +135,40 @@ export function FeatureAcceptance({
   }
 
   const current = features.find((f) => f.key === selected) ?? features[0];
+  const resumed = resume === null ? undefined : features.find((f) => f.key === resume.featureKey);
+
+  const leaveMidway = () => {
+    markReviewPosition(id, { featureKey: current.key, where: WHERE });
+    onBack();
+  };
+
+  const continueReview = (featureKey: string) => {
+    setSelected(featureKey);
+    clearReviewPosition(id);
+    setResume(null);
+  };
 
   return (
     <main className="screen">
-      <Appbar onLeave={onBack} />
+      <Appbar onLeave={leaveMidway} />
+
+      {resume !== null && resumed !== undefined && (
+        <div className="notice info" style={{ marginTop: 16 }} data-testid="review-resume">
+          <span>지난번에 </span>
+          <strong data-testid="review-resume-name">{resumed.name}</strong>
+          <span> 의 </span>
+          <span data-testid="review-resume-where">{resume.where}</span>
+          <span> 까지 보셨어요.</span>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => continueReview(resume.featureKey)}
+            data-testid="review-resume-continue"
+          >
+            이어서 보기
+          </button>
+        </div>
+      )}
 
       <div className="field" style={{ marginTop: 16 }}>
         <label htmlFor="in-feature">검수할 기능</label>
@@ -417,6 +449,7 @@ function Contradiction({ clash }: { clash: AcceptanceContradiction }) {
 
 const LOADING = '불러오는 중…';
 const NOT_GENERATED = '인수 시나리오 생성 단계가 아직 끝나지 않았어요.';
+const WHERE = '시나리오';
 
 /**
  * The left slot is empty on purpose — the ghost button is the spacer that keeps the

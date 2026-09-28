@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { getDependencies, requestDependencies } from './api';
 import type { Dependency, FeatureDependencies as Deps } from './api';
+import { markReviewPosition } from './reviewPosition';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -42,6 +43,10 @@ export function FeatureDependencies({ id, featureKey, onBack, onRequestEdit }: P
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>(ALL);
   const [graph, setGraph] = useState(false);
+  const leaveMidway = () => {
+    markReviewPosition(id, { featureKey, where: WHERE });
+    onBack();
+  };
   /** Bumped by the poll below; reading is the effect's only trigger. */
   const [tick, setTick] = useState(0);
 
@@ -73,7 +78,7 @@ export function FeatureDependencies({ id, featureKey, onBack, onRequestEdit }: P
   if (deps === null) {
     return (
       <main className="screen">
-        <Appbar onBack={onBack} onLeave={onBack} />
+        <Appbar onBack={onBack} onLeave={leaveMidway} />
         <p className="body sm" style={{ marginTop: 22 }} data-testid="dependencies-loading">
           {error ?? LOADING}
         </p>
@@ -86,7 +91,7 @@ export function FeatureDependencies({ id, featureKey, onBack, onRequestEdit }: P
 
   return (
     <main className="screen">
-      <Appbar onBack={onBack} onLeave={onBack} />
+      <Appbar onBack={onBack} onLeave={leaveMidway} />
 
       <div style={{ marginTop: 18 }}>
         <h1 className="h-display">이 기능이 기대고 있는 것들</h1>
@@ -250,6 +255,7 @@ function Graph({ items }: { items: Dependency[] }) {
 
 /** Copy the mockup has no counterpart for, kept here so each deviation is one place. */
 const LOADING = '불러오는 중…';
+const WHERE = '종단 의존성';
 const NOT_TRACED = '아직 이 기능의 의존성을 분석하지 않았어요.';
 const TRACE = '의존성 분석';
 const QUEUED = '분석을 요청했어요. 끝나면 이 화면에 그려집니다.';

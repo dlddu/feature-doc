@@ -6,6 +6,9 @@
 import { useEffect, useState } from 'react';
 import { getEditContext, proposeEdit } from './api';
 import type { EditContext } from './api';
+import { markReviewPosition } from './reviewPosition';
+
+const WHERE = '편집 요청';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -32,6 +35,10 @@ export function RequestEdit({
   const [request, setRequest] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const leaveMidway = () => {
+    markReviewPosition(id, { featureKey, where: WHERE });
+    onLeave();
+  };
 
   useEffect(() => {
     let active = true;
@@ -66,7 +73,7 @@ export function RequestEdit({
           ‹
         </button>
         <span className="appbar-title">편집 요청</span>
-        <button className="icon-btn" type="button" onClick={onLeave} aria-label="나가기">
+        <button className="icon-btn" type="button" onClick={leaveMidway} aria-label="나가기">
           ✕
         </button>
       </header>
