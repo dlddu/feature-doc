@@ -59,6 +59,7 @@ pub fn routes() -> Router<AppState> {
             "/api/analyses/{id}/features/edit-proposals/{proposal}/decision",
             post(decide),
         )
+        .route("/api/analyses/{id}/features/reviewed", get(reviewed))
 }
 
 /// 한 시나리오의 세 문장. 저장·전송·프롬프트가 모두 이 모양을 쓴다.
@@ -247,6 +248,33 @@ async fn propose(
         before,
         after,
     )))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReviewedView {
+    reviewed: Vec<String>,
+}
+
+async fn reviewed(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<ReviewedView>, AppError> {
+    crate::analysis::owned_analysis(&state, &user.id, &id).await?;
+
+    let rows: Vec<(String,)> = sqlx::query_as(
+        "SELECT DISTINCT feature_key FROM feature_doc_edits \
+         WHERE analysis_id = ? AND status = ? ORDER BY feature_key",
+    )
+    .bind(&id)
+    .bind(status::APPROVED)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(ReviewedView {
+        reviewed: rows.into_iter().map(|r| r.0).collect(),
+    }))
 }
 
 async fn proposal(
