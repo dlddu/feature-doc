@@ -413,3 +413,18 @@ a live lease」는 #121 PR 본문(「분석이 `running` 이면 여전히 409」
 **기계 검산**: 이 1행을 걷으면 행 지문이 #178 head 값 **`3f1e6691…` 으로 바이트 복귀**한다(151 / `3f1e66915ec4…`) — #179 유입분만 정확히 걷었다는 뜻이고, 이 행의 다른 6파일은 무접촉이다.
 
 **④ 축 실측 0건**(squash 머지 · 제목뿐). 152 → **151 / `3f1e66915ec4…`**. 비주석·비공백 diff **0줄**(JSX 블록 주석의 2~4행은 주석 시작 패턴이 없어 필터에 남지만, 걷은 4행이 한 `{/* … */}` 블록임은 위 문면으로 확인된다). **이 행에 미판정 증분 없음** — [passes/2026-09-19-reanalysis-diff-axis.md](2026-09-19-reanalysis-diff-axis.md) 「증분 재판정 ⑦」
+
+
+### 원장 행 7 — `backend/src/diff.rs` · `backend/tests/diff.rs` · `frontend/src/AnalysisDiff.tsx` · `e2e/tests/sc02-08-reanalysis-diff.spec.ts` · `backend/src/repo_scan.rs` · `frontend/src/AnalysisProgress.tsx` · `backend/src/lib.rs` (재분석 diff 축 비경합 7파일)
+
+**증분 재판정 ②**(2026-09-28, 슬라이스 8f, `rct_20260928-0012`): 슬라이스 8f 가 `frontend/src/AnalysisProgress.tsx` 머리의 목업 매핑 주석 **1행을 수정**했다(추가·삭제 0 — 줄 수 **151 불변**, 지문만 이동).
+
+문면: `// docs/mockups/JRN-discover-features.html#STP-leave-and-return — 재분석이면 같은 화면이 docs/mockups/JRN-follow-code-change.html#STP-notice-change 다.`
+
+- **기계 판독이라 제거 대상이 아니다.** 이 행이 등재 당시 적어 둔 「**화면 머리의 목업 매핑 2건**(M1 이 읽는다) 보존」의 n 번째 적용이다. `tools/check-mockup-render.py` 의 `discover_screens()` 가 파일 머리 2000자에서 `docs/mockups/<파일>#<앵커>` 를 정규식으로 긁어 화면↔단계 짝을 세우므로, 이 줄이 곧 그 짝의 선언이다.
+- **감도 실측.** 새 앵커를 되돌리면 대조 분모가 함께 줄어든다 — `M3A 389 → 373` · `M3B 355 → 348` · 활성 단계 `18 → 17`. 즉 이 줄은 설명이 아니라 **게이트 입력**이다.
+- **①** 코드가 복원하지 못한다 — 파일명(`AnalysisProgress.tsx`)도 `STAGE_TITLES` 도 단계 앵커를 말하지 않는다.
+- **②** `docs/doc-tracker/2026-09.md` 「활성 대조 대상」 표가 같은 짝을 적지만 **정본은 주석 쪽이다** — M1 은 주석에서 화면 집합을 만든 뒤 그 표와 대조해 누락·유령을 잡으므로, 표만 고치면 유령 행으로 실패한다.
+- **③** PR 본문 · **④** 커밋 제목 — 둘 다 이 짝을 적지만 기계가 읽지 않는다.
+
+순 제거 0 · **유지 1(수정)**. 151 불변 / `3f1e66915ec4…` → **`0ed8c7ed408c…`**. 이 행의 다른 6파일은 무접촉이다(이 PR 의 비주석 접촉은 `AnalysisProgress.tsx` 한 파일이고, 나머지 변경은 `docs/` 아래다). **이 행에 미판정 증분 없음** — 판정 축 `①②③④` 유지.
