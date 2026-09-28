@@ -101,6 +101,7 @@ INDEX_CSS = ROOT / "frontend" / "src" / "index.css"
 SRC_DIR = ROOT / "frontend" / "src"
 MOCKUP_DIR = ROOT / "docs" / "mockups"
 
+H_SCOPE = "## 목업↔구현 대조 범위"
 H_ACTIVE = "### 활성 대조 대상"
 H_PENDING = "### 대조 보류"
 H_LEDGER = "## 알려진 목업↔구현 편차"
@@ -975,6 +976,44 @@ def main() -> int:
         fail("M12", f"짝 안의 목업 카피가 구현에 없고 원장에도 없다 — {item}")
     print(f"M12 짝 안의 카피 차집합 — 대조 {len(placed)}쌍 / 카피 {paired_copy}건, "
           f"미등재 {len(paired_missing)}건")
+
+    scope_start = doc.find(H_SCOPE)
+    scope_end = doc.find("\n## ", scope_start + 1) if scope_start >= 0 else -1
+    scope = doc[scope_start:scope_end] if scope_start >= 0 and scope_end > scope_start else ""
+    population, outside = [], []
+    for path in sorted(SRC_DIR.glob("*.tsx")):
+        if not any(HANGUL.search(chunk) for chunk in impl_copy(path)):
+            continue
+        population.append(path.name)
+        if f"frontend/src/{path.name}" in screens:
+            continue
+        if any(impl_keyed[key][0] == path.name for key in shared):
+            continue
+        if any(item[1] == path.name for item in blind):
+            continue
+        outside.append(path.name)
+    if not population:
+        fail("M13", "한글 카피를 가진 화면 컴포넌트가 하나도 없다 — 규칙이 공전한다")
+    if not scope:
+        fail("M13", f"「{H_SCOPE}」 절을 찾지 못했다 — 사각 화면의 등재처가 사라졌다")
+    listed = [n for n in outside if f"frontend/src/{n}" in scope]
+    for name in outside:
+        if f"frontend/src/{name}" not in scope:
+            fail("M13", f"`frontend/src/{name}` 는 매핑도(M1) 공유 키도(M9·M10·M12) M11 사각도 "
+                        f"아니라 어느 기계 대조에도 들어오지 않는다 — 「{H_SCOPE}」 절이 이 경로를 "
+                        f"이름으로 들고 있어야 한다")
+    found = re.search(r"기계 대조 밖 화면:\s*\*\*(\d+)건\*\*", scope)
+    if not found:
+        fail("M13", "「기계 대조 밖 화면: **N건**」 캡션을 찾지 못했다")
+    else:
+        cap = int(found.group(1))
+        if len(outside) > cap:
+            fail("M13", f"기계 대조 밖 화면 {len(outside)}건 > 캡션 {cap} — 늘릴 수 없다")
+        elif len(outside) < cap:
+            fail("M13", f"기계 대조 밖 화면이 {len(outside)}건으로 줄었다 — 캡션을 "
+                        f"{len(outside)}로 낮출 것(래칫)")
+    print(f"M13 기계 대조 밖 화면 — 모집단 {len(population)}개 · 사각 {len(outside)}건 · "
+          f"절 등재 {len(listed)}건")
 
     report()
     return 1 if failures else 0
