@@ -1413,14 +1413,14 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
 <section id="END-cost-abandoned" class="stp">
   <div class="frame">
     <div class="screen">
-      <div class="card end-card" style="margin-top:170px">
+      <div class="card end-card" id="cost-abandoned" style="margin-top:170px">
         <div class="em">◼</div>
         <h1 class="h-display" style="margin-top:14px">여기서 멈췄어요</h1>
         <p class="h-display-sub" style="margin-top:8px">더 이상 비용이 발생하지 않습니다. 지금까지의 결정은 저장돼 있어서, 원할 때 이어서 진행할 수 있어요.</p>
-        <span class="badge warn" style="margin-top:16px"><span class="dot"></span>중단 · 누적 <span id="end-cost">$0.78</span></span>
+        <span class="badge warn" id="stopped-cost" style="margin-top:16px"><span class="dot"></span>중단 · 누적 <span id="end-cost">$0.78</span></span>
       </div>
       <div class="stack" style="margin-top:26px">
-        <button class="btn btn-secondary block" data-goto="STP-sift-candidates">결정 화면으로 돌아가기</button>
+        <button class="btn btn-secondary block" id="back-to-decisions" data-goto="STP-sift-candidates">결정 화면으로 돌아가기</button>
       </div>
     </div>
   </div>
