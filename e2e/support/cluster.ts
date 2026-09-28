@@ -144,9 +144,7 @@ async function waitForApi(): Promise<void> {
  * returns only once `BASE_URL` is served by a pod that carries the new value.
  *
  * Deployment-wide state with the same lease rule as `setWorkerEnv`: set it inside
- * the spec's own block, clear it in `finally`. Used by sc04-02 to take repository
- * access away the way a user does on GitHub (`FEATUREDOC_STUB_REPO_ACCESS`,
- * `backend/src/github_app.rs`).
+ * the spec's own block, clear it in `finally`.
  *
  * Unlike the worker, the API cannot be restarted quietly: it is `strategy: Recreate`
  * (SQLite on a ReadWriteOnce volume), so the old pod is gone *before* the new one
