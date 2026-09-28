@@ -137,8 +137,9 @@ struct ClaimView {
     /// of the queue rather than a rule the worker remembers.
     dependency_requests: Vec<CandidateRef>,
     lease_expires_at: i64,
-    /// Short-lived GitHub installation token for this job's repository. `None` in
-    /// stub mode (nothing to call). Never persisted, never logged.
+    /// The GitHub token the worker reads this job's repository with: the installation's
+    /// short-lived token, or — for a public repository outside the installation — the
+    /// owner's login authorization. Never persisted, never logged.
     installation_token: Option<String>,
     llm_provider: Option<String>,
     /// The owner's active LLM key, unsealed for this job only (AC1.2~AC1.4 stages).
@@ -276,8 +277,8 @@ async fn claim(
         };
 
     // Mint the job-scoped installation token here rather than storing one anywhere
-    // (AC4.1/AC4.3). A job whose installation has since been removed simply gets
-    // no token and its fetch stage fails with a clear reason.
+    // (AC4.1/AC4.3). A job queued under an installation that has since been replaced
+    // gets no token and its fetch stage fails with a clear reason.
     let installation_token = match grant {
         analysis::Grant::Installation(installation_id)
             if installation_id == job.installation_id =>
