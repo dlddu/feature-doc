@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getAcceptance, getEvidence } from './api';
 import type { EvidenceExcerpt, FeatureAcceptance as Doc } from './api';
+import { markReviewPosition } from './reviewPosition';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -19,6 +20,10 @@ type Props = {
 };
 
 export function FeatureEvidence({ id, featureKey, onBack, onLeave, onOpenDependencies }: Props) {
+  const leaveMidway = () => {
+    markReviewPosition(id, { featureKey, where: WHERE });
+    onLeave();
+  };
   const [feature, setFeature] = useState<Doc | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState(NONE);
@@ -45,7 +50,7 @@ export function FeatureEvidence({ id, featureKey, onBack, onLeave, onOpenDepende
   if (feature === null) {
     return (
       <main className="screen">
-        <Appbar onBack={onBack} onLeave={onLeave} />
+        <Appbar onBack={onBack} onLeave={leaveMidway} />
         <p className="body sm" style={{ marginTop: 22 }} data-testid="evidence-error">
           {error ?? LOADING}
         </p>
@@ -75,7 +80,7 @@ export function FeatureEvidence({ id, featureKey, onBack, onLeave, onOpenDepende
 
   return (
     <main className="screen">
-      <Appbar onBack={onBack} onLeave={onLeave} />
+      <Appbar onBack={onBack} onLeave={leaveMidway} />
 
       <div style={{ marginTop: 18 }}>
         <h1 className="h-display" data-testid="evidence-title">
@@ -196,6 +201,7 @@ function rangeOf(excerpt: EvidenceExcerpt): string {
 }
 
 const LOADING = '불러오는 중…';
+const WHERE = '근거 확인';
 const NOT_GENERATED = '인수 시나리오 생성 단계가 아직 끝나지 않았어요.';
 
 function Appbar({ onBack, onLeave }: { onBack: () => void; onLeave: () => void }) {

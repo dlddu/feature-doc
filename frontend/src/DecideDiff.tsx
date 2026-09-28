@@ -6,6 +6,9 @@
 import { useEffect, useState } from 'react';
 import { decideEdit, getEditProposal } from './api';
 import type { EditProposal } from './api';
+import { markReviewPosition } from './reviewPosition';
+
+const WHERE = '제안 확인';
 
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -33,6 +36,10 @@ export function DecideDiff({
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const [deciding, setDeciding] = useState(false);
+  const leaveMidway = () => {
+    if (proposal !== null) markReviewPosition(id, { featureKey: proposal.featureKey, where: WHERE });
+    onLeave();
+  };
 
   useEffect(() => {
     let active = true;
@@ -79,7 +86,7 @@ export function DecideDiff({
           ‹
         </button>
         <span className="appbar-title">제안 확인</span>
-        <button className="icon-btn" type="button" onClick={onLeave} aria-label="나가기">
+        <button className="icon-btn" type="button" onClick={leaveMidway} aria-label="나가기">
           ✕
         </button>
       </header>
