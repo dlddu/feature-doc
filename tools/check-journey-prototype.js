@@ -483,6 +483,24 @@ const PRODUCT_PATHS = {
         click(win, doc.getElementById('btn-add-scope'));
         return { landed: active(doc), evidence: shown && blocked };
       } },
+    { name: 'App 범위 밖 공개 저장소', run: (win, doc) => {
+        click(win, doc.getElementById('btn-returning'));
+        type(win, doc.getElementById('in-repo'), 'github.com/rust-lang/cargo');
+        const shown = visible(doc.getElementById('repo-public')) &&
+                      !visible(doc.getElementById('repo-outside'));
+        const open = doc.getElementById('btn-pick').disabled === false;
+        click(win, doc.getElementById('btn-pick'));
+        return { landed: active(doc), evidence: shown && open };
+      } },
+    { name: '로그인 인가 만료', run: (win, doc) => {
+        click(win, doc.querySelector('[data-scenario="authexpired"]'));
+        click(win, doc.getElementById('btn-returning'));
+        type(win, doc.getElementById('in-repo'), 'github.com/rust-lang/cargo');
+        const shown = visible(doc.getElementById('repo-authexpired'));
+        const blocked = doc.getElementById('btn-pick').disabled === true;
+        click(win, doc.getElementById('btn-relogin'));
+        return { landed: active(doc), evidence: shown && blocked };
+      } },
     { name: 'URL 오타', run: (win, doc) => {
         click(win, doc.getElementById('btn-returning'));
         type(win, doc.getElementById('in-repo'), 'github.com/oops');
