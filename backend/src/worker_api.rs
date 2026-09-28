@@ -33,7 +33,7 @@ use crate::error::AppError;
 use crate::pipeline::{self, stage_status, status};
 use crate::state::AppState;
 use crate::util::now_unix;
-use crate::{analysis, github_app, installations};
+use crate::{analysis, github_app};
 
 /// How long a claim is held before another worker may reclaim the job. Long enough
 /// to cover a stage plus the worker's HTTP timeouts; short enough that a killed
@@ -262,16 +262,20 @@ async fn claim(
         "analysis claimed"
     );
 
-    if !analysis::still_granted(&state, &job.user_id, &job.repo_owner, &job.repo_name).await? {
+    let Some(grant) =
+        analysis::read_grant(&state, &job.user_id, &job.repo_owner, &job.repo_name).await?
+    else {
         stop_for_revoked_access(&state, &job.id).await?;
         return Ok(StatusCode::NO_CONTENT.into_response());
-    }
+    };
 
     // Mint the job-scoped installation token here rather than storing one anywhere
     // (AC4.1/AC4.3). A job whose installation has since been removed simply gets
     // no token and its fetch stage fails with a clear reason.
-    let installation_token = match installations::get_for_user(&state.db, &job.user_id).await? {
-        Some(inst) if inst.installation_id == job.installation_id => {
+    let installation_token = match grant {
+        analysis::Grant::Installation(installation_id)
+            if installation_id == job.installation_id =>
+        {
             match github_app::mint_installation_token(&state, job.installation_id).await {
                 Ok(t) => Some(t.token),
                 Err(e) => {
@@ -280,7 +284,10 @@ async fn claim(
                 }
             }
         }
-        _ => None,
+        analysis::Grant::PublicRepo => {
+            crate::github_tokens::load(&state.db, &state.config.kek, &job.user_id).await?
+        }
+        analysis::Grant::Installation(_) => None,
     };
 
     // Unsealed here for the same reason as the installation token: the worker owns
