@@ -246,6 +246,116 @@ fn stub_repositories() -> Vec<RepoRef> {
     .collect()
 }
 
+pub enum PublicRepo {
+    Found(RepoRef),
+    NotPublic,
+    AuthExpired,
+}
+
+const STUB_AUTH_REVOKED: &str = "FEATUREDOC_STUB_USER_AUTH_REVOKED";
+
+const STUB_PUBLIC_OWNER: &str = "stub-public";
+
+fn stub_public_repositories() -> Vec<RepoRef> {
+    [("oss-lib", "main", 1024)]
+        .into_iter()
+        .map(|(name, branch, size_kb)| RepoRef {
+            owner: STUB_PUBLIC_OWNER.to_string(),
+            name: name.to_string(),
+            full_name: format!("{STUB_PUBLIC_OWNER}/{name}"),
+            default_branch: branch.to_string(),
+            size_kb,
+        })
+        .collect()
+}
+
+async fn stub_auth_revoked(state: &AppState, user_id: &str) -> Result<bool, AppError> {
+    let Ok(raw) = std::env::var(STUB_AUTH_REVOKED) else {
+        return Ok(false);
+    };
+    let login: Option<(String,)> = sqlx::query_as("SELECT login FROM users WHERE id = ?")
+        .bind(user_id)
+        .fetch_optional(&state.db)
+        .await?;
+    Ok(login.is_some_and(|(login,)| raw.split(',').any(|l| l.trim() == login)))
+}
+
+pub async fn lookup_public_repository(
+    state: &AppState,
+    user_id: &str,
+    owner: &str,
+    name: &str,
+) -> Result<PublicRepo, AppError> {
+    // mock-exception: EXT-02 — 공개 저장소 메타데이터는 실제 사용자 인가로 실 GitHub 에 물어야 한다
+    if state.config.doubles.github_app == Mode::Stub {
+        if stub_auth_revoked(state, user_id).await? {
+            return Ok(PublicRepo::AuthExpired);
+        }
+        return Ok(stub_public_repositories()
+            .into_iter()
+            .find(|r| r.owner.eq_ignore_ascii_case(owner) && r.name.eq_ignore_ascii_case(name))
+            .map_or(PublicRepo::NotPublic, PublicRepo::Found));
+    }
+
+    let Some(token) = crate::github_tokens::load(&state.db, &state.config.kek, user_id).await?
+    else {
+        return Ok(PublicRepo::AuthExpired);
+    };
+    let mut url = url::Url::parse(&state.config.github.api_base)
+        .map_err(|_| AppError::internal("github api base is not a URL"))?;
+    url.path_segments_mut()
+        .map_err(|_| AppError::internal("github api base cannot take a path"))?
+        .pop_if_empty()
+        .extend(["repos", owner, name]);
+    let resp = state
+        .http
+        .get(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "featuredoc/0.1")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await
+        .map_err(|_| AppError::internal("github repository lookup failed"))?;
+    match resp.status().as_u16() {
+        401 => return Ok(PublicRepo::AuthExpired),
+        404 => return Ok(PublicRepo::NotPublic),
+        s if !(200..300).contains(&s) => {
+            return Err(AppError::internal("github repository lookup rejected"))
+        }
+        _ => {}
+    }
+    #[derive(Deserialize)]
+    struct Owner {
+        login: String,
+    }
+    #[derive(Deserialize)]
+    struct Repo {
+        name: String,
+        owner: Owner,
+        default_branch: Option<String>,
+        #[serde(default)]
+        size: i64,
+        #[serde(default)]
+        private: bool,
+    }
+    let repo: Repo = resp
+        .json()
+        .await
+        .map_err(|_| AppError::internal("github repository lookup: malformed response"))?;
+    if repo.private {
+        return Ok(PublicRepo::NotPublic);
+    }
+    let owner = repo.owner.login;
+    Ok(PublicRepo::Found(RepoRef {
+        full_name: format!("{owner}/{}", repo.name),
+        default_branch: repo.default_branch.unwrap_or_else(|| "main".into()),
+        size_kb: repo.size,
+        owner,
+        name: repo.name,
+    }))
+}
+
 pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<i64> {
     match state.config.doubles.github_app {
         // mock-exception: EXT-02 — 저장소 개수 조회는 실제 설치 토큰이 필요

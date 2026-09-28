@@ -146,6 +146,7 @@ export type Analysis = {
   /** Denormalized onto the list row so a card can show progress without a second fetch. */
   stagesDone: number;
   stagesTotal: number;
+  publicRepo?: boolean;
 };
 
 export type Stage = {
@@ -214,6 +215,8 @@ export type Preflight = {
   estLlmCalls: number;
   estCostCents: number;
   estDurationMin: number;
+  publicRepo: boolean;
+  authExpired: boolean;
 };
 
 /** Empty — not an error — when the App is not installed yet. */
