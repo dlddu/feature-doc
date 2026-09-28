@@ -13,6 +13,8 @@ use featuredoc::{build_router, github_tokens, installations, session, users};
 
 const PUBLIC: &str = "github.com/stub-public/oss-lib";
 
+static STUB_AUTH_ENV: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 async fn login(state: &AppState, id: i64, login: &str, installed: bool) -> (String, String) {
     let gh = GithubUser {
         id,
@@ -160,6 +162,7 @@ async fn a_revoked_authorization_is_not_queued_and_asks_for_sign_in_again() {
     github_tokens::store(&state.db, &state.config.kek, &user_id, "gho_stale_secret")
         .await
         .unwrap();
+    let _env = STUB_AUTH_ENV.lock().await;
     std::env::set_var("FEATUREDOC_STUB_USER_AUTH_REVOKED", "pub-revoked");
 
     let est = preflight(&state, &s, PUBLIC).await;
@@ -231,6 +234,118 @@ async fn the_worker_reads_a_public_repository_with_the_user_authorization() {
             .await
             .unwrap();
     assert_eq!(row, ("running".to_string(), None));
+    let _ = std::fs::remove_file(&path);
+}
+
+fn worker_post(uri: &str) -> Request<Body> {
+    Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header(header::AUTHORIZATION, format!("Bearer {WORKER_TOKEN}"))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(r#"{"workerId":"w1"}"#))
+        .unwrap()
+}
+
+async fn detail(state: &AppState, session: &str, id: &str) -> serde_json::Value {
+    let resp = build_router(state.clone())
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/analyses/{id}"))
+                .header(header::COOKIE, format!("fd_session={session}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    json_body(resp).await
+}
+
+#[tokio::test]
+async fn an_authorization_expiring_mid_run_stops_the_analysis_and_asks_for_sign_in_again() {
+    let (state, path) = stub_state().await;
+    let (user_id, s) = login(&state, 7, "pub-midrun", true).await;
+    github_tokens::store(&state.db, &state.config.kek, &user_id, "gho_midrun_secret")
+        .await
+        .unwrap();
+    let (status, body) = create(&state, &s, PUBLIC).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let id = body["id"].as_str().unwrap().to_string();
+    let claimed = build_router(state.clone())
+        .oneshot(worker_post("/internal/analyses/claim"))
+        .await
+        .unwrap();
+    assert_eq!(claimed.status(), StatusCode::OK);
+    sqlx::query(
+        "UPDATE analysis_stages SET status = 'running' WHERE analysis_id = ? AND key = 'fetch'",
+    )
+    .bind(&id)
+    .execute(&state.db)
+    .await
+    .unwrap();
+
+    let _env = STUB_AUTH_ENV.lock().await;
+    std::env::set_var("FEATUREDOC_STUB_USER_AUTH_REVOKED", "pub-midrun");
+    let beat = build_router(state.clone())
+        .oneshot(worker_post(&format!("/internal/analyses/{id}/heartbeat")))
+        .await
+        .unwrap();
+    std::env::remove_var("FEATUREDOC_STUB_USER_AUTH_REVOKED");
+    drop(_env);
+
+    assert_eq!(beat.status(), StatusCode::CONFLICT);
+    let (run_status, error): (String, Option<String>) =
+        sqlx::query_as("SELECT status, error FROM analyses WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap();
+    assert_eq!(run_status, "failed");
+    assert_eq!(error.as_deref(), Some(featuredoc::analysis::ACCESS_AUTH_EXPIRED));
+    let stage_error: Option<String> = sqlx::query_scalar(
+        "SELECT error FROM analysis_stages WHERE analysis_id = ? AND key = 'fetch'",
+    )
+    .bind(&id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap();
+    assert_eq!(stage_error.as_deref(), Some(featuredoc::analysis::ACCESS_AUTH_EXPIRED));
+
+    let body = detail(&state, &s, &id).await;
+    assert_eq!(body["accessRevoked"], true);
+    assert_eq!(body["reauthRequired"], true);
+    let message = body["error"].as_str().unwrap();
+    assert!(message.contains("다시 로그인한 뒤"));
+    assert!(!message.contains("gho_midrun_secret"));
+    let _ = std::fs::remove_file(&path);
+}
+
+#[tokio::test]
+async fn a_queued_public_analysis_whose_authorization_expired_is_not_handed_to_a_worker() {
+    let (state, path) = stub_state().await;
+    let (user_id, s) = login(&state, 8, "pub-queued", true).await;
+    github_tokens::store(&state.db, &state.config.kek, &user_id, "gho_queued_secret")
+        .await
+        .unwrap();
+    let (status, body) = create(&state, &s, PUBLIC).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let id = body["id"].as_str().unwrap().to_string();
+
+    let _env = STUB_AUTH_ENV.lock().await;
+    std::env::set_var("FEATUREDOC_STUB_USER_AUTH_REVOKED", "pub-queued");
+    let claimed = build_router(state.clone())
+        .oneshot(worker_post("/internal/analyses/claim"))
+        .await
+        .unwrap();
+    std::env::remove_var("FEATUREDOC_STUB_USER_AUTH_REVOKED");
+    drop(_env);
+
+    assert_eq!(claimed.status(), StatusCode::NO_CONTENT);
+    let body = detail(&state, &s, &id).await;
+    assert_eq!(body["status"], "failed");
+    assert_eq!(body["error"], featuredoc::analysis::ACCESS_AUTH_EXPIRED);
+    assert_eq!(body["reauthRequired"], true);
     let _ = std::fs::remove_file(&path);
 }
 

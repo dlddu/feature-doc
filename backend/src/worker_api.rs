@@ -186,7 +186,11 @@ struct ClaimRow {
 /// filter breaks `concurrent_workers_take_disjoint_jobs`).
 /// The policy is honoured by *where this is called from*, not by anything here:
 /// both call sites sit on a lease boundary, between the worker's calls.
-async fn stop_for_revoked_access(state: &AppState, id: &str) -> Result<(), AppError> {
+async fn stop_for_revoked_access(
+    state: &AppState,
+    id: &str,
+    reason: &'static str,
+) -> Result<(), AppError> {
     let now = now_unix();
     sqlx::query(
         "UPDATE analyses \
@@ -194,7 +198,7 @@ async fn stop_for_revoked_access(state: &AppState, id: &str) -> Result<(), AppEr
           WHERE id = ?",
     )
     .bind(status::FAILED)
-    .bind(analysis::ACCESS_REVOKED)
+    .bind(reason)
     .bind(now)
     .bind(id)
     .execute(&state.db)
@@ -205,7 +209,7 @@ async fn stop_for_revoked_access(state: &AppState, id: &str) -> Result<(), AppEr
           WHERE analysis_id = ? AND status = ?",
     )
     .bind(stage_status::FAILED)
-    .bind(analysis::ACCESS_REVOKED)
+    .bind(reason)
     .bind(now)
     .bind(id)
     .bind(stage_status::RUNNING)
@@ -262,12 +266,14 @@ async fn claim(
         "analysis claimed"
     );
 
-    let Some(grant) =
-        analysis::read_grant(&state, &job.user_id, &job.repo_owner, &job.repo_name).await?
-    else {
-        stop_for_revoked_access(&state, &job.id).await?;
-        return Ok(StatusCode::NO_CONTENT.into_response());
-    };
+    let grant =
+        match analysis::read_grant(&state, &job.user_id, &job.repo_owner, &job.repo_name).await? {
+            Ok(grant) => grant,
+            Err(denied) => {
+                stop_for_revoked_access(&state, &job.id, denied.reason()).await?;
+                return Ok(StatusCode::NO_CONTENT.into_response());
+            }
+        };
 
     // Mint the job-scoped installation token here rather than storing one anywhere
     // (AC4.1/AC4.3). A job whose installation has since been removed simply gets
@@ -600,8 +606,8 @@ async fn heartbeat(
     .fetch_optional(&state.db)
     .await?;
     if let Some((user_id, owner, name)) = target {
-        if !analysis::still_granted(&state, &user_id, &owner, &name).await? {
-            stop_for_revoked_access(&state, &id).await?;
+        if let Err(denied) = analysis::still_granted(&state, &user_id, &owner, &name).await? {
+            stop_for_revoked_access(&state, &id, denied.reason()).await?;
             return Err(AppError::Conflict("lease no longer held".into()));
         }
     }

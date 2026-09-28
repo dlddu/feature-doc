@@ -176,6 +176,7 @@ export type AnalysisDetail = Analysis & {
    * the reason it stored, so the screen never matches on the sentence itself.
    */
   accessRevoked: boolean;
+  reauthRequired: boolean;
   startedAt: number | null;
   finishedAt: number | null;
   stages: Stage[];

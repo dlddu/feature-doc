@@ -158,6 +158,7 @@ struct AnalysisDetailView {
     /// Derived from the stored reason rather than a second column, so the two can
     /// never disagree.
     access_revoked: bool,
+    reauth_required: bool,
     started_at: Option<i64>,
     finished_at: Option<i64>,
     stages: Vec<StageView>,
@@ -751,7 +752,8 @@ async fn load_detail(
 
     Ok(AnalysisDetailView {
         analysis,
-        access_revoked: run.error.as_deref() == Some(ACCESS_REVOKED),
+        access_revoked: matches!(run.error.as_deref(), Some(ACCESS_REVOKED | ACCESS_AUTH_EXPIRED)),
+        reauth_required: run.error.as_deref() == Some(ACCESS_AUTH_EXPIRED),
         error: run.error,
         started_at: run.started_at,
         finished_at: run.finished_at,
@@ -776,6 +778,8 @@ pub(crate) async fn accessible_repos(
 /// what to do next (AC4.3).
 pub const ACCESS_REVOKED: &str = "저장소 접근이 해제되어 진행 중이던 분석을 현재 호출까지만 마무리하고 중단했습니다. App 설치나 저장소 접근 범위를 되돌린 뒤 다시 시작해 주세요.";
 
+pub const ACCESS_AUTH_EXPIRED: &str = "GitHub 로그인 인가가 만료되어 진행 중이던 분석을 현재 호출까지만 마무리하고 중단했습니다. 다시 로그인한 뒤 분석을 다시 시작해 주세요.";
+
 /// An upstream failure is *not* revocation: it propagates, so a GitHub outage can
 /// never be mistaken for the user having taken access away.
 pub(crate) async fn still_granted(
@@ -783,8 +787,8 @@ pub(crate) async fn still_granted(
     user_id: &str,
     owner: &str,
     name: &str,
-) -> Result<bool, AppError> {
-    Ok(read_grant(state, user_id, owner, name).await?.is_some())
+) -> Result<Result<(), Denied>, AppError> {
+    Ok(read_grant(state, user_id, owner, name).await?.map(|_| ()))
 }
 
 pub(crate) enum Grant {
@@ -792,20 +796,35 @@ pub(crate) enum Grant {
     PublicRepo,
 }
 
+pub(crate) enum Denied {
+    Revoked,
+    AuthExpired,
+}
+
+impl Denied {
+    pub(crate) fn reason(&self) -> &'static str {
+        match self {
+            Denied::Revoked => ACCESS_REVOKED,
+            Denied::AuthExpired => ACCESS_AUTH_EXPIRED,
+        }
+    }
+}
+
 pub(crate) async fn read_grant(
     state: &AppState,
     user_id: &str,
     owner: &str,
     name: &str,
-) -> Result<Option<Grant>, AppError> {
+) -> Result<Result<Grant, Denied>, AppError> {
     let Some(inst) = installations::get_for_user(&state.db, user_id).await? else {
-        return Ok(None);
+        return Ok(Err(Denied::Revoked));
     };
     Ok(
         match resolve_target(state, user_id, inst.installation_id, owner, name).await? {
-            Target::Installed(_) => Some(Grant::Installation(inst.installation_id)),
-            Target::Public(_) => Some(Grant::PublicRepo),
-            Target::AuthExpired | Target::Outside => None,
+            Target::Installed(_) => Ok(Grant::Installation(inst.installation_id)),
+            Target::Public(_) => Ok(Grant::PublicRepo),
+            Target::AuthExpired => Err(Denied::AuthExpired),
+            Target::Outside => Err(Denied::Revoked),
         },
     )
 }
