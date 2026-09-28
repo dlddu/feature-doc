@@ -85,6 +85,18 @@ def table_rows(block):
     return rows[1:] if rows else []
 
 
+def table_header(block):
+    for line in block.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if all(set(c) <= set("-: ") for c in cells):
+            continue
+        return cells
+    return []
+
+
 def parse_journeys():
     out = {}
     for p in sorted(UJ.glob("JRN-*.md")):
@@ -167,12 +179,37 @@ TRACKER = read(sorted((DOCS / "doc-tracker").glob("[0-9][0-9][0-9][0-9]-[0-9][0-
 jmap_block = marked(README, "jmap")
 
 accepted = TRACKER[TRACKER.index("## 수용된 위험"):TRACKER.index("\n## ", TRACKER.index("## 수용된 위험") + 1)] if "## 수용된 위험" in TRACKER else ""
+if not accepted.strip():
+    fail("R1", "doc-tracker 에 「## 수용된 위험」 절이 없다 — 예외 등재의 SSOT 가 사라졌다")
+
+accepted_header = table_header(accepted)
+review_col = next((i for i, c in enumerate(accepted_header) if "재검토 시점" in c), None)
+accepted_col = next((i for i, c in enumerate(accepted_header) if "수용 시점" in c), None)
+
 exempt_journeys = set()
+exempt_review = {}
+exempt_accepted = {}
 for cells in table_rows(accepted):
     if len(cells) >= 4:
         g = re.match(r"`(JRN-[a-z0-9-]+)` 전체", cells[1])
         if g:
             exempt_journeys.add(g.group(1))
+            exempt_review[g.group(1)] = cells[review_col] if review_col is not None and review_col < len(cells) else ""
+            exempt_accepted[g.group(1)] = cells[accepted_col] if accepted_col is not None and accepted_col < len(cells) else ""
+
+if exempt_journeys and review_col is None:
+    fail("R1", "doc-tracker 「수용된 위험」 표에 `재검토 시점` 열이 없다 — 여정 단위 예외 등재는 여정별 사유와 재검토 시점을 함께 적는다 (규칙 8)")
+elif review_col is not None:
+    for _jid in sorted(exempt_journeys):
+        _m = re.search(r"늦어도 \*\*(\d{4}-\d{2}-\d{2})\*\*", exempt_review[_jid])
+        if not _m:
+            fail("R1", "`%s` 예외 등재의 `재검토 시점` 칸에 `늦어도 **YYYY-MM-DD**` 형태의 날짜가 없다: %r — 규칙 8 은 여정별 사유와 재검토 시점을 함께 요구한다"
+                 % (_jid, exempt_review[_jid]))
+            continue
+        _acc = re.search(r"(\d{4}-\d{2}-\d{2})", exempt_accepted[_jid])
+        if _acc and _m.group(1) <= _acc.group(1):
+            fail("R1", "`%s` 예외 등재의 재검토 시점 %s 이 수용 시점 %s 보다 뒤가 아니다 — 재검토 시점은 앞으로 다시 볼 날짜다 (규칙 8)"
+                 % (_jid, _m.group(1), _acc.group(1)))
 
 declared = {}
 declared_page = {}
