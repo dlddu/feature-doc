@@ -56,11 +56,19 @@ export function FeatureCandidates({ id, onBack, onFinish }: Props) {
   // 목록과 따로 읽는다 — 결정마다 다시 읽을 이유가 없고, 못 읽어도 결정을 막지 않는다.
   const [spentCents, setSpentCents] = useState<number | null>(null);
   const [stopped, setStopped] = useState(false);
+  const [resume, setResume] = useState(false);
 
   useEffect(() => {
     let active = true;
     getCandidates(id)
-      .then((l) => active && setList(l))
+      .then((l) => {
+        if (!active) return;
+        setList(l);
+        setResume(
+          l.undecided > 0 &&
+            l.candidates.some((c) => c.mergedInto === null && c.decision !== 'undecided'),
+        );
+      })
       .catch((e: unknown) => active && setError(messageOf(e)));
     getAnalysis(id)
       .then((a) => active && setSpentCents(a.spend.costCents))
@@ -269,6 +277,26 @@ export function FeatureCandidates({ id, onBack, onFinish }: Props) {
               취소
             </button>
           </div>
+        </div>
+      )}
+
+      {resume && (
+        <div className="card end-card" style={{ marginTop: 16 }} data-testid="resume-card">
+          <div className="em">◷</div>
+          <p className="h-display-sub" style={{ marginTop: 10 }}>
+            <span>여기까지 저장했어요. 남은 후보 </span>
+            <strong data-testid="remaining-count">{list.undecided}</strong>
+            <span>건은 다음에 이어서 결정하면 됩니다.</span>
+          </p>
+          <button
+            className="btn btn-secondary block"
+            type="button"
+            style={{ marginTop: 16 }}
+            onClick={() => setResume(false)}
+            data-testid="resume-sift"
+          >
+            이어서 결정하기
+          </button>
         </div>
       )}
 
