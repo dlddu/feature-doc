@@ -9,6 +9,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+pub mod push;
+
 use featuredoc::config::{Config, Doubles, GithubConfig, Mode};
 use featuredoc::db;
 use featuredoc::state::AppState;
@@ -63,6 +65,7 @@ async fn state_with(mode: Mode, api_base: &str) -> (AppState, PathBuf) {
         },
         cookie_secure: false,
         worker_token: WORKER_TOKEN.into(),
+        push: None,
     });
     (
         AppState {

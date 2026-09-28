@@ -657,6 +657,7 @@ async fn report_stage(
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
+    crate::push::stage_reported(&state, &id, &key, &req.status);
     Ok(StatusCode::NO_CONTENT)
 }
 

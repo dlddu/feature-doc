@@ -501,3 +501,68 @@ async fn another_users_analysis_is_a_404() {
 
     let _ = std::fs::remove_file(path);
 }
+
+#[tokio::test]
+async fn a_re_analysis_push_carries_the_changed_count_and_is_not_sent_without_changes() {
+    let (state, path) = stub_state().await;
+    let session = login_installed(&state, 9, "heidi").await;
+    let same = ("결제 수단 등록", vec!["요청한 대로 처리됩니다"]);
+
+    let first = enqueue(&state, &session).await;
+    run_to_documented(&state, &session, &first, &[same.clone()]).await;
+    let unchanged = enqueue(&state, &session).await;
+    run_to_documented(&state, &session, &unchanged, &[same.clone()]).await;
+    let changed = enqueue(&state, &session).await;
+    run_to_documented(
+        &state,
+        &session,
+        &changed,
+        &[(
+            "결제 수단 등록",
+            vec!["요청한 대로 처리됩니다", "만료된 카드는 저장하지 않고 알려 줍니다"],
+        )],
+    )
+    .await;
+
+    let pushing = common::push::with_push(&state);
+    let service = common::push::start_service(StatusCode::CREATED).await;
+    let subscriber = common::push::Subscriber::new(service.endpoint("heidi"));
+    let status = build_router(pushing.clone())
+        .oneshot(user_send(
+            "PUT",
+            "/api/push/subscription",
+            &session,
+            subscriber.subscription(),
+        ))
+        .await
+        .unwrap()
+        .status();
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    for (id, key) in [
+        (&unchanged, "acceptance_dependencies"),
+        (&changed, "fetch"),
+        (&changed, "feature_candidates"),
+    ] {
+        featuredoc::push::notify_stage(&pushing, id, key, "succeeded")
+            .await
+            .unwrap();
+    }
+    assert_eq!(service.count(), 0);
+
+    featuredoc::push::notify_stage(&pushing, &changed, "acceptance_dependencies", "succeeded")
+        .await
+        .unwrap();
+    let received = service.wait_for(1).await;
+    assert_eq!(received.len(), 1);
+    assert_eq!(
+        subscriber.open(&received[0].body),
+        json!({
+            "title": "stub-account/payments-api",
+            "body": "1개 기능의 표현이 갱신됐어요. 부딪히는 편집은 없어요.",
+            "tag": changed,
+        })
+    );
+
+    let _ = std::fs::remove_file(path);
+}

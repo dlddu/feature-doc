@@ -1013,3 +1013,19 @@ export async function restoreHistoryPoint(
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as FeatureHistory;
 }
+
+export async function getPushKey(): Promise<string | null> {
+  const res = await fetch('/api/push/key', { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return ((await res.json()) as { key: string | null }).key;
+}
+
+export async function savePushSubscription(subscription: PushSubscriptionJSON): Promise<void> {
+  const res = await fetch('/api/push/subscription', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: json,
+    body: JSON.stringify(subscription),
+  });
+  if (!res.ok) throw new Error(await errorMessage(res));
+}

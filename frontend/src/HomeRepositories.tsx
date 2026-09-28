@@ -14,6 +14,7 @@ import {
 } from './api';
 import type { Analysis, Preflight, Repository, Usage } from './api';
 import { formatAgo, formatCost, formatCount, formatSize } from './format';
+import { enablePush, preparePush } from './push';
 
 const STATUS_BADGE: Record<string, { tone: string; label: string }> = {
   queued: { tone: 'info', label: 'Queued' },
@@ -121,6 +122,10 @@ export function HomeRepositories({
     void getUsage().then(setUsage, () => setUsage(null));
   }, []);
 
+  useEffect(() => {
+    preparePush();
+  }, []);
+
   const rows = buildRows(repos ?? [], analyses);
 
   // A failure is shown rather than swallowed — a logout the user believes happened
@@ -163,6 +168,7 @@ export function HomeRepositories({
   }
 
   async function start() {
+    void enablePush();
     setPhase('starting');
     setError(null);
     try {

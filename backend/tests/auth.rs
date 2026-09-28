@@ -46,6 +46,7 @@ async fn stub_state_for_preview(preview_id: Option<&str>) -> (AppState, PathBuf)
         cookie_secure: false,
         // These suites never call /internal; an empty token keeps it closed.
         worker_token: String::new(),
+        push: None,
     });
     (
         AppState {

@@ -42,6 +42,7 @@ async fn migrations_create_expected_tables() {
         "feature_deletions",
         "feature_doc_conflicts",
         "feature_doc_restores",
+        "push_subscriptions",
     ] {
         assert!(
             names.contains(&expected.to_string()),
@@ -66,7 +67,7 @@ async fn migrations_create_expected_tables() {
     let _ = std::fs::remove_file(&path);
 }
 
-const APPLIED: [(&str, &str); 16] = [
+const APPLIED: [(&str, &str); 17] = [
     ("0001_init.sql", "d318541ba2d08dd74d917f424c42657d6859a7692294d7c9b478238dabe59d3b"),
     ("0002_github_tokens.sql", "a62a0ecb0a7cdd303a1e06bc2420d7ab9a853836af36db9aabc6a35caa05514b"),
     ("0003_analyses.sql", "097542fd1927f845c0a09d43a8666c5de1d92a39f09a8e1ecd278aa8da72856e"),
@@ -83,6 +84,7 @@ const APPLIED: [(&str, &str); 16] = [
     ("0014_feature_doc_restores.sql", "2d0a65161a5370d4f9c77fe6fddb1a82f0c454a7e7e19abf44a48c4691448b20"),
     ("0015_llm_call_usage.sql", "fe83da97a819586bd1f33316e710ca6de9a680dde6b4080f4c22eeb6833bf8d3"),
     ("0016_access_requests.sql", "d332e2812f8550b62c58082abc6bd17544605471de365911d6043cf5f0aabedc"),
+    ("0017_push_subscriptions.sql", "506c45ad71e2918d28a5973006e3681e1874eec2b3fa70b35ed2995cdc00e057"),
 ];
 
 fn migrations_dir() -> std::path::PathBuf {
