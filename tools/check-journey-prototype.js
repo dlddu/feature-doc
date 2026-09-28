@@ -492,12 +492,6 @@ const PRODUCT_PATHS = {
         click(win, doc.getElementById('btn-pick'));
         return { landed: active(doc), evidence: shown && open };
       } },
-    { name: 'App 없이 공개 저장소만', run: (win, doc) => {
-        click(win, doc.getElementById('btn-signin'));
-        click(win, doc.getElementById('btn-skip-install'));
-        return { landed: active(doc),
-                 evidence: doc.getElementById('home-count').textContent === '0' };
-      } },
     { name: '로그인 인가 만료', run: (win, doc) => {
         click(win, doc.querySelector('[data-scenario="authexpired"]'));
         click(win, doc.getElementById('btn-returning'));

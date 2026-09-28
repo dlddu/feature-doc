@@ -1100,7 +1100,6 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
 
       <div class="stack" style="margin-top:24px">
         <button class="btn btn-primary block" data-cta="advance" data-goto="STP-register-llm-key" id="btn-install" disabled>Install &amp; Authorize</button>
-        <button class="btn-link" style="align-self:center" data-goto="STP-register-llm-key" id="btn-skip-install">설치 없이 공개 저장소만 분석하기</button>
       </div>
 
       <p class="legend" style="margin-top:24px"><span class="mk">↳</span> <span id="grant-count">0</span> repositories selected</p>
@@ -1283,7 +1282,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
       </div>
 
       <div id="repo-public" class="notice ok" style="margin-top:12px">
-        공개 저장소예요 — App 설치 없이, 로그인할 때 맡긴 GitHub 인가로 읽기만 합니다. 비용을 확인하고 시작할 수 있습니다.
+        공개 저장소예요 — 설치 범위에 넣지 않아도, 로그인할 때 맡긴 GitHub 인가로 읽기만 합니다. 비용을 확인하고 시작할 수 있습니다.
       </div>
 
       <div id="repo-authexpired" class="notice err" style="margin-top:12px">
@@ -1503,7 +1502,6 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
       <li><span class="sit">재방문 사용자 (자격증명 이미 등록)</span><button data-goto="STP-pick-target" data-scenario="returning">STP-pick-target</button></li>
       <li><span class="sit">App 접근 범위 밖 비공개 저장소 지정</span><button data-goto="STP-grant-repo-access" data-scenario="outside">STP-grant-repo-access</button></li>
       <li><span class="sit">App 설치 범위 밖 공개 저장소 지정 (예: 오픈소스)</span><button data-goto="STP-confirm-cost" data-scenario="public">STP-confirm-cost</button></li>
-      <li><span class="sit">App을 설치하지 않고 공개 저장소만 분석하려는 첫 방문자</span><button data-goto="STP-register-llm-key" data-scenario="noinstall">STP-register-llm-key</button></li>
       <li><span class="sit">로그인 인가가 만료·회수된 상태로 공개 저장소 분석 시도</span><button data-goto="STP-sign-in" data-scenario="authexpired">STP-sign-in</button></li>
       <li><span class="sit">URL 오타·존재하지 않는 저장소</span><button data-goto="STP-pick-target" data-scenario="malformed">STP-pick-target</button></li>
       <li><span class="sit">LLM Key 미등록 상태로 저장소 추가 시도</span><button data-goto="STP-register-llm-key" data-scenario="nokey">STP-register-llm-key</button></li>
@@ -1651,13 +1649,6 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     show('STP-register-llm-key');
   });
 
-  $('btn-skip-install').addEventListener('click', function () {
-    // 분기: App을 설치하지 않고 공개 저장소만 분석하려는 첫 방문자 → STP-register-llm-key (AC1.6)
-    state.granted = [];
-    renderHome();
-    show('STP-register-llm-key');
-  });
-
   /* ── STP-register-llm-key ──────────────────────────────────────── */
   function keyValid() {
     var v = $('in-key').value.trim();
@@ -1726,8 +1717,8 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     if (!raw) status = 'empty';
     else if (!m) status = 'bad';
     else if (state.granted.indexOf(m[1] + '/' + m[2]) === -1) {
-      // 분기: 설치 범위 밖 — 공개 저장소면 로그인 인가로 읽고(AC1.6), 비공개면 설치 범위로 보낸다
-      if (state.publicRepos.indexOf(m[1] + '/' + m[2]) === -1) status = 'outside';
+      // 분기: 설치 범위 밖 — App이 설치돼 있고 공개 저장소면 로그인 인가로 읽고(AC1.6), 아니면 설치 범위로 보낸다
+      if (state.granted.length === 0 || state.publicRepos.indexOf(m[1] + '/' + m[2]) === -1) status = 'outside';
       else if (state.authExpired) status = 'authexpired';
       else if (!state.keyRegistered) status = 'nokey';
       else status = 'public';
@@ -1859,12 +1850,6 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
       $('sum-repo').textContent = 'github.com/rust-lang/cargo';
       $('sum-branch').textContent = '⎇ main';
     },
-    noinstall: function () {
-      state.signedIn = true;
-      state.granted = [];
-      state.keyRegistered = false;
-      $('in-repo').value = 'github.com/rust-lang/cargo';
-    },
     authexpired: function () {
       // 인가 만료·회수는 사용자가 화면에서 일으킬 수 없다 — 보조 레이어에서 장전한다
       state.signedIn = true;
@@ -1911,7 +1896,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     if (el.hasAttribute('data-scenario')) return;
     if (el.id && ['btn-signin', 'btn-returning', 'btn-install', 'btn-savekey', 'btn-key-later',
                   'btn-add-scope', 'btn-go-key', 'btn-logout', 'btn-pick', 'btn-start',
-                  'btn-later', 'btn-retry', 'btn-relogin', 'btn-skip-install'].indexOf(el.id) !== -1) return;
+                  'btn-later', 'btn-retry', 'btn-relogin'].indexOf(el.id) !== -1) return;
     el.addEventListener('click', function () { show(el.getAttribute('data-goto')); });
   });
 
