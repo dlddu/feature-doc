@@ -11,6 +11,7 @@ import { CrossCuttingConcerns } from './CrossCuttingConcerns';
 import { DecideDiff } from './DecideDiff';
 import { DiscoveryStrategy } from './DiscoveryStrategy';
 import { FeatureAcceptance } from './FeatureAcceptance';
+import { FeatureEvidence } from './FeatureEvidence';
 import { FeatureCandidates } from './FeatureCandidates';
 import { FeatureDependencies } from './FeatureDependencies';
 import { FeatureHistory } from './FeatureHistory';
@@ -30,6 +31,7 @@ export type AnalysisRoute = {
     | 'discovery-strategy'
     | 'candidates'
     | 'acceptance'
+    | 'evidence'
     | 'dependencies'
     | 'diff'
     | 'edit'
@@ -80,6 +82,14 @@ export function analysisRouteFromHash(hash: string): AnalysisRoute | null {
       id: decodeURIComponent(recalled[1]),
       view: 'history',
       featureKey: decodeURIComponent(recalled[2]),
+    };
+  }
+  const verified = /^#\/analyses\/([^/?#]+)\/features\/([^/?#]+)\/evidence$/.exec(hash);
+  if (verified) {
+    return {
+      id: decodeURIComponent(verified[1]),
+      view: 'evidence',
+      featureKey: decodeURIComponent(verified[2]),
     };
   }
   const traced = /^#\/analyses\/([^/?#]+)\/features\/([^/?#]+)\/dependencies$/.exec(hash);
@@ -181,6 +191,12 @@ export function App() {
     setRoute({ id, view: 'acceptance' });
   }
 
+  function openEvidence(id: string, featureKey: string) {
+    window.location.hash =
+      `#/analyses/${encodeURIComponent(id)}/features/${encodeURIComponent(featureKey)}/evidence`;
+    setRoute({ id, view: 'evidence', featureKey });
+  }
+
   function openDependencies(id: string, featureKey: string) {
     window.location.hash =
       `#/analyses/${encodeURIComponent(id)}/features/${encodeURIComponent(featureKey)}/dependencies`;
@@ -256,6 +272,18 @@ export function App() {
         />
       );
     }
+    if (route.view === 'evidence' && route.featureKey !== undefined) {
+      return (
+        <FeatureEvidence
+          key={`${route.id}-fe`}
+          id={route.id}
+          featureKey={route.featureKey}
+          onBack={() => openAcceptance(route.id)}
+          onLeave={leaveAnalysis}
+          onOpenDependencies={() => openDependencies(route.id, route.featureKey as string)}
+        />
+      );
+    }
     if (route.view === 'dependencies' && route.featureKey !== undefined) {
       return (
         <FeatureDependencies
@@ -296,6 +324,7 @@ export function App() {
           id={route.id}
           onBack={() => openAnalysis(route.id)}
           onOpenCandidates={() => openCandidates(route.id)}
+          onOpenEvidence={(featureKey) => openEvidence(route.id, featureKey)}
           onOpenHistory={(featureKey) => openHistory(route.id, featureKey)}
         />
       );
