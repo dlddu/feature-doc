@@ -511,6 +511,30 @@ export async function getAcceptance(id: string): Promise<AcceptanceDocument | nu
   return (await res.json()) as AcceptanceDocument;
 }
 
+export type EvidenceExcerpt = {
+  path: string;
+  symbol: string | null;
+  startLine: number;
+  endLine: number;
+  ofLines: number;
+  lines: string[];
+  truncated: boolean;
+};
+
+export async function getEvidence(
+  id: string,
+  featureKey: string,
+  path: string,
+): Promise<EvidenceExcerpt> {
+  const res = await fetch(
+    `/api/analyses/${encodeURIComponent(id)}/features/${encodeURIComponent(featureKey)}/evidence` +
+      `?path=${encodeURIComponent(path)}`,
+    { credentials: 'same-origin' },
+  );
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as EvidenceExcerpt;
+}
+
 /** `evidence: null` is 「근거 없음」 — recorded, never invented. */
 export type Dependency = {
   category: string;

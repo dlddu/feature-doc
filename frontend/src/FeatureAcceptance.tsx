@@ -32,10 +32,17 @@ type Props = {
   id: string;
   onBack: () => void;
   onOpenCandidates: () => void;
+  onOpenEvidence: (featureKey: string) => void;
   onOpenHistory: (featureKey: string) => void;
 };
 
-export function FeatureAcceptance({ id, onBack, onOpenCandidates, onOpenHistory }: Props) {
+export function FeatureAcceptance({
+  id,
+  onBack,
+  onOpenCandidates,
+  onOpenEvidence,
+  onOpenHistory,
+}: Props) {
   const [features, setFeatures] = useState<Doc[] | null>(null);
   // 문서와 함께 읽어 두 목록이 같은 시점의 서버 상태를 그린다.
   const [archive, setArchive] = useState<FeatureDeletion[]>([]);
@@ -186,6 +193,14 @@ export function FeatureAcceptance({ id, onBack, onOpenCandidates, onOpenHistory 
       )}
 
       <div className="stack" style={{ marginTop: 22 }}>
+        <button
+          className="btn btn-primary block"
+          type="button"
+          onClick={() => onOpenEvidence(current.key)}
+          data-testid="to-evidence"
+        >
+          근거가 진짜인지 확인하기
+        </button>
         <button
           className="btn btn-ghost block"
           type="button"
