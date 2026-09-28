@@ -1226,7 +1226,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
           </span>
           <span class="rr">
             <!-- 배지 어휘는 큐·워커의 실제 상태 집합이라 한 실행은 한 벌만 그린다.
-                 다섯 벌을 다 열거하고(`data-variant="run-status"`) 그중 하나만 보인다. -->
+                 여섯 벌을 다 열거하고(`data-variant="run-status"`) 그중 하나만 보인다. -->
             <span class="badge info">
               <span class="dot"></span>
               <span data-variant="run-status">Analyzing</span>
@@ -1234,6 +1234,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
               <span data-variant="run-status" hidden>Fetched</span>
               <span data-variant="run-status" hidden>Synced</span>
               <span data-variant="run-status" hidden>Failed</span>
+              <span data-variant="run-status" hidden>Stopped</span>
             </span>
             <button type="button" class="section-action" id="btn-open-run" data-goto="END-open-run">진행 상황</button>
           </span>

@@ -23,6 +23,7 @@ const STATUS_BADGE: Record<string, { tone: string; label: string }> = {
   awaiting_pipeline: { tone: 'info', label: 'Fetched' },
   succeeded: { tone: 'success', label: 'Synced' },
   failed: { tone: 'danger', label: 'Failed' },
+  cancelled: { tone: 'warn', label: 'Stopped' },
 };
 
 type Phase = 'idle' | 'checking' | 'starting';

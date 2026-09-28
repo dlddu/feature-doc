@@ -7,12 +7,14 @@
 import { useEffect, useState } from 'react';
 import {
   approveCandidate,
+  cancelAnalysis,
   getAnalysis,
   getCandidates,
   mergeCandidates,
   rejectCandidate,
   renameCandidate,
 } from './api';
+import { AnalysisStopped } from './AnalysisStopped';
 import type { CandidateList, FeatureCandidate, PreviousDeletion, PreviousRejection } from './api';
 import { formatCost } from './format';
 
@@ -53,6 +55,7 @@ export function FeatureCandidates({ id, onBack, onFinish }: Props) {
   const [picked, setPicked] = useState<string[]>([]);
   // 목록과 따로 읽는다 — 결정마다 다시 읽을 이유가 없고, 못 읽어도 결정을 막지 않는다.
   const [spentCents, setSpentCents] = useState<number | null>(null);
+  const [stopped, setStopped] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -99,6 +102,31 @@ export function FeatureCandidates({ id, onBack, onFinish }: Props) {
 
   async function foldInto(key: string) {
     if (await mutate(mergeCandidates(id, key, picked))) setPicked([]);
+  }
+
+  async function stop() {
+    setBusy(true);
+    setError(null);
+    try {
+      const detail = await cancelAnalysis(id);
+      setSpentCents(detail.spend.costCents);
+      setStopped(true);
+    } catch (e: unknown) {
+      setError(messageOf(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (stopped) {
+    return (
+      <main className="screen">
+        <AnalysisStopped
+          spentCents={spentCents ?? 0}
+          onBackToDecisions={() => setStopped(false)}
+        />
+      </main>
+    );
   }
 
   if (list === null) {
@@ -268,6 +296,15 @@ export function FeatureCandidates({ id, onBack, onFinish }: Props) {
           data-testid="leave-partial"
         >
           여기까지 저장하고 나가기
+        </button>
+        <button
+          className="btn btn-ghost block"
+          type="button"
+          disabled={busy}
+          onClick={() => void stop()}
+          data-testid="stop-cost"
+        >
+          비용이 예상보다 커요 — 중단하기
         </button>
       </div>
 
