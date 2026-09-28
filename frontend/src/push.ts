@@ -26,6 +26,24 @@ function decodeKey(key: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+function sameBytes(a: ArrayBuffer | null, b: Uint8Array): boolean {
+  if (a === null || a.byteLength !== b.length) return false;
+  const bytes = new Uint8Array(a);
+  return bytes.every((v, i) => v === b[i]);
+}
+
+async function subscriptionFor(
+  registration: ServiceWorkerRegistration,
+  key: Uint8Array<ArrayBuffer>,
+): Promise<PushSubscription> {
+  const existing = await registration.pushManager.getSubscription();
+  if (existing !== null) {
+    if (sameBytes(existing.options.applicationServerKey, key)) return existing;
+    await existing.unsubscribe();
+  }
+  return registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+}
+
 export async function enablePush(): Promise<void> {
   const key = serverKey;
   if (!supported() || !key) return;
@@ -36,12 +54,7 @@ export async function enablePush(): Promise<void> {
         : Notification.permission;
     if (permission !== 'granted') return;
     const registration = await navigator.serviceWorker.register('/sw.js');
-    const subscription =
-      (await registration.pushManager.getSubscription()) ??
-      (await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: decodeKey(key),
-      }));
+    const subscription = await subscriptionFor(registration, decodeKey(key));
     await savePushSubscription(subscription.toJSON());
   } catch {
     return;
