@@ -349,6 +349,103 @@ async fn a_queued_public_analysis_whose_authorization_expired_is_not_handed_to_a
     let _ = std::fs::remove_file(&path);
 }
 
+async fn make_private(state: &AppState, id: &str) {
+    sqlx::query("UPDATE analyses SET repo_name = 'oss-lib-private' WHERE id = ?")
+        .bind(id)
+        .execute(&state.db)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn a_public_repository_turned_private_mid_run_stops_as_no_longer_public() {
+    let (state, path) = stub_state().await;
+    let (user_id, s) = login(&state, 9, "stub-public", true).await;
+    github_tokens::store(&state.db, &state.config.kek, &user_id, "gho_private_secret")
+        .await
+        .unwrap();
+    let (status, body) = create(&state, &s, PUBLIC).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let id = body["id"].as_str().unwrap().to_string();
+    let claimed = build_router(state.clone())
+        .oneshot(worker_post("/internal/analyses/claim"))
+        .await
+        .unwrap();
+    assert_eq!(claimed.status(), StatusCode::OK);
+    sqlx::query(
+        "UPDATE analysis_stages SET status = 'running' WHERE analysis_id = ? AND key = 'fetch'",
+    )
+    .bind(&id)
+    .execute(&state.db)
+    .await
+    .unwrap();
+
+    make_private(&state, &id).await;
+    let beat = build_router(state.clone())
+        .oneshot(worker_post(&format!("/internal/analyses/{id}/heartbeat")))
+        .await
+        .unwrap();
+
+    assert_eq!(beat.status(), StatusCode::CONFLICT);
+    let stage_error: Option<String> = sqlx::query_scalar(
+        "SELECT error FROM analysis_stages WHERE analysis_id = ? AND key = 'fetch'",
+    )
+    .bind(&id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap();
+    assert_eq!(stage_error.as_deref(), Some(featuredoc::analysis::ACCESS_NO_LONGER_PUBLIC));
+
+    let body = detail(&state, &s, &id).await;
+    assert_eq!(body["status"], "failed");
+    assert_eq!(body["accessRevoked"], true);
+    assert_eq!(body["reauthRequired"], false);
+    assert_eq!(body["installAvailable"], true);
+    let message = body["error"].as_str().unwrap();
+    assert!(message.starts_with("공개 저장소가 아니게 되었습니다"));
+    assert!(!message.contains("gho_private_secret"));
+    let _ = std::fs::remove_file(&path);
+}
+
+#[tokio::test]
+async fn a_queued_public_analysis_turned_private_is_not_handed_to_a_worker_nor_reanalyzed() {
+    let (state, path) = stub_state().await;
+    let (user_id, s) = login(&state, 10, "pub-turned", true).await;
+    github_tokens::store(&state.db, &state.config.kek, &user_id, "gho_turned_secret")
+        .await
+        .unwrap();
+    let (status, body) = create(&state, &s, PUBLIC).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let id = body["id"].as_str().unwrap().to_string();
+
+    make_private(&state, &id).await;
+    let claimed = build_router(state.clone())
+        .oneshot(worker_post("/internal/analyses/claim"))
+        .await
+        .unwrap();
+
+    assert_eq!(claimed.status(), StatusCode::NO_CONTENT);
+    let body = detail(&state, &s, &id).await;
+    assert_eq!(body["status"], "failed");
+    assert_eq!(body["error"], featuredoc::analysis::ACCESS_NO_LONGER_PUBLIC);
+    assert_eq!(body["installAvailable"], false);
+
+    let again = "github.com/stub-public/oss-lib-private";
+    let estimate = preflight(&state, &s, again).await;
+    assert_eq!(estimate["hasAccess"], false);
+    assert_eq!(estimate["deniedReason"], featuredoc::analysis::NO_LONGER_PUBLIC);
+    let (status, body) = create(&state, &s, again).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body.to_string().contains("공개 저장소가 아니게 되었습니다"));
+    assert_eq!(queued(&state, &user_id).await, 1);
+
+    let (_, other) = login(&state, 11, "pub-stranger", true).await;
+    let estimate = preflight(&state, &other, again).await;
+    assert_eq!(estimate["hasAccess"], false);
+    assert_eq!(estimate["deniedReason"], serde_json::Value::Null);
+    let _ = std::fs::remove_file(&path);
+}
+
 async fn fake_github() -> String {
     async fn repo(
         axum::extract::Path((owner, name)): axum::extract::Path<(String, String)>,

@@ -10,6 +10,7 @@ import {
   NotVisibleError,
   getAnalysis,
   getAnalysisDiff,
+  getInstallUrl,
   listConflicts,
   retryStage,
 } from './api';
@@ -366,6 +367,23 @@ export function AnalysisProgress({
               data-testid="relogin"
             >
               다시 로그인하기
+            </button>
+          )}
+          {analysis.installAvailable && (
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => {
+                getInstallUrl().then(
+                  (url) => {
+                    window.location.href = url;
+                  },
+                  (e: unknown) => setError(messageOf(e)),
+                );
+              }}
+              data-testid="manage-install"
+            >
+              설치 범위에 추가하기
             </button>
           )}
         </div>

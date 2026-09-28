@@ -377,7 +377,8 @@ export function HomeRepositories({
 
       {estimate && !estimate.hasAccess && !estimate.authExpired && (
         <div className="notice err" style={{ marginTop: 12 }} data-testid="repo-outside">
-          이 저장소에는 접근할 수 없어요 — App 설치 범위 밖입니다.
+          {estimate.deniedReason && <strong data-testid="repo-no-longer-public">{estimate.deniedReason}</strong>}
+          <span>이 저장소에는 접근할 수 없어요 — App 설치 범위 밖입니다.</span>
           <button
             className="btn btn-secondary"
             type="button"
