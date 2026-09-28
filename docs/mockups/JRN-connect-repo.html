@@ -1100,6 +1100,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
 
       <div class="stack" style="margin-top:24px">
         <button class="btn btn-primary block" data-cta="advance" data-goto="STP-register-llm-key" id="btn-install" disabled>Install &amp; Authorize</button>
+        <button class="btn-link" style="align-self:center" data-goto="STP-register-llm-key" id="btn-skip-install">설치 없이 공개 저장소만 분석하기</button>
       </div>
 
       <p class="legend" style="margin-top:24px"><span class="mk">↳</span> <span id="grant-count">0</span> repositories selected</p>
@@ -1279,6 +1280,15 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
       <div id="repo-outside" class="notice err" style="margin-top:12px">
         이 저장소에는 접근할 수 없어요 — App 설치 범위 밖입니다.
         <button class="btn btn-secondary" data-goto="STP-grant-repo-access" id="btn-add-scope">설치 범위에 추가하기</button>
+      </div>
+
+      <div id="repo-public" class="notice ok" style="margin-top:12px">
+        공개 저장소예요 — App 설치 없이, 로그인할 때 맡긴 GitHub 인가로 읽기만 합니다. 비용을 확인하고 시작할 수 있습니다.
+      </div>
+
+      <div id="repo-authexpired" class="notice err" style="margin-top:12px">
+        GitHub 로그인 인가가 만료됐어요. 다시 로그인하면 공개 저장소를 이어서 분석할 수 있습니다. 큐에 등록하지 않았습니다.
+        <button class="btn btn-secondary" data-goto="STP-sign-in" id="btn-relogin">다시 로그인하기</button>
       </div>
 
       <div id="repo-nokey" class="notice warn" style="margin-top:12px">
@@ -1491,7 +1501,10 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     <h3>분기·예외 흐름</h3>
     <ul class="branches">
       <li><span class="sit">재방문 사용자 (자격증명 이미 등록)</span><button data-goto="STP-pick-target" data-scenario="returning">STP-pick-target</button></li>
-      <li><span class="sit">App 접근 범위 밖 저장소 지정</span><button data-goto="STP-grant-repo-access" data-scenario="outside">STP-grant-repo-access</button></li>
+      <li><span class="sit">App 접근 범위 밖 비공개 저장소 지정</span><button data-goto="STP-grant-repo-access" data-scenario="outside">STP-grant-repo-access</button></li>
+      <li><span class="sit">App 설치 범위 밖 공개 저장소 지정 (예: 오픈소스)</span><button data-goto="STP-confirm-cost" data-scenario="public">STP-confirm-cost</button></li>
+      <li><span class="sit">App을 설치하지 않고 공개 저장소만 분석하려는 첫 방문자</span><button data-goto="STP-register-llm-key" data-scenario="noinstall">STP-register-llm-key</button></li>
+      <li><span class="sit">로그인 인가가 만료·회수된 상태로 공개 저장소 분석 시도</span><button data-goto="STP-sign-in" data-scenario="authexpired">STP-sign-in</button></li>
       <li><span class="sit">URL 오타·존재하지 않는 저장소</span><button data-goto="STP-pick-target" data-scenario="malformed">STP-pick-target</button></li>
       <li><span class="sit">LLM Key 미등록 상태로 저장소 추가 시도</span><button data-goto="STP-register-llm-key" data-scenario="nokey">STP-register-llm-key</button></li>
       <li><span class="sit">큐 등록 실패 (운영 측 문제)</span><button data-goto="STP-confirm-cost" data-scenario="queuefail">STP-confirm-cost</button></li>
@@ -1540,7 +1553,10 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     branch: 'main',
     repoStatus: 'empty',
     outputLang: 'ko',
-    queueOutage: false
+    queueOutage: false,
+    // 누구나 읽을 수 있는 공개 저장소(예시). App 설치 범위와 무관하게 로그인 인가로 읽는다(AC1.6)
+    publicRepos: ['rust-lang/cargo', 'vercel/next.js'],
+    authExpired: false
   };
 
   function $(id) { return document.getElementById(id); }
@@ -1635,6 +1651,13 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     show('STP-register-llm-key');
   });
 
+  $('btn-skip-install').addEventListener('click', function () {
+    // 분기: App을 설치하지 않고 공개 저장소만 분석하려는 첫 방문자 → STP-register-llm-key (AC1.6)
+    state.granted = [];
+    renderHome();
+    show('STP-register-llm-key');
+  });
+
   /* ── STP-register-llm-key ──────────────────────────────────────── */
   function keyValid() {
     var v = $('in-key').value.trim();
@@ -1702,7 +1725,13 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     var status;
     if (!raw) status = 'empty';
     else if (!m) status = 'bad';
-    else if (state.granted.indexOf(m[1] + '/' + m[2]) === -1) status = 'outside';
+    else if (state.granted.indexOf(m[1] + '/' + m[2]) === -1) {
+      // 분기: 설치 범위 밖 — 공개 저장소면 로그인 인가로 읽고(AC1.6), 비공개면 설치 범위로 보낸다
+      if (state.publicRepos.indexOf(m[1] + '/' + m[2]) === -1) status = 'outside';
+      else if (state.authExpired) status = 'authexpired';
+      else if (!state.keyRegistered) status = 'nokey';
+      else status = 'public';
+    }
     else if (!state.keyRegistered) status = 'nokey';
     else status = 'ok';
     state.repoStatus = status;
@@ -1711,8 +1740,10 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     toggle($('repo-outside'), status === 'outside');
     toggle($('repo-nokey'), status === 'nokey');
     toggle($('repo-ok'), status === 'ok');
-    $('fld-repo').classList.toggle('bad', status === 'bad' || status === 'outside');
-    $('btn-pick').disabled = status !== 'ok';
+    toggle($('repo-public'), status === 'public');
+    toggle($('repo-authexpired'), status === 'authexpired');
+    $('fld-repo').classList.toggle('bad', status === 'bad' || status === 'outside' || status === 'authexpired');
+    $('btn-pick').disabled = status !== 'ok' && status !== 'public';
     document.body.setAttribute('data-repo-status', status);
   }
 
@@ -1722,6 +1753,13 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
   $('btn-add-scope').addEventListener('click', function () {
     // 분기: App 접근 범위 밖 저장소 지정 → STP-grant-repo-access
     show('STP-grant-repo-access');
+  });
+
+  $('btn-relogin').addEventListener('click', function () {
+    // 분기: 로그인 인가가 만료·회수된 상태로 공개 저장소 분석 시도 → STP-sign-in
+    state.signedIn = false;
+    state.authExpired = false;
+    show('STP-sign-in');
   });
 
   $('btn-go-key').addEventListener('click', function () {
@@ -1813,6 +1851,28 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
       $('sum-repo').textContent = 'github.com/dlddu/payments-api';
       $('sum-branch').textContent = '⎇ main';
     },
+    public: function () {
+      state.signedIn = true;
+      state.granted = ['dlddu/payments-api'];
+      state.keyRegistered = true;
+      $('in-repo').value = 'github.com/rust-lang/cargo';
+      $('sum-repo').textContent = 'github.com/rust-lang/cargo';
+      $('sum-branch').textContent = '⎇ main';
+    },
+    noinstall: function () {
+      state.signedIn = true;
+      state.granted = [];
+      state.keyRegistered = false;
+      $('in-repo').value = 'github.com/rust-lang/cargo';
+    },
+    authexpired: function () {
+      // 인가 만료·회수는 사용자가 화면에서 일으킬 수 없다 — 보조 레이어에서 장전한다
+      state.signedIn = true;
+      state.granted = ['dlddu/payments-api'];
+      state.keyRegistered = true;
+      state.authExpired = true;
+      $('in-repo').value = 'github.com/rust-lang/cargo';
+    },
     resume: function () {
       state.signedIn = true;
       state.granted = ['dlddu/payments-api'];
@@ -1834,6 +1894,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
   all('[data-scenario]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var fn = SCENARIOS[btn.getAttribute('data-scenario')];
+      state.authExpired = false;
       if (fn) fn();
       renderHome();
       syncGrant();
@@ -1850,7 +1911,7 @@ body:has(#pv-expanded:checked) .frame { width: min(1280px, 100vw - 24px); height
     if (el.hasAttribute('data-scenario')) return;
     if (el.id && ['btn-signin', 'btn-returning', 'btn-install', 'btn-savekey', 'btn-key-later',
                   'btn-add-scope', 'btn-go-key', 'btn-logout', 'btn-pick', 'btn-start',
-                  'btn-later', 'btn-retry'].indexOf(el.id) !== -1) return;
+                  'btn-later', 'btn-retry', 'btn-relogin', 'btn-skip-install'].indexOf(el.id) !== -1) return;
     el.addEventListener('click', function () { show(el.getAttribute('data-goto')); });
   });
 
