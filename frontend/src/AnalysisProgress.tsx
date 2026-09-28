@@ -198,12 +198,22 @@ export function AnalysisProgress({
 
       {rerun !== null && rerun.changed > 0 && (
         <div className="card row top" style={{ marginTop: 16, gap: 12 }} data-testid="rerun-notice">
-          <p className="body sm grow">
-            <strong data-testid="rerun-headline">
+          <span className="ico ico-28">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M3 5.6a4 4 0 1 1 8 0V9l1.2 1.6H1.8L3 9V5.6Z"
+                stroke="currentColor"
+                strokeWidth="1.1"
+              />
+              <path d="M5.6 12.1a1.5 1.5 0 0 0 2.8 0" stroke="currentColor" strokeWidth="1.1" />
+            </svg>
+          </span>
+          <p className="body sm grow" style={{ color: 'var(--text-secondary)' }}>
+            <strong data-testid="notice-headline">
               <span>{rerun.changed}</span>개 기능의 표현이 갱신됐어요
             </strong>
             <br />
-            부딪히는 편집이 <span data-testid="rerun-conflicts">{rerun.conflicts}</span>
+            부딪히는 편집이 <span data-testid="conflict-count">{rerun.conflicts}</span>
             건 있습니다. 바뀐 것만 모아 두었어요.
           </p>
         </div>
@@ -238,13 +248,13 @@ export function AnalysisProgress({
           <>
             <div className="cell">
               <div className="k">Changed</div>
-              <div className="v" data-testid="rerun-changed">
+              <div className="v" data-testid="changed-count">
                 {formatCount(rerun.changed)}
               </div>
             </div>
             <div className="cell">
               <div className="k">Conflicts</div>
-              <div className="v" data-testid="rerun-conflict-count">
+              <div className="v" data-testid="conflict-metric">
                 {formatCount(rerun.conflicts)}
               </div>
             </div>
