@@ -38,7 +38,7 @@ ere: json_(extract|each|tree)
 ere: pub struct Envelope
 ere: STAGES: \[Stage; [0-9]+\]
 ere: ^(sqlx|rusqlite|libsqlite3-sys)[[:space:]]*=[^#]*"[0-9][0-9.]*"
-ere: kind: PersistentVolumeClaim|claimName: [a-z0-9-]+|type: Recreate|replicas: [0-9]+
+ere: kind: PersistentVolumeClaim|claimName: [a-z0-9-]+|type: Recreate|^[[:space:]]+replicas: [0-9]+
 ```
 
 ## 앵커
