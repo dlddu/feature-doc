@@ -1,23 +1,6 @@
 #!/usr/bin/env python3
-# ── 규칙 ──────────────────────────────────────────────────────────────────
-#  D1 마이그레이션    `backend/migrations/**` 의 **모든** 변경. 주석·공백 한 글자도 sqlx
-#                     체크섬을 바꿔 부팅을 깨뜨린다(`backend/migrations/README.md`).
-#  D6 판정기 자신     이 파일과 워크플로 `data-format-review.yml` 의 변경. 워크플로는
-#                     pull_request_target 이라 PR 이 아니라 **base 쪽 판정기**로 돌므로 PR 이
-#                     규칙을 고쳐 자기를 통과시킬 수는 없다 — 이 규칙은 그 변경 자체를 사람
-#                     눈에 올린다.
-#
-# ── 이 판정기가 보지 않는 것(의도적, 2026-09-22 축소) ───────────────────────
-#  예전의 D2(저장 계층 핵심 파일) · D3(영속화 코드 키워드) · D4(저장 관련 크레이트 버전) ·
-#  D5(배포 저장소·replica) 는 뺐다. 키워드·경로 기반이라 오탐이 대부분이었고(읽기 전용
-#  SELECT 한 줄, 와이어 필드의 `#[serde(default)]` 하나에도 울렸다), 그 몫은 일반 코드 리뷰가
-#  진다. 그러므로 **마이그레이션 없이 운영 데이터를 깨뜨리는 변경**은 이 신호가 잡지 않는다 —
-#  리뷰어가 따로 본다:
-#    * `backend/src/crypto.rs` 의 봉투 암호화 형식 변경(저장된 LLM 키 복호화 불가)
-#    * `backend/src/pipeline.rs` 의 stage key·status 값 변경(기존 행이 고아가 됨)
-#    * 분석 문서 등 DB 에 JSON 으로 저장되는 구조체의 모양 변경
-#    * sqlx·libsqlite3-sys 등 저장 크레이트의 메이저 업그레이드
-#    * `deploy/` 의 PVC·DB 경로·replica·배포 전략(SQLite 단일 writer 전제)
+# 수동 승인 판정기 — 케이스 D1·D6 의 대상·이유와 이 판정기가 보지 않는 것은
+# docs/review-policy.md 가 SSOT 다.
 
 import argparse
 import os
@@ -28,6 +11,7 @@ from collections import defaultdict
 SELF_PATHS = {
     "tools/check-data-format-change.py",
     ".github/workflows/data-format-review.yml",
+    "docs/review-policy.md",
 }
 
 
