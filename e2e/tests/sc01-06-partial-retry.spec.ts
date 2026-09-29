@@ -15,15 +15,6 @@
 // requires an App installation and an active LLM key; those are set up through the
 // API rather than Credentials Setup's screens, which sc04-01/sc04-03 own — walking
 // another scenario's screen is setup, not this file's verification target.
-//
-// The second declaration closes blocker-ledger R1 (docs/e2e-mocking-policy.md).
-// 시나리오 6 원문의 사전 조건은 「feature 추출 단계가 LLM 호출 한도 초과로 실패한
-// 상태」인데, stub LLM은 실패를 표현하지 못해 위 arc는 트리 404로 같은 실패 분기를
-// 밟는 우회로 시작했다. 이제 stub 모드가 결정적 실패 트리거를 갖추었다
-// (FEATUREDOC_STUB_LLM_FAIL — 프롬프트 부분열 일치 시 real과 같은 429 사유로 실패;
-// backend/src/llm.rs). 이것은 새 제품 표면이 아니라 등재된 stub 더블(LLM-01) 자체의
-// 충실도 확장이다. 두 번째 선언이 그 사전 조건을 그대로 재현하며, 트리거 env는
-// 임대 창 안에서만 실재한다(setWorkerEnv: scale 0 뒤 set, finally에서 unset).
 import { expect, test, type Page } from '@playwright/test';
 import { scaleWorkers, setWorkerEnv } from '../support/cluster';
 import { afterSecond } from '../support/clock';

@@ -6,7 +6,7 @@
   I1  표면의 판정 대상 줄을 가진 파일은 그 표면의 표에서 정확히 한 행에 속한다 — 중복 소속 없음
   I2  그 파일 집합의 합집합이 그 표면의 실측 파일 집합을 덮는다 — 미등재 없음
   I3  행의 줄 수·지문이 그 표면의 실측과 같다
-  I4  판정 축 표기가 유효하다 (표면 무관: `—` 또는 ①②③④의 순서 있는 부분집합)
+  I4  판정 칸 표기가 유효하다 (표면 무관: `완료` 또는 `—`)
   I5  표면 절 셋이 모두 있고, 표와 「원장 읽는 법」·표면 절 제목 밖에 산문이 없다
 
 측정 범위와 표면 추출은 모델 `asIs.versionScript`와 **같은 규칙**이어야 한다. 게이트가 자기
@@ -173,7 +173,6 @@ class DeScanner:
                 i += 1
 
     def slash_lang(self, path, src, line_comments):
-        """' 와 " 는 줄 끝에서 닫는다 — 블록 주석과 달리 줄을 넘겨 이어지지 않는다."""
         q = None
         block = False
         for line in src.splitlines():
@@ -311,7 +310,7 @@ def measure():
     return surfaces, rest, unparsed
 
 
-AXES_OK = re.compile(r"^(—|①?②?③?④?)$")
+VERDICT_OK = re.compile(r"^(완료|—)$")
 SURFACE_HEAD = re.compile(r"^## ([LDE]) 표면 — ")
 
 
@@ -341,7 +340,7 @@ def parse_ledger():
                          f"행은 `## <표면> 표면 — …` 절 아래에만 둔다")
             scope = cells[1]
             names = re.findall(r"`([^`]+)`", scope.split("(")[0])
-            rows[surface].append(dict(no=no, date=cells[0], scope=scope, axes=cells[4],
+            rows[surface].append(dict(no=no, date=cells[0], scope=scope, verdict=cells[4],
                                       files=[n if "/" in n or not n.endswith(".sql")
                                              else "backend/migrations/" + n
                                              for n in names],
@@ -370,10 +369,9 @@ def check_surface(surface, rows, hits, fail):
     if unregistered:
         fail.append(f"I2[{surface}] 미등재 {len(unregistered)}파일 "
                     f"{sum(len(hits[f]) for f in unregistered)}줄 — 판정하지 않아도 행은 "
-                    f"만든다(판정 축 `—`): " + ", ".join(unregistered[:6]))
+                    f"만든다(판정 `—`): " + ", ".join(unregistered[:6]))
 
-    judged_lines = judged_rows = 0
-    per_axis = {a: 0 for a in "①②③④"}
+    judged_lines = judged_rows = pending_rows = 0
     for r in rows:
         got = sorted(x for f in r["files"] for x in hits.get(f, []))
         want_fp = hashlib.sha256(("\n".join(got) + "\n").encode()).hexdigest()
@@ -383,17 +381,16 @@ def check_surface(surface, rows, hits, fail):
         if r["fp"] != want_fp:
             fail.append(f"I3[{surface}] {LEDGER}:{r['no']} 지문 기재 {r['fp'][:12]}… ≠ "
                         f"실측 {want_fp[:12]}… ({r['files'][0]})")
-        if not AXES_OK.match(r["axes"]):
-            fail.append(f"I4[{surface}] {LEDGER}:{r['no']} 판정 축 표기 {r['axes']!r} 가 "
-                        f"유효하지 않다 — `—` 또는 ①②③④ 의 순서 있는 부분집합")
-        if r["axes"] == "①②③④":
+        if not VERDICT_OK.match(r["verdict"]):
+            fail.append(f"I4[{surface}] {LEDGER}:{r['no']} 판정 표기 {r['verdict']!r} 가 "
+                        f"유효하지 않다 — `완료` 또는 `—`")
+        if r["verdict"] == "완료":
             judged_rows += 1
             judged_lines += len(got)
-        for a in "①②③④":
-            if a not in r["axes"]:
-                per_axis[a] += 1
+        else:
+            pending_rows += 1
     empty = sorted(f for f in owner if f not in hits)
-    return owner, unregistered, empty, judged_lines, judged_rows, per_axis
+    return owner, unregistered, empty, judged_lines, judged_rows, pending_rows
 
 
 def main():
@@ -416,13 +413,12 @@ def main():
     for s in SURFACES:
         hits = surfaces[s]
         n = sum(len(v) for v in hits.values())
-        owner, unregistered, empty, jl, jr, per_axis = check_surface(
+        owner, unregistered, empty, jl, jr, pending = check_surface(
             s, rows[s], hits, fail)
         print(f"[{s}] 원장 행 {len(rows[s])} · 등재 파일 {len(owner)} · 미등재 "
               f"{len(unregistered)} · 이 표면에서 0행이 된 등재 파일 {len(empty)}")
-        print(f"[{s}] 판정 완료(①②③④) {jl}줄 / {jr}행 ({jl * 100 // max(n, 1)}% of "
-              f"{n}줄) · 축별 미판정 행 "
-              + " · ".join(f"{a} {per_axis[a]}" for a in "①②③④"))
+        print(f"[{s}] 판정 완료 {jl}줄 / {jr}행 ({jl * 100 // max(n, 1)}% of "
+              f"{n}줄) · 미판정 행 {pending}")
         if empty:
             print(f"[{s}] 0행 등재    : " + ", ".join(empty))
     if unclassified:

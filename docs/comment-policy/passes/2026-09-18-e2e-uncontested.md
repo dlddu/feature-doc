@@ -5,7 +5,7 @@
   `e2e/tests/sc01-06-partial-retry.spec.ts` · `e2e/support/cluster.ts` ·
   `e2e/smoke.sh` · `e2e/playwright.config.ts`
 - **기준 트리**: `84f2734` (main)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260918-0003`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260918-0003`
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.
 이 파일은 이번 범위의 **근거**만 담는다.

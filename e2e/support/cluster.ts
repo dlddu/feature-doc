@@ -1,6 +1,3 @@
-// Cluster handles shared by the specs that need the analysis worker to actually
-// run.
-//
 // The worker replica count is *deployment-wide* state: unlike App installs and LLM
 // keys, no per-user handle isolates it, and a running worker drains the global
 // queue within seconds. It is therefore **leased, not owned**: `deploy/e2e/` keeps
@@ -56,9 +53,7 @@ export function workerLogs(): string {
  * `kubectl scale` + `rollout status` is not enough on the way down: both return as
  * soon as the Deployment reports the new desired state, while the old pod is still
  * being told to stop. A worker in that window keeps polling and will drain the very
- * queue the next assertion is about to inspect — which is exactly how the first run
- * of ac4-5 failed (a job read back `awaiting_pipeline` five seconds after the
- * workers were supposedly gone). So wait for the pod list itself.
+ * queue the next assertion is about to inspect. So wait for the pod list itself.
  */
 export async function scaleWorkers(replicas: number): Promise<void> {
   kubectl('scale', WORKER_DEPLOY, `--replicas=${replicas}`);
@@ -83,9 +78,6 @@ export async function scaleWorkers(replicas: number): Promise<void> {
  * nothing outside that window ever sees it. Env edits rewrite the pod template,
  * which restarts pods on their own — keeping the ordering above means that
  * restart happens at a moment no pod is running.
- *
- * Used by sc01-06's LLM failure arc (blocker-ledger R1 in
- * docs/e2e-mocking-policy.md — `FEATUREDOC_STUB_LLM_FAIL`).
  */
 export function setWorkerEnv(key: string, value: string | null): void {
   if (value === null) {
@@ -95,7 +87,6 @@ export function setWorkerEnv(key: string, value: string | null): void {
   }
 }
 
-/** Pod names currently existing for the API Deployment, in any phase. */
 function apiPods(): string[] {
   const out = kubectl(
     'get',
@@ -120,8 +111,8 @@ function apiGeneration(): string {
  * the pod is not what the specs talk to. Every request goes through the single
  * `kubectl port-forward` that `scripts/e2e.sh` owns, and that forward is bound to one
  * pod — when the pod goes, the forward exits and the harness has to respawn it.
- * Waiting on the Deployment instead let sc04-02 continue into that window, and the
- * eleven sc04-* specs queued behind it went down with it on `ECONNREFUSED :8080`.
+ * Waiting on the Deployment instead lets a spec continue into that window, and every
+ * spec queued behind it fails on `ECONNREFUSED :8080`.
  */
 async function waitForApi(): Promise<void> {
   const base = process.env.BASE_URL ?? 'http://localhost:8080';
@@ -150,8 +141,7 @@ async function waitForApi(): Promise<void> {
  * (SQLite on a ReadWriteOnce volume), so the old pod is gone *before* the new one
  * starts and there is a window with nothing serving at all. Hence the three waits
  * below — new pod, old pod gone, port actually answering — and hence the caller must
- * `await` this. A rollout that nobody waited through is what broke the first run of
- * sc04-02 and every sc04-* spec after it.
+ * `await` this.
  */
 export async function setApiEnv(key: string, value: string | null): Promise<void> {
   const generationBefore = apiGeneration();

@@ -5,9 +5,8 @@
 // sc01-04 전략 편집, sc01-07 후보 결정). 여기서 그 세부를 다시 단정하면 같은 행동이
 // 여러 파일의 검증으로 이중 계상되므로, 이 파일은 걷는 것 자체만 검증한다.
 //
-// 「모바일에서」라는 서술은 AC4.4(모바일 폭 규칙 — 구현 대기)의 몫이 아니라 이
-// 시나리오의 서술 배경이다. 화면 경로는 기존 spec과 같은 데스크톱 chromium
-// 프로젝트로 걷는다; 폭 규칙이 착지하면 AC4.4의 spec이 그 층을 검증한다.
+// 「모바일에서」라는 서술은 이 시나리오의 서술 배경이다. 모바일 폭 규칙(AC4.4)은
+// sc04-06 이 검증하므로 화면 경로는 기존 spec과 같은 데스크톱 chromium 프로젝트로 걷는다.
 //
 // Isolation: this spec *leases* the analysis worker (see `e2e/support/cluster.ts`).
 // It scales the Deployment to 1 inside its own block and returns it to 0 in
@@ -80,11 +79,9 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
       const save = page.getByTestId('register-key');
       await expect(save).toBeEnabled();
       await save.click();
-      // 시작 전에는 어떤 저장소도 실행 이력이 없다.
       await expect(page.getByTestId('repo-card')).not.toHaveCount(0);
       await expect(page.locator('[data-testid="repo-card"] .badge')).toHaveCount(0);
       await page.getByTestId('repo-url').fill('stub-account/payments-api');
-      // 시나리오는 브랜치 입력을 명시한다 — 스텁의 기본 브랜치 이름을 그대로 입력한다.
       await page.getByTestId('branch').fill('main');
       await page.getByTestId('check-access').click();
       await expect(page.getByTestId('estimate')).toBeVisible();
@@ -195,7 +192,6 @@ test.describe('시나리오 1: 정상 저장소 연결 및 전체 파이프라�
         expect(row!.detail, `${key} has a measured detail`).toBeTruthy();
         await expect(page.locator(`[data-stage="${key}"]`)).toContainText(row!.detail!);
       }
-      // 아직 열리지 않은 5단계는 대기다 — 확정된 후보 결정이 5단계의 몫이다.
       const stage5 = stages.find((s) => s.key === 'acceptance_dependencies');
       expect(stage5?.status, 'stage 5 is pending').toBe('pending');
       await expect(page.locator('[data-stage="acceptance_dependencies"]')).toContainText('대기 중');

@@ -1,6 +1,6 @@
 # 판정 상세 — 무인 자유 풀 4파일 (저장 계층 · 마이그레이션 테스트) · 2026-09-22
 
-reconciler task `rct_20260922-0008`(모델 `tbm_feature-doc-comment-redundancy`) · 22차 패스.
+reconciler task `rct_20260922-0008`(모델 `tbm_feature-doc-comment-necessity`) · 22차 패스.
 19차 패스(#128)가 가짜 벽을 걷어 내며 **「벽은 걷혔지만 판정 자체가 없다 … 그 축과 함께 볼지
 따로 볼지는 다음 계획에서 정한다」**로 명시 인계한 **4파일 33행**이 이 패스의 전부다.
 

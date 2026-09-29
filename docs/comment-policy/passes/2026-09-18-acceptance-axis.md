@@ -5,7 +5,7 @@
   `e2e/support/acceptance.ts` · `e2e/tests/sc02-01-acceptance-from-logic.spec.ts` ·
   `e2e/tests/sc02-04-user-facing-acceptance-doc.spec.ts` · `frontend/src/FeatureAcceptance.tsx`
 - **기준 트리**: `ebe8657` (main, #60 머지 직후)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260918-0004`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260918-0004`
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.
 이 파일은 이번 범위의 **근거**만 담는다.

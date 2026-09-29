@@ -9,7 +9,7 @@
   `e2e/tests/sc04-11-unauthenticated-block-and-signin.spec.ts` ·
   `e2e/tests/sc04-12-logout-session-invalidation.spec.ts`
 - **기준 트리**: 부모 **`f5a2937`** (main)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260920-0005`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260920-0005`
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.
 이 파일은 이번 범위의 **근거**만 담는다.

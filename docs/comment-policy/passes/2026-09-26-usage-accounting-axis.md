@@ -1,6 +1,6 @@
 # 비용 집계 축 신설 3파일 — 슬라이스 7d 가 들여온 AC4.6 적재·집계·검증 (37차 패스)
 
-- task: `rct_20260926-0002` · 모델 `tbm_feature-doc-comment-redundancy`
+- task: `rct_20260926-0002` · 모델 `tbm_feature-doc-comment-necessity`
 - 기준 커밋: `0522f33`(#172 착지 직후의 main tip) · 부모 지문 `lines=2968 files=150`
 - 원장 행: **신설 1행**(행 34) — `backend/src/usage.rs` · `backend/tests/usage.rs`
 - **판정 96행**(54+19+23) / **집행 73행** — `sc04-09` 23행은 판정만 하고 **집행을 보류**했다(아래 「보류」 절)

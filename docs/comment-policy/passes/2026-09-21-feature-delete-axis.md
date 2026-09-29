@@ -1,6 +1,6 @@
 # 판정 상세 — feature 삭제·보존 축 (슬라이스 6c 가 들여온 새 파일 4개) · 2026-09-21
 
-reconciler task `rct_20260921-0012`(모델 `tbm_feature-doc-comment-redundancy`). 자매 모델
+reconciler task `rct_20260921-0012`(모델 `tbm_feature-doc-comment-necessity`). 자매 모델
 `tbm_feature-doc-docs-impl` 의 슬라이스 6c(**PR #112**, `fc6d191`, AC3.3 feature 문서의 삭제와 보존)가 판정
 대상 범위에 주석 **순 +118행 / 새 파일 5**를 들여왔다(삭제 0 — 지워진 주석은 없다). 그중 마이그레이션
 `0011_feature_deletions.sql` 25행은 본문 「적용된 마이그레이션」 절의 사람 게이트 몫이라 **이 패스가 다루지

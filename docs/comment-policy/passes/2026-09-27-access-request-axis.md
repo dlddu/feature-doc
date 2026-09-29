@@ -1,6 +1,6 @@
 # 공유 요청 경로 축 — 슬라이스 7i 가 들여온 AC4.10 신설 4파일 (48차 패스)
 
-- task: `rct_20260927-0002` · 모델 `tbm_feature-doc-comment-redundancy`
+- task: `rct_20260927-0002` · 모델 `tbm_feature-doc-comment-necessity`
 - 기준 커밋: `13ffb8a`(#187 착지 직후의 main tip) · 부모 지문 `lines=3060 files=163`
 - 원장 행: **기존 2행의 판정 축을 닫는다**(신설 0행) — `0016_access_requests.sql`(행 A, 25행) ·
   `access_request.rs` · `tests/access_request.rs` · `sc04-15-…spec.ts`(행 B, 64행)

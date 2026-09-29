@@ -1,6 +1,6 @@
 # 판정 상세 — 가짜 벽 철거 (원장의 「경로 벽」 분류 정정 + `crypto.rs`) · 2026-09-22
 
-reconciler task `rct_20260922-0007`(모델 `tbm_feature-doc-comment-redundancy`). 이 패스는 **주석을
+reconciler task `rct_20260922-0007`(모델 `tbm_feature-doc-comment-necessity`). 이 패스는 **주석을
 새로 판정한 몫이 작고**(1파일 13행), 본체는 **원장이 사실과 어긋나게 적고 있던 「경로 벽」 분류를
 실측대로 고치는 것**이다. 둘을 한 패스에 넣은 이유는 아래 「왜 한 패스인가」에 있다.
 

@@ -3,7 +3,7 @@
 - **판정일**: 2026-09-18
 - **판정 범위**: `tools/check-journey-prototype.js` · `backend/src/config.rs`
 - **기준 트리**: `313750f` (main)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260918-0002`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260918-0002`
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.
 이 파일은 이번 범위의 **근거**만 담는다.

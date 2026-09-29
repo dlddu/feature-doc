@@ -1,6 +1,6 @@
 # 판정 상세 — 문서 편집 축 (슬라이스 6a 가 들여온 새 파일 6개) · 2026-09-21
 
-reconciler task `rct_20260921-0007`(모델 `tbm_feature-doc-comment-redundancy`). 자매 모델
+reconciler task `rct_20260921-0007`(모델 `tbm_feature-doc-comment-necessity`). 자매 모델
 `tbm_feature-doc-docs-impl` 의 슬라이스 6a(**PR #92**, `51daa9c`, AC3.1 LLM 보조 문서 수정)가 판정
 대상 범위에 주석 **188행을 순수 유입**(제거 0)시켰다. 그중 마이그레이션 `0009_feature_doc_edits.sql`
 30행은 본문 「적용된 마이그레이션」 절의 사람 게이트 몫이라 **이 패스가 다루지 않는다**. 나머지

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""사용자 여정 ↔ 목업 1:1 정합성 체커.
-
-규약은 docs/mockups/README.md 「여정 페이지 규약」. 이 스크립트는 그 규약이
+"""규약은 docs/mockups/README.md 「여정 페이지 규약」. 이 스크립트는 그 규약이
 실제 파일 상태와 일치하는지를 기계적으로 확인한다 — 의존성 0, 파이썬 stdlib 만.
 
 SSOT 방향:
@@ -20,7 +18,6 @@ SSOT 방향:
                  (다른 여정의 단계로 이어지는 갈래는 handoff 선언으로 해소한다)
   R5 앵커 무결성 — 페이지 안의 이동 대상이 전부 실재 섹션 id · 여정 밖 분기 규약
   R6 원본성 — 여정 페이지의 화면에 바이트 동일 임베드 흔적이 없다
-                 터치포인트 줄에서 파싱한 화면 집합(2026-09-03 폐지)
   R7 이관 래칫 — 이관 대기 여정의 상한 초과 · 목업 페이지는 전부 여정 페이지 ·
                  「쓰는 여정」 칸이 여정 문서에서 파생한 실측과 일치
   R8 링크 무결성 — docs/ 안의 상대 링크가 전부 실재 파일
@@ -138,7 +135,7 @@ def parse_pages():
         s = read(p)
         # <body> 태그를 떼어 낸 다음 그 안에서 센다. 한 정규식으로 findall 하면
         # 같은 태그의 두 번째 data-journey 를 놓쳐(탐욕적 [^>]*) "정확히 1개"
-        # 규칙이 공허해진다 — 네거티브 컨트롤이 잡아낸 결함이다.
+        # 규칙이 공허해진다.
         # 주석은 마크업이 아니므로 먼저 걷어낸다(문서 주석이 <body> 를 언급한다).
         markup = re.sub(r"<!--.*?-->", "", s, flags=re.S)
         bodytag = re.search(r"<body\b[^>]*>", markup)
@@ -265,9 +262,6 @@ for jid in sorted(owners):
     elif len(owners[jid]) > 1:
         fail("R1", "`%s` 를 선언한 목업 페이지가 %d개다 (%s) — 여정당 1개여야 한다" % (jid, len(owners[jid]), owners[jid]))
 
-# 화면 단위 목업(`sNN-*.html`)과 그 이관 대기 원장은 2026-09-03 화면 ID 폐지로
-# 함께 사라졌다. 화면은 더 이상 이름을 가진 단위가 아니라 여정 단계 안의 자리이므로,
-# 목업 페이지는 전부 여정 페이지여야 한다. 남은 래칫은 이관 대기 상한 하나다.
 wait_cap = re.search(r"\*\*이관 대기 상한: (\d+)\*\*", README)
 wait_cap_n = int(wait_cap.group(1)) if wait_cap else None
 if wait_cap_n is None:
@@ -309,7 +303,6 @@ for name in journey_files:
     if only_doc:
         fail("R3", "여정 문서에만 있는 단계 (미시각화): %s" % only_doc)
 
-    # 단계 섹션의 id 와 data-step 이 같은 값이어야 딥링크가 성립한다 (규칙 5e)
     for m in re.finditer(r'<section [^>]*\bid="([^"]+)"[^>]*\bdata-step="([^"]+)"', pg["text"]):
         if m.group(1) != m.group(2):
             fail("R3", "`%s` 의 섹션 id(%s)와 data-step(%s)이 다르다" % (name, m.group(1), m.group(2)))
@@ -391,7 +384,7 @@ for name in journey_files:
         rest = re.sub(r"<details\b[^>]*\bdata-meta=\"doc\"[^>]*>.*?</details>", "", rest, flags=re.S)
         rest = re.sub(r"<(script|style)\b.*?</\1>", "", rest, flags=re.S | re.I)
         rest = re.sub(r"<!--.*?-->", "", rest, flags=re.S)
-        visible_text = re.sub(r"<[^>]+>", " ", rest)   # 속성값(id/data-step)은 텍스트가 아니다
+        visible_text = re.sub(r"<[^>]+>", " ", rest)
         leaked = sorted({t for t in re.findall(r"STP-[a-z0-9-]+|JRN-[a-z0-9-]+|AC\d+\.\d+|터치포인트|연결 AC",
                                                visible_text)})
         if leaked:
@@ -434,7 +427,7 @@ for p in sorted(DOCS.rglob("*")):
             continue
         # docs/ 에 .nojekyll 이 있어 Pages 는 .md 를 렌더링하지 않는다 — HTML 에서
         # .md 를 직접 걸면 클릭 시 파일이 내려받아진다. 레포 규약대로 reader 를 경유해야
-        # 한다(2026-08-27 문서 포털). 여정 페이지가 여정 문서의 링크를 옮겨 실을 때
+        # 한다. 여정 페이지가 여정 문서의 링크를 옮겨 실을 때
         # 실제로 밟은 함정이다.
         if p.suffix == ".html" and path.endswith(".md") and not query:
             fail("R8", "%s → `%s` 를 직접 건다 — HTML 에서 .md 는 reader.html?doc= 를 경유할 것"

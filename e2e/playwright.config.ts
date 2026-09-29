@@ -6,8 +6,8 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   // One worker, i.e. one spec *file* at a time. `fullyParallel: false` alone only
-  // serialises within a file; files still run concurrently. ac4-5 and ac1-5 scale
-  // the analysis worker Deployment, which is state no per-user handle can isolate,
+  // serialises within a file; files still run concurrently. Specs that lease the
+  // analysis worker scale its Deployment, which is state no per-user handle can isolate,
   // so overlapping files would see each other's queue drain. The suite is seconds
   // long — determinism is worth more than the concurrency here.
   // The rule is per cluster, not per run: CI gets its concurrency by giving each

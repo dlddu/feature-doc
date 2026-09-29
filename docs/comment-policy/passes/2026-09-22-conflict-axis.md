@@ -1,6 +1,6 @@
 # 판정 상세 — 충돌 해소 축 (슬라이스 6d 가 들여온 새 파일 4개) · 2026-09-22
 
-reconciler task `rct_20260922-0005`(모델 `tbm_feature-doc-comment-redundancy`). 사람 PR **#114**
+reconciler task `rct_20260922-0005`(모델 `tbm_feature-doc-comment-necessity`). 사람 PR **#114**
 (`aacd0b4`, 슬라이스 6d — AC3.5 코드 자동 분석과 사용자 편집의 충돌 처리)가 판정 대상 범위에 주석
 **+139행 / −5행 = 순 +134행**을 들여왔다(파일 +5). 그중 마이그레이션 `0013_feature_doc_conflicts.sql`
 **24행**은 본문 「적용된 마이그레이션」 절의 사람 게이트(전용 PR · 수동 repair · 사람 승인) 몫이라

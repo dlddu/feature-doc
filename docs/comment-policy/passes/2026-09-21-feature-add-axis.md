@@ -1,6 +1,6 @@
 # 판정 상세 — 빠진 feature 직접 추가 축 (슬라이스 6b 가 들여온 새 파일 5개) · 2026-09-21
 
-reconciler task `rct_20260921-0010`(모델 `tbm_feature-doc-comment-redundancy`). 자매 모델
+reconciler task `rct_20260921-0010`(모델 `tbm_feature-doc-comment-necessity`). 자매 모델
 `tbm_feature-doc-docs-impl` 의 슬라이스 6b(**PR #107**, `89a1625`, AC3.2 feature 문서의 추가)가 판정
 대상 범위에 주석 **순 +197행 / 새 파일 6**을 들여왔다(삭제 2는 기존 doc 문장의 재작성이라 판정된
 주석이 걷힌 것은 0). 그중 마이그레이션 `0010_feature_additions.sql` 30행은 본문 「적용된 마이그레이션」
