@@ -630,6 +630,45 @@ reconciler task `rct_20260925-0002`. 사람 PR **#121**(`b4a6b30`, AC1.5 — 끝
 - 값: 줄 수·지문 **불변**(3 / `706ac009d1f5bfecd3590b6434001f3faea619d54bbfb2015f833409b5cabbfb`) ·
   파일 **무접촉**. 판정 축 `—` → **`①②③④`**.
 
+## 증분 재판정 ⑯ — #212 가 거짓으로 만든 `worker_api.rs` 주석 2곳 (2026-09-28 · `rct_20260928-0008`, 52차 패스)
+
+이 증분은 **지문이 움직여서가 아니라 주석이 거짓이 되어서** 열렸다. #212(`2315e26`, AC1.6)가 `claim()` 의
+`installation_token` 값을 `analysis::Grant` 로 분기시켜 `Grant::PublicRepo` 이면 `crate::github_tokens::load`
+(로그인 때 받은 사용자 인가)를 싣게 했는데, 주석 줄은 한 글자도 바뀌지 않았다 — 그래서 이 행의 줄 수·지문은
+그대로였고 원장 게이트도 초록이었다. #212 본문 「범위 밖 3」과 51차 패스가 이 불일치를 산문으로만 넘겼다.
+정책 「충돌 시 기본 방향」 — **주석이 코드와 어긋나면 주석이 틀린 것** — 을 그대로 적용한다.
+
+| 자리 | 옛 문면 | 무엇이 거짓인가 | 처분 |
+|---|---|---|---|
+| `ClaimView.installation_token` 필드 doc 2 → 3 | 「Short-lived GitHub installation token for this job's repository. `None` in stub mode (nothing to call). Never persisted, never logged.」 | ⑴ 공개 저장소 경로에선 설치 토큰이 아니라 소유자의 로그인 인가다(`Grant::PublicRepo` 분기). ⑵ **stub 모드에서 `None` 이 아니다** — `github_app::mint_installation_token` 의 `Mode::Stub` 은 `ghs_stub_…` 합성 토큰을 돌려주고, `backend/tests/worker.rs` 가 `body["installationToken"].is_string()` 으로 **그 반대를 단정**한다(감지가 놓친 둘째 거짓 — 이 판정에서 실측) | **재작성 · 유지** — 두 출처를 아는 문면으로. 「Never persisted, never logged」는 자격증명 비노출 불변식(유지 대상)이라 그대로 둔다 |
+| `claim()` 의 발급 앞 인라인 3 | 「… A job whose installation has since been removed simply gets no token and its fetch stage fails with a clear reason.」 | 설치가 **없어진** 작업은 이제 토큰 없이 진행하지 않는다 — 바로 위 `read_grant` 가 `Denied::Revoked` 를 돌려 `stop_for_revoked_access` 로 멈춘다(#214 가 사유를 가른 그 경로). 토큰 없이 fetch 단계로 가는 것은 `Grant::Installation(_) => None` — 작업이 큐에 든 뒤 설치가 **다른 id 로 바뀐** 경우뿐이다 | **둘째 문장만 재작성 · 줄 수 불변** — 첫 문장(「저장하지 않고 여기서 발급」, AC4.1/AC4.3)은 18차 판정 그대로 유지 |
+
+**판정 축(이 증분에 대해)**:
+
+- **①** 두 출처는 `claim()` 의 `match grant` 가 말한다. 그러나 필드 doc 은 **워커 쪽 소비자**(`backend/src/bin/worker.rs`
+  `ClaimJob.installation_token` → `repo_scan::scan`·`read_files`)가 와이어 계약을 읽는 자리이고, 필드 **이름이 한 출처만
+  말하므로** 이름이 부실한 경우다. 정책은 이때 「원본(이름)을 고친다」를 우선하지만, 개명은 serde 와이어 키
+  (`installationToken`)와 워커·테스트 3파일(`public_repo.rs:228` · `worker.rs:296,637-638`)을 함께 움직이는 **동작 코드 변경**이라
+  「판정 절차」 1항(제거·교정은 주석 행만)에 따라 이 패스의 몫이 아니다 — 아래 「범위 밖」. 그때까지 이 doc 이 이름의 오독을
+  막는 유일한 자리이므로 **유지**.
+- **②** `docs/prd/04-platform.md` AC4.8 설명이 「로그인 때 받은 사용자 인가는 … 공개 저장소 읽기(AC1.6)에도 쓰인다」를 규정하지만
+  **이 필드가 그것을 나른다**는 대응은 `docs/` 어디에도 없다(`installation_token` 의 `docs/` 히트는 `doc-tracker/2026-08.md` 의
+  「`installation_token` 선례대로」 1건 — 설치 경로만 말한다).
+- **③** #212 본문 「범위 밖 3」은 불일치를 **인정**할 뿐 올바른 문면을 담지 않는다 — 복원 경로가 아니라 이 증분의 입력이다.
+- **④** squash 머지라 `2315e26`·`bd93046` 본문은 `Co-authored-by` 뿐이다 — 히트 0.
+
+같은 축에서 **읽고 거짓이 아니라고 판정한 것**(무접촉): `worker_api.rs` 「Unsealed here for the same reason as the installation
+token …」(이유 — 워커는 DB 가 없고 응답에만 사는 평문이 더 좁다 — 는 두 출처 모두에 참) · `llmkey.rs` `active_key_for_user` doc
+「the same handling as the installation token beside it」(평문 비저장·비로깅은 두 출처 모두에 참 — 로그인 인가는 봉투 암호화로
+저장되지만 **평문**은 저장되지 않는다).
+
+**값**: 627 → **628 / `3194fd982ee0…`**(+1 = 필드 doc 2 → 3). 순 제거 0 · 재작성 2곳(4행 → 5행). 비주석 diff **0줄**.
+
+### 범위 밖 (후속)
+
+- 필드 개명 `installation_token` → 두 출처를 아는 이름(와이어 키 동반). 기능 슬라이스의 몫이다 — 개명이 착지하면 위 doc 의
+  첫 문장은 이름의 재진술이 되어 ① 로 걷힌다.
+
 ---
 
 ## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)

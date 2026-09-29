@@ -33,7 +33,7 @@ use crate::error::AppError;
 use crate::pipeline::{self, stage_status, status};
 use crate::state::AppState;
 use crate::util::now_unix;
-use crate::{analysis, github_app, installations};
+use crate::{analysis, github_app};
 
 /// How long a claim is held before another worker may reclaim the job. Long enough
 /// to cover a stage plus the worker's HTTP timeouts; short enough that a killed
@@ -137,8 +137,9 @@ struct ClaimView {
     /// of the queue rather than a rule the worker remembers.
     dependency_requests: Vec<CandidateRef>,
     lease_expires_at: i64,
-    /// Short-lived GitHub installation token for this job's repository. `None` in
-    /// stub mode (nothing to call). Never persisted, never logged.
+    /// The GitHub token the worker reads this job's repository with: the installation's
+    /// short-lived token, or — for a public repository outside the installation — the
+    /// owner's login authorization. Never persisted, never logged.
     installation_token: Option<String>,
     llm_provider: Option<String>,
     /// The owner's active LLM key, unsealed for this job only (AC1.2~AC1.4 stages).
@@ -186,7 +187,11 @@ struct ClaimRow {
 /// filter breaks `concurrent_workers_take_disjoint_jobs`).
 /// The policy is honoured by *where this is called from*, not by anything here:
 /// both call sites sit on a lease boundary, between the worker's calls.
-async fn stop_for_revoked_access(state: &AppState, id: &str) -> Result<(), AppError> {
+async fn stop_for_revoked_access(
+    state: &AppState,
+    id: &str,
+    reason: &'static str,
+) -> Result<(), AppError> {
     let now = now_unix();
     sqlx::query(
         "UPDATE analyses \
@@ -194,7 +199,7 @@ async fn stop_for_revoked_access(state: &AppState, id: &str) -> Result<(), AppEr
           WHERE id = ?",
     )
     .bind(status::FAILED)
-    .bind(analysis::ACCESS_REVOKED)
+    .bind(reason)
     .bind(now)
     .bind(id)
     .execute(&state.db)
@@ -205,7 +210,7 @@ async fn stop_for_revoked_access(state: &AppState, id: &str) -> Result<(), AppEr
           WHERE analysis_id = ? AND status = ?",
     )
     .bind(stage_status::FAILED)
-    .bind(analysis::ACCESS_REVOKED)
+    .bind(reason)
     .bind(now)
     .bind(id)
     .bind(stage_status::RUNNING)
@@ -262,16 +267,22 @@ async fn claim(
         "analysis claimed"
     );
 
-    if !analysis::still_granted(&state, &job.user_id, &job.repo_owner, &job.repo_name).await? {
-        stop_for_revoked_access(&state, &job.id).await?;
-        return Ok(StatusCode::NO_CONTENT.into_response());
-    }
+    let grant =
+        match analysis::read_grant(&state, &job.user_id, &job.repo_owner, &job.repo_name).await? {
+            Ok(grant) => grant,
+            Err(denied) => {
+                stop_for_revoked_access(&state, &job.id, denied.reason()).await?;
+                return Ok(StatusCode::NO_CONTENT.into_response());
+            }
+        };
 
     // Mint the job-scoped installation token here rather than storing one anywhere
-    // (AC4.1/AC4.3). A job whose installation has since been removed simply gets
-    // no token and its fetch stage fails with a clear reason.
-    let installation_token = match installations::get_for_user(&state.db, &job.user_id).await? {
-        Some(inst) if inst.installation_id == job.installation_id => {
+    // (AC4.1/AC4.3). A job queued under an installation that has since been replaced
+    // gets no token and its fetch stage fails with a clear reason.
+    let installation_token = match grant {
+        analysis::Grant::Installation(installation_id)
+            if installation_id == job.installation_id =>
+        {
             match github_app::mint_installation_token(&state, job.installation_id).await {
                 Ok(t) => Some(t.token),
                 Err(e) => {
@@ -280,7 +291,10 @@ async fn claim(
                 }
             }
         }
-        _ => None,
+        analysis::Grant::PublicRepo => {
+            crate::github_tokens::load(&state.db, &state.config.kek, &job.user_id).await?
+        }
+        analysis::Grant::Installation(_) => None,
     };
 
     // Unsealed here for the same reason as the installation token: the worker owns
@@ -593,8 +607,8 @@ async fn heartbeat(
     .fetch_optional(&state.db)
     .await?;
     if let Some((user_id, owner, name)) = target {
-        if !analysis::still_granted(&state, &user_id, &owner, &name).await? {
-            stop_for_revoked_access(&state, &id).await?;
+        if let Err(denied) = analysis::still_granted(&state, &user_id, &owner, &name).await? {
+            stop_for_revoked_access(&state, &id, denied.reason()).await?;
             return Err(AppError::Conflict("lease no longer held".into()));
         }
     }

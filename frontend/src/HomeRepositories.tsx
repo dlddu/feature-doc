@@ -7,6 +7,7 @@ import {
   createAnalysis,
   getInstallUrl,
   getUsage,
+  LOGIN_URL,
   listAnalyses,
   listRepositories,
   logout,
@@ -75,7 +76,7 @@ function buildRows(repos: Repository[], analyses: Analysis[]): Row[] {
     const key = fullName.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    rows.push({ key, fullName, branch: a.branch, latest: a, accessible: false });
+    rows.push({ key, fullName, branch: a.branch, latest: a, accessible: a.publicRepo === true });
   }
   return rows;
 }
@@ -380,7 +381,7 @@ export function HomeRepositories({
         </div>
       </div>
 
-      {estimate && !estimate.hasAccess && (
+      {estimate && !estimate.hasAccess && !estimate.authExpired && (
         <div className="notice err" style={{ marginTop: 12 }} data-testid="repo-outside">
           이 저장소에는 접근할 수 없어요 — App 설치 범위 밖입니다.
           <button
@@ -394,7 +395,29 @@ export function HomeRepositories({
         </div>
       )}
 
-      {estimate?.hasAccess && (
+      {estimate?.hasAccess && estimate.publicRepo && (
+        <div className="notice ok" style={{ marginTop: 12 }} data-testid="repo-public">
+          공개 저장소예요 — 설치 범위에 넣지 않아도, 로그인할 때 맡긴 GitHub 인가로 읽기만 합니다. 비용을 확인하고 시작할 수 있습니다.
+        </div>
+      )}
+
+      {estimate?.authExpired && (
+        <div className="notice err" style={{ marginTop: 12 }} data-testid="repo-authexpired">
+          GitHub 로그인 인가가 만료됐어요. 다시 로그인하면 공개 저장소를 이어서 분석할 수 있습니다. 큐에 등록하지 않았습니다.
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => {
+              window.location.href = LOGIN_URL;
+            }}
+            data-testid="relogin"
+          >
+            다시 로그인하기
+          </button>
+        </div>
+      )}
+
+      {estimate?.hasAccess && !estimate.publicRepo && (
         <div className="notice ok" style={{ marginTop: 12 }} data-testid="access-ok">
           접근 가능한 저장소예요. 비용을 확인하고 시작할 수 있습니다.
         </div>

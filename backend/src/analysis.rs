@@ -43,7 +43,7 @@ use crate::dependencies;
 use crate::diff;
 use crate::doc_edit;
 use crate::error::AppError;
-use crate::github_app::{self, RepoRef};
+use crate::github_app::{self, PublicRepo, RepoRef};
 use crate::installations;
 use crate::pipeline;
 use crate::state::AppState;
@@ -123,6 +123,9 @@ struct AnalysisView {
     /// see [`detail`].
     stages_total: i64,
     stages_done: i64,
+    #[sqlx(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    public_repo: Option<bool>,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -155,6 +158,7 @@ struct AnalysisDetailView {
     /// Derived from the stored reason rather than a second column, so the two can
     /// never disagree.
     access_revoked: bool,
+    reauth_required: bool,
     started_at: Option<i64>,
     finished_at: Option<i64>,
     stages: Vec<StageView>,
@@ -204,13 +208,39 @@ async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
 ) -> Result<Json<Vec<AnalysisView>>, AppError> {
-    let rows = sqlx::query_as::<_, AnalysisView>(&format!(
+    let mut rows = sqlx::query_as::<_, AnalysisView>(&format!(
         "SELECT {} FROM analyses a WHERE a.user_id = ? ORDER BY a.created_at DESC, a.id DESC",
         analysis_columns()
     ))
     .bind(&user.id)
     .fetch_all(&state.db)
     .await?;
+    if rows.is_empty() {
+        return Ok(Json(rows));
+    }
+    let granted = accessible_repos(&state, &user.id).await?;
+    let mut public: std::collections::HashMap<String, bool> = std::collections::HashMap::new();
+    for row in &mut rows {
+        if granted.iter().any(|r| {
+            r.owner.eq_ignore_ascii_case(&row.repo_owner) && r.name.eq_ignore_ascii_case(&row.repo_name)
+        }) {
+            row.public_repo = Some(false);
+            continue;
+        }
+        let key = format!("{}/{}", row.repo_owner, row.repo_name).to_lowercase();
+        if let Some(known) = public.get(&key) {
+            row.public_repo = Some(*known);
+            continue;
+        }
+        let found = !granted.is_empty()
+            && matches!(
+                github_app::lookup_public_repository(&state, &user.id, &row.repo_owner, &row.repo_name)
+                    .await,
+                Ok(PublicRepo::Found(_))
+            );
+        public.insert(key, found);
+        row.public_repo = Some(found);
+    }
     Ok(Json(rows))
 }
 
@@ -479,6 +509,8 @@ struct PreflightView {
     est_llm_calls: i64,
     est_cost_cents: i64,
     est_duration_min: i64,
+    public_repo: bool,
+    auth_expired: bool,
 }
 
 /// Pre-flight estimate for Connect Repository: resolves the typed target, reports whether it is
@@ -490,15 +522,18 @@ async fn preflight(
     Json(req): Json<TargetReq>,
 ) -> Result<Json<PreflightView>, AppError> {
     let (owner, name) = parse_repo(&req.repo_url)?;
-    let repos = accessible_repos(&state, &user.id).await?;
-    let matched = repos
-        .iter()
-        .find(|r| r.owner.eq_ignore_ascii_case(&owner) && r.name.eq_ignore_ascii_case(&name));
+    let installation = installations::get_for_user(&state.db, &user.id).await?;
+    let target = match installation {
+        None => Target::Outside,
+        Some(inst) => resolve_target(&state, &user.id, inst.installation_id, &owner, &name).await?,
+    };
 
-    match matched {
-        None => {
+    let (repo, public_repo) = match target {
+        Target::Installed(repo) => (repo, false),
+        Target::Public(repo) => (repo, true),
+        Target::Outside | Target::AuthExpired => {
             let full_name = format!("{owner}/{name}");
-            Ok(Json(PreflightView {
+            return Ok(Json(PreflightView {
                 has_access: false,
                 owner,
                 name,
@@ -509,26 +544,60 @@ async fn preflight(
                 est_llm_calls: 0,
                 est_cost_cents: 0,
                 est_duration_min: 0,
-            }))
+                public_repo: false,
+                auth_expired: matches!(target, Target::AuthExpired),
+            }));
         }
-        Some(repo) => {
-            let branch = resolve_branch(req.branch, repo);
-            let est = Estimate::from_size_kb(repo.size_kb);
-            Ok(Json(PreflightView {
-                has_access: true,
-                owner: repo.owner.clone(),
-                name: repo.name.clone(),
-                full_name: repo.full_name.clone(),
-                branch,
-                files_to_scan: est.files,
-                size_bytes: repo.size_kb * 1024,
-                est_llm_calls: est.llm_calls,
-                est_cost_cents: est.cost_cents,
-                est_duration_min: est.duration_min,
-            }))
-        }
-    }
+    };
+    let branch = resolve_branch(req.branch, &repo);
+    let est = Estimate::from_size_kb(repo.size_kb);
+    Ok(Json(PreflightView {
+        has_access: true,
+        branch,
+        files_to_scan: est.files,
+        size_bytes: repo.size_kb * 1024,
+        est_llm_calls: est.llm_calls,
+        est_cost_cents: est.cost_cents,
+        est_duration_min: est.duration_min,
+        public_repo,
+        auth_expired: false,
+        owner: repo.owner,
+        name: repo.name,
+        full_name: repo.full_name,
+    }))
 }
+
+enum Target {
+    Installed(RepoRef),
+    Public(RepoRef),
+    AuthExpired,
+    Outside,
+}
+
+async fn resolve_target(
+    state: &AppState,
+    user_id: &str,
+    installation_id: i64,
+    owner: &str,
+    name: &str,
+) -> Result<Target, AppError> {
+    let repos = github_app::list_repositories(state, installation_id).await?;
+    if let Some(repo) = repos
+        .into_iter()
+        .find(|r| r.owner.eq_ignore_ascii_case(owner) && r.name.eq_ignore_ascii_case(name))
+    {
+        return Ok(Target::Installed(repo));
+    }
+    Ok(
+        match github_app::lookup_public_repository(state, user_id, owner, name).await? {
+            PublicRepo::Found(repo) => Target::Public(repo),
+            PublicRepo::AuthExpired => Target::AuthExpired,
+            PublicRepo::NotPublic => Target::Outside,
+        },
+    )
+}
+
+pub const AUTH_EXPIRED: &str = "GitHub 로그인 인가가 만료됐어요. 다시 로그인하면 공개 저장소를 이어서 분석할 수 있습니다. 큐에 등록하지 않았습니다.";
 
 /// Explicitly triggers an analysis (Connect Repository "분석 시작"). Confirms the target is within
 /// the App's granted access, then enqueues a `queued` job (201). An out-of-scope
@@ -547,17 +616,26 @@ async fn create(
             AppError::BadRequest("GitHub App이 아직 설치되지 않았습니다. 먼저 App을 설치해 주세요.".into())
         })?;
 
-    let repos = github_app::list_repositories(&state, installation.installation_id).await?;
-    let repo = repos
-        .iter()
-        .find(|r| r.owner.eq_ignore_ascii_case(&owner) && r.name.eq_ignore_ascii_case(&name))
-        .ok_or_else(|| {
-            AppError::BadRequest(
+    let (repo, public_repo) = match resolve_target(
+        &state,
+        &user.id,
+        installation.installation_id,
+        &owner,
+        &name,
+    )
+    .await?
+    {
+        Target::Installed(repo) => (repo, false),
+        Target::Public(repo) => (repo, true),
+        Target::AuthExpired => return Err(AppError::BadRequest(AUTH_EXPIRED.into())),
+        Target::Outside => {
+            return Err(AppError::BadRequest(
                 "이 저장소에 접근할 수 없습니다. GitHub App 설치 범위에 이 저장소를 추가해 주세요.".into(),
-            )
-        })?;
+            ))
+        }
+    };
 
-    let branch = resolve_branch(req.branch, repo);
+    let branch = resolve_branch(req.branch, &repo);
     let est = Estimate::from_size_kb(repo.size_kb);
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -626,6 +704,7 @@ async fn create(
             undecided_candidates: 0,
             stages_total: pipeline::STAGES.len() as i64,
             stages_done: 0,
+            public_repo: Some(public_repo),
         }),
     ))
 }
@@ -673,7 +752,8 @@ async fn load_detail(
 
     Ok(AnalysisDetailView {
         analysis,
-        access_revoked: run.error.as_deref() == Some(ACCESS_REVOKED),
+        access_revoked: matches!(run.error.as_deref(), Some(ACCESS_REVOKED | ACCESS_AUTH_EXPIRED)),
+        reauth_required: run.error.as_deref() == Some(ACCESS_AUTH_EXPIRED),
         error: run.error,
         started_at: run.started_at,
         finished_at: run.finished_at,
@@ -698,6 +778,8 @@ pub(crate) async fn accessible_repos(
 /// what to do next (AC4.3).
 pub const ACCESS_REVOKED: &str = "저장소 접근이 해제되어 진행 중이던 분석을 현재 호출까지만 마무리하고 중단했습니다. App 설치나 저장소 접근 범위를 되돌린 뒤 다시 시작해 주세요.";
 
+pub const ACCESS_AUTH_EXPIRED: &str = "GitHub 로그인 인가가 만료되어 진행 중이던 분석을 현재 호출까지만 마무리하고 중단했습니다. 다시 로그인한 뒤 분석을 다시 시작해 주세요.";
+
 /// An upstream failure is *not* revocation: it propagates, so a GitHub outage can
 /// never be mistaken for the user having taken access away.
 pub(crate) async fn still_granted(
@@ -705,11 +787,46 @@ pub(crate) async fn still_granted(
     user_id: &str,
     owner: &str,
     name: &str,
-) -> Result<bool, AppError> {
-    let repos = accessible_repos(state, user_id).await?;
-    Ok(repos
-        .iter()
-        .any(|r| r.owner.eq_ignore_ascii_case(owner) && r.name.eq_ignore_ascii_case(name)))
+) -> Result<Result<(), Denied>, AppError> {
+    Ok(read_grant(state, user_id, owner, name).await?.map(|_| ()))
+}
+
+pub(crate) enum Grant {
+    Installation(i64),
+    PublicRepo,
+}
+
+pub(crate) enum Denied {
+    Revoked,
+    AuthExpired,
+}
+
+impl Denied {
+    pub(crate) fn reason(&self) -> &'static str {
+        match self {
+            Denied::Revoked => ACCESS_REVOKED,
+            Denied::AuthExpired => ACCESS_AUTH_EXPIRED,
+        }
+    }
+}
+
+pub(crate) async fn read_grant(
+    state: &AppState,
+    user_id: &str,
+    owner: &str,
+    name: &str,
+) -> Result<Result<Grant, Denied>, AppError> {
+    let Some(inst) = installations::get_for_user(&state.db, user_id).await? else {
+        return Ok(Err(Denied::Revoked));
+    };
+    Ok(
+        match resolve_target(state, user_id, inst.installation_id, owner, name).await? {
+            Target::Installed(_) => Ok(Grant::Installation(inst.installation_id)),
+            Target::Public(_) => Ok(Grant::PublicRepo),
+            Target::AuthExpired => Err(Denied::AuthExpired),
+            Target::Outside => Err(Denied::Revoked),
+        },
+    )
 }
 
 fn resolve_branch(requested: Option<String>, repo: &RepoRef) -> String {

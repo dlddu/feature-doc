@@ -378,6 +378,25 @@ PR #99 본문 「계획 단계」 1·2·3. 판정 절차는 이 파일의 본문
 
 ---
 
+## 증분 재판정 ⑦ — `cluster.ts` `setApiEnv` 의 호출처 문장 (2026-09-28 · `rct_20260928-0008`, 52차 패스)
+
+`setApiEnv` JSDoc 의 「Used by sc04-02 to take repository access away the way a user does on GitHub
+(`FEATUREDOC_STUB_REPO_ACCESS`, `backend/src/github_app.rs`).」 3행은 #212 가 둘째 호출처(`sc01-09` 가
+`FEATUREDOC_STUB_USER_AUTH_REVOKED` 로 로그인 인가 회수를 흉내 낸다)를 들이며 **누락으로 거짓**이 됐다 — 호출처를
+열거하는 주석이 원본(호출처)만 늘 때 조용히 낡는, 정책 머리가 든 바로 그 모양이다.
+
+- **①** 호출처는 `git grep setApiEnv e2e/`(spec 2파일)가 말하고, 각 spec 은 넘기는 스위치를 이름 붙은 상수로 들고 있다
+  (`sc04-02` `ACCESS` · `sc01-09` `REVOKED`). 스위치의 뜻은 정의 자리 `backend/src/github_app.rs` 의 `STUB_ACCESS` doc 이 말한다.
+- **②** 「해제는 GitHub 쪽 사건이라 제품 안에 버튼이 없다 — 그래서 App 더블의 허용 저장소를 좁힌다」는 `docs/doc-tracker/2026-09.md` 의
+  `sc04-02` 매핑 행(122행)이 이미 규정한다(25일 폐기 축 패스 `2026-09-25-revocation-axis.md` 53행이 그 행을 ② 로 인용했다).
+- **③④** 불요 — ①② 로 닫힌다.
+
+**처분: 제거 2행 · 재작성 1행**(147행을 「… clear it in `finally`.」에서 끝낸다). 호출처를 다시 적지 않는다 — 셋째 호출처가
+생기면 같은 이유로 또 낡는다. 같은 블록의 나머지(임대 규칙 · `Recreate` 의 무응답 창과 세 대기 · sc04-02 첫 실행이 깨진 경위)는
+18일 판정 그대로 유지하고 이번에 다시 묻지 않았다(문면이 거짓이 되지 않았다).
+
+**값**: 175 → **173 / `d30ee1e3a900…`**. 비주석 diff **0줄**.
+
 ## 원장에서 옮겨 온 증분 재판정 기록 (2026-09-26 형식 이전)
 
 아래는 `ledger.md`의 결과 칸에 쌓여 있던 증분 재판정·정정 기록을 **문면 그대로** 옮긴
