@@ -67,7 +67,7 @@ async fn migrations_create_expected_tables() {
     let _ = std::fs::remove_file(&path);
 }
 
-const APPLIED: [(&str, &str); 17] = [
+const APPLIED: [(&str, &str); 18] = [
     ("0001_init.sql", "d318541ba2d08dd74d917f424c42657d6859a7692294d7c9b478238dabe59d3b"),
     ("0002_github_tokens.sql", "a62a0ecb0a7cdd303a1e06bc2420d7ab9a853836af36db9aabc6a35caa05514b"),
     ("0003_analyses.sql", "097542fd1927f845c0a09d43a8666c5de1d92a39f09a8e1ecd278aa8da72856e"),
@@ -85,6 +85,7 @@ const APPLIED: [(&str, &str); 17] = [
     ("0015_llm_call_usage.sql", "fe83da97a819586bd1f33316e710ca6de9a680dde6b4080f4c22eeb6833bf8d3"),
     ("0016_access_requests.sql", "d332e2812f8550b62c58082abc6bd17544605471de365911d6043cf5f0aabedc"),
     ("0017_push_subscriptions.sql", "506c45ad71e2918d28a5973006e3681e1874eec2b3fa70b35ed2995cdc00e057"),
+    ("0018_analysis_public_repo.sql", "eae91c19499fba3ac327d81dc676d242bd65ceae35c1062d3ea6d86c164d330e"),
 ];
 
 fn migrations_dir() -> std::path::PathBuf {

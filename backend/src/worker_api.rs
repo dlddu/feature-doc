@@ -168,6 +168,7 @@ struct ClaimRow {
     repo_name: String,
     branch: String,
     llm_language: Option<String>,
+    public_repo: bool,
 }
 
 /// Atomically takes the oldest claimable job, or answers `204` when the queue is
@@ -241,7 +242,7 @@ async fn claim(
                ) \
            AND (status = ? \
                 OR (status = ? AND lease_expires_at IS NOT NULL AND lease_expires_at < ?)) \
-     RETURNING id, user_id, installation_id, repo_owner, repo_name, branch, llm_language",
+     RETURNING id, user_id, installation_id, repo_owner, repo_name, branch, llm_language, public_repo",
     )
     .bind(status::RUNNING)
     .bind(&req.worker_id)
@@ -268,7 +269,15 @@ async fn claim(
     );
 
     let grant =
-        match analysis::read_grant(&state, &job.user_id, &job.repo_owner, &job.repo_name).await? {
+        match analysis::read_grant(
+            &state,
+            &job.user_id,
+            &job.repo_owner,
+            &job.repo_name,
+            job.public_repo,
+        )
+        .await?
+        {
             Ok(grant) => grant,
             Err(denied) => {
                 stop_for_revoked_access(&state, &job.id, denied.reason()).await?;
@@ -600,14 +609,16 @@ async fn heartbeat(
         return Err(AppError::Conflict("lease no longer held".into()));
     }
 
-    let target: Option<(String, String, String)> = sqlx::query_as(
-        "SELECT user_id, repo_owner, repo_name FROM analyses WHERE id = ?",
+    let target: Option<(String, String, String, bool)> = sqlx::query_as(
+        "SELECT user_id, repo_owner, repo_name, public_repo FROM analyses WHERE id = ?",
     )
     .bind(&id)
     .fetch_optional(&state.db)
     .await?;
-    if let Some((user_id, owner, name)) = target {
-        if let Err(denied) = analysis::still_granted(&state, &user_id, &owner, &name).await? {
+    if let Some((user_id, owner, name, public_repo)) = target {
+        if let Err(denied) =
+            analysis::still_granted(&state, &user_id, &owner, &name, public_repo).await?
+        {
             stop_for_revoked_access(&state, &id, denied.reason()).await?;
             return Err(AppError::Conflict("lease no longer held".into()));
         }

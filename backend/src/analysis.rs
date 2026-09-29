@@ -159,6 +159,7 @@ struct AnalysisDetailView {
     /// never disagree.
     access_revoked: bool,
     reauth_required: bool,
+    install_available: bool,
     started_at: Option<i64>,
     finished_at: Option<i64>,
     stages: Vec<StageView>,
@@ -511,6 +512,7 @@ struct PreflightView {
     est_duration_min: i64,
     public_repo: bool,
     auth_expired: bool,
+    denied_reason: Option<&'static str>,
 }
 
 /// Pre-flight estimate for Connect Repository: resolves the typed target, reports whether it is
@@ -532,6 +534,12 @@ async fn preflight(
         Target::Installed(repo) => (repo, false),
         Target::Public(repo) => (repo, true),
         Target::Outside | Target::AuthExpired => {
+            let denied_reason = match target {
+                Target::Outside if was_public(&state, &user.id, &owner, &name).await? => {
+                    Some(NO_LONGER_PUBLIC)
+                }
+                _ => None,
+            };
             let full_name = format!("{owner}/{name}");
             return Ok(Json(PreflightView {
                 has_access: false,
@@ -546,6 +554,7 @@ async fn preflight(
                 est_duration_min: 0,
                 public_repo: false,
                 auth_expired: matches!(target, Target::AuthExpired),
+                denied_reason,
             }));
         }
     };
@@ -561,6 +570,7 @@ async fn preflight(
         est_duration_min: est.duration_min,
         public_repo,
         auth_expired: false,
+        denied_reason: None,
         owner: repo.owner,
         name: repo.name,
         full_name: repo.full_name,
@@ -599,6 +609,28 @@ async fn resolve_target(
 
 pub const AUTH_EXPIRED: &str = "GitHub 로그인 인가가 만료됐어요. 다시 로그인하면 공개 저장소를 이어서 분석할 수 있습니다. 큐에 등록하지 않았습니다.";
 
+pub const NO_LONGER_PUBLIC: &str = "공개 저장소가 아니게 되었습니다. 이 저장소를 다시 분석하려면 GitHub App 설치 범위에 추가해 주세요. 큐에 등록하지 않았습니다.";
+
+async fn was_public(
+    state: &AppState,
+    user_id: &str,
+    owner: &str,
+    name: &str,
+) -> Result<bool, AppError> {
+    let hit: Option<(i64,)> = sqlx::query_as(
+        "SELECT 1 FROM analyses \
+          WHERE user_id = ? AND repo_owner = ? COLLATE NOCASE AND repo_name = ? COLLATE NOCASE \
+            AND public_repo = 1 \
+          LIMIT 1",
+    )
+    .bind(user_id)
+    .bind(owner)
+    .bind(name)
+    .fetch_optional(&state.db)
+    .await?;
+    Ok(hit.is_some())
+}
+
 /// Explicitly triggers an analysis (Connect Repository "분석 시작"). Confirms the target is within
 /// the App's granted access, then enqueues a `queued` job (201). An out-of-scope
 /// target — or one with no App installed — is rejected with a clear message and
@@ -628,6 +660,9 @@ async fn create(
         Target::Installed(repo) => (repo, false),
         Target::Public(repo) => (repo, true),
         Target::AuthExpired => return Err(AppError::BadRequest(AUTH_EXPIRED.into())),
+        Target::Outside if was_public(&state, &user.id, &owner, &name).await? => {
+            return Err(AppError::BadRequest(NO_LONGER_PUBLIC.into()))
+        }
         Target::Outside => {
             return Err(AppError::BadRequest(
                 "이 저장소에 접근할 수 없습니다. GitHub App 설치 범위에 이 저장소를 추가해 주세요.".into(),
@@ -650,8 +685,8 @@ async fn create(
     let mut tx = state.db.begin().await?;
     sqlx::query(
         "INSERT INTO analyses \
-         (id, user_id, installation_id, repo_owner, repo_name, branch, status, est_llm_calls, est_cost_cents, created_at, llm_language) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         (id, user_id, installation_id, repo_owner, repo_name, branch, status, est_llm_calls, est_cost_cents, created_at, llm_language, public_repo) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&user.id)
@@ -664,6 +699,7 @@ async fn create(
     .bind(est.cost_cents)
     .bind(now)
     .bind(language.as_str())
+    .bind(public_repo)
     .execute(&mut *tx)
     .await?;
     for stage in pipeline::STAGES.iter() {
@@ -750,16 +786,38 @@ async fn load_detail(
 
     let spend = crate::usage::of_analysis(&state.db, id).await?;
 
+    let install_available = run.error.as_deref() == Some(ACCESS_NO_LONGER_PUBLIC)
+        && can_install_on(state, user_id, &analysis.repo_owner).await?;
+
     Ok(AnalysisDetailView {
         analysis,
-        access_revoked: matches!(run.error.as_deref(), Some(ACCESS_REVOKED | ACCESS_AUTH_EXPIRED)),
+        access_revoked: matches!(
+            run.error.as_deref(),
+            Some(ACCESS_REVOKED | ACCESS_AUTH_EXPIRED | ACCESS_NO_LONGER_PUBLIC)
+        ),
         reauth_required: run.error.as_deref() == Some(ACCESS_AUTH_EXPIRED),
+        install_available,
         error: run.error,
         started_at: run.started_at,
         finished_at: run.finished_at,
         stages,
         spend,
     })
+}
+
+async fn can_install_on(state: &AppState, user_id: &str, owner: &str) -> Result<bool, AppError> {
+    let login: Option<(String,)> = sqlx::query_as("SELECT login FROM users WHERE id = ?")
+        .bind(user_id)
+        .fetch_optional(&state.db)
+        .await?;
+    let account = installations::get_for_user(&state.db, user_id)
+        .await?
+        .and_then(|inst| inst.account_login);
+    Ok(login
+        .map(|(login,)| login)
+        .into_iter()
+        .chain(account)
+        .any(|candidate| candidate.eq_ignore_ascii_case(owner)))
 }
 
 pub(crate) async fn accessible_repos(
@@ -780,6 +838,8 @@ pub const ACCESS_REVOKED: &str = "저장소 접근이 해제되어 진행 중이
 
 pub const ACCESS_AUTH_EXPIRED: &str = "GitHub 로그인 인가가 만료되어 진행 중이던 분석을 현재 호출까지만 마무리하고 중단했습니다. 다시 로그인한 뒤 분석을 다시 시작해 주세요.";
 
+pub const ACCESS_NO_LONGER_PUBLIC: &str = "공개 저장소가 아니게 되었습니다. 저장소가 비공개로 바뀌어 진행 중이던 분석을 현재 호출까지만 마무리하고 중단했습니다.";
+
 /// An upstream failure is *not* revocation: it propagates, so a GitHub outage can
 /// never be mistaken for the user having taken access away.
 pub(crate) async fn still_granted(
@@ -787,8 +847,9 @@ pub(crate) async fn still_granted(
     user_id: &str,
     owner: &str,
     name: &str,
+    public_repo: bool,
 ) -> Result<Result<(), Denied>, AppError> {
-    Ok(read_grant(state, user_id, owner, name).await?.map(|_| ()))
+    Ok(read_grant(state, user_id, owner, name, public_repo).await?.map(|_| ()))
 }
 
 pub(crate) enum Grant {
@@ -799,6 +860,7 @@ pub(crate) enum Grant {
 pub(crate) enum Denied {
     Revoked,
     AuthExpired,
+    NoLongerPublic,
 }
 
 impl Denied {
@@ -806,6 +868,7 @@ impl Denied {
         match self {
             Denied::Revoked => ACCESS_REVOKED,
             Denied::AuthExpired => ACCESS_AUTH_EXPIRED,
+            Denied::NoLongerPublic => ACCESS_NO_LONGER_PUBLIC,
         }
     }
 }
@@ -815,6 +878,7 @@ pub(crate) async fn read_grant(
     user_id: &str,
     owner: &str,
     name: &str,
+    public_repo: bool,
 ) -> Result<Result<Grant, Denied>, AppError> {
     let Some(inst) = installations::get_for_user(&state.db, user_id).await? else {
         return Ok(Err(Denied::Revoked));
@@ -824,6 +888,7 @@ pub(crate) async fn read_grant(
             Target::Installed(_) => Ok(Grant::Installation(inst.installation_id)),
             Target::Public(_) => Ok(Grant::PublicRepo),
             Target::AuthExpired => Err(Denied::AuthExpired),
+            Target::Outside if public_repo => Err(Denied::NoLongerPublic),
             Target::Outside => Err(Denied::Revoked),
         },
     )

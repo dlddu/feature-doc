@@ -177,6 +177,7 @@ export type AnalysisDetail = Analysis & {
    */
   accessRevoked: boolean;
   reauthRequired: boolean;
+  installAvailable: boolean;
   startedAt: number | null;
   finishedAt: number | null;
   stages: Stage[];
@@ -218,6 +219,7 @@ export type Preflight = {
   estDurationMin: number;
   publicRepo: boolean;
   authExpired: boolean;
+  deniedReason: string | null;
 };
 
 /** Empty — not an error — when the App is not installed yet. */
