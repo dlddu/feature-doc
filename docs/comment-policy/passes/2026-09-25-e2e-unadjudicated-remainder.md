@@ -1,6 +1,6 @@
 # 판정 상세 — e2e 잔여 미판정 2파일 (App 설치 헬퍼 · 단계 재실행 spec) · 2026-09-25
 
-reconciler task `rct_20260925-0001`(모델 `tbm_feature-doc-comment-redundancy`) · 25차 패스.
+reconciler task `rct_20260925-0001`(모델 `tbm_feature-doc-comment-necessity`) · 25차 패스.
 22차 패스(#130)가 합계 문단에서 **「판정 행 밖이라 잔여로 들어갔다」**로 두 번 명시 인계한
 새 파일 2개가 이 행의 전부다 — `e2e/support/github-app.ts` 4행(#141 유입)과
 `e2e/tests/sc01-08-succeeded-stage-rerun.spec.ts` 13행(#121 유입).

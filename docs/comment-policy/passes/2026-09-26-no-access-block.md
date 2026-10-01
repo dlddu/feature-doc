@@ -5,7 +5,7 @@
 - **기준 트리**: **`71455fd`**(main tip, 44차 패스 #190 착지 직후). 이 범위의 줄 수·지문은 유입 시점
   `9d33428` 부터 tip 까지 **바이트 동일**하다(11 / `5a25de900022bffeaabc13e6fa73579e5704104866402931579f71039d3cfc24`).
 - **유입원**: PR **#181**(`9d33428`, 슬라이스 7g — 볼 수 없는 저장소 상태를 공유 링크 경로에 렌더)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260926-0012`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260926-0012`
 - **PR**: #NNN (**45차 패스**)
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.

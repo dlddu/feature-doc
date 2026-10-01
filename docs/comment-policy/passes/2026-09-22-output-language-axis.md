@@ -1,6 +1,6 @@
 # 판정 상세 — 출력 언어 설정 축 (AC4.9 가 들여온 새 파일 3개) · 2026-09-22
 
-reconciler task `rct_20260922-0001`(모델 `tbm_feature-doc-comment-redundancy`). 사람 PR **#108**
+reconciler task `rct_20260922-0001`(모델 `tbm_feature-doc-comment-necessity`). 사람 PR **#108**
 (`b1c4efe`, AC4.9 LLM 산출물의 출력 언어 사용자 설정)이 판정 대상 범위에 주석 **순 +86행 / 제거 0행**을
 들여왔다(파일 12개). 그중 마이그레이션 `0012_llm_language.sql` **14행**은 본문 「적용된 마이그레이션」 절의
 사람 게이트(전용 PR · 수동 repair · 사람 승인) 몫이라 **이 패스가 다루지 않는다** — 잔여 `0009`(30) ·

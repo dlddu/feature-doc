@@ -6,7 +6,7 @@
   tip 이 같다(2 / `ae65d92d35443712f83418a01ea18525c81969b1d8b4c6840da7a532bbc41406`).
 - **유입원**: PR **#212**(`2315e26`, docs-impl `rct_20260928-0015` — 01#시나리오 9 를 구현하며 이 spec 을
   신설했다). 정책 README 「판정하지 않은 주석을 들이는 PR」 규칙대로 행만 세우고 판정 축을 `—` 로 두었다.
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260928-0007`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260928-0007`
 - **PR**: 이 패스의 PR (**51차 패스**)
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.

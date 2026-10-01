@@ -5,7 +5,7 @@
   `backend/tests/analyses.rs` · `scripts/e2e.sh` ·
   `e2e/tests/sc02-02-acceptance-from-tests.spec.ts`
 - **기준 트리**: 부모 **`7415771`** (main, 13차 패스 병합 직후)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260920-0007`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260920-0007`
 - **PR**: #96 (squash)
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.

@@ -9,7 +9,7 @@
   `backend/tests/security.rs` · `backend/src/audit.rs` · `backend/tests/crypto.rs`
 - **보류**: `backend/src/crypto.rs` — **D2 사람 게이트 풀**로 이관(아래 「D2 보류」 절)
 - **기준 트리**: 부모 **`4a4b593`** (main, 12차 패스 병합 직후)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260920-0006`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260920-0006`
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.
 이 파일은 이번 범위의 **근거**만 담는다.

@@ -6,7 +6,7 @@
   유입 시점 `67c15ad` 부터 `174a29b`(#161) · `908a6de`(#163) · `bf6bd74`(#164) 까지 **네 지점에서 바이트 동일**하다
   (9 / `a0d46b59a983d30c34aaea1538e289c0882e09c04a9f466a0a8cfac109e39b33`).
 - **유입원**: PR **#148**(`67c15ad`, `ci(e2e)`: 워커·테스트 폴링 단축 — 루프 밖 CI 속도 PR)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260925-0013`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260925-0013`
 - **PR**: #165 (**35차 패스** · 원장 **새 행 33**) — 자매 **#162**(34차 패스, `2973641`)가 먼저
   착지해 번호가 한 칸 밀렸다. 기준 트리도 그 착지 뒤 `bf6bd74` 로 리베이스했다.
 

@@ -8,7 +8,7 @@
 - **유입원**: PR **#201**(`e8609bc`, 수렴 슬라이스 ⒲ — 근거 뷰어의 본문을 활성 대조로 올리며
   화면 머리에 목업 매핑 주석 1줄을 더했다). 파일 자신은 슬라이스 8c(#200)가 **주석 0줄**로 들여왔고,
   그래서 지문의 파일 수도 163 → 164 로 함께 움직였다.
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260928-0003`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260928-0003`
 - **PR**: #NNN (**50차 패스**)
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.

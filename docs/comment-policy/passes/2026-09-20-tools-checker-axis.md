@@ -5,7 +5,7 @@
   `tools/check-scenario-e2e.py`
 - **기준 트리**: 판정은 `7a232f9`, 병합 기준은 리베이스 후 부모 **`b2724da`** (main — #64 가
   판정 도중 머지됐다)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260920-0003`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260920-0003`
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.
 이 파일은 이번 범위의 **근거**만 담는다.

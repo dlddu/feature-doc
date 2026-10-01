@@ -1,6 +1,6 @@
 # 43차 패스 — L 표면 잔여 9행의 남은 축(③④) 마감
 
-- task: `rct_20260926-0010` (`tbm_feature-doc-comment-redundancy`)
+- task: `rct_20260926-0010` (`tbm_feature-doc-comment-necessity`)
 - 기준 커밋: `3e0c8d9` (42차 패스 #188 착지 직후)
 - 범위: L 표면 미판정 14행 중 **9행 267줄** — 남은 축만 채운다(①② 는 앞선 패스가 닫았다)
 

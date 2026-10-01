@@ -4,7 +4,7 @@
 - **판정 범위**: `deploy/k8s/kustomization.yaml` · `backend/src/util.rs` ·
   `backend/src/main.rs` · `backend/src/error.rs` · `backend/src/state.rs`
 - **기준 트리**: 부모 **`445ec57`** (main, 14차 패스 병합 직후)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260920-0008`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260920-0008`
 - **PR**: #97 (squash)
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.

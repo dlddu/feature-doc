@@ -5,7 +5,7 @@
 - **기준 트리**: 부모 **`4d2cc84`** (main, 32차 패스 #159 착지 직후 — 계획 시점 부모 `84d312a` 에서
   두 번 리베이스했고(`b09f505`(#157) → `4d2cc84`(#159)) 이 범위의 줄 수·지문은 **세 base 에서 바이트 동일**하다)
 - **유입원**: PR **#155**(`9c01489`, 슬라이스 7b — AC4.7 분석 작업의 격리, 모델 `tbm_feature-doc-docs-impl`)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260925-0009`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260925-0009`
 - **PR**: #160 (33차 패스 · 원장 **새 행 31**)
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.

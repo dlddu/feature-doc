@@ -8,7 +8,7 @@
   `e2e/tests/sc04-08-worker-horizontal-scale.spec.ts`
   (+ 원장 2행의 **증분 재판정** `backend/src/config.rs`)
 - **기준 트리**: `fae3e17` (main, #68 머지 직후)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260918-0005`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260918-0005`
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.
 이 파일은 이번 범위의 **근거**만 담는다.

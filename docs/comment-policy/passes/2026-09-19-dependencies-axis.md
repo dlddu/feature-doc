@@ -8,7 +8,7 @@
   `e2e/tests/sc02-07-dependency-export.spec.ts`
   · 증분 재판정: `backend/src/worker_api.rs`(원장 1행) · `backend/src/bin/worker.rs`(원장 5행)
 - **기준 트리**: `66bb7a5` (main, #74 머지 직후)
-- **reconciler task**: `tbm_feature-doc-comment-redundancy/rct_20260919-0002`
+- **reconciler task**: `tbm_feature-doc-comment-necessity/rct_20260919-0002`
 
 규칙은 [../README.md](../README.md), 판정 결과의 표면은 [../ledger.md](../ledger.md)에 있다.
 이 파일은 이번 범위의 **근거**만 담는다.
