@@ -56,7 +56,6 @@ name.
 Give the path you read it from as the evidence. If you cannot point at a path in the
 list, set evidence to null — never cite a path that is not in the list.";
 
-/// 답변이 맞춰야 하는 JSON 모양(제공자에 그대로 전달된다).
 fn schema() -> Value {
     json!({
         "type": "object",

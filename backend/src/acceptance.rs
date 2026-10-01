@@ -5,9 +5,6 @@
 //!
 //! **The contradiction rule is code, not judgment** ([`merge`]) — a rule the model
 //! cannot bend, and one that behaves the same on a real answer as on the stub.
-//!
-//! The wire key is `acceptance_dependencies`, but this stage does no dependency
-//! work; the key predates the split and stayed for compatibility.
 
 use serde_json::{json, Value};
 
@@ -41,7 +38,6 @@ situation with the ending the test describes; do not silently overwrite it.
 Every criterion must name one path from the list as the evidence it came from.
 Never cite a path that is not in the list.";
 
-/// The JSON shape both answers are constrained to (sent to the provider verbatim).
 fn schema() -> Value {
     json!({
         "type": "object",
@@ -121,7 +117,6 @@ pub struct Scenario {
     pub symbol: Option<String>,
 }
 
-/// Whitespace-insensitive identity of the *situation* a scenario describes.
 fn situation(s: &Scenario) -> (String, String) {
     (norm(&s.given), norm(&s.when))
 }

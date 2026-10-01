@@ -36,13 +36,11 @@ test.describe('AC2.5: 의존성 데이터는 제품 밖으로 나갈 수 있다'
 
       const res = await page.request.get(`/api/analyses/${id}/dependencies/export`);
       expect(res.status()).toBe(200);
-      // 화면에 그리는 것이 아니라 **파일로 나간다**.
       expect(res.headers()['content-disposition'] ?? '').toContain('attachment;');
 
       const exported = (await res.json()) as Exported;
       expect(exported.analysisId).toBe(id);
       expect(exported.repository).toBe('stub-account/payments-api');
-      // 형식이 스스로를 설명한다 — 분류 축이 문서 안에 있다.
       expect(exported.categories).toEqual([...CATEGORIES]);
 
       const feature = exported.features.find((f) => f.key === key);
@@ -54,7 +52,6 @@ test.describe('AC2.5: 의존성 데이터는 제품 밖으로 나갈 수 있다'
         expect(entry.dependencies.length).toBeGreaterThan(0);
       }
 
-      // 남의 분석은 존재하지 않는다.
       await page.goto('/api/auth/login?as=ac26-stranger');
       const stranger = await page.request.get(`/api/analyses/${id}/dependencies/export`);
       expect(stranger.status()).toBe(404);

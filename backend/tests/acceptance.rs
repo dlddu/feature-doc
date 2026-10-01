@@ -199,7 +199,6 @@ fn tree() -> Vec<String> {
     repo_scan::stub_scan("payments-api", "main").unwrap().paths
 }
 
-/// Walks an analysis to "stage 4 ran and the reviewer has a list to sift".
 async fn run_to_candidates(state: &AppState, session: &str, id: &str) {
     let job = claim(state).await;
     assert_eq!(job["id"], id, "claimed a different job than the test meant to");
@@ -266,7 +265,6 @@ async fn decide(
         .status()
 }
 
-/// Runs stage 5 the way the worker does: with the candidates the claim handed over.
 async fn run_stage_five(state: &AppState, id: &str, job: &serde_json::Value) -> serde_json::Value {
     let subjects: Vec<Subject> = job["approvedCandidates"]
         .as_array()
@@ -419,7 +417,6 @@ async fn confirming_a_second_feature_reopens_the_stage() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// What the reviewer reads on Feature Acceptance, and who may read it.
 #[tokio::test]
 async fn the_document_is_readable_by_its_owner_and_nobody_else() {
     let (state, path) = stub_state().await;

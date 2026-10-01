@@ -12,7 +12,6 @@ import { expect, test } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
 import { runToAcceptance, signInWithCredentials } from '../support/acceptance';
 
-/** 최종 사용자가 쓰지 않는 어휘. */
 const DEVELOPER_VOCABULARY = /\b(GET|POST|PUT|PATCH|DELETE|HTTP|API|SQL|null|undefined)\b|\/api\/|\(\)|=>|;/;
 
 test.describe('AC2.3: 확정된 기능마다 최종 사용자의 언어로 된 문서 하나', () => {
