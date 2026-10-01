@@ -1,6 +1,3 @@
--- Analysis jobs: an explicit, user-triggered request to analyze one repository
--- at one branch. A row lands in status 'queued' after the target is confirmed
--- within the App's granted access.
 CREATE TABLE analyses (
     id              TEXT    PRIMARY KEY,
     user_id         TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -9,8 +6,7 @@ CREATE TABLE analyses (
     repo_name       TEXT    NOT NULL,
     branch          TEXT    NOT NULL,
     status          TEXT    NOT NULL DEFAULT 'queued',
-    -- Pre-flight estimates shown to the user before triggering (display only,
-    -- never a hard cap). cost is stored in integer cents to avoid float columns.
+    -- Pre-flight estimates shown before triggering: display only, never a hard cap.
     est_llm_calls   INTEGER NOT NULL,
     est_cost_cents  INTEGER NOT NULL,
     created_at      INTEGER NOT NULL
