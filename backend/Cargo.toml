@@ -29,6 +29,9 @@ url = "2"
 hex = "0.4"
 time = { version = "0.3", features = ["parsing"] }
 anyhow = "1"
+ring = "0.17"
+hkdf = "0.12"
+base64 = "0.22"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

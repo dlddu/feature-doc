@@ -2022,7 +2022,14 @@ async fn analysis_diff(
     Path(id): Path<String>,
 ) -> Result<Json<AnalysisDiffView>, AppError> {
     owned_analysis(&state, &user.id, &id).await?;
+    Ok(Json(diff_view(&state, &user.id, &id).await?))
+}
 
+pub(crate) async fn diff_view(
+    state: &AppState,
+    user_id: &str,
+    id: &str,
+) -> Result<AnalysisDiffView, AppError> {
     let previous: Option<(String, i64)> = sqlx::query_as(
         "SELECT prev.id, prev.created_at \
            FROM analyses cur \
@@ -2034,23 +2041,23 @@ async fn analysis_diff(
           WHERE cur.id = ? AND cur.user_id = ? \
           ORDER BY prev.created_at DESC, prev.rowid DESC LIMIT 1",
     )
-    .bind(&id)
-    .bind(&user.id)
+    .bind(id)
+    .bind(user_id)
     .fetch_optional(&state.db)
     .await?;
 
     let Some((previous_id, previous_created_at)) = previous else {
-        return Ok(Json(AnalysisDiffView {
+        return Ok(AnalysisDiffView {
             compared_to: None,
             compared_to_created_at: None,
             changed_line_count: 0,
             features: Vec::new(),
-        }));
+        });
     };
 
-    let current_doc = acceptance_document(&state, &id).await?;
-    let previous_doc = acceptance_document(&state, &previous_id).await?;
-    let locations = candidate_locations(&state, &id).await?;
+    let current_doc = acceptance_document(state, id).await?;
+    let previous_doc = acceptance_document(state, &previous_id).await?;
+    let locations = candidate_locations(state, id).await?;
 
     let mut features = Vec::new();
     for key in diff::feature_keys(&current_doc) {
@@ -2065,20 +2072,20 @@ async fn analysis_diff(
             location,
             &diff::scenarios_of(&previous_doc, &key),
             &diff::scenarios_of(&current_doc, &key),
-            traced_dependencies(&state, &previous_id, &key).await?.as_deref(),
-            traced_dependencies(&state, &id, &key).await?.as_deref(),
+            traced_dependencies(state, &previous_id, &key).await?.as_deref(),
+            traced_dependencies(state, id, &key).await?.as_deref(),
         );
         if let Some(entry) = entry {
             features.push(entry);
         }
     }
 
-    Ok(Json(AnalysisDiffView {
+    Ok(AnalysisDiffView {
         compared_to: Some(previous_id),
         compared_to_created_at: Some(previous_created_at),
         changed_line_count: features.iter().map(diff::FeatureDiff::lines).sum(),
         features,
-    }))
+    })
 }
 
 /// 문서가 없는 것은 오류가 아니라 "그 시점에 아직 쓰인 시나리오가 없다"이므로 빈
@@ -2149,10 +2156,10 @@ async fn traced_dependencies(
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct AnalysisDiffView {
+pub(crate) struct AnalysisDiffView {
     /// 첫 분석이면 `None` — 「바뀐 게 없다」와 구분되어야 한다.
-    compared_to: Option<String>,
+    pub(crate) compared_to: Option<String>,
     compared_to_created_at: Option<i64>,
     changed_line_count: usize,
-    features: Vec<diff::FeatureDiff>,
+    pub(crate) features: Vec<diff::FeatureDiff>,
 }

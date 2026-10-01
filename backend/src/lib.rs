@@ -30,6 +30,7 @@ pub mod llm;
 pub mod llmkey;
 pub mod models;
 pub mod pipeline;
+pub mod push;
 pub mod repo_scan;
 pub mod session;
 pub mod settings;
@@ -67,6 +68,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(usage::routes())
         .merge(analysis::routes())
         .merge(access_request::routes())
+        .merge(push::routes())
         .merge(evidence::routes())
         .merge(doc_edit::routes())
         .merge(doc_conflict::routes())
