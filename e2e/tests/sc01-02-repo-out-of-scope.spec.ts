@@ -1,9 +1,5 @@
 // 검증 시나리오: 01-analysis-pipeline.md#시나리오 2
 //
-// 앞부분의 홈 목록 → pre-flight → `Queued` 는 거부를 대비시키는 셋업이지 이 파일의
-// 선언 대상이 아니다 — 그 절반은 시나리오 1 전용 spec 이 신설될 때 이어받는다
-// (doc-tracker 「e2e 매핑」의 미매핑 잔여 표).
-//
 // Runs against the e2e deployment (FEATUREDOC_DOUBLE_GITHUB_APP=stub), whose GitHub App
 // installation can reach exactly three deterministic repositories
 // (stub-account/{payments-api,checkout-web,notif-worker}).
@@ -39,7 +35,6 @@ test('AC1.1: 홈 → 저장소 연결 → 분석 트리거(queued)', async ({ pa
   await expect(page.getByTestId('manage-install')).toBeVisible();
   await expect(page.getByTestId('start-analysis')).toHaveCount(0);
 
-  // Nothing was queued by the refused attempt.
   await expect(page.locator('[data-testid="repo-card"] .badge')).toHaveCount(0);
 
   await cards.filter({ hasText: 'stub-account/payments-api' }).click();

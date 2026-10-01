@@ -158,8 +158,6 @@ fn candidate_doc(items: &[(&str, &str, &str)]) -> serde_json::Value {
     json!({ "candidates": candidates })
 }
 
-/// Walks an analysis to "stage 3 succeeded, awaiting the reviewer" through the same
-/// routes a worker uses.
 async fn run_through_stage_three(state: &AppState, id: &str, patterns: &[&str]) {
     let job = claim(state).await;
     assert_eq!(job["id"], id, "claimed a different job than the test meant to");
@@ -192,7 +190,6 @@ async fn approve(state: &AppState, session: &str, id: &str) {
     assert_eq!(resp.status(), StatusCode::OK, "approve");
 }
 
-/// Runs on the claim that follows approval, the way the worker does.
 async fn run_stage_four(state: &AppState, id: &str, items: &[(&str, &str, &str)]) {
     let job = claim(state).await;
     assert_eq!(job["id"], id);
@@ -345,7 +342,6 @@ async fn renaming_keeps_the_candidates_identity_and_merging_keeps_the_folded_row
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let merged = json_body(resp).await;
-    // Kept, not deleted — the merge stays visible and reversible.
     assert_eq!(
         candidate(&merged, "src/routes/admin.ts")["mergedInto"],
         "src/routes/auth.ts"
@@ -355,7 +351,6 @@ async fn renaming_keeps_the_candidates_identity_and_merging_keeps_the_folded_row
 
 #[tokio::test]
 async fn a_rejected_candidate_comes_back_flagged_in_the_next_analysis_of_the_same_target() {
-    // The flag is information, never an automatic decision.
     let (state, _dir) = stub_state().await;
     let session = login_installed(&state, 9404, "sifter").await;
 
@@ -403,7 +398,6 @@ async fn approving_requeues_the_job_and_the_next_claim_offers_only_what_is_left(
     let id = enqueue(&state, &session, "payments-api").await;
     run_through_stage_three(&state, &id, &["src/routes/**", "src/jobs/**"]).await;
 
-    // Parked: nothing would ever hand this job back to a worker.
     assert_eq!(status_of(&state, &id).await, "awaiting_pipeline");
 
     approve(&state, &session, &id).await;

@@ -50,7 +50,6 @@ async function candidatesOf(page: Page, id: string): Promise<CandidateList> {
   return (await res.json()) as CandidateList;
 }
 
-/** Walks one analysis to "the reviewer approved the strategy and stage 4 has run". */
 async function runToCandidates(page: Page, repo: string): Promise<string> {
   const id = await enqueue(page, repo);
   await expect
@@ -89,8 +88,6 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
 
       const first = await enqueue(page, 'payments-api');
 
-      // Not a 404 — "아직 추출 전"은 화면이 그릴 수 있는 상태이고, 그 구분이 기능 후보 화면의
-      // 빈 상태가 존재하는 이유다.
       const empty = await candidatesOf(page, first);
       expect(empty.extracted).toBe(false);
       expect(empty.undecided).toBe(0);
@@ -166,7 +163,6 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
         .click();
       await expect(page.getByTestId('reject-guard')).toBeVisible();
       await expect(page.getByTestId('reject-confirm')).toBeDisabled();
-      // 화면만의 규칙이 아니다 — 서버도 같은 이유로 거절한다.
       const reasonless = await page.request.post(`/api/analyses/${first}/candidates/decision`, {
         data: { key: rejectedKey, decision: 'reject' },
       });
@@ -219,7 +215,6 @@ test.describe('AC1.4: feature 후보 추출·검토·결정', () => {
   });
 });
 
-/** `data-key` holds a repository path, so quote it for the attribute selector. */
 function cssEscape(value: string): string {
   return value.replace(/["\\]/g, '\\$&');
 }

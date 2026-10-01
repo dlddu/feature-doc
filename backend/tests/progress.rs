@@ -104,7 +104,6 @@ fn stage<'a>(detail: &'a serde_json::Value, key: &str) -> &'a serde_json::Value 
         .unwrap_or_else(|| panic!("no `{key}` stage in {detail}"))
 }
 
-/// Takes the job off the queue as a worker would (the only way to hold a lease).
 async fn claim(state: &AppState) -> serde_json::Value {
     let resp = build_router(state.clone())
         .oneshot(worker_post(
@@ -199,8 +198,6 @@ async fn detail_is_scoped_to_the_owner() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// Progress is server state, so the second read also sees work a worker did between
-/// the two reads — not just a replay of the first response.
 #[tokio::test]
 async fn progress_is_persisted_so_a_later_read_sees_the_same_run() {
     let (state, path) = stub_state().await;
@@ -228,11 +225,9 @@ async fn progress_is_persisted_so_a_later_read_sees_the_same_run() {
     assert_eq!(stage(&reopened, "fetch")["detail"], "766 files · 2.2 MB");
     assert!(stage(&reopened, "fetch")["finishedAt"].is_number());
 
-    // Reading again changes nothing — the screen has no state of its own to lose.
     let again = detail(&state, &token, &id).await;
     assert_eq!(again, reopened, "a re-entry must show the same progress");
 
-    // The home list carries the same fraction, from the same rows.
     let list = json_body(
         build_router(state.clone())
             .oneshot(get("/api/analyses", &token))
@@ -289,8 +284,6 @@ async fn retry_resets_only_the_failed_stage_and_requeues_the_job() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// A pending stage will run on its own turn; re-queueing on its behalf would
-/// silently start work the user did not ask for.
 #[tokio::test]
 async fn retry_is_refused_for_a_stage_that_has_not_finished() {
     let (state, path) = stub_state().await;

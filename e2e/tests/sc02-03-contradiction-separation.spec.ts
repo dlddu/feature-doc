@@ -4,10 +4,6 @@
 // `backend/src/acceptance.rs` 의 단위 테스트가 지킨다. 여기서 보는 것은 그 결과가
 // 문서와 화면에서 **본 시나리오에 섞이지 않고 따로 선다**는 성질이다.
 //
-// **원문의 기대 결과 중 여기서 단정하지 않는 것**: 「사용자는 어느 쪽을 정설로 채택할지
-// 결정할 수 있다」 — 그 채택 조작이 아직 구현돼 있지 않아 e2e 가 관측할 대상 자체가
-// 없다. 등재는 `docs/doc-tracker.md` 「e2e 매핑」 이 행의 "자동화 밖 잔여" 칸이다.
-//
 // Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 import { expect, test } from '@playwright/test';
 import { scaleWorkers } from '../support/cluster';
@@ -53,8 +49,6 @@ test.describe('시나리오 3: 로직과 테스트가 모순되면 그 차이가
           doc.scenarios.some((s) => s.then === clash.testSays),
           '모순의 테스트 측 문장이 본 시나리오로 읽히고 있다',
         ).toBe(false);
-        // 그리고 그 상황은 본 시나리오에서 찾을 수 있어야 한다 — 어느 문장이 다투는지
-        // 독자가 짚을 수 없으면 "따로 두었다"가 아니라 "숨겼다"가 된다.
         expect(
           doc.scenarios.some((s) => s.given === clash.given && s.when === clash.when),
         ).toBe(true);

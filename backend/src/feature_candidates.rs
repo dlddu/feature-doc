@@ -1,9 +1,8 @@
 //! Stage 4 (`feature_candidates`): proposes the end-user features of a codebase.
 //!
-//! The approved patterns arrive on the claim response, so this stage needs no second
-//! round-trip. Paths are read through [`crate::cross_cutting::input_paths`], the same
-//! view stages 2 and 3 use, so the four stages cannot disagree about what the
-//! repository contains.
+//! Paths are read through [`crate::cross_cutting::input_paths`], the same view
+//! stages 2 and 3 use, so the four stages cannot disagree about what the repository
+//! contains.
 
 use serde_json::{json, Value};
 

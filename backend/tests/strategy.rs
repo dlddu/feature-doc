@@ -110,7 +110,6 @@ async fn requeue(state: &AppState, id: &str) {
         .unwrap();
 }
 
-/// Claims the job first because `/internal` writes are lease-guarded.
 async fn propose(state: &AppState, id: &str, patterns: &[&str]) {
     let job = claim(state).await;
     assert_eq!(job["id"], id, "claimed a different job than the test meant to");
@@ -229,13 +228,11 @@ async fn the_reviewer_deletes_and_adds_and_the_provenance_survives() {
     let reread = json_body(read(&state, &session, &id).await).await;
     assert_eq!(patterns_of(&reread), patterns_of(&view));
 
-    // Blank and duplicate entries are not a list the reviewer meant to make.
     let deduped =
         json_body(put(&state, &session, &id, &["src/routes/**", "  ", "src/routes/**"]).await).await;
     assert_eq!(patterns_of(&deduped), ["src/routes/**"]);
 }
 
-/// Asserted where the gate is enforced rather than where it is described.
 #[tokio::test]
 async fn the_next_stage_is_withheld_from_the_queue_until_the_strategy_is_approved() {
     let (state, _dir) = stub_state().await;
@@ -317,7 +314,6 @@ async fn the_reviewers_own_entries_carry_into_the_next_analysis_of_the_same_targ
     assert_eq!(patterns_of(&view), ["src/handlers/**", "cmd/admin-cli"]);
     assert_eq!(view["entries"][1]["source"], "user");
 
-    // A different repository does not inherit it — the promise is per target.
     let other = enqueue(&state, &session, "checkout-web").await;
     propose(&state, &other, &["src/handlers/**"]).await;
     let other_view = json_body(read(&state, &session, &other).await).await;

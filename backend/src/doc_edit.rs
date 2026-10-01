@@ -402,7 +402,6 @@ pub async fn overlay(
     Ok(())
 }
 
-/// 한 자리의 시나리오를 주어진 문장(들)로 바꾼다.
 pub(crate) fn splice(doc: &mut Value, key: &str, at: usize, after: &[Sentences]) {
     let Some(features) = doc.get_mut("features").and_then(Value::as_array_mut) else {
         return;
