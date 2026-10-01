@@ -47,7 +47,6 @@ export function FeatureDependencies({ id, featureKey, onBack, onRequestEdit }: P
     markReviewPosition(id, { featureKey, where: WHERE });
     onBack();
   };
-  /** Bumped by the poll below; reading is the effect's only trigger. */
   const [tick, setTick] = useState(0);
 
   useEffect(() => {

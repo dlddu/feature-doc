@@ -128,7 +128,6 @@ async fn analysis_with_document(state: &AppState, session: &str) -> String {
     id
 }
 
-/// 제안 → 승인. 승인된 편집 id 를 돌려준다.
 async fn approved_edit(state: &AppState, session: &str, id: &str, request: &str) -> String {
     let resp = build_router(state.clone())
         .oneshot(user_post(

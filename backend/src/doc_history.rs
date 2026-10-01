@@ -258,7 +258,6 @@ pub async fn current_restore(
     Ok(row.map(|(id,)| id))
 }
 
-/// 주어진 편집 목록만 얹은 그 feature 의 시나리오 — 「그 시점의 상태」.
 async fn scenarios_with(
     state: &AppState,
     analysis_id: &str,

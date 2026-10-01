@@ -17,7 +17,6 @@ async function firstThen(page: Page, id: string, key: string): Promise<string> {
   return doc.find((f) => f.key === key)?.scenarios[0].then ?? '';
 }
 
-/** 한 줄 부탁 → 제안 → 승인. 승인된 문장을 돌려준다(출처 `user_llm`). */
 async function editWithHelp(page: Page, id: string, key: string, request: string): Promise<string> {
   const proposed = await page.request.post(`/api/analyses/${id}/features/edit-proposals`, {
     data: { key, scenarioIndex: 0, request },

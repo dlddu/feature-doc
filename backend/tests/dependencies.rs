@@ -22,7 +22,6 @@ use featuredoc::{build_router, installations, repo_scan, session, users};
 
 const WORKER: &str = "w-dependencies";
 
-/// The two candidates every test here confirms. Both cite paths the stub tree has.
 const SIFTED: [(&str, &str); 2] = [
     ("결제 수단 등록", "payments-api/src/api/routes.rs"),
     ("주문 내역 내려받기", "payments-api/src/domain/model.rs"),
@@ -175,7 +174,6 @@ fn candidate_doc() -> serde_json::Value {
     json!({ "candidates": candidates })
 }
 
-/// Walks an analysis to the state every dependency test starts from: candidates confirmed.
 async fn run_to_confirmed(state: &AppState, session: &str, id: &str, approve: usize) -> Vec<String> {
     let job = claim(state).await;
     assert_eq!(job["id"], id);
@@ -316,7 +314,6 @@ fn urlencoding(value: &str) -> String {
         .collect()
 }
 
-/// Runs the trace the way the worker does: with the feature the claim handed over.
 async fn run_trace(state: &AppState, id: &str, job: &serde_json::Value, index: usize) {
     let requested = job["dependencyRequests"].as_array().unwrap();
     let feature = &requested[index];
@@ -566,7 +563,6 @@ async fn export_hands_back_a_file_something_else_can_read() {
     assert_eq!(features[0]["key"].as_str().unwrap(), approved[0]);
     assert!(!features[0]["dependencies"].as_array().unwrap().is_empty());
 
-    // 남의 분석은 존재하지 않는다.
     let stranger = login_installed(&state, 2, "bob").await;
     let resp = build_router(state.clone())
         .oneshot(get(
