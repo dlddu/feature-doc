@@ -11,8 +11,7 @@ ALTER TABLE analyses ADD COLUMN error            TEXT;
 CREATE INDEX idx_analyses_queue ON analyses(status, created_at);
 
 -- One row per pipeline stage, seeded at enqueue from the stage list in code (the
--- SSOT). A stage with no executor stays 'pending'. `detail` carries the
--- operator/user-facing one-liner for that stage ("847 files · 2.3 MB").
+-- SSOT). A stage with no executor stays 'pending'.
 CREATE TABLE analysis_stages (
     id           TEXT    PRIMARY KEY,
     analysis_id  TEXT    NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
