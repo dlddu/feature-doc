@@ -8,7 +8,6 @@ import type { APIResponse, Page } from '@playwright/test';
 import { installApp } from '../support/github-app';
 
 const KEY = 'sk-proj-dddddddddddddddddddddd';
-/** 어떤 분석도 가질 수 없는 id — 시나리오의 「실재하지 않는 임의 id」. */
 const ABSENT = '00000000-0000-4000-8000-000000000000';
 /** B 의 화면·응답 어디에도 나타나서는 안 되는 것들(소유자 신원과 대상의 정체). */
 const OWNER_HANDLE = 'sc0415a';
@@ -27,7 +26,6 @@ async function seen(res: APIResponse): Promise<[number, string]> {
   return [res.status(), await res.text()];
 }
 
-/** 막힌 화면을 열고 → 공유 요청을 보내고 → 접수 화면의 문면 전체를 돌려준다. */
 async function walk(page: Page, target: string): Promise<string> {
   await page.goto(`/#/analyses/${target}`);
   const notice = page.getByTestId('no-access');

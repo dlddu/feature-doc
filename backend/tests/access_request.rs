@@ -16,7 +16,6 @@ use featuredoc::github_api::GithubUser;
 use featuredoc::state::AppState;
 use featuredoc::{build_router, installations, session, users};
 
-/// An id no analysis will ever have.
 const ABSENT_ID: &str = "00000000-0000-4000-8000-000000000000";
 
 async fn login_installed(state: &AppState, github_id: i64, login: &str) -> String {

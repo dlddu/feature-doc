@@ -320,7 +320,6 @@ async fn insert_edit(
     decided_at: Option<i64>,
 ) -> Result<String, AppError> {
     let row_id = uuid::Uuid::new_v4().to_string();
-    // 이 행이 **어느 복원 뒤에** 서는지(0014).
     let after_restore = crate::doc_history::current_restore(state, analysis_id, feature_key).await?;
     sqlx::query(
         "INSERT INTO feature_doc_edits \
@@ -435,7 +434,6 @@ async fn decide(
     Ok(Json(view(&state, &doc, row).await?))
 }
 
-/// 두 문장을 합친 제안을 받는다.
 async fn merge(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -622,7 +620,6 @@ async fn open_row(state: &AppState, id: &str, conflict: &str) -> Result<Conflict
     Ok(row)
 }
 
-/// 아직 결정되지 않은 합친 제안 — `(after_json,)`.
 async fn pending_proposal(state: &AppState, id: &str, edit: &str) -> Result<Option<String>, AppError> {
     let row: Option<(String,)> = sqlx::query_as(
         "SELECT after_json FROM feature_doc_edits WHERE id = ? AND analysis_id = ? AND status = ?",
