@@ -1,7 +1,5 @@
 //! The analysis pipeline's stage list.
 //!
-//! Every analysis is seeded with one `analysis_stages` row per entry at enqueue.
-//!
 //! [`ACCEPTANCE_DEPENDENCIES`]'s wire key names two halves that the roadmap once put
 //! in one slice; only the acceptance half is a pipeline step. The key is a wire
 //! contract (`/internal/.../stages/{key}`, `analysis_documents.kind`) and stays —

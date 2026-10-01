@@ -68,8 +68,6 @@ test.describe('AC1.2: 횡단 관심사 자동 추출 및 문서화', () => {
 
       const first = await enqueue(page, 'payments-api');
 
-      // 404, not an empty document: "아직 실행되지 않음" and "실행했고 아무것도 못
-      // 찾음"은 사용자에게 다른 상태다.
       expect((await page.request.get(`/api/analyses/${first}/documents/cross-cutting`)).status())
         .toBe(404);
 

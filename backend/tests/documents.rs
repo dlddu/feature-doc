@@ -135,8 +135,6 @@ fn doc(n: u8) -> serde_json::Value {
     ]})
 }
 
-/// The queue must hand the worker the key it needs for stage 2, and must name the
-/// stage as executable — otherwise the worker stops after `fetch`.
 #[tokio::test]
 async fn claim_offers_the_cross_cutting_stage() {
     let (state, _path) = stub_state().await;
@@ -166,7 +164,6 @@ async fn a_worker_without_the_lease_cannot_store_a_document() {
     let s = login_installed(&state, 8102, "unleased").await;
     let id = enqueue(&state, &s, "payments-api").await;
 
-    // Never claimed — nobody holds a lease on this job.
     assert_eq!(submit(&state, &id, doc(1)).await, StatusCode::CONFLICT);
 }
 
@@ -187,8 +184,6 @@ async fn an_unknown_stage_is_rejected() {
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }
 
-/// The first analysis of a target has nothing to compare against, and must say so
-/// rather than claiming the result reproduced.
 #[tokio::test]
 async fn the_first_analysis_reports_no_comparison() {
     let (state, _path) = stub_state().await;
@@ -228,8 +223,6 @@ async fn a_reanalysis_reports_whether_the_result_reproduced() {
     assert_eq!(body["reproducibility"]["comparedTo"], second);
 }
 
-/// A different repository is a different target: its document must not be compared
-/// against this one, or every first analysis of a new repo would read as "changed".
 #[tokio::test]
 async fn a_different_repository_is_not_treated_as_a_rerun() {
     let (state, _path) = stub_state().await;

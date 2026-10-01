@@ -67,8 +67,6 @@ const KEY_FILE_NAMES: [&str; 32] = [
     "Dockerfile", "kustomization.yaml",
 ];
 
-/// Directories whose files describe someone else's code or a test fixture, not
-/// this repository's structure.
 const SKIPPED_DIRS: [&str; 10] = [
     "vendor", "node_modules", "third_party", "testdata", "fixtures", "test", "tests",
     "e2e", "examples", "docs",
@@ -76,14 +74,11 @@ const SKIPPED_DIRS: [&str; 10] = [
 
 const NOT_STRUCTURE_DIRS: [&str; 3] = ["scripts", "tools", "hack"];
 
-/// Directory names that mark the main one of several same-named entry points.
 const ENTRY_DIR_HINTS: [&str; 4] = ["server", "api", "app", "web"];
 
 /// Deeper than this and a manifest is usually a sub-package's, not the project's.
 const MAX_KEY_FILE_DEPTH: usize = 4;
 
-/// How many paths are handed to the model. A cap keeps the prompt bounded on large
-/// repositories.
 const MAX_PATHS: usize = 400;
 
 const SYSTEM: &str = "\
