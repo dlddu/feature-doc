@@ -29,7 +29,6 @@ jobs:
         with:
           fetch-depth: 2
 
-      # diff 가 실패하면 거르지 않고 전부 돌린다.
       - name: Classify changed files
         id: filter
         run: |

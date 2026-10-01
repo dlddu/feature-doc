@@ -93,7 +93,6 @@ jobs:
           files="deploy/k8s/deployment.yaml deploy/k8s/worker-deployment.yaml"
           sed -i -E "s#^([[:space:]]*image: ghcr\.io/dlddu/featuredoc):.*#\1:${SHA}#" $files
 
-          # sed가 조용히 빗나가지 않았는지 확인: 두 파일 모두 정확히 1줄씩.
           for f in $files; do
             n=$(grep -c "image: ghcr.io/dlddu/featuredoc:${SHA}$" "$f" || true)
             [ "$n" = "1" ] || { echo "::error::$f: expected 1 pinned image line, got $n"; exit 1; }
