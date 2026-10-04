@@ -20,8 +20,8 @@ import { enablePush, preparePush } from './push';
 const STATUS_BADGE: Record<string, { tone: string; label: string }> = {
   queued: { tone: 'info', label: 'Queued' },
   running: { tone: 'info', label: 'Analyzing' },
-  // The worker drained the queue and ran every stage that exists today; the LLM
-  // stages are still unimplemented, so this is deliberately not 'Synced'.
+  // Deliberately not 'Synced': the stages behind a human gate (stage 4 on the
+  // strategy approval, stage 5 on a confirmed feature) have not run yet.
   awaiting_pipeline: { tone: 'info', label: 'Fetched' },
   succeeded: { tone: 'success', label: 'Synced' },
   failed: { tone: 'danger', label: 'Failed' },

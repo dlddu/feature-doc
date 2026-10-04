@@ -22,7 +22,6 @@ import { useWideViewport } from './viewport';
 
 const POLL_MS = 2_000;
 
-/** Statuses that can still change on their own — the ones worth polling for. */
 const ACTIVE = new Set(['queued', 'running']);
 
 function messageOf(e: unknown): string {

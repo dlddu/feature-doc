@@ -29,9 +29,7 @@ function markOf(mark: string): string {
 
 type Props = {
   id: string;
-  /** 달라진 것 → Analysis Progress (the run this diff belongs to). */
   onBack: () => void;
-  /** 「달라진 곳 보기」 → that feature's acceptance document. */
   onOpenFeature: (featureKey: string) => void;
   onOpenConflict: (conflictId: string) => void;
 };
