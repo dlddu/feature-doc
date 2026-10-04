@@ -60,10 +60,10 @@ jobs:
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
             -f state=success \
             -f context=review/manual-approval \
-            -f description="DB 스키마·데이터 저장 형식 변경 없음 (자동 판정)" \
+            -f description="수동 승인 케이스 해당 없음 (자동 판정)" \
             -f target_url="$RUN_URL" > /dev/null
           echo "review/manual-approval = success → ${HEAD_SHA}"
 
       - name: note (changed → no status)
         if: steps.judge.outputs.needs_review == 'true'
-        run: echo "::notice::저장 형식에 닿는 변경이 있어 review/manual-approval 을 붙이지 않았다 — 사람 리뷰 대상. 근거는 job summary."
+        run: echo "::notice::수동 승인 케이스에 닿는 변경이 있어 review/manual-approval 을 붙이지 않았다 — 사람 리뷰 대상. 근거는 job summary."

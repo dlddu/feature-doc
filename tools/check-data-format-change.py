@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 수동 승인 판정기 — 케이스 D1·D6 의 대상·이유와 이 판정기가 보지 않는 것은
+# 수동 승인 판정기 — 케이스 D1·D6·D7 의 대상·이유와 이 판정기가 보지 않는 것은
 # docs/review-policy.md 가 SSOT 다.
 
 import argparse
@@ -14,6 +14,9 @@ SELF_PATHS = {
     "docs/review-policy.md",
 }
 
+CRITERIA_DOC = "docs/data-model/README.md"
+CRITERIA_HEADING = "## 풀스캔 허용 기준"
+
 
 def git(*args):
     r = subprocess.run(["git", *args], capture_output=True, text=True)
@@ -22,8 +25,27 @@ def git(*args):
     return r.stdout
 
 
-def classify(files):
+def criteria_rows(rev):
+    spec = f"{rev}:{CRITERIA_DOC}"
+    if subprocess.run(["git", "cat-file", "-e", spec], capture_output=True).returncode != 0:
+        return None
+    section = None
+    for line in git("show", spec).splitlines():
+        if line.strip() == CRITERIA_HEADING:
+            section = []
+        elif section is not None and line.startswith("## "):
+            break
+        elif section is not None and line.lstrip().startswith("|"):
+            section.append(line.strip())
+    return section
+
+
+def classify(files, base, head):
     hits = defaultdict(list)
+    if CRITERIA_DOC in files:
+        mb = git("merge-base", base, head).strip()
+        if criteria_rows(mb) != criteria_rows(head):
+            hits["D7 풀스캔 허용 기준"].append(CRITERIA_DOC)
     for f in files:
         if f in SELF_PATHS:
             hits["D6 판정기 자신"].append(f)
@@ -47,10 +69,14 @@ def main():
         print(f"::error::판정 불가 — {e}", file=sys.stderr)
         return 2
 
-    hits = classify(files)
+    try:
+        hits = classify(files, args.base, args.head)
+    except RuntimeError as e:
+        print(f"::error::판정 불가 — {e}", file=sys.stderr)
+        return 2
     needs_review = bool(hits)
 
-    out = ["## 데이터 저장 형식 변경 판정: "
+    out = ["## 수동 승인 케이스 판정: "
            + ("⚠️ 사람 리뷰 필요 (status 미부여)" if needs_review
               else "✅ 해당 없음 (`review/manual-approval` = success)"),
            "", f"변경 파일 {len(files)}개 · 범위 `{rng}`", ""]
