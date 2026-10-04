@@ -335,7 +335,7 @@ async fn real_scan(
         .map_err(|_| "github tree: malformed response".to_string())?;
 
     // A truncated tree would undercount silently. Say so rather than report a
-    // number the user cannot trust; paging arrives with the real pipeline.
+    // number the user cannot trust.
     if tree.truncated {
         return Err("repository tree too large to measure in one request".to_string());
     }

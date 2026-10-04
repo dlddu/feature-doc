@@ -27,7 +27,7 @@
  *
  * 여정별로 다른 부분은 **등록부 4종**에 둔다 — 한 여정의 화면 id 를 검사 본문에
  * 직접 쓰면 두 번째 여정 페이지가 생기는 순간 하네스가 그 페이지에서도 같은 id 를
- * 찾다가 죽는다(실제로 그랬다. 아래 INPUT_PROBE 주석 참조).
+ * 찾다가 죽는다.
  *   ARM[jid][stepId]  — 그 단계의 CTA 가 살아나게 하는 최소 입력      (P2)
  *   INPUT_PROBE[jid]  — 타이핑·선택이 상태를 바꾸는지 보는 프로브     (P3)
  *   PRODUCT_PATHS[jid]— §4 각 분기 상황의 제품 화면 경로              (P4)
@@ -139,7 +139,6 @@ const ARM = {
       click(win, doc.getElementById('btn-add-entrypoint'));
     },
     'STP-sift-candidates': (win, doc) => {
-      // 후보 4건을 전부 결정해야 다음으로 넘어간다(미결정 0건이 완료 기준).
       for (const b of [...doc.querySelectorAll('.cand [data-decide="approve"]')]) click(win, b);
     },
     'STP-add-missing': (win, doc) => {
@@ -150,7 +149,6 @@ const ARM = {
   'JRN-review-feature': {
     'STP-read-scenarios': () => {},
     'STP-verify-evidence': (win, doc) => {
-      // 근거를 한 건도 열지 않으면 다음으로 넘어갈 수 없다(읽지 않고 넘기면 검수가 아니다).
       change(win, doc.getElementById('in-scn'), 's1');
       click(win, doc.getElementById('btn-open-evidence'));
     },
@@ -163,25 +161,21 @@ const ARM = {
   'JRN-follow-code-change': {
     'STP-notice-change': () => {},
     'STP-scan-diff': (win, doc) => {
-      // 한 곳도 열어 보지 않으면 다음으로 넘어갈 수 없다(보지 않고 넘기면 확인이 아니다).
       click(win, doc.querySelector('[data-diff-open="f1"]'));
     },
     'STP-resolve-conflict': (win, doc) => {
       check(win, doc.getElementById('dec-auto'), true);
     },
     'STP-recheck-candidates': (win, doc) => {
-      // 후보 3건을 전부 결정해야 다음으로 넘어간다(미결정 0건이 완료 기준).
       for (const b of [...doc.querySelectorAll('.cand [data-decide="approve"]')]) click(win, b);
     },
   },
   'JRN-understand-feature': {
     'STP-open-shared': (win, doc) => {
-      // 링크를 열면 먼저 본인 확인, 그 다음 볼 수 있는 기능 하나를 고른다.
       click(win, doc.getElementById('btn-signin'));
       check(win, doc.querySelector('.feat-pick[value="f014"]'), true);
     },
     'STP-grasp-behavior': (win, doc) => {
-      // 끝까지 읽지 않으면 다음으로 넘어갈 수 없다(완독이 이 단계의 완료 기준).
       check(win, doc.getElementById('in-read-done'), true);
     },
     'STP-check-scope': () => {},
@@ -191,9 +185,6 @@ const ARM = {
   },
 };
 
-/* ⚠️ 이 등록부가 없던 시절, P3 는 `JRN-connect-repo` 전용 id(`#in-key` 등)를
-   여정 조건 없이 만졌다 — 두 번째 여정 페이지가 생기는 순간 null 에 `.value` 를
-   대입해 하네스가 uncaught TypeError 로 통째 죽었다(단언 보고조차 못 한다).   */
 const INPUT_PROBE = {
   'JRN-connect-repo': (win, doc, at, ok) => {
     at('#STP-register-llm-key');
@@ -239,7 +230,6 @@ const INPUT_PROBE = {
        'P3', `출력 언어를 되돌렸는데 화면이 따라오지 않는다`);
   },
   'JRN-discover-features': (win, doc, at, ok) => {
-    // ① 거부 사유(textarea) — 비어 있으면 거부를 확정할 수 없다(F7 재발 방지).
     at('#STP-sift-candidates');
     const first = doc.querySelector('.cand');
     click(win, first.querySelector('[data-decide="reject"]'));
@@ -257,7 +247,6 @@ const INPUT_PROBE = {
        `사유를 적어도 거부 확정 버튼이 살아나지 않는다`);
     click(win, doc.getElementById('btn-reject-confirm'));
 
-    // ② 필터(select) — 선택이 실제로 목록을 줄인다.
     const shown = () => [...doc.querySelectorAll('.cand')].filter((c) => c.style.display !== 'none').length;
     const filt = doc.getElementById('in-filter');
     ok(filt && filt.tagName === 'SELECT', 'P3', `후보 필터가 실제 <select> 가 아니다`);
@@ -265,7 +254,6 @@ const INPUT_PROBE = {
     change(win, filt, 'undecided');
     ok(shown() < before, 'P3', `필터를 바꿨는데 목록이 그대로다 (선택이 죽어 있다)`);
 
-    // ③ 수동 추가(input) — 빈 이름으로는 초안을 만들 수 없다.
     at('#STP-add-missing');
     const nf = doc.getElementById('in-newfeature');
     ok(nf && nf.tagName === 'INPUT', 'P3', `기능명이 실제 <input> 이 아니다`);
@@ -276,7 +264,6 @@ const INPUT_PROBE = {
        `기능명을 입력해도 초안 생성 버튼이 살아나지 않는다`);
   },
   'JRN-review-feature': (win, doc, at, ok) => {
-    // ① 편집 요청(textarea) — 무엇을 고칠지 없으면 요청을 보낼 수 없다(F8).
     at('#STP-request-edit');
     const req = doc.getElementById('in-request');
     ok(req && req.tagName === 'TEXTAREA', 'P3', `편집 요청이 실제 <textarea> 가 아니다`);
@@ -291,7 +278,6 @@ const INPUT_PROBE = {
     ok(doc.getElementById('btn-send-request').disabled === false, 'P3',
        `요청을 적어도 보내기 버튼이 살아나지 않는다`);
 
-    // ② 분류 선택(select) — 선택이 실제로 목록을 줄인다.
     at('#STP-trace-dependencies');
     const shown = () => [...doc.querySelectorAll('#dep-list .dep')]
       .filter((r) => r.style.display !== 'none').length;
@@ -301,7 +287,6 @@ const INPUT_PROBE = {
     change(win, filt, 'logic');
     ok(shown() < before, 'P3', `분류를 바꿨는데 목록이 그대로다 (선택이 죽어 있다)`);
 
-    // ③ 그림 토글(checkbox) — 좁은 화면 기본값은 목록이고, 켜야 그림이 보인다.
     const gr = doc.getElementById('in-graph');
     ok(gr && gr.type === 'checkbox', 'P3', `그림 보기가 실제 체크박스가 아니다`);
     ok(doc.getElementById('dep-graph').style.display === 'none', 'P3',
@@ -310,7 +295,6 @@ const INPUT_PROBE = {
     ok(doc.getElementById('dep-graph').style.display === 'block', 'P3',
        `그림 보기를 켰는데 그림이 나타나지 않는다 (토글이 죽어 있다)`);
 
-    // ④ 검수할 기능 선택(select) — 고른 기능이 실제로 화면에 반영된다.
     at('#STP-read-scenarios');
     const feat = doc.getElementById('in-feature');
     ok(feat && feat.tagName === 'SELECT', 'P3', `검수할 기능이 실제 <select> 가 아니다`);
@@ -320,7 +304,6 @@ const INPUT_PROBE = {
        `기능을 바꿨는데 화면이 그대로다 (선택이 죽어 있다)`);
   },
   'JRN-follow-code-change': (win, doc, at, ok) => {
-    // ① 거부 사유(textarea) — 비어 있으면 거부를 확정할 수 없다(F7 재발 방지).
     at('#STP-recheck-candidates');
     const first = doc.querySelector('.cand');
     click(win, first.querySelector('[data-decide="reject"]'));
@@ -338,7 +321,6 @@ const INPUT_PROBE = {
        `사유를 적어도 거부 확정 버튼이 살아나지 않는다`);
     click(win, doc.getElementById('btn-reject-confirm'));
 
-    // ② 후보 필터(select) — 선택이 실제로 목록을 줄인다.
     const shown = () => [...doc.querySelectorAll('.cand')].filter((c) => c.style.display !== 'none').length;
     const filt = doc.getElementById('in-cand-filter');
     ok(filt && filt.tagName === 'SELECT', 'P3', `후보 필터가 실제 <select> 가 아니다`);
@@ -346,8 +328,7 @@ const INPUT_PROBE = {
     change(win, filt, 'undecided');
     ok(shown() < before, 'P3', `필터를 바꿨는데 목록이 그대로다 (선택이 죽어 있다)`);
 
-    // ③ 재분석 회차(select) — 고른 회차의 수치가 실제로 화면에 반영된다.
-    //    두 회차의 변경 기능 수가 3 과 1 로 겹치지 않아 단언이 공허해지지 않는다.
+    // 두 회차의 변경 기능 수가 3 과 1 로 겹치지 않아 단언이 공허해지지 않는다.
     at('#STP-notice-change');
     const runSel = doc.getElementById('in-run');
     ok(runSel && runSel.tagName === 'SELECT', 'P3', `재분석 회차가 실제 <select> 가 아니다`);
@@ -356,7 +337,6 @@ const INPUT_PROBE = {
     ok(doc.getElementById('changed-count').textContent !== changed0, 'P3',
        `회차를 바꿨는데 화면 수치가 그대로다 (선택이 죽어 있다)`);
 
-    // ④ 보존 토글(checkbox) — 켜야 보존할 문단이 드러난다.
     at('#STP-resolve-conflict');
     const keep = doc.getElementById('in-keep-mine');
     ok(keep && keep.type === 'checkbox', 'P3', `문단 보존이 실제 체크박스가 아니다`);
@@ -367,7 +347,6 @@ const INPUT_PROBE = {
        `보존을 켰는데 대상 문단이 나타나지 않는다 (토글이 죽어 있다)`);
   },
   'JRN-understand-feature': (win, doc, at, ok) => {
-    // ① 이상했던 한 줄(textarea) — 비어 있으면 남길 수 없다.
     at('#STP-flag-ambiguity');
     const note = doc.getElementById('in-note');
     ok(note && note.tagName === 'TEXTAREA', 'P3', `남길 한 줄이 실제 <textarea> 가 아니다`);
@@ -382,7 +361,6 @@ const INPUT_PROBE = {
     ok(doc.getElementById('btn-send-note').disabled === false, 'P3',
        `한 줄을 적어도 남기기 버튼이 살아나지 않는다`);
 
-    // ② 이상했던 자리(select) — 고른 자리가 실제로 화면에 반영된다.
     const tgt = doc.getElementById('in-target');
     ok(tgt && tgt.tagName === 'SELECT', 'P3', `이상했던 자리가 실제 <select> 가 아니다`);
     const target0 = doc.getElementById('edit-target').textContent;
@@ -390,7 +368,6 @@ const INPUT_PROBE = {
     ok(doc.getElementById('edit-target').textContent !== target0, 'P3',
        `자리를 바꿨는데 화면이 그대로다 (선택이 죽어 있다)`);
 
-    // ③ 완독 체크(checkbox) — 끝까지 읽어야 다음으로 갈 수 있다.
     at('#STP-grasp-behavior');
     const read = doc.getElementById('in-read-done');
     ok(read && read.type === 'checkbox', 'P3', `완독 표시가 실제 체크박스가 아니다`);
@@ -402,7 +379,6 @@ const INPUT_PROBE = {
     ok(doc.getElementById('btn-to-scope').disabled === false, 'P3',
        `다 읽었다고 표시해도 다음 버튼이 살아나지 않는다`);
 
-    // ④ 분류(select) — 선택이 실제로 목록을 줄인다.
     at('#STP-check-scope');
     const shown = () => [...doc.querySelectorAll('#scope-list .dep')]
       .filter((r) => r.style.display !== 'none').length;
@@ -412,8 +388,6 @@ const INPUT_PROBE = {
     change(win, filt, 'outside');
     ok(shown() < before, 'P3', `분류를 바꿨는데 목록이 그대로다 (선택이 죽어 있다)`);
 
-    // ⑤ 읽을 기능 고르기(radio) + 권한 없는 링크(select) — 볼 수 없는 저장소는
-    //    목록조차 열리지 않고, 고른 것도 함께 풀린다.
     at('#STP-open-shared');
     click(win, doc.getElementById('btn-signin'));
     const link = doc.getElementById('in-link');
@@ -591,7 +565,6 @@ const PRODUCT_PATHS = {
         const c3 = doc.querySelector('.cand[data-cand="c3"]');
         const flagged = !!doc.getElementById('prev-reason') &&
                         /거부/.test(doc.getElementById('prev-reason').textContent);
-        // 자동 채택하지 않는다 — 그 후보는 여전히 미결정이다.
         const notAdopted = !c3.classList.contains('approved') &&
                            doc.getElementById('undecided-count').textContent === '4';
         return { landed: active(doc), evidence: flagged && notAdopted };
@@ -606,7 +579,6 @@ const PRODUCT_PATHS = {
         const saved = doc.getElementById('resume-card').style.display === 'block' &&
                       doc.getElementById('remaining-count').textContent === '2';
         click(win, doc.getElementById('btn-resume-sift'));
-        // 이어하기 — 앞서 한 결정이 보존돼 있다.
         const kept = doc.querySelector('.cand[data-cand="c1"]').classList.contains('approved') &&
                      doc.getElementById('undecided-count').textContent === '2';
         return { landed: active(doc), evidence: saved && kept };
@@ -616,7 +588,6 @@ const PRODUCT_PATHS = {
         at('#STP-add-missing');
         type(win, doc.getElementById('in-newfeature'), '사내 슬랙 알림 연동');
         click(win, doc.getElementById('btn-draft'));
-        // 근거를 못 찾으면 "근거 없음"을 명시하고 초안을 지어내지 않는다.
         const flagged = visible(doc.getElementById('no-evidence'));
         const noFabrication = doc.getElementById('draft-result').style.display === 'none';
         return { landed: active(doc), evidence: flagged && noFabrication };
@@ -627,7 +598,6 @@ const PRODUCT_PATHS = {
         // 모순은 사용자가 일으키는 것이 아니라 그 기능의 분석 결과에 딸려 온다.
         change(win, doc.getElementById('in-feature'), 'f3');
         const shown = visible(doc.getElementById('conflict-box'));
-        // 본 시나리오에 섞지 않고 별도 섹션으로 분리한다 — 섞이면 검수가 오염된다.
         const separated = doc.querySelector('#scn-list [data-scn="x1"]') === null &&
                           doc.querySelector('#conflict-box [data-scn="x1"]') !== null;
         return { landed: active(doc), evidence: shown && separated };
@@ -636,7 +606,6 @@ const PRODUCT_PATHS = {
         click(win, doc.getElementById('btn-not-a-feature'));
         const asked = visible(doc.getElementById('notfeature-confirm'));
         click(win, doc.getElementById('btn-back-to-discovery'));
-        // 이 갈래는 다른 여정으로 넘어가며, 이 여정의 검수는 적용되지 않는다.
         const notApplied = /미적용/.test(doc.getElementById('END-back-to-discovery').textContent);
         return { landed: active(doc), evidence: asked && notApplied };
       } },
@@ -647,7 +616,6 @@ const PRODUCT_PATHS = {
         click(win, doc.getElementById('btn-send-request'));
         const sawDiff = active(doc) === 'STP-decide-diff';
         click(win, doc.getElementById('btn-reject-diff'));
-        // 거부한 제안은 기록되어 다음 제안에서 회피한다. 승인 없이 적용되는 경로는 없다.
         const recorded = visible(doc.getElementById('rejected-note')) &&
                          doc.getElementById('rejected-count').textContent === '1';
         return { landed: active(doc), evidence: sawDiff && recorded };
@@ -656,7 +624,6 @@ const PRODUCT_PATHS = {
         const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
         at('#STP-trace-dependencies');
         click(win, doc.getElementById('btn-leave-3'));
-        // 읽던 feature 와 위치가 보존된 채 재진입 지점으로 돌아온다.
         const kept = doc.getElementById('resume-card').style.display === 'block' &&
                      doc.getElementById('resume-name').textContent === '결제 수단 등록' &&
                      doc.getElementById('resume-where').textContent === '의존성';
@@ -667,7 +634,6 @@ const PRODUCT_PATHS = {
         at('#STP-trace-dependencies');
         change(win, doc.getElementById('in-dep-filter'), 'middleware');
         const row = doc.getElementById('dep-noevidence');
-        // "근거 없음"으로 명시하고 임의로 채우지 않는다.
         const flagged = row.style.display !== 'none' && /근거 없음/.test(row.textContent);
         const noFabrication = row.querySelector('.esrc') === null;
         return { landed: active(doc), evidence: flagged && noFabrication };
@@ -679,7 +645,6 @@ const PRODUCT_PATHS = {
         click(win, doc.querySelector('[data-scenario="noconflict"]'));
         const clean = visible(doc.getElementById('no-conflict-note')) &&
                       !visible(doc.getElementById('conflict-banner'));
-        // 확인만으로 마칠 수 있는 자리가 실제로 있다.
         const canFinish = !!doc.getElementById('btn-finish-diff');
         return { landed: active(doc), evidence: clean && canFinish };
       } },
@@ -687,7 +652,6 @@ const PRODUCT_PATHS = {
         const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
         at('#STP-resolve-conflict');
         click(win, doc.getElementById('btn-leave-conflict'));
-        // 어느 쪽도 덮어쓰지 않는다 — 미해소로 표시된 채 남고 결정은 저장되지 않는다.
         const marked = visible(doc.getElementById('unresolved-note')) &&
                        doc.getElementById('unresolved-count').textContent === '1' &&
                        doc.getElementById('btn-to-recheck').disabled === true;
@@ -699,7 +663,6 @@ const PRODUCT_PATHS = {
         check(win, doc.getElementById('dec-merge'), true);
         const proposed = doc.getElementById('merge-panel').style.display === 'block';
         click(win, doc.getElementById('btn-reject-merge'));
-        // 버린 제안은 적용되지 않고, 결정은 다시 비어 있는 상태로 돌아간다.
         const dropped = visible(doc.getElementById('merge-rejected')) &&
                         doc.getElementById('dec-merge').checked === false &&
                         doc.getElementById('btn-to-recheck').disabled === true;
@@ -709,7 +672,6 @@ const PRODUCT_PATHS = {
         const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
         at('#STP-recheck-candidates');
         const c3 = doc.querySelector('.cand[data-cand="c3"]');
-        // 거부 사유가 보존돼 있어 같은 판단을 처음부터 다시 하지 않는다.
         const reasonKept = /거부/.test(doc.getElementById('prev-why').textContent);
         click(win, c3.querySelector('[data-decide="approve"]'));
         const adopted = c3.classList.contains('approved') &&
@@ -734,7 +696,6 @@ const PRODUCT_PATHS = {
     { name: '읽다가 용어에서 막힘', run: (win, doc) => {
         const at = (h) => { win.location.hash = h; win.dispatchEvent(new win.HashChangeEvent('hashchange')); };
         at('#STP-grasp-behavior');
-        // 막힌 그 자리에서 바로 넘긴다 — 어디였는지 다시 찾게 하지 않는다.
         click(win, doc.querySelector('[data-stuck="s3"]'));
         const carried = visible(doc.getElementById('stuck-note')) &&
                         doc.getElementById('edit-target').textContent === '셋 · 카드사가 응답하지 않을 때';
@@ -746,7 +707,6 @@ const PRODUCT_PATHS = {
         change(win, doc.getElementById('in-target'), 's3');
         type(win, doc.getElementById('in-note'), '몇 번까지 다시 시도하는지 모르겠어요');
         click(win, doc.getElementById('btn-preview'));
-        // 부딪힌다는 사실이 화면에 뜨고, 그 사이 어느 것도 문서에 반영되지 않는다.
         const warned = visible(doc.getElementById('overlap-note')) &&
                        visible(doc.getElementById('proposal')) &&
                        doc.getElementById('applied-count').textContent === '0';
@@ -756,7 +716,6 @@ const PRODUCT_PATHS = {
     { name: '모바일에서 링크가 앱 대신 브라우저로 열림', run: (win, doc) => {
         // 어디서 열렸는지는 사용자가 정하는 것이 아니다 — 보조 레이어에서 장전한다.
         click(win, doc.querySelector('[data-scenario="browser"]'));
-        // 같은 화면이 브라우저에서도 그대로 동작한다 — 목록이 줄지도, 막히지도 않는다.
         const sameScreen = visible(doc.getElementById('browser-bar')) &&
                            doc.getElementById('feat-count').textContent === '3';
         click(win, doc.getElementById('btn-signin'));

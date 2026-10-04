@@ -276,7 +276,6 @@ async fn run_to_documented(
     keys
 }
 
-/// `tree` 는 그 시점의 저장소 트리다 — 두 번째 분석은 한 걸음 나아간 트리를 본다.
 async fn trace(state: &AppState, session: &str, id: &str, key: &str, tree: &[String]) {
     let resp = build_router(state.clone())
         .oneshot(user_send(
