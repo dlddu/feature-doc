@@ -113,6 +113,7 @@ pub struct Config {
     /// Empty means "this deployment has no worker" — the internal routes then
     /// reject every caller rather than falling open.
     pub worker_token: String,
+    pub push: Option<crate::push::PushConfig>,
 }
 
 impl Config {
@@ -158,6 +159,7 @@ impl Config {
             github,
             cookie_secure: env_or("COOKIE_SECURE", "").eq_ignore_ascii_case("true"),
             worker_token: env_or("FEATUREDOC_WORKER_TOKEN", ""),
+            push: crate::push::PushConfig::from_env(),
         }))
     }
 }

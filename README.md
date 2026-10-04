@@ -161,6 +161,24 @@ dev 모드(`cd frontend && npm run dev`)는 `/hello`를 `localhost:8080`으로 �
 
 토큰을 주지 않으면 API는 `/internal` 전체를 401로 닫고 워커는 아예 기동을 거부합니다 — 기본값이 "열림"이 아니라 "닫힘"입니다.
 
+### 푸시 알림 (Web Push)
+
+단계 완료·재분석 알림은 Web Push로 앱 밖에 나갑니다. API가 VAPID 키를 가져야 켜지고, 없으면 `GET /api/push/key`가 `{"key":null}`을 돌려 화면이 권한을 묻지 않습니다.
+
+```bash
+# P-256 PKCS#8 DER 를 base64url 로 — 이 값이 FEATUREDOC_VAPID_PRIVATE_KEY 다
+openssl ecparam -name prime256v1 -genkey -noout \
+  | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0 | tr '+/' '-_' | tr -d '='
+```
+
+| 변수 | 뜻 |
+|---|---|
+| `FEATUREDOC_VAPID_PRIVATE_KEY` | 위 명령의 출력. 비어 있거나 읽히지 않으면 푸시 전 경로가 꺼진다 |
+| `FEATUREDOC_VAPID_SUBJECT` | 푸시 서비스가 연락할 주소(`mailto:` 또는 `https:`) |
+| `FEATUREDOC_PUSH_SERVICES` | 구독을 받을 푸시 서비스 호스트(쉼표 구분). 기본값은 FCM·Mozilla·Apple·Windows 네 곳이고, 그 밖의 endpoint 로는 서버가 요청을 보내지 않는다 |
+
+키를 바꾸면 기존 구독은 새 키의 서명을 거절합니다. 화면은 분석을 시작할 때 구독이 묶인 키를 서버 키와 대조해 다르면 구독을 새로 만듭니다.
+
 ### kind 기반 e2e (docker · kind · kubectl 필요)
 
 ```bash

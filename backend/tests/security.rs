@@ -74,6 +74,7 @@ fn config_debug_redacts_secrets() {
         cookie_secure: true,
         // These suites never call /internal; an empty token keeps it closed.
         worker_token: String::new(),
+        push: None,
     };
     let dump = format!("{config:?}");
     assert!(dump.contains("[REDACTED]"));
