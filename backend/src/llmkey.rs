@@ -56,8 +56,6 @@ impl Provider {
         }
     }
 
-    /// The call-side view of this provider.
-    ///
     /// The two enums stay separate — this one is the registration vocabulary, the
     /// other is the call vocabulary — but the registration *scope* has to follow the
     /// calls (AC4.2), so this bridge is the only place they meet and
@@ -207,7 +205,6 @@ async fn revoke(
 /// **OpenAI first, then most recently registered** — the same default the worker
 /// falls back to and the registration screen starts on ([`crate::llm::DEFAULT_PROVIDER`]),
 /// so all three agree on which provider a user who never chose is billed for.
-/// Users with a single active key are unaffected.
 ///
 /// Shared by [`preflight`] and [`active_key_for_user`] on purpose: preflight tells
 /// the user which key an analysis will use, so it has to resolve the same one.
@@ -346,7 +343,6 @@ fn fingerprint(key: &str) -> String {
 }
 
 /// Display-only mask: reveal just the provider's public prefix, bullet the rest.
-/// Never reveals any secret portion of the key.
 fn mask(provider: Provider, key: &str) -> String {
     let head = if key.starts_with(provider.prefix()) {
         provider.prefix().to_string()

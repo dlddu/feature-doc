@@ -1,13 +1,7 @@
 //! The LLM call boundary (AC1.2~AC1.4).
 //!
-//! Stage 1 (`fetch`) needed no model; every stage after it does. This module is the
-//! one place that talks to a provider, so the pipeline stages stay about *what* to
-//! ask and this file owns *how* to ask it.
-//!
-//! It mirrors the `Mode` split the rest of the codebase already uses (`repo_scan`,
-//! `github_app`, `llmkey`): `Stub` answers deterministically from the input so the
-//! kind e2e and unit tests never reach the network, `Real` calls the provider with
-//! the user's own key.
+//! This module is the one place that talks to a provider, so the pipeline stages
+//! stay about *what* to ask and this file owns *how* to ask it.
 //!
 //! Two deliberate choices about the request shape:
 //!
@@ -30,8 +24,6 @@ use serde_json::{json, Value};
 
 use crate::config::Mode;
 
-/// Model each provider's pipeline calls use. Pinned here rather than in each
-/// caller so a model change is one edit.
 const ANTHROPIC_MODEL: &str = "claude-opus-5";
 const OPENAI_MODEL: &str = "gpt-5.6-luna";
 
@@ -273,8 +265,6 @@ fn anthropic_body<'a>(ask: &'a Ask<'_>) -> AnthropicRequest<'a> {
         max_tokens: MAX_TOKENS,
         system: ask.system_turn(),
         messages: vec![json!({ "role": "user", "content": ask.user })],
-        // `effort` bounds how much the model spends before answering; the schema
-        // constrains the answer's shape. Neither is a sampling parameter.
         output_config: json!({
             "effort": "medium",
             "format": { "type": "json_schema", "schema": ask.schema },
@@ -502,10 +492,8 @@ pub const STUB_MODEL: &str = "stub-model";
 ///
 /// One deliberate extension of the deterministic answer: a *failure trigger*
 /// (blocker-ledger R1 in `docs/e2e-mocking-policy.md`). A real LLM call can fail
-/// on things no user input reproduces — a provider rate limit or a timeout — so
-/// before this trigger stub mode could not reach the stage-failure branch from an
-/// LLM error at all, and sc01-06 had to enter it through the tree 404 instead.
-/// Setting `FEATUREDOC_STUB_LLM_FAIL` to a prompt substring makes the stub fail
+/// on things no user input reproduces — a provider rate limit or a timeout — and
+/// without the trigger stub mode cannot reach that stage-failure branch. Setting `FEATUREDOC_STUB_LLM_FAIL` to a prompt substring makes the stub fail
 /// with the same operator-facing one-liner a rejected request produces; with the
 /// env unset, or when the input does not carry the needle, nothing changes. The
 /// trigger needs both sides to match, so it stays inert for every other analysis.
@@ -593,13 +581,9 @@ mod tests {
         assert_eq!(a.model, STUB_MODEL);
     }
 
-    /// The failure trigger (blocker-ledger R1, `docs/e2e-mocking-policy.md`):
-    /// real-shaped provider failure exactly when the env names a prompt substring
-    /// the input carries, the deterministic answer otherwise. The trigger adds a
-    /// failure real has — it never removes one, and it is inert in every other
-    /// analysis. The env writes stay inside this one test, but the variable is
-    /// process-global and `stub_answer` reads it for every Stub-mode ask in this
-    /// binary — so the needle must be one no other test's prompt can carry.
+    /// The env writes stay inside this one test, but the variable is process-global
+    /// and `stub_answer` reads it for every Stub-mode ask in this binary — so the
+    /// needle must be one no other test's prompt can carry.
     #[tokio::test]
     async fn stub_llm_fail_trigger_fires_only_on_the_named_input() {
         let http = reqwest::Client::new();
@@ -644,10 +628,7 @@ mod tests {
         assert!(err.contains("no LLM key"), "{err}");
     }
 
-    /// A provider with no call must say so instead of failing somewhere less
-    /// legible. `llmkey::register` now refuses these at the door (AC4.2's supported
-    /// scope), so this arm is the second line: a row stored before that gate existed
-    /// still reaches here, and it fails by name rather than by accident.
+    /// A provider with no call must fail by name rather than somewhere less legible.
     ///
     /// Asserted over [`ALL_PROVIDERS`] rather than over `Google` alone so the day
     /// Google lands, this test keeps passing on whatever is unsupported next.
