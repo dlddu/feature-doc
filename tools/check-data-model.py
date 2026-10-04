@@ -20,11 +20,16 @@ COLUMN_HEADER = ["컬럼", "타입", "NULL", "키"]
 INDEX_HEADER = ["인덱스", "컬럼", "UNIQUE", "조건"]
 PATTERN_HEADER = ["ID", "형태", "지원 인덱스 또는 허용 사유", "호출 지점"]
 MANUAL_HEADER = ["호출 지점", "패턴 ID", "대표 SQL", "추출 불가 사유"]
+UNUSED_HEADER = ["인덱스", "테이블", "비고"]
+ALLOWANCE_HEADER = ["ID", "기준", "관측 가능한 근거"]
 PATTERN_ID_RE = re.compile(r"^Q-[0-9]+$")
+ALLOWANCE_RE = re.compile(r"^풀스캔 허용\((F[0-9]+)\): \S")
+PLAN_ACCESS_RE = re.compile(
+    r"^(SEARCH|SCAN) (\S+)(?: USING (?:(AUTOMATIC (?:PARTIAL )?COVERING INDEX)"
+    r"|(?:COVERING )?INDEX (\S+)|(INTEGER PRIMARY KEY|PRIMARY KEY)))?")
 WRITE_OPS = ("insert", "upsert")
-PENDING = {
-    "3": "지원 인덱스 판정(C5 쿼리 플랜)은 판정 슬라이스 (3)에서 들어온다",
-}
+FULL_SCAN = "풀스캔"
+NO_SUPPORT = "지원 없음"
 
 
 class Undecidable(Exception):
@@ -166,9 +171,10 @@ def observe_schema(db, exclude):
                 ref_info = db.execute(f"PRAGMA table_info('{ref}')").fetchall()
                 to_cols = [c[1] for c in sorted((c for c in ref_info if c[5]), key=lambda c: c[5])]
             fk_set.add((tuple(r[3] for r in rows), ref, tuple(to_cols)))
-        indexes = {}
+        indexes, names = {}, {}
         for _, iname, unique, origin, partial in db.execute(f"PRAGMA index_list('{table}')"):
             if origin == "pk":
+                names[iname] = f"PK({table})"
                 continue
             info = db.execute(f"PRAGMA index_xinfo('{iname}')").fetchall()
             keys = [r for r in info if r[5]]
@@ -184,7 +190,9 @@ def observe_schema(db, exclude):
                 label = f"UNIQUE({','.join(table + '.' + c for c in cols_seq)})"
             key = (cols_seq, "YES" if unique else "NO", where if partial else "-")
             indexes[key] = label
-        tables[table] = {"columns": columns, "pk": pk, "fks": fk_set, "indexes": indexes}
+            names[iname] = label
+        tables[table] = {"columns": columns, "pk": pk, "fks": fk_set, "indexes": indexes,
+                         "index_names": names}
     return tables
 
 
@@ -1289,6 +1297,163 @@ def check_catalog(root, candidates, db):
     return out, len(rows), len(manual_sites)
 
 
+def plan_names(sql):
+    toks = tokenize(sql)
+    names, derived = {}, set()
+    for i, tok in enumerate(toks):
+        if not is_kw(tok, "from", "join", "update", "into"):
+            continue
+        j = i + 1
+        if j < len(toks) and is_kw(toks[j], "or"):
+            j += 2
+        if j >= len(toks):
+            continue
+        if toks[j] == ("op", "("):
+            depth = 0
+            for k in range(j, len(toks)):
+                depth += toks[k] == ("op", "(")
+                depth -= toks[k] == ("op", ")")
+                if depth == 0:
+                    break
+            k += 1
+            if k < len(toks) and is_kw(toks[k], "as"):
+                k += 1
+            if k < len(toks) and toks[k][0] == "id":
+                derived.add(toks[k][1])
+            continue
+        if toks[j][0] != "id":
+            continue
+        names.setdefault(toks[j][1], set()).add(toks[j][1])
+        k = j + 1
+        if k < len(toks) and is_kw(toks[k], "as"):
+            k += 1
+        if k < len(toks) and toks[k][0] == "id":
+            names.setdefault(toks[k][1], set()).add(toks[j][1])
+    return names, derived
+
+
+def plan_accesses(db, sql, schema, index_names):
+    params = sum(1 for t in tokenize(sql) if t[0] == "param")
+    rows = db.execute("EXPLAIN QUERY PLAN " + sql, [None] * params).fetchall()
+    names, derived = plan_names(sql)
+    access, temp_order = {}, False
+    for row in rows:
+        detail = row[3]
+        if detail.startswith("USE TEMP B-TREE FOR") and "ORDER BY" in detail:
+            temp_order = True
+        m = PLAN_ACCESS_RE.match(detail)
+        if not m or detail == "SCAN CONSTANT ROW":
+            continue
+        kind, name, automatic, index, pk = m.groups()
+        name = name.lower()
+        if name.startswith("(") or name in derived:
+            continue
+        owners = names.get(name, set())
+        if len(owners) != 1 or next(iter(owners)) not in schema:
+            raise ShapeError(f"플랜의 `{name}` 가 어느 테이블인지 정할 수 없다: {detail}")
+        table = next(iter(owners))
+        if kind == "SEARCH" and index:
+            if index not in index_names:
+                raise ShapeError(f"플랜이 스키마에 없는 인덱스 `{index}` 를 쓴다: {detail}")
+            label = index_names[index]
+        elif kind == "SEARCH" and pk:
+            label = f"PK({table})"
+        else:
+            label = FULL_SCAN
+        access.setdefault(table, set()).add(label)
+    return {t: sorted(v) for t, v in sorted(access.items())}, temp_order
+
+
+def support_cell(access, shape):
+    if any(FULL_SCAN in labels for labels in access.values()):
+        return None
+    tables = shape.split(" | ")[0].split(" ", 1)[1].split(",")
+    if len(tables) == 1 and list(access) == tables:
+        return ", ".join(access[tables[0]])
+    return "; ".join(f"{t}: {', '.join(labels)}" for t, labels in access.items())
+
+
+def parse_allowances(text):
+    rows = parse_tables_after(text.splitlines(), 0, ALLOWANCE_HEADER)
+    if rows is None:
+        raise Undecidable(f"{README} 에 풀스캔 허용 기준 표가 없다")
+    return {unquote(r[0]) for r in rows if r and re.match(r"^F[0-9]+$", unquote(r[0]))}
+
+
+def check_support(root, candidates, db, schema):
+    lines = read(root, CATALOG).splitlines()
+    patterns, manual = parse_catalog("\n".join(lines))
+    unused_rows = parse_tables_after(lines, 0, UNUSED_HEADER)
+    allowances = parse_allowances(read(root, README))
+    index_names = {k: v for t in schema.values() for k, v in t["index_names"].items()}
+    by_shape = {}
+    for c in candidates:
+        if "shape" in c:
+            by_shape.setdefault(c["shape"], []).append((c["site"], c["sql"]))
+    rows = {unquote(r[0]): r for r in patterns}
+    for cells in manual:
+        site, pid, sql = unquote(cells[0]), unquote(cells[1]), unquote(cells[2])
+        by_shape.setdefault(unquote(rows[pid][1]), []).append((site, sql))
+    out, plans, used, allowed = [], [], set(), 0
+    for pid, cells in sorted(rows.items(), key=lambda kv: int(kv[0][2:])):
+        shape, cell = unquote(cells[1]), cells[2]
+        op = shape.split(" ", 1)[0]
+        expected_row = lambda support: (f"| {pid} | `{md_cell(shape)}` | {md_cell(support)} | "
+                                        f"{md_cell(cells[3])} |")
+        if op in WRITE_OPS:
+            if cell != "—":
+                out.append({"kind": "support-mismatch", "pattern": pid, "documented": cell,
+                            "detail": "접근 조건 없는 쓰기의 지원 칸은 `—` 다", "expected": expected_row("—")})
+            continue
+        verdicts = {}
+        for site, sql in sorted(by_shape.get(shape, [])):
+            try:
+                access, temp_order = plan_accesses(db, sql, schema, index_names)
+            except (sqlite3.Error, ShapeError) as exc:
+                out.append({"kind": "plan-failed", "pattern": pid, "site": site, "detail": str(exc)})
+                continue
+            plans.append({"pattern": pid, "site": site, "access": access, "temp_b_tree_order": temp_order})
+            verdicts.setdefault(json.dumps(access, sort_keys=True), []).append(site)
+            used.update(l for labels in access.values() for l in labels
+                        if l != FULL_SCAN and not l.startswith("PK("))
+        if len(verdicts) > 1:
+            out.append({"kind": "split-plan", "pattern": pid,
+                        "detail": " / ".join(f"{', '.join(s)} → {v}" for v, s in sorted(verdicts.items()))})
+            continue
+        if not verdicts:
+            continue
+        access = json.loads(next(iter(verdicts)))
+        expected = support_cell(access, shape)
+        m = ALLOWANCE_RE.match(cell)
+        if expected is None:
+            scanned = ", ".join(t for t, labels in access.items() if FULL_SCAN in labels)
+            if m and m.group(1) in allowances:
+                allowed += 1
+            elif m:
+                out.append({"kind": "unknown-allowance", "pattern": pid, "documented": cell,
+                            "detail": f"README 풀스캔 허용 기준 표에 {m.group(1)} 이 없다"})
+            else:
+                out.append({"kind": "no-support", "pattern": pid, "documented": cell,
+                            "detail": f"엔진이 {scanned} 를 풀스캔한다 — 인덱스를 더하는 마이그레이션이나 "
+                                      f"README 의 기존 풀스캔 허용 기준이 필요하다",
+                            "expected": expected_row("풀스캔 허용(F?): <근거>")})
+        elif cell != expected:
+            out.append({"kind": "support-mismatch", "pattern": pid, "documented": cell,
+                        "detail": f"엔진 판정은 `{expected}` 다", "expected": expected_row(expected)})
+    all_labels = {label: table for table, t in schema.items() for label in t["indexes"].values()}
+    unused = {label: table for label, table in all_labels.items() if label not in used}
+    listed = {unquote(r[0]) for r in (unused_rows or []) if r}
+    if unused_rows is None:
+        out.append({"kind": "unused-table-missing", "detail": f"{CATALOG} 에 「미사용 인덱스」 표가 없다"})
+    for label in sorted(set(unused) - listed):
+        out.append({"kind": "unused-unlisted", "detail": f"`{label}` 를 쓰는 패턴이 없다",
+                    "expected": f"| `{md_cell(label)}` | `{unused[label]}` | - |"})
+    for label in sorted(listed - set(unused)):
+        why = "스키마에 없다" if label not in all_labels else "패턴의 플랜이 쓴다"
+        out.append({"kind": "unused-listed", "detail": f"`{label}` 는 미사용이 아니다 — {why}"})
+    return out, plans, {"unused_indexes": len(unused), "fullscan_allowed": allowed}
+
+
 def run(root):
     block = parse_block(read(root, README))
     files = migration_files(root, block["migrations"])
@@ -1319,8 +1484,16 @@ def run(root):
         report["invariants"]["2"] = {"status": "violations" if catalog else "ok", "violations": catalog}
     except Undecidable as exc:
         report["invariants"]["2"] = {"status": "undecidable", "reason": str(exc)}
-    for key, reason in PENDING.items():
-        report["invariants"][key] = {"status": "undecidable", "reason": reason}
+    if report["invariants"]["2"]["status"] != "ok":
+        report["invariants"]["3"] = {"status": "undecidable",
+                                     "reason": "불변식 3 은 불변식 2 가 참인 카탈로그를 전제로 한다"}
+    else:
+        try:
+            support, report["plans"], counts = check_support(root, candidates, db, schema)
+            report["counts"].update(counts)
+            report["invariants"]["3"] = {"status": "violations" if support else "ok", "violations": support}
+        except Undecidable as exc:
+            report["invariants"]["3"] = {"status": "undecidable", "reason": str(exc)}
     statuses = [v["status"] for v in report["invariants"].values()]
     report["exit"] = 2 if "undecidable" in statuses else 1 if "violations" in statuses else 0
     return report
@@ -1334,7 +1507,8 @@ def human(report):
     out.append(f"엔진 {report['engine']} · 마이그레이션 {report['migrations']} · 테이블 {c['tables']}"
                f" · 컬럼 {c['columns']} · FK {c['fks']} · 인덱스(PK 제외) {c['indexes']}"
                f" · site 후보 {c['site_candidates']}줄(추출 {c['sites_extracted']} · 추출 불가 {c['sites_unextractable']}"
-               f" · 제외 {c['sites_excluded']}) · 패턴 {c.get('patterns', '?')} · 수동 형태 {c.get('manual_shapes', '?')}")
+               f" · 제외 {c['sites_excluded']}) · 패턴 {c.get('patterns', '?')} · 수동 형태 {c.get('manual_shapes', '?')}"
+               f" · 풀스캔 허용 {c.get('fullscan_allowed', '?')} · 미사용 인덱스 {c.get('unused_indexes', '?')}")
     for key in sorted(report["invariants"]):
         inv = report["invariants"][key]
         if inv["status"] == "ok":
