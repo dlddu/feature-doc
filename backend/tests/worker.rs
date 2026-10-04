@@ -285,8 +285,7 @@ async fn claim_hands_over_the_target_and_the_executable_stage() {
     assert_eq!(body["repoOwner"], "stub-account");
     assert_eq!(body["repoName"], "payments-api");
     assert_eq!(body["branch"], "main");
-    // Stage 4's absence has two independent causes — unimplemented, *and* gated on
-    // the user approving the strategy — so implementing it alone will not offer it.
+    // Stage 4 is not offered until the user approves the strategy.
     assert_eq!(
         body["executableStages"],
         serde_json::json!(["fetch", "cross_cutting", "discovery_strategy"])

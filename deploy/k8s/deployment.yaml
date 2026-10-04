@@ -31,7 +31,6 @@ spec:
             - containerPort: 8080
               name: http
           env:
-            # SQLite lives on the mounted PVC; created + migrated on first boot.
             - name: DATABASE_URL
               value: "sqlite:///data/featuredoc.db?mode=rwc"
             # Every external boundary runs for real here: the test doubles are

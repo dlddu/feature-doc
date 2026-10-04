@@ -248,7 +248,6 @@ async fn github_token_store_load_roundtrips_encrypted() {
         .unwrap()
         .is_none());
 
-    // The token must be encrypted at rest, not stored as plaintext.
     let row: (Vec<u8>,) = sqlx::query_as("SELECT ciphertext FROM github_tokens WHERE user_id = ?")
         .bind(&user.id)
         .fetch_one(&state.db)
