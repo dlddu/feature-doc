@@ -1,11 +1,6 @@
--- One row per (analysis, kind) — the latest content for that document on that
--- analysis. A partial re-run of one stage overwrites its own row rather than
--- accumulating history: the analysis *is* the unit of history, and keeping a
--- second axis of versioning here would make "which document do we show"
--- ambiguous.
---
--- `model`, `input_tokens`, `output_tokens` are the per-call cost accounting. The
--- stage that produced the row writes them whether or not anything reads them back.
+-- A partial re-run of one stage overwrites its own row rather than accumulating
+-- history: the analysis *is* the unit of history, and keeping a second axis of
+-- versioning here would make "which document do we show" ambiguous.
 CREATE TABLE analysis_documents (
     id            TEXT    PRIMARY KEY,
     analysis_id   TEXT    NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
