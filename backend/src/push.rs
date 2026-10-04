@@ -1,3 +1,5 @@
+//! Web Push: 브라우저 구독(엔드포인트·키)을 사용자별로 저장하고, 분석 단계가 끝나거나 문서가 바뀌면 그 구독으로 알린다.
+
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes128Gcm, KeyInit, Nonce};
 use axum::extract::State;
