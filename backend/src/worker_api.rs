@@ -6,9 +6,7 @@
 //! pin that to exactly one writer (`replicas: 1`, `strategy: Recreate`). A worker
 //! that opened the same file would break that invariant the moment it scaled past
 //! one. So the worker owns *no* persistence: it claims work and reports progress
-//! through these routes, and the API remains the single writer. AC4.5's
-//! separation ("API 워크로드"/"백그라운드 워커 워크로드") and horizontal scaling
-//! both hold, without a second datastore.
+//! through these routes, and the API remains the single writer.
 //!
 //! ## Trust boundary
 //!
@@ -119,8 +117,7 @@ struct ClaimView {
     ///
     /// A stage that already **succeeded** is not offered again. That is what makes
     /// the post-approval re-queue safe: stage 4 opens without stages 2-3 re-running
-    /// their LLM calls and overwriting the very document the user approved. The rule
-    /// is spelled out in [`offered_stages`].
+    /// their LLM calls and overwriting the very document the user approved.
     executable_stages: Vec<String>,
     /// Stage 2's stored document, carried when stage 3 is offered **without** stage 2.
     /// `None` whenever stage 2 is offered too (the worker then uses this pass's).
@@ -171,23 +168,9 @@ struct ClaimRow {
     public_repo: bool,
 }
 
-/// Atomically takes the oldest claimable job, or answers `204` when the queue is
-/// empty.
-///
-/// Claimable means queued, **or** running under a lease that has expired — that
-/// second arm is what returns a killed worker's job to the queue (test/04
-/// scenario 7).
-///
-/// What makes this safe under N workers: SQLite serialises writers, so two racing
-/// claims execute one after the other, and the *subquery* is re-evaluated inside
-/// each write. The loser therefore never re-selects the row the winner just moved
-/// out of `queued`; it picks the next eligible job, or none. The repeated
-/// `status`/lease predicate on the `UPDATE` itself is belt-and-braces for the day
-/// this runs on an engine with weaker write serialisation — measured to be
-/// redundant today (removing it alone breaks no test; removing the subquery
-/// filter breaks `concurrent_workers_take_disjoint_jobs`).
-/// The policy is honoured by *where this is called from*, not by anything here:
-/// both call sites sit on a lease boundary, between the worker's calls.
+/// Closes a job whose repository access was revoked (AC4.1). Call it only on a
+/// lease boundary, between the worker's calls — that, not anything here, is what
+/// lets the call already in flight finish before the job stops.
 async fn stop_for_revoked_access(
     state: &AppState,
     id: &str,
@@ -222,6 +205,21 @@ async fn stop_for_revoked_access(
     Ok(())
 }
 
+/// Atomically takes the oldest claimable job, or answers `204` when the queue is
+/// empty.
+///
+/// Claimable means queued, **or** running under a lease that has expired — that
+/// second arm is what returns a killed worker's job to the queue (test/04
+/// scenario 7).
+///
+/// What makes this safe under N workers: SQLite serialises writers, so two racing
+/// claims execute one after the other, and the *subquery* is re-evaluated inside
+/// each write. The loser therefore never re-selects the row the winner just moved
+/// out of `queued`; it picks the next eligible job, or none. The repeated
+/// `status`/lease predicate on the `UPDATE` itself is belt-and-braces for the day
+/// this runs on an engine with weaker write serialisation — measured to be
+/// redundant today (removing it alone breaks no test; removing the subquery
+/// filter breaks `concurrent_workers_take_disjoint_jobs`).
 async fn claim(
     State(state): State<AppState>,
     _auth: WorkerAuth,

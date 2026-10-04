@@ -1,35 +1,5 @@
 //! Analysis jobs: connect a repository, trigger an analysis (AC1.1), and follow it
 //! while it runs (AC1.5).
-//!
-//! The enqueue half (AC1.1):
-//!  - list the repositories the App can access (candidates to analyze),
-//!  - pre-flight an estimated call count / cost so the user sees the scale before
-//!    triggering (Connect Repository, journey F2), and
-//!  - trigger — a user-initiated request lands a `queued` row after the target is
-//!    confirmed within the App's granted access. An out-of-scope target is rejected
-//!    with a clear, actionable message and nothing is queued (test scenario #2).
-//!
-//! Draining the queue is a separate workload (AC4.5): enqueue seeds one
-//! `analysis_stages` row per [`crate::pipeline`] stage and the worker claims the
-//! job through `/internal/*` (see [`crate::worker_api`]).
-//!
-//! The progress half (AC1.5) reads that same persisted state back:
-//!  - `GET /api/analyses/{id}` — the job and its stages, which is everything Analysis Progress
-//!    draws. Nothing about the run lives in the client, so closing the app and
-//!    coming back shows the same progress (test/01 시나리오 5).
-//!  - the discovery-strategy review routes (AC1.3) — read the strategy stage 3
-//!    proposed, edit the list, and approve it. Approval is what opens the next
-//!    pipeline stage in the queue, so "승인된 전략만 다음 단계의 입력이 된다" is
-//!    enforced in one place rather than trusted to each caller.
-//!  - `POST /api/analyses/{id}/stages/{key}/retry` — re-run one *finished* stage and
-//!    only that one (시나리오 6·8).
-//!
-//! And the documents the pipeline produces (AC1.2~AC1.4):
-//!  - `GET /api/analyses/{id}/documents/{kind}` — one stage's output, plus whether
-//!    it reproduced the previous analysis of the same target. AC1.2 requires that a
-//!    re-analysis either reproduce deterministically *or* state the difference;
-//!    comparing the stored content hash is what turns that into something the
-//!    screen can show rather than something the reader has to take on trust.
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
@@ -119,8 +89,7 @@ struct AnalysisView {
     llm_language: Option<String>,
     undecided_candidates: i64,
     /// Pipeline progress as a fraction, so the Home card can read "step 2 of 5"
-    /// without one request per row (AC1.5). The stages themselves belong to Analysis Progress —
-    /// see [`detail`].
+    /// without one request per row.
     stages_total: i64,
     stages_done: i64,
     #[sqlx(skip)]
@@ -136,7 +105,6 @@ struct StageView {
     title: String,
     status: String,
     detail: Option<String>,
-    /// Why the stage failed, when it did. Retryable on its own (AC1.5).
     error: Option<String>,
     started_at: Option<i64>,
     finished_at: Option<i64>,
@@ -378,7 +346,6 @@ async fn cancel(
 #[serde(rename_all = "camelCase")]
 struct ReproducibilityView {
     verdict: &'static str,
-    /// The analysis this was compared against, when there was one.
     compared_to: Option<String>,
 }
 
@@ -775,8 +742,6 @@ async fn load_detail(
     .fetch_all(&state.db)
     .await?;
 
-    // One read for the whole pipeline, not one per stage: there are five stages, and
-    // a stage with nothing charged to it keeps the zero it was built with.
     let per_stage = crate::usage::by_stage(&state.db, id).await?;
     for stage in &mut stages {
         if let Some(charged) = per_stage.get(&stage.key) {
@@ -949,8 +914,7 @@ impl Estimate {
 
 // Stage 3 proposes; this is where a person decides. The proposal itself stays in
 // `analysis_documents` untouched (so re-running the stage and reproducibility keep
-// working); what the user edits lives in `discovery_strategies` (migration 0006)
-// and is what AC1.3 calls "승인된 전략".
+// working); what the user edits lives in `discovery_strategies`.
 
 /// How long the reviewable list may get once the user starts adding to it. Twice
 /// the model's cap: the person adding non-standard entry points knows their own
@@ -1274,12 +1238,9 @@ async fn requeue(
     Ok(res.rows_affected() == 1)
 }
 
-// Stage 4 extracts; this is where a person sifts. Same split as AC1.3: the
+// Stage 4 extracts; this is where a person sifts. Same split as the strategy: the
 // generated document stays in `analysis_documents` untouched (reproducibility keeps
-// working), and what the user decides lives in `feature_candidates` (migration
-// 0007). AC1.4's 검증 방법 names four actions — 승인 · 거부 · 병합 · 이름 변경 — and
-// requires that a rejection's reason be recorded "다음 분석 시 참고될 수 있도록",
-// which is what [`previous_rejection`] reads back.
+// working), and what the user decides lives in `feature_candidates`.
 
 const DECISION_UNDECIDED: &str = "undecided";
 const DECISION_APPROVED: &str = "approved";
