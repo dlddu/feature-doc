@@ -44,6 +44,19 @@ async function subscriptionFor(
   return registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
 }
 
+export async function pushActive(): Promise<boolean> {
+  if (!supported() || Notification.permission !== 'granted') return false;
+  try {
+    const key = await getPushKey();
+    if (!key) return false;
+    const registration = await navigator.serviceWorker.getRegistration();
+    const existing = registration ? await registration.pushManager.getSubscription() : null;
+    return existing !== null && sameBytes(existing.options.applicationServerKey, decodeKey(key));
+  } catch {
+    return false;
+  }
+}
+
 export async function enablePush(): Promise<void> {
   const key = serverKey;
   if (!supported() || !key) return;
