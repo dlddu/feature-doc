@@ -17,6 +17,7 @@ import {
 import type { AnalysisDetail, Stage } from './api';
 import { AccessRequested, NoAccess } from './NoAccess';
 import { formatCost, formatCount, formatDuration } from './format';
+import { pushActive } from './push';
 import { useWideViewport } from './viewport';
 
 const POLL_MS = 2_000;
@@ -87,6 +88,7 @@ export function AnalysisProgress({
   const [accessRequested, setAccessRequested] = useState(false);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [rerun, setRerun] = useState<Rerun | null>(null);
+  const [notifying, setNotifying] = useState(false);
   // Re-rendered on the poll tick so a running step's elapsed time keeps moving.
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const wide = useWideViewport();
@@ -114,6 +116,19 @@ export function AnalysisProgress({
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    pushActive()
+      .then((on) => on && getAnalysisDiff(id).then((diff) => diff.comparedTo === null))
+      .then(
+        (on) => active && setNotifying(on),
+        () => active && setNotifying(false),
+      );
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   const ready = analysis !== null && diffReady(analysis.stages);
 
@@ -203,6 +218,24 @@ export function AnalysisProgress({
         sub={`${analysis.branch} · run ${analysis.id.slice(0, 8)}`}
         onBack={onBack}
       />
+
+      {notifying && (
+        <div className="card row top" style={{ marginTop: 16, gap: 12 }} data-testid="notif-card">
+          <span className="ico ico-28">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M3 5.6a4 4 0 1 1 8 0V9l1.2 1.6H1.8L3 9V5.6Z"
+                stroke="currentColor"
+                strokeWidth="1.1"
+              />
+              <path d="M5.6 12.1a1.5 1.5 0 0 0 2.8 0" stroke="currentColor" strokeWidth="1.1" />
+            </svg>
+          </span>
+          <p className="body sm grow" style={{ color: 'var(--text-secondary)' }}>
+            앱을 닫아도 분석은 계속 돌아요. 단계가 끝날 때마다 알림을 보내 드립니다.
+          </p>
+        </div>
+      )}
 
       {rerun !== null && rerun.changed > 0 && (
         <div className="card row top" style={{ marginTop: 16, gap: 12 }} data-testid="rerun-notice">
