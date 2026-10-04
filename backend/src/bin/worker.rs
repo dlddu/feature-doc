@@ -26,7 +26,6 @@ use serde_json::json;
 use tokio::signal::unix::{signal, SignalKind};
 
 const IDLE_POLL: Duration = Duration::from_secs(2);
-/// Back-off when the API is unreachable, so a restarting API is not hammered.
 const ERROR_BACKOFF: Duration = Duration::from_secs(5);
 
 #[derive(Deserialize)]
@@ -65,10 +64,8 @@ struct ApprovedCandidate {
     symbol: Option<String>,
 }
 
-/// Which external boundaries this worker answers with a test double.
-///
-/// Selected here rather than shared with `config::Doubles`, which is what keeps one
-/// process from being able to enable a double it does not itself run.
+/// Not shared with `config::Doubles`: selecting here is what keeps one process from
+/// being able to enable a double it does not itself run.
 struct WorkerDoubles {
     repo_scan: Mode,
     llm: Mode,

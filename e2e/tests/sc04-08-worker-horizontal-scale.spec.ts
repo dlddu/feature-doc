@@ -9,14 +9,7 @@
 // asserting the topology through anything *other* than actually scaling the
 // workers would only restate the manifest back to itself.
 //
-// Isolation: the analysis worker is *deployment-wide* state — unlike App installs
-// and LLM keys, no per-user handle can isolate it, and a running worker drains the
-// queue within seconds. It is leased, not owned: `deploy/e2e/` starts the worker at
-// **0 replicas**, this spec scales it up inside its own block and puts the count
-// back to 0 in `finally`, and playwright.config.ts pins `workers: 1` so no sibling
-// spec file is in flight while it is up. The scale/settle handles live in
-// `e2e/support/cluster.ts`, shared with the other lessees. The API — what every
-// other spec talks to — is never touched.
+// Leases the analysis worker — lease rules in `e2e/support/cluster.ts`.
 //
 // Like every spec it signs in as its own stub user (`?as=sc0408`); App installation
 // is per-user state and sharing an identity would let specs clobber each other.
@@ -128,8 +121,6 @@ test.describe('시나리오 8: 워커의 수평 확장', () => {
         ).toBe(1);
       }
     } finally {
-      // Back to the overlay's resting state (0), whatever happened above, so a
-      // later spec never finds a worker quietly draining its queue.
       await scaleWorkers(0);
     }
   });
