@@ -8,9 +8,9 @@ use sqlx::SqlitePool;
 /// `journal_mode` is pinned to `DELETE` on purpose. The database file lives on
 /// an EFS volume, and WAL requires a `-shm` mapping shared by every process
 /// that opens the file — something a network filesystem does not guarantee.
-/// sqlx leaves `journal_mode` untouched by default as of 0.8 (it defaulted to
-/// WAL through 0.7), so relying on that default would silently reintroduce WAL
-/// on a version bump.
+/// sqlx has left `journal_mode` untouched by default since 0.6.1 (it defaulted
+/// to WAL through 0.6.0), so relying on that default would silently reintroduce
+/// WAL if a version bump moved it again.
 ///
 /// `synchronous` is pinned to `FULL` for the same reason: on the rollback
 /// journal, `NORMAL` does not guarantee that committed transactions survive a
