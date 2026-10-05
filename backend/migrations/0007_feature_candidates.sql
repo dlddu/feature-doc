@@ -1,7 +1,6 @@
 -- Stage 4 writes its *generated* candidate list to `analysis_documents` like every
 -- other stage output, so reproducibility (content_hash) keeps working the same way.
--- This table is the other half: the copy the **user** decides on —
--- 승인 / 거부(+사유) / 병합 / 이름 변경.
+-- This table is the other half: the copy the **user** decides on.
 --
 -- Row per candidate, not one JSON blob like `discovery_strategies` (0006). The two
 -- shapes answer two different questions. A strategy is always read and written as
