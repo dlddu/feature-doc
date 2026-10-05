@@ -1,7 +1,7 @@
 name: docs — data model
 
 on:
-  pull_request:
+  workflow_call:
   push:
     branches: [main]
 
@@ -10,13 +10,13 @@ permissions:
 
 jobs:
   check:
-    name: 데이터 모델 지도 (report)
+    name: 데이터 모델 지도
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
-      - name: check data model map (report mode)
+      - name: check data model map
         run: |
           set +e
           python3 tools/check-data-model.py > report.txt 2>&1
@@ -31,6 +31,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           case "$rc" in
             0) echo "정합" ;;
-            1) echo "::warning title=데이터 모델 지도::위반 — report 모드라 머지를 막지 않는다. 리포트는 이 job 의 요약에 있다." ;;
+            1) echo "::error title=데이터 모델 지도::위반 — 리포트는 이 job 의 요약에 있다."; exit 1 ;;
             *) echo "::error title=데이터 모델 지도::판정 불가 (종료 코드 $rc)"; exit 1 ;;
           esac
