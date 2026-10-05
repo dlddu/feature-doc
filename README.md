@@ -103,7 +103,7 @@ scripts/
 ├── docs-journey-mockup.yml
 ├── docs-mockup-render.yml
 ├── docs-scenario-e2e.yml  # tools/check-scenario-e2e.py
-├── docs-data-model.yml    # tools/check-data-model.py — report 모드(머지 비차단), PR + main push
+├── docs-data-model.yml    # tools/check-data-model.py — ci-gate 가 요구, main push 에서도 돈다
 └── data-format-review.yml # 저장 형식 무변경이면 commit status `review/manual-approval`=success (pull_request_target)
 
 Dockerfile                 # 멀티스테이지: node 22 → rust 1.94 → debian slim
