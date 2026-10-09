@@ -9,6 +9,7 @@ import sys
 
 DOC_DIR = "docs/data-model"
 README = DOC_DIR + "/README.md"
+CRITERIA = DOC_DIR + "/fullscan-criteria.md"
 ERD = DOC_DIR + "/erd.md"
 CATALOG = DOC_DIR + "/query-patterns.md"
 BLOCK_TAG = "data-model-scope"
@@ -1376,7 +1377,7 @@ def support_cell(access, shape):
 def parse_allowances(text):
     rows = parse_tables_after(text.splitlines(), 0, ALLOWANCE_HEADER)
     if rows is None:
-        raise Undecidable(f"{README} 에 풀스캔 허용 기준 표가 없다")
+        raise Undecidable(f"{CRITERIA} 에 풀스캔 허용 기준 표가 없다")
     return {unquote(r[0]) for r in rows if r and re.match(r"^F[0-9]+$", unquote(r[0]))}
 
 
@@ -1384,7 +1385,7 @@ def check_support(root, candidates, db, schema):
     lines = read(root, CATALOG).splitlines()
     patterns, manual = parse_catalog("\n".join(lines))
     unused_rows = parse_tables_after(lines, 0, UNUSED_HEADER)
-    allowances = parse_allowances(read(root, README))
+    allowances = parse_allowances(read(root, CRITERIA))
     index_names = {k: v for t in schema.values() for k, v in t["index_names"].items()}
     by_shape = {}
     for c in candidates:
@@ -1431,11 +1432,11 @@ def check_support(root, candidates, db, schema):
                 allowed += 1
             elif m:
                 out.append({"kind": "unknown-allowance", "pattern": pid, "documented": cell,
-                            "detail": f"README 풀스캔 허용 기준 표에 {m.group(1)} 이 없다"})
+                            "detail": f"{CRITERIA} 기준 표에 {m.group(1)} 이 없다"})
             else:
                 out.append({"kind": "no-support", "pattern": pid, "documented": cell,
                             "detail": f"엔진이 {scanned} 를 풀스캔한다 — 인덱스를 더하는 마이그레이션이나 "
-                                      f"README 의 기존 풀스캔 허용 기준이 필요하다",
+                                      f"{CRITERIA} 의 기존 풀스캔 허용 기준이 필요하다",
                             "expected": expected_row("풀스캔 허용(F?): <근거>")})
         elif cell != expected:
             out.append({"kind": "support-mismatch", "pattern": pid, "documented": cell,
