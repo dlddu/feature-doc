@@ -25,7 +25,7 @@
 |---|---|---|
 | D1 | `backend/migrations/**` 의 **모든** 변경(추가·수정·삭제·개명 — 판정기는 `--no-renames` 로 개명을 옛 경로 삭제 + 새 경로 추가로 본다) | sqlx 가 적용된 마이그레이션의 체크섬을 부팅 때 대조하므로, 주석·공백 한 글자도 운영 DB 에서 부팅을 깨뜨린다(`backend/migrations/README.md`). 새 마이그레이션은 운영 데이터의 스키마를 바꾼다 |
 | D6 | 판정기·워크플로·정책 자신 — `tools/check-data-format-change.py` · `.github/workflows/data-format-review.yml` · `docs/review-policy.md` | 워크플로가 `pull_request_target` 이라 PR 은 **base 쪽 판정기**로 판정된다 — PR 이 규칙을 고쳐 자기를 통과시킬 수는 없지만, 그 변경 자체(케이스를 줄이거나 자기 경로를 빼는 편집)는 옛 판정기가 보지 못한 채 다음 PR 부터 효력을 가진다. 그래서 이 세 파일의 변경은 사람 눈에 올린다 |
-| D7 | `docs/data-model/fullscan-criteria.md` 의 **모든** 변경(추가·수정·삭제·개명 — 판정기는 `--no-renames` 로 개명을 옛 경로 삭제 + 새 경로 추가로 본다). 2026-10-08 전에는 `docs/data-model/README.md` 「풀스캔 허용 기준」 절의 표 행만 비교했다 — 기준 표가 그 파일로 분리되어 파일 단위로 건다 | 그 표는 문서가 「사람이 소유한다」고 적은 판정 규칙이다. 기준이 하나 생기면 데이터 모델 체커(`tools/check-data-model.py`)가 그 기준을 단 풀스캔 패턴을 정합으로 닫으므로, 기준의 신설·확대가 사람 눈 없이 머지되면 그 소유가 무너진다. 문서 변경이라 D1 에 걸리지 않아 이전에는 자동 success 가 붙었다(#232). 그 파일에는 기준 표만 두고 현황 서술은 README 에 두므로(reconciler 템플릿 `data-model` 고정부), 파일 단위로 걸어도 데이터 모델 루프의 일상 수정은 걸리지 않는다 |
+| D7 | `docs/data-model/fullscan-criteria.md` 의 **모든** 변경(추가·수정·삭제·개명 — 판정기는 `--no-renames` 로 개명을 옛 경로 삭제 + 새 경로 추가로 본다). #236(2026-10-09) 전에는 `docs/data-model/README.md` 「풀스캔 허용 기준」 절의 표 행만 비교했다 — 기준 표가 그 파일로 분리되어 파일 단위로 건다 | 그 표는 문서가 「사람이 소유한다」고 적은 판정 규칙이다. 기준이 하나 생기면 데이터 모델 체커(`tools/check-data-model.py`)가 그 기준을 단 풀스캔 패턴을 정합으로 닫으므로, 기준의 신설·확대가 사람 눈 없이 머지되면 그 소유가 무너진다. 문서 변경이라 D1 에 걸리지 않아 이전에는 자동 success 가 붙었다(#232). 그 파일에는 기준 표만 두고 현황 서술은 README 에 두므로(reconciler 템플릿 `data-model` 고정부), 파일 단위로 걸어도 데이터 모델 루프의 일상 수정은 걸리지 않는다 |
 
 ## 위험 표면
 
@@ -48,7 +48,7 @@ ere: kind: PersistentVolumeClaim|claimName: [a-z0-9-]+|type: Recreate|^[[:space:
 
 ```anchors
 backend/migrations/*.sql
-docs/data-model/README.md
+docs/data-model/fullscan-criteria.md
 tools/check-data-format-change.py
 .github/workflows/data-format-review.yml
 docs/review-policy.md
