@@ -40,6 +40,14 @@ spec:
               value: "https://featuredoc.example.com"
             - name: COOKIE_SECURE
               value: "true"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy.alloy.svc.cluster.local:4318"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "k8s.namespace.name=$(POD_NAMESPACE)"
           envFrom:
             - secretRef:
                 name: featuredoc-secrets
