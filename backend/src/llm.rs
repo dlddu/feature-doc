@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::config::Mode;
+use crate::telemetry;
 
 const ANTHROPIC_MODEL: &str = "claude-opus-5";
 const OPENAI_MODEL: &str = "gpt-5.6-luna";
@@ -206,8 +207,14 @@ pub async fn ask(
         Mode::Real => {
             let key = key.ok_or_else(|| "no LLM key available for this analysis".to_string())?;
             match provider {
-                Provider::Anthropic => anthropic(http, key, ask).await,
-                Provider::OpenAI => openai(http, key, ask).await,
+                Provider::Anthropic => {
+                    let call = anthropic(http, key, ask);
+                    telemetry::llm_call("anthropic", ANTHROPIC_MODEL, ANTHROPIC_URL, call).await
+                }
+                Provider::OpenAI => {
+                    let call = openai(http, key, ask);
+                    telemetry::llm_call("openai", OPENAI_MODEL, OPENAI_URL, call).await
+                }
                 // No call for this provider yet. Registration refuses these up front
                 // (`llmkey::register`, AC4.2's supported scope), so reaching here means
                 // a key stored before that gate existed. Failing loudly beats quietly

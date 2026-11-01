@@ -1,6 +1,7 @@
 //! OpenTelemetry tracing for the API and the worker: an OTLP/HTTP exporter, W3C
 //! trace-context propagation, one server span per API request, and on the worker one
-//! trace per claimed job with a span per stage and per call back to the API.
+//! trace per claimed job with a span per stage and per call back to the API, and in
+//! either process a span per LLM call.
 //!
 //! Tracing is opt-in. With `OTEL_EXPORTER_OTLP_ENDPOINT` (or
 //! `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) unset, [`init`] installs nothing and the
@@ -239,4 +240,52 @@ pub fn templated(path: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("/")
+}
+
+/// Runs one LLM call as a client span following the OpenTelemetry GenAI conventions
+/// (`chat <model>`, provider, models, token usage). Only what [`crate::llm::Answer`]
+/// already exposes is recorded — never the prompt, the response or the key — and a
+/// failure carries the same one-line reason the caller gets.
+pub async fn llm_call(
+    provider: &str,
+    request_model: &str,
+    url: &str,
+    work: impl Future<Output = Result<crate::llm::Answer, String>>,
+) -> Result<crate::llm::Answer, String> {
+    let host = url::Url::parse(url)
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_owned))
+        .unwrap_or_default();
+    let tracer = global::tracer(SCOPE);
+    let parent = Context::current();
+    let span = tracer
+        .span_builder(format!("chat {request_model}"))
+        .with_kind(SpanKind::Client)
+        .with_attributes([
+            KeyValue::new("gen_ai.operation.name", "chat"),
+            KeyValue::new("gen_ai.provider.name", provider.to_owned()),
+            KeyValue::new("gen_ai.request.model", request_model.to_owned()),
+            KeyValue::new("server.address", host),
+        ])
+        .start_with_context(&tracer, &parent);
+    let cx = parent.with_span(span);
+
+    let result = work.with_context(cx.clone()).await;
+    let span = cx.span();
+    match &result {
+        Ok(answer) => {
+            span.set_attribute(KeyValue::new("gen_ai.response.model", answer.model.clone()));
+            span.set_attribute(KeyValue::new(
+                "gen_ai.usage.input_tokens",
+                answer.input_tokens,
+            ));
+            span.set_attribute(KeyValue::new(
+                "gen_ai.usage.output_tokens",
+                answer.output_tokens,
+            ));
+        }
+        Err(reason) => span.set_status(Status::error(reason.clone())),
+    }
+    span.end();
+    result
 }
