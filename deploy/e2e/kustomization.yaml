@@ -89,3 +89,5 @@ patches:
                     value: "stub"
                   - name: FEATUREDOC_WORKER_IDLE_POLL_MS
                     value: "200"
+                  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                    value: ""
