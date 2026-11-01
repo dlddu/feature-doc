@@ -17,6 +17,11 @@ async fn main() -> anyhow::Result<()> {
     let mut sigterm = signal(SignalKind::terminate())?;
     let mut sigint = signal(SignalKind::interrupt())?;
 
+    let tracer_provider = featuredoc::telemetry::init()?;
+    if tracer_provider.is_some() {
+        tracing::info!("tracing enabled");
+    }
+
     let config = Config::from_env()?;
     let pool = db::connect(&config.database_url).await?;
     let http = reqwest::Client::builder()
@@ -43,5 +48,8 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!(signal = sig, "stop requested, draining in-flight requests");
         })
         .await?;
+    if let Some(provider) = tracer_provider {
+        let _ = tokio::task::spawn_blocking(move || provider.shutdown()).await;
+    }
     Ok(())
 }

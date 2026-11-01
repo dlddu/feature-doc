@@ -34,10 +34,15 @@ hkdf = "0.12"
 base64 = "0.22"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+opentelemetry = "0.31"
+opentelemetry-http = "0.31"
+opentelemetry_sdk = "0.31"
+opentelemetry-otlp = { version = "0.31", default-features = false, features = ["http-proto", "reqwest-blocking-client", "trace"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
+opentelemetry_sdk = { version = "0.31", features = ["testing"] }
 
 [profile.release]
 strip = true

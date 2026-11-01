@@ -35,6 +35,7 @@ pub mod repo_scan;
 pub mod session;
 pub mod settings;
 pub mod state;
+pub mod telemetry;
 pub mod usage;
 pub mod users;
 pub mod util;
@@ -77,6 +78,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(feature_delete::routes())
         .merge(worker_api::routes())
         .fallback_service(static_service)
+        .layer(axum::middleware::from_fn(telemetry::trace_request))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
