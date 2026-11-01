@@ -244,3 +244,93 @@ fn templated_replaces_ids_only() {
         "/internal/analyses/claim"
     );
 }
+
+fn answer(model: &str, input: i64, output: i64) -> featuredoc::llm::Answer {
+    featuredoc::llm::Answer {
+        content: serde_json::json!({}),
+        model: model.to_owned(),
+        calls: 1,
+        input_tokens: input,
+        output_tokens: output,
+    }
+}
+
+#[tokio::test]
+async fn llm_call_records_model_and_usage_under_its_stage() {
+    exporter();
+    let url = "https://api.openai.com/v1/responses";
+    telemetry::job("llm-ok", "o/r", &[], async {
+        telemetry::stage("cross_cutting", async {
+            let call = async { Ok(answer("gpt-5.6-luna-2026-10-01", 1200, 340)) };
+            telemetry::llm_call("openai", "gpt-5.6-luna", url, call).await
+        })
+        .await
+    })
+    .await
+    .unwrap();
+
+    let spans = exporter().get_finished_spans().unwrap();
+    let root = spans
+        .iter()
+        .find(|s| attr(s, "analysis.id") == Some("llm-ok".into()))
+        .expect("job span");
+    let in_trace: Vec<_> = spans
+        .iter()
+        .filter(|s| s.span_context.trace_id() == root.span_context.trace_id())
+        .collect();
+    let stage = in_trace
+        .iter()
+        .find(|s| s.name == "stage cross_cutting")
+        .expect("stage span");
+    let call = in_trace
+        .iter()
+        .find(|s| s.name == "chat gpt-5.6-luna")
+        .expect("llm span");
+
+    assert_eq!(call.span_kind, SpanKind::Client);
+    assert_eq!(call.parent_span_id, stage.span_context.span_id());
+    assert_eq!(attr(call, "gen_ai.provider.name"), Some("openai".into()));
+    assert_eq!(
+        attr(call, "gen_ai.request.model"),
+        Some("gpt-5.6-luna".into())
+    );
+    assert_eq!(
+        attr(call, "gen_ai.response.model"),
+        Some("gpt-5.6-luna-2026-10-01".into())
+    );
+    assert_eq!(
+        attr(call, "gen_ai.usage.input_tokens"),
+        Some(1200i64.into())
+    );
+    assert_eq!(
+        attr(call, "gen_ai.usage.output_tokens"),
+        Some(340i64.into())
+    );
+    assert_eq!(attr(call, "server.address"), Some("api.openai.com".into()));
+}
+
+#[tokio::test]
+async fn llm_call_failure_carries_the_callers_reason() {
+    exporter();
+    let url = "https://api.anthropic.com/v1/messages";
+    let result = telemetry::job("llm-fail", "o/r", &[], async {
+        let call = async {
+            Err::<featuredoc::llm::Answer, _>("LLM rejected the request (429)".to_owned())
+        };
+        telemetry::llm_call("anthropic", "claude-opus-5", url, call).await
+    })
+    .await;
+    assert!(result.is_err());
+
+    let call = exporter()
+        .get_finished_spans()
+        .unwrap()
+        .into_iter()
+        .find(|s| s.name == "chat claude-opus-5")
+        .expect("llm span");
+    assert_eq!(
+        call.status,
+        opentelemetry::trace::Status::error("LLM rejected the request (429)")
+    );
+    assert_eq!(attr(&call, "gen_ai.usage.input_tokens"), None);
+}
