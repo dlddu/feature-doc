@@ -21,6 +21,7 @@ use featuredoc::feature_candidates;
 use featuredoc::llm;
 use featuredoc::pipeline;
 use featuredoc::repo_scan;
+use featuredoc::telemetry;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::signal::unix::{signal, SignalKind};
@@ -132,6 +133,11 @@ async fn main() -> anyhow::Result<()> {
     };
     tokio::pin!(stop);
 
+    let tracer_provider = telemetry::init("featuredoc-worker")?;
+    if tracer_provider.is_some() {
+        tracing::info!("tracing enabled");
+    }
+
     // A plain loop, not a scheduler: the API is the queue, and the lease in
     // `worker_api` is what makes an abrupt SIGKILL recoverable. A stop is honoured
     // only between claims: cancelling a claim in flight could leave a job leased to
@@ -142,7 +148,9 @@ async fn main() -> anyhow::Result<()> {
     loop {
         let pause = match worker.claim().await {
             Ok(Some(job)) => {
-                if let Err(e) = worker.run(&job).await {
+                let repo = format!("{}/{}", job.repo_owner, job.repo_name);
+                let run = worker.run(&job);
+                if let Err(e) = telemetry::job(&job.id, &repo, &job.executable_stages, run).await {
                     tracing::warn!(analysis_id = %job.id, "job failed: {e}");
                 }
                 Duration::ZERO
@@ -162,11 +170,15 @@ async fn main() -> anyhow::Result<()> {
                     signal = sig,
                     "stop requested, exiting between claims"
                 );
-                return Ok(());
+                break;
             }
             _ = tokio::time::sleep(pause) => {}
         }
     }
+    if let Some(provider) = tracer_provider {
+        let _ = tokio::task::spawn_blocking(move || provider.shutdown()).await;
+    }
+    Ok(())
 }
 
 impl Worker {
@@ -204,14 +216,17 @@ impl Worker {
         // GitHub response cannot let a second worker reclaim the job mid-flight.
         self.heartbeat(&job.id).await?;
 
-        let scanned = repo_scan::scan(
-            &self.http,
-            self.doubles.repo_scan,
-            &self.github_api_base,
-            &job.repo_owner,
-            &job.repo_name,
-            &job.branch,
-            job.installation_token.as_deref(),
+        let scanned = telemetry::stage(
+            pipeline::FETCH,
+            repo_scan::scan(
+                &self.http,
+                self.doubles.repo_scan,
+                &self.github_api_base,
+                &job.repo_owner,
+                &job.repo_name,
+                &job.branch,
+                job.installation_token.as_deref(),
+            ),
         )
         .await;
 
@@ -250,7 +265,12 @@ impl Worker {
             .iter()
             .any(|s| s == pipeline::CROSS_CUTTING)
         {
-            match self.run_cross_cutting(&job, &result.paths).await {
+            match telemetry::stage(
+                pipeline::CROSS_CUTTING,
+                self.run_cross_cutting(&job, &result.paths),
+            )
+            .await
+            {
                 Ok(doc) => cross_cutting_doc = Some(doc),
                 Err(reason) => {
                     // The failure is this stage's, not the job's: `fetch` keeps its
@@ -276,9 +296,11 @@ impl Worker {
             .any(|s| s == pipeline::DISCOVERY_STRATEGY)
         {
             if let Some(landscape) = cross_cutting_doc.as_ref() {
-                if let Err(reason) = self
-                    .run_discovery_strategy(&job, &result.paths, landscape)
-                    .await
+                if let Err(reason) = telemetry::stage(
+                    pipeline::DISCOVERY_STRATEGY,
+                    self.run_discovery_strategy(&job, &result.paths, landscape),
+                )
+                .await
                 {
                     self.stage(
                         &job.id,
@@ -302,7 +324,12 @@ impl Worker {
             .iter()
             .any(|s| s == pipeline::FEATURE_CANDIDATES)
         {
-            if let Err(reason) = self.run_feature_candidates(job, &result.paths).await {
+            if let Err(reason) = telemetry::stage(
+                pipeline::FEATURE_CANDIDATES,
+                self.run_feature_candidates(job, &result.paths),
+            )
+            .await
+            {
                 self.stage(
                     &job.id,
                     pipeline::FEATURE_CANDIDATES,
@@ -321,7 +348,12 @@ impl Worker {
             .iter()
             .any(|s| s == pipeline::ACCEPTANCE_DEPENDENCIES)
         {
-            if let Err(reason) = self.run_acceptance(job, &result.paths).await {
+            if let Err(reason) = telemetry::stage(
+                pipeline::ACCEPTANCE_DEPENDENCIES,
+                self.run_acceptance(job, &result.paths),
+            )
+            .await
+            {
                 self.stage(
                     &job.id,
                     pipeline::ACCEPTANCE_DEPENDENCIES,
@@ -338,7 +370,12 @@ impl Worker {
         // One feature's failure does not kill the job: its request row carries the
         // reason and the other features' results are not held hostage.
         for feature in &job.dependency_requests {
-            if let Err(reason) = self.run_dependencies(job, &result.paths, feature).await {
+            if let Err(reason) = telemetry::stage(
+                "dependencies",
+                self.run_dependencies(job, &result.paths, feature),
+            )
+            .await
+            {
                 tracing::warn!(
                     analysis_id = %job.id,
                     feature = %feature.key,
@@ -740,13 +777,12 @@ impl Worker {
     }
 
     async fn post(&self, path: &str, body: serde_json::Value) -> anyhow::Result<reqwest::Response> {
-        Ok(self
+        let request = self
             .http
             .post(format!("{}{path}", self.api_base))
             .bearer_auth(&self.token)
-            .json(&body)
-            .send()
-            .await?)
+            .json(&body);
+        Ok(telemetry::send(&self.http, request).await?)
     }
 
     fn expect_ok(&self, resp: reqwest::Response, what: &str) -> anyhow::Result<()> {

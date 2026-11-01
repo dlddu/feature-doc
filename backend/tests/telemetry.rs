@@ -127,3 +127,120 @@ fn enabled_only_with_an_endpoint() {
         "http://alloy:4318/v1/traces"
     )])));
 }
+
+/// A local stand-in for the API that answers every request with the `traceparent`
+/// it received, or an empty body when there was none.
+async fn echo_server() -> String {
+    use axum::http::HeaderMap;
+    let app = axum::Router::new().fallback(|headers: HeaderMap| async move {
+        headers
+            .get("traceparent")
+            .map(|v| v.to_str().unwrap().to_owned())
+            .unwrap_or_default()
+    });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    format!("http://{addr}")
+}
+
+#[tokio::test]
+async fn worker_job_nests_stage_and_api_call() {
+    exporter();
+    let base = echo_server().await;
+    let client = reqwest::Client::new();
+    let id = "a71dcb07-dc9b-4436-bf6c-ed3ca5180e27";
+    let url = format!("{base}/internal/analyses/{id}/stages/fetch");
+
+    let received = telemetry::job(id, "o/r", &["fetch".to_owned()], async {
+        telemetry::stage("fetch", async {
+            let resp = telemetry::send(&client, client.post(&url)).await?;
+            resp.text().await
+        })
+        .await
+    })
+    .await
+    .unwrap();
+
+    let parts: Vec<&str> = received.split('-').collect();
+    assert_eq!(parts.len(), 4, "traceparent: {received:?}");
+    let spans = spans_in(parts[1]);
+    let by_name = |n: &str| {
+        spans
+            .iter()
+            .find(|s| s.name == n)
+            .unwrap_or_else(|| panic!("{n} missing: {spans:?}"))
+    };
+    let root = by_name("process analysis");
+    let stage = by_name("stage fetch");
+    let call = by_name("POST /internal/analyses/{id}/stages/fetch");
+
+    assert_eq!(root.span_kind, SpanKind::Consumer);
+    assert_eq!(root.parent_span_id, opentelemetry::trace::SpanId::INVALID);
+    assert_eq!(attr(root, "analysis.id"), Some(id.into()));
+    assert_eq!(stage.parent_span_id, root.span_context.span_id());
+    assert_eq!(call.span_kind, SpanKind::Client);
+    assert_eq!(call.parent_span_id, stage.span_context.span_id());
+    assert_eq!(parts[2], call.span_context.span_id().to_string());
+    assert_eq!(attr(call, "http.response.status_code"), Some(200i64.into()));
+}
+
+#[tokio::test]
+async fn failed_stage_marks_its_span() {
+    exporter();
+    let result: Result<(), String> = telemetry::job("x", "o/r", &[], async {
+        telemetry::stage("cross_cutting", async { Err("no LLM key".to_owned()) }).await
+    })
+    .await;
+    assert!(result.is_err());
+
+    let stage = exporter()
+        .get_finished_spans()
+        .unwrap()
+        .into_iter()
+        .find(|s| s.name == "stage cross_cutting")
+        .expect("stage span");
+    assert_eq!(
+        stage.status,
+        opentelemetry::trace::Status::error("no LLM key")
+    );
+}
+
+#[tokio::test]
+async fn send_outside_a_job_adds_nothing() {
+    exporter();
+    let base = echo_server().await;
+    let client = reqwest::Client::new();
+    let before = exporter().get_finished_spans().unwrap().len();
+    let body = telemetry::send(
+        &client,
+        client.post(format!("{base}/internal/analyses/claim")),
+    )
+    .await
+    .unwrap()
+    .text()
+    .await
+    .unwrap();
+    assert_eq!(body, "", "claim poll must not carry traceparent");
+    let after = exporter().get_finished_spans().unwrap();
+    assert!(
+        !after[before..]
+            .iter()
+            .any(|s| s.name.contains("/internal/analyses/claim")),
+        "claim poll must not make a span"
+    );
+}
+
+#[test]
+fn templated_replaces_ids_only() {
+    assert_eq!(
+        telemetry::templated(
+            "/internal/analyses/a71dcb07-dc9b-4436-bf6c-ed3ca5180e27/stages/fetch"
+        ),
+        "/internal/analyses/{id}/stages/fetch"
+    );
+    assert_eq!(
+        telemetry::templated("/internal/analyses/claim"),
+        "/internal/analyses/claim"
+    );
+}

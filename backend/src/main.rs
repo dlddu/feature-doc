@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     let mut sigterm = signal(SignalKind::terminate())?;
     let mut sigint = signal(SignalKind::interrupt())?;
 
-    let tracer_provider = featuredoc::telemetry::init()?;
+    let tracer_provider = featuredoc::telemetry::init("featuredoc")?;
     if tracer_provider.is_some() {
         tracing::info!("tracing enabled");
     }
