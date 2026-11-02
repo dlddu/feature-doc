@@ -25,6 +25,7 @@ pub mod github;
 pub mod github_api;
 pub mod github_app;
 pub mod github_tokens;
+pub mod grant_cache;
 pub mod installations;
 pub mod llm;
 pub mod llmkey;

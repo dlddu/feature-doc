@@ -183,6 +183,23 @@ pub async fn send(
     client: &reqwest::Client,
     request: reqwest::RequestBuilder,
 ) -> reqwest::Result<reqwest::Response> {
+    send_traced(client, request, true).await
+}
+
+/// Like [`send`], for calls to third parties (GitHub): the span is recorded but no
+/// `traceparent` leaves the cluster.
+pub async fn send_external(
+    client: &reqwest::Client,
+    request: reqwest::RequestBuilder,
+) -> reqwest::Result<reqwest::Response> {
+    send_traced(client, request, false).await
+}
+
+async fn send_traced(
+    client: &reqwest::Client,
+    request: reqwest::RequestBuilder,
+    propagate: bool,
+) -> reqwest::Result<reqwest::Response> {
     let mut request = request.build()?;
     let parent = Context::current();
     if !parent.span().span_context().is_valid() {
@@ -204,9 +221,11 @@ pub async fn send(
         ])
         .start_with_context(&tracer, &parent);
     let cx = parent.with_span(span);
-    global::get_text_map_propagator(|p| {
-        p.inject_context(&cx, &mut HeaderInjector(request.headers_mut()))
-    });
+    if propagate {
+        global::get_text_map_propagator(|p| {
+            p.inject_context(&cx, &mut HeaderInjector(request.headers_mut()))
+        });
+    }
 
     let result = client.execute(request).with_context(cx.clone()).await;
     let span = cx.span();
@@ -227,12 +246,14 @@ pub async fn send(
     result
 }
 
-/// `/internal/analyses/<uuid>/stages/fetch` → `/internal/analyses/{id}/stages/fetch`.
+/// `/internal/analyses/<uuid>/stages/fetch` → `/internal/analyses/{id}/stages/fetch`,
+/// and numeric IDs (`/app/installations/42/access_tokens`) the same way.
 pub fn templated(path: &str) -> String {
     path.split('/')
         .map(|seg| {
             let uuid = seg.len() == 36 && seg.matches('-').count() == 4;
-            if uuid {
+            let number = !seg.is_empty() && seg.bytes().all(|b| b.is_ascii_digit());
+            if uuid || number {
                 "{id}"
             } else {
                 seg
