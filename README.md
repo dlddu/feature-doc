@@ -67,7 +67,7 @@ deploy/
 │   ├── worker-deployment.yaml  # 분석 워커 워크로드 — 같은 이미지, 커맨드만 다름, 볼륨 없음 (AC4.5)
 │   ├── service.yaml
 │   ├── pvc.yaml
-│   └── secret.yaml.example  # featuredoc-secrets 템플릿 — 복사·기입 후 적용 (secret.yaml은 gitignore)
+│   └── secret.yaml.example  # featuredoc-secrets·featuredoc-config 템플릿 — 복사·기입 후 적용 (secret.yaml은 gitignore)
 └── e2e/                   # e2e 전용 오버레이 (featuredoc:dev + IfNotPresent + stub-mode secret 생성)
     ├── kustomization.yaml
     └── kind-cluster.yaml
