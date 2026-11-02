@@ -51,6 +51,11 @@ spec:
           envFrom:
             - secretRef:
                 name: featuredoc-secrets
+            # GITHUB_APP_SLUG and GITHUB_CLIENT_ID: public App settings, kept out of
+            # the Secret. Provisioned out-of-band like the Secret (see
+            # secret.yaml.example); the worker does not read them.
+            - configMapRef:
+                name: featuredoc-config
           volumeMounts:
             - name: data
               mountPath: /data

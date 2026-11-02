@@ -12,17 +12,21 @@ images:
     newName: featuredoc
     newTag: dev
 
-# The base provides no Secret. GitHub creds stay empty here because the doubles
-# enabled below never call GitHub.
+# The base provides no Secret or ConfigMap. GitHub creds stay empty here because
+# the doubles enabled below never call GitHub.
 secretGenerator:
   - name: featuredoc-secrets
     literals:
       - FEATUREDOC_KEK=e2e-stub-kek-not-a-real-secret
-      - GITHUB_APP_SLUG=featuredoc
-      - GITHUB_CLIENT_ID=
       - GITHUB_CLIENT_SECRET=
       - GITHUB_APP_PRIVATE_KEY=
       - FEATUREDOC_WORKER_TOKEN=e2e-worker-token-not-a-real-secret
+
+configMapGenerator:
+  - name: featuredoc-config
+    literals:
+      - GITHUB_APP_SLUG=featuredoc
+      - GITHUB_CLIENT_ID=
 
 generatorOptions:
   disableNameSuffixHash: true
