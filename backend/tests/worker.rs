@@ -648,3 +648,53 @@ async fn one_worker_claiming_two_users_jobs_never_mixes_their_context() {
     assert_eq!(b["llmLanguage"], "en", "bob 이 고른 언어");
     assert_ne!(a["llmLanguage"], "en", "alice 는 고른 적이 없다");
 }
+
+async fn beat(state: &AppState, id: &str) -> StatusCode {
+    build_router(state.clone())
+        .oneshot(worker_post(
+            &format!("/internal/analyses/{id}/heartbeat"),
+            WORKER_TOKEN,
+            serde_json::json!({ "workerId": "w1" }),
+        ))
+        .await
+        .unwrap()
+        .status()
+}
+
+#[tokio::test]
+async fn a_heartbeat_within_the_grant_window_does_not_ask_github_again() {
+    let (state, _p) = stub_state().await;
+    let s = login_installed(&state, 1, "alice").await;
+    let id = enqueue(&state, &s, "payments-api").await;
+    assert_eq!(claim(&state, "w1").await.status(), StatusCode::OK);
+    assert_eq!(beat(&state, &id).await, StatusCode::NO_CONTENT);
+
+    sqlx::query("UPDATE analyses SET repo_name = 'outside-the-installation' WHERE id = ?")
+        .bind(&id)
+        .execute(&state.db)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        beat(&state, &id).await,
+        StatusCode::NO_CONTENT,
+        "the second beat inside the window reuses the first check"
+    );
+}
+
+#[tokio::test]
+async fn disconnecting_inside_featuredoc_stops_the_run_despite_a_fresh_grant() {
+    let (state, _p) = stub_state().await;
+    let s = login_installed(&state, 1, "alice").await;
+    let id = enqueue(&state, &s, "payments-api").await;
+    assert_eq!(claim(&state, "w1").await.status(), StatusCode::OK);
+    assert_eq!(beat(&state, &id).await, StatusCode::NO_CONTENT);
+
+    uninstall(&state).await;
+
+    assert_eq!(beat(&state, &id).await, StatusCode::CONFLICT);
+    let (status, error, lease) = analysis_row(&state, &id).await;
+    assert_eq!(status, "failed");
+    assert_eq!(error.as_deref(), Some(featuredoc::analysis::ACCESS_REVOKED));
+    assert_eq!(lease, None);
+}

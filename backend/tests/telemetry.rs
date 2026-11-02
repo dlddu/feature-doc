@@ -243,6 +243,10 @@ fn templated_replaces_ids_only() {
         telemetry::templated("/internal/analyses/claim"),
         "/internal/analyses/claim"
     );
+    assert_eq!(
+        telemetry::templated("/app/installations/42/access_tokens"),
+        "/app/installations/{id}/access_tokens"
+    );
 }
 
 fn answer(model: &str, input: i64, output: i64) -> featuredoc::llm::Answer {
@@ -333,4 +337,32 @@ async fn llm_call_failure_carries_the_callers_reason() {
         opentelemetry::trace::Status::error("LLM rejected the request (429)")
     );
     assert_eq!(attr(&call, "gen_ai.usage.input_tokens"), None);
+}
+
+#[tokio::test]
+async fn external_calls_are_traced_without_sending_traceparent() {
+    exporter();
+    let base = echo_server().await;
+    let client = reqwest::Client::new();
+    let url = format!("{base}/app/installations/42/access_tokens");
+
+    let body = telemetry::job("external", "o/r", &[], async {
+        let resp = telemetry::send_external(&client, client.post(&url)).await?;
+        resp.text().await
+    })
+    .await
+    .unwrap();
+    assert_eq!(body, "", "no traceparent may leave for a third party");
+
+    let call = exporter()
+        .get_finished_spans()
+        .unwrap()
+        .into_iter()
+        .find(|s| s.name == "POST /app/installations/{id}/access_tokens")
+        .expect("external call span");
+    assert_eq!(call.span_kind, SpanKind::Client);
+    assert_eq!(
+        attr(&call, "http.response.status_code"),
+        Some(200i64.into())
+    );
 }

@@ -31,7 +31,7 @@ use crate::error::AppError;
 use crate::pipeline::{self, stage_status, status};
 use crate::state::AppState;
 use crate::util::now_unix;
-use crate::{analysis, github_app};
+use crate::{analysis, github_app, grant_cache, installations};
 
 /// How long a claim is held before another worker may reclaim the job. Long enough
 /// to cover a stage plus the worker's HTTP timeouts; short enough that a killed
@@ -614,11 +614,22 @@ async fn heartbeat(
     .fetch_optional(&state.db)
     .await?;
     if let Some((user_id, owner, name, public_repo)) = target {
-        if let Err(denied) =
-            analysis::still_granted(&state, &user_id, &owner, &name, public_repo).await?
-        {
-            stop_for_revoked_access(&state, &id, denied.reason()).await?;
-            return Err(AppError::Conflict("lease no longer held".into()));
+        let key = installations::get_for_user(&state.db, &user_id)
+            .await?
+            .map(|inst| grant_cache::Key::new(&state.config.github.api_base, &id, inst.installation_id));
+        if !key.as_ref().is_some_and(|k| grant_cache::fresh(k, now)) {
+            if let Err(denied) =
+                analysis::still_granted(&state, &user_id, &owner, &name, public_repo).await?
+            {
+                if let Some(k) = &key {
+                    grant_cache::forget(k);
+                }
+                stop_for_revoked_access(&state, &id, denied.reason()).await?;
+                return Err(AppError::Conflict("lease no longer held".into()));
+            }
+            if let Some(k) = key {
+                grant_cache::remember(k, now);
+            }
         }
     }
 

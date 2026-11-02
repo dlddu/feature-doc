@@ -40,16 +40,18 @@ pub async fn mint_installation_token(
                 "{}/app/installations/{}/access_tokens",
                 state.config.github.api_base, installation_id
             );
-            let resp = state
-                .http
-                .post(&url)
-                .header("Authorization", format!("Bearer {jwt}"))
-                .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "featuredoc/0.1")
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .send()
-                .await
-                .map_err(|_| AppError::internal("github installation-token request failed"))?;
+            let resp = crate::telemetry::send_external(
+                &state.http,
+                state
+                    .http
+                    .post(&url)
+                    .header("Authorization", format!("Bearer {jwt}"))
+                    .header("Accept", "application/vnd.github+json")
+                    .header("User-Agent", "featuredoc/0.1")
+                    .header("X-GitHub-Api-Version", "2022-11-28"),
+            )
+            .await
+            .map_err(|_| AppError::internal("github installation-token request failed"))?;
             if !resp.status().is_success() {
                 return Err(AppError::internal("github installation-token rejected"));
             }
@@ -87,16 +89,18 @@ pub async fn fetch_installation(
                 "{}/app/installations/{}",
                 state.config.github.api_base, installation_id
             );
-            let resp = state
-                .http
-                .get(&url)
-                .header("Authorization", format!("Bearer {jwt}"))
-                .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "featuredoc/0.1")
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .send()
-                .await
-                .map_err(|_| AppError::internal("github installation lookup failed"))?;
+            let resp = crate::telemetry::send_external(
+                &state.http,
+                state
+                    .http
+                    .get(&url)
+                    .header("Authorization", format!("Bearer {jwt}"))
+                    .header("Accept", "application/vnd.github+json")
+                    .header("User-Agent", "featuredoc/0.1")
+                    .header("X-GitHub-Api-Version", "2022-11-28"),
+            )
+            .await
+            .map_err(|_| AppError::internal("github installation lookup failed"))?;
             if !resp.status().is_success() {
                 return Err(AppError::internal("github installation lookup rejected"));
             }
@@ -149,16 +153,18 @@ pub async fn list_repositories(
                     "{}/installation/repositories?per_page=100&page={page}",
                     state.config.github.api_base
                 );
-                let resp = state
-                    .http
-                    .get(&url)
-                    .header("Authorization", format!("Bearer {}", token.token))
-                    .header("Accept", "application/vnd.github+json")
-                    .header("User-Agent", "featuredoc/0.1")
-                    .header("X-GitHub-Api-Version", "2022-11-28")
-                    .send()
-                    .await
-                    .map_err(|_| AppError::internal("github repositories request failed"))?;
+                let resp = crate::telemetry::send_external(
+                    &state.http,
+                    state
+                        .http
+                        .get(&url)
+                        .header("Authorization", format!("Bearer {}", token.token))
+                        .header("Accept", "application/vnd.github+json")
+                        .header("User-Agent", "featuredoc/0.1")
+                        .header("X-GitHub-Api-Version", "2022-11-28"),
+                )
+                .await
+                .map_err(|_| AppError::internal("github repositories request failed"))?;
                 if !resp.status().is_success() {
                     return Err(AppError::internal("github repositories rejected"));
                 }
@@ -305,16 +311,18 @@ pub async fn lookup_public_repository(
         .map_err(|_| AppError::internal("github api base cannot take a path"))?
         .pop_if_empty()
         .extend(["repos", owner, name]);
-    let resp = state
-        .http
-        .get(url)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "featuredoc/0.1")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .send()
-        .await
-        .map_err(|_| AppError::internal("github repository lookup failed"))?;
+    let resp = crate::telemetry::send_external(
+        &state.http,
+        state
+            .http
+            .get(url)
+            .header("Authorization", format!("Bearer {token}"))
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "featuredoc/0.1")
+            .header("X-GitHub-Api-Version", "2022-11-28"),
+    )
+    .await
+    .map_err(|_| AppError::internal("github repository lookup failed"))?;
     match resp.status().as_u16() {
         401 => return Ok(PublicRepo::AuthExpired),
         404 => return Ok(PublicRepo::NotPublic),
@@ -364,16 +372,18 @@ pub async fn repository_count(state: &AppState, installation_id: i64) -> Option<
                 "{}/installation/repositories?per_page=1",
                 state.config.github.api_base
             );
-            let resp = state
-                .http
-                .get(&url)
-                .header("Authorization", format!("Bearer {}", token.token))
-                .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "featuredoc/0.1")
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .send()
-                .await
-                .ok()?;
+            let resp = crate::telemetry::send_external(
+                &state.http,
+                state
+                    .http
+                    .get(&url)
+                    .header("Authorization", format!("Bearer {}", token.token))
+                    .header("Accept", "application/vnd.github+json")
+                    .header("User-Agent", "featuredoc/0.1")
+                    .header("X-GitHub-Api-Version", "2022-11-28"),
+            )
+            .await
+            .ok()?;
             #[derive(Deserialize)]
             struct R {
                 total_count: i64,
@@ -411,16 +421,18 @@ pub async fn list_user_installations(
         "{}/user/installations?per_page=100",
         state.config.github.api_base
     );
-    let resp = state
-        .http
-        .get(&url)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "featuredoc/0.1")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .send()
-        .await
-        .map_err(|_| AppError::internal("github installations lookup failed"))?;
+    let resp = crate::telemetry::send_external(
+        &state.http,
+        state
+            .http
+            .get(&url)
+            .header("Authorization", format!("Bearer {token}"))
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "featuredoc/0.1")
+            .header("X-GitHub-Api-Version", "2022-11-28"),
+    )
+    .await
+    .map_err(|_| AppError::internal("github installations lookup failed"))?;
     if !resp.status().is_success() {
         return Err(AppError::BadRequest("GitHub 재인증이 필요합니다".into()));
     }
