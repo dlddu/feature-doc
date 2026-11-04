@@ -16,6 +16,9 @@ SELF_PATHS = {
 
 CRITERIA_DOC = "docs/data-model/fullscan-criteria.md"
 
+PRODUCT_DOCS = ("docs/values.md",)
+PRODUCT_DOC_DIRS = ("docs/prd/", "docs/test/", "docs/user-journey/")
+
 
 def git(*args):
     r = subprocess.run(["git", *args], capture_output=True, text=True)
@@ -33,6 +36,8 @@ def classify(files):
             hits["D6 판정기 자신"].append(f)
         if f.startswith("backend/migrations/"):
             hits["D1 마이그레이션"].append(f)
+        if f in PRODUCT_DOCS or f.startswith(PRODUCT_DOC_DIRS):
+            hits["D8 제품 문서"].append(f)
     return hits
 
 
