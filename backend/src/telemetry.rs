@@ -14,9 +14,6 @@
 //! window; those requests then started a trace of their own instead of continuing
 //! Traefik's. Reading the parsed headers here has no such limit. OBI is told to skip
 //! both Deployments, so these are the only spans either process produces.
-//!
-//! The worker's job is the unit worth following, not the HTTP call: without a root
-//! span per job every stage report and heartbeat was a trace of its own.
 
 use axum::extract::{MatchedPath, Request};
 use axum::middleware::Next;
